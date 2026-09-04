@@ -20,12 +20,13 @@ Read the documents relevant to the task before changing code:
 - `docs/ENGINEERING_PRINCIPLES.md` — correctness, testing, data safety, and implementation rules
 - `docs/ROADMAP.md` — ordered development phases
 - `docs/PHASE_1_PROTOCOL_FOUNDATION.md` — current first milestone
-- `docs/design/UI_DESIGN_REFERENCE.md` — approved visual direction
+- `docs/design/UI_DESIGN_REFERENCE.md` — exact visual implementation target
 - `docs/design/UI_IMPLEMENTATION_ARCHITECTURE.md` — authoritative Qt Quick/QML implementation contract
 - `docs/design/COMPONENT_CATALOG.md` — reusable XP60Studio component system
 - `docs/design/SCREEN_AND_FEATURE_MAP.md` — feature-to-screen mapping and mockup references
+- `docs/design/UI_ACCEPTANCE_CRITERIA.md` — visual/interaction acceptance rules and screenshot comparison requirements
 
-## Approved visual direction
+## Exact approved UI target
 
 The master visual reference is:
 
@@ -38,9 +39,39 @@ The four anchor screens in the master mockup are:
 - Wave Browser
 - Bank Builder / Library Intelligence
 
-When implementing any UI, use the master mockup together with `UI_DESIGN_REFERENCE.md`, `UI_IMPLEMENTATION_ARCHITECTURE.md`, `COMPONENT_CATALOG.md`, and `SCREEN_AND_FEATURE_MAP.md`.
+For these four anchor screens, the mockup is the **authoritative implementation target**, not loose inspiration.
 
-The mockup is a design direction, not permission to invent unsupported XP-60 behavior. Hardware truth, accessibility, platform constraints, and validated usability take precedence while preserving the approved visual system.
+When their roadmap phase begins, reproduce the mockup as closely as technically possible in:
+
+- application shell and navigation
+- major panel placement
+- layout proportions
+- spacing/density
+- typography hierarchy
+- card/control composition
+- Tone 1/2/3/4 color semantics
+- signal-flow placement
+- envelope-editor placement
+- summary/inspector panels
+- filter/search arrangement
+- bank-grid arrangement
+- status/warning hierarchy
+- overall premium music-software visual character
+
+Do not replace the approved composition with a generic Qt screen, admin dashboard, property grid, or simplified stock-control interpretation merely because it is easier to implement.
+
+A major deviation from the mockup is allowed only for a documented reason such as:
+
+1. verified XP-60 behavior;
+2. accessibility requirements;
+3. Windows/macOS platform constraints;
+4. responsive-layout necessity at smaller supported widths;
+5. illustrative mockup data that is not supported by verified device metadata;
+6. a demonstrated usability problem.
+
+For material UI PRs, include implementation screenshots where the development environment permits and compare them against the master mockup and `UI_ACCEPTANCE_CRITERIA.md`.
+
+Do not invent unsupported XP-60 behavior merely to reproduce a decorative detail in the mockup. Hardware truth governs behavior; the mockup governs the valid visual/product composition.
 
 ## Authoritative technology direction
 
