@@ -69,10 +69,38 @@ than guessing the command position. An earlier draft of this project recorded
 
 | Fact | Value | Status | Notes |
 |---|---|---|---|
-| DT1 packet size | data longer than 128 bytes is split into packets of **128 bytes or less** | Documentation-derived | The tracker does **not** assume it — it accepts any chunking and completes on range coverage. |
+| DT1 packet size | data longer than 128 bytes is split into packets of **128 bytes or less** | Documentation-derived, **contradicted by a real file** — see §2.1 | The tracker does **not** assume it — it accepts any chunking and completes on range coverage. |
 | Gap between successive DT1 messages | **at least 20 ms** | Documentation-derived | Applies when sending to the XP-60; also informs `betweenChunkTimeout`. |
 | Sending DT1 to the device | ≤ 128 data bytes per message, ≥ 20 ms apart | Documentation-derived | `xp60::transferDefaults()`; configurable via `TransferPacing`. |
 | RQ1 address/size | should use the starting addresses and sizes given in the Parameter Address Map | Documentation-derived | Arbitrary oversized reads are not a strong validation method; the Devices presets use documented blocks. |
+
+### 2.1 Open discrepancy — 129-byte DT1 payloads observed
+
+The MIDI Implementation states that data longer than 128 bytes is split into
+packets of 128 bytes or less. The golden fixture
+`tests/fixtures/xp60/user-bank-amal.syx` (a real XP-60 user bank) contains
+**512 DT1 messages whose payload is 129 bytes** — each one a whole Patch Tone
+block (`00 00 01 01`) in a single message. Its Patch Common messages are 73
+bytes, below the limit.
+
+Not yet established which of these is true:
+
+1. the 128-byte rule governs data sent **to** the XP-60, while the instrument
+   itself transmits whole blocks;
+2. the rule has a different scope than "DT1 payload length";
+3. the software that produced the file ignored the rule and the XP-60 accepted
+   it anyway.
+
+**Engineering stance until this is settled.** Receiving already assumes
+nothing: `RolandRequestTracker` accepts any chunking and completes on address
+coverage, and the fixture test asserts the 129-byte messages parse. Sending
+keeps the conservative 128-byte split (`Xp60PatchCodec::encodeToDataSets`),
+because splitting a 129-byte block into 128 + 1 delivers identical bytes to
+identical addresses and cannot violate the documented rule.
+
+To settle it, the hardware session must record the payload sizes the XP-60
+sends when answering an RQ1 for one Tone block (`00 00 01 01`). The Devices
+screen's protocol log shows `bytes=` on every IN line.
 | First-response timeout | 1500 ms (project default, not a Roland figure) | Project choice | Adjustable; tune after hardware measurements. |
 | Response ordering | chunks in ascending address order | Unknown | Tracker records out-of-order arrivals as notes instead of failing. |
 | Whether the XP-60 answers an RQ1 spanning several regions | Unknown | Unknown | Keep diagnostic reads inside one region. |
@@ -95,9 +123,10 @@ confirms them.
 | User Rhythm Setup | `10 40 00 00` | no | Documentation-derived | USER:1 at `10 40 00 00`, USER:2 at `10 41 00 00`. |
 | User Patch bank | `11 00 00 00` | no | Documentation-derived | USER:001 … USER:128, stride `00 01 00 00`. |
 | Temporary Performance size | `00 00 1F 19` (3993 bytes) | Documentation-derived | From Roland's published RQ1 example. |
-| Patch Common size | `00 00 00 49` (73 bytes) | Documentation-derived | Parameter Address Map p.224; table in `XP60_PATCH_PARAMETER_MAP.md`. |
-| Patch Tone size | `00 00 01 01` (129 bytes) | Documentation-derived | Parameter Address Map p.225. |
-| Tone 1–4 offsets within a Patch | `10 00`, `12 00`, `14 00`, `16 00` | Documentation-derived | Parameter Address Map p.223. |
+| Patch Common size | `00 00 00 49` (73 bytes) | Documentation-derived, corroborated by the golden fixture | Parameter Address Map p.224; 128 blocks of exactly 73 bytes in `user-bank-amal.syx`. |
+| Patch Tone size | `00 00 01 01` (129 bytes) | Documentation-derived, corroborated by the golden fixture | Parameter Address Map p.225; 512 blocks of exactly 129 bytes in the fixture. |
+| Tone 1–4 offsets within a Patch | `10 00`, `12 00`, `14 00`, `16 00` | Documentation-derived, corroborated by the golden fixture | Parameter Address Map p.223; every patch in the fixture uses exactly these four offsets. |
+| User Performance layout | Common 66 bytes at `10 nn 00 00`, 16 Parts of 25 bytes at `10 nn 10 00`…`10 nn 1F 00` | **Observed in the fixture only** — the Performance Address Map is not transcribed | Phase 8. Two further block shapes (58 bytes ×128, 12 bytes ×2) are present with meaning unknown. |
 | Patch Common size, Tone offsets/sizes (XP-60) | — | Unknown | Phase 2 work; JV-1080 values must not be copied without confirmation. |
 
 ## 4. Safe read presets used by the Devices screen
@@ -125,6 +154,31 @@ All presets are RQ1 (read-only). None writes to the instrument.
   Performance and Patch. The Patch tables live in
   `XP60_PATCH_PARAMETER_MAP.md`; Performance, Rhythm Setup and System tables
   are later phases.
+
+## 5.1 What the golden fixture corroborates
+
+`tests/fixtures/xp60/user-bank-amal.syx` is a real XP-60 user bank supplied by
+the project owner (evidence rank 4 in `AGENTS.md`: known-good supplied SysEx).
+`tst_golden_fixture` proves against it that:
+
+- all 1314 messages are Roland DT1 with device ID 17 and the **single-byte
+  model ID `6A`**, and every one re-encodes byte-for-byte (checksums included);
+- Patch Common is 73 bytes and Patch Tone 129 bytes, at offsets `00 00`,
+  `10 00`, `12 00`, `14 00`, `16 00` — identical to `Xp60PatchLayout::fetchPlan`;
+- all 128 User Patches decode with **zero** range warnings, i.e. all 74 752
+  parameter values lie inside the ranges transcribed from the Address Map;
+- every patch round-trips byte-exact through the typed model.
+
+What it does **not** establish:
+
+- **the semantics of any parameter.** No range warnings proves a range is not
+  too narrow; it cannot prove a range is not too wide, nor that a parameter
+  means what Roland's name suggests;
+- **anything about the wire.** The file is not a capture this project observed
+  being taken, so it says nothing about how the XP-60 answers an RQ1 or
+  accepts a DT1. Those remain the object of Phase 3;
+- consequently **no row is promoted to Hardware-verified.** All 200 stay
+  `DocumentationDerived`.
 
 ## 6. Promotion procedure
 

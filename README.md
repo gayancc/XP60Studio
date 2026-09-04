@@ -113,6 +113,7 @@ src/presentation  view models and Qt item models for QML
 src/app           Qt Quick executable
 qml/XP60Studio    design tokens, reusable controls, shell, screens
 tests/cpp         Qt Test suites          tests/qml  Qt Quick Test suites
+tests/fixtures    real Roland SysEx used as golden fixtures
 tools/            research utilities (Python; not part of the runtime)
 ```
 
@@ -126,11 +127,12 @@ exists, what is tested, what is still unknown, and
 hardware procedure. Protocol facts and their verification status are tracked in
 [`docs/protocol/ROLAND_XP60_PROTOCOL_FACTS.md`](docs/protocol/ROLAND_XP60_PROTOCOL_FACTS.md).
 
-**Phase 2 — XP-60 Patch Model** is implemented: the Patch Common and Tone
-tables are generated from the transcribed Roland Parameter Address Map, the
-typed `Xp60Patch` model and codec round-trip byte-for-byte, and the Devices
-screen can fetch and decode the XP-60's temporary Patch. Real-patch round-trip
-proof awaits a capture from the instrument. See
+**Phase 2 — XP-60 Patch Model** is complete. The Patch Common and Tone tables
+are generated from the transcribed Roland Parameter Address Map, the typed
+`Xp60Patch` model and codec round-trip byte-for-byte, and the Devices screen
+can fetch and decode the XP-60's current Patch. The model is validated against
+a real XP-60 user bank (`tests/fixtures/xp60/`): all 128 patches decode with
+zero out-of-range values and round-trip byte-exact. See
 [`docs/PHASE_2_PATCH_MODEL.md`](docs/PHASE_2_PATCH_MODEL.md) and
 [`docs/protocol/XP60_PATCH_PARAMETER_MAP.md`](docs/protocol/XP60_PATCH_PARAMETER_MAP.md).
 

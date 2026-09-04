@@ -293,10 +293,25 @@ The row Display values above expand or reference Roland's numbered footnotes:
 
 ## 4. Golden fixture status
 
-No physical Temporary Patch DT1 dump was supplied with this transcription. Therefore:
+A golden fixture now exists: `tests/fixtures/xp60/user-bank-amal.syx`, a real
+XP-60 user bank supplied by the project owner (evidence rank 4 — known-good
+supplied SysEx). `tst_golden_fixture` validates this transcription against it.
 
-- the Patch Common and Patch Tone parameter tables may now be implemented as **Documentation-derived**;
-- no Patch field is Hardware-verified yet;
-- the first captured Temporary Patch DT1 stream should be committed as the first golden fixture;
-- Phase 2 round-trip acceptance remains `encode(decode(captured_patch_bytes)) == captured_patch_bytes` byte-for-byte;
-- unexplained differences must be investigated, never normalized away.
+**The transcription is corroborated by real data.** All 128 User Patches in the
+fixture decode with zero out-of-range warnings, meaning every one of 74 752
+parameter values falls inside the raw ranges transcribed above; and the block
+sizes and Tone offsets in the file match the map exactly (73 bytes at `00 00`,
+129 bytes at `10 00`/`12 00`/`14 00`/`16 00`).
+
+Still outstanding:
+
+- **no Patch field is Hardware-verified.** The fixture is a supplied file, not
+  a capture this project observed being taken. Zero warnings proves the ranges
+  are not too narrow; it cannot prove they are not too wide, nor confirm what
+  any parameter *means*;
+- a **Temporary Patch** dump read live from the instrument is still wanted, to
+  verify the `03 00 00 00` area and to check the decoded name against the
+  XP-60's display;
+- unexplained differences must be investigated, never normalized away. The
+  fixture is authoritative: if it and the code disagree, the code or this
+  document is wrong.

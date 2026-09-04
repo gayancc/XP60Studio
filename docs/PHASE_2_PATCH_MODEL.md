@@ -63,34 +63,72 @@ Display mappings implemented from the map: `1..40` style offsets, `-63..+63`
 (offset −63), `-100..+150` over raw `0..125` (scale 2), `0..-48` (scale −1),
 `L64..63R` pan, `C-1..G9` note names, and every footnote enumeration.
 
-### Remaining external input — required for round-trip proof, not for code
+### Golden fixture — Phase 2 success condition met
 
-A real **Temporary Patch DT1 dump** captured from the user's XP-60 has not
-been supplied. Every round trip above is proven on synthetic blocks whose
-values lie in the documented ranges; Phase 2 cannot claim real-patch
-round-trip proof until a captured XP-60 Patch is committed as a golden
-fixture. The Devices screen's *Fetch temporary Patch* action produces exactly
-that capture (expand the IN lines in the Protocol activity panel and copy the
-raw hex, or use `tools/syx_inspect.py` on a saved `.syx`).
+`tests/fixtures/xp60/user-bank-amal.syx` is a real XP-60 user bank supplied by
+the project owner (evidence rank 4 in `AGENTS.md`). `tst_golden_fixture`
+asserts against it, and all ten assertions pass:
+
+| Assertion | Result |
+|---|---|
+| Stream parses with no stray bytes, aborted SysEx or rejected Roland messages | 1314 DT1, all clean |
+| Every message re-encodes byte-for-byte, checksums included | 1314 / 1314 |
+| Device ID and model ID | 17 and single-byte `6A` throughout |
+| Block sizes and offsets equal `Xp60PatchLayout::fetchPlan()` | exact match |
+| All 128 User Patches decode | 128, **zero** issues |
+| Parameter values inside their transcribed ranges | 74 752 / 74 752 |
+| Every patch round-trips byte-exact (`encode(decode(b)) == b`) | 128 / 128 |
+| `decode(encode(patch)) == patch` | 128 / 128 |
+| Transmitting a patch as DT1s reproduces its bytes | exact |
+| All 128 names readable, every patch has an enabled Tone and resolvable enums | pass |
+
+The roadmap's success condition — "known-good Patch fixtures round-trip
+without unexplained differences" — is therefore met. There were no
+differences to explain.
+
+**What this does not establish.** The fixture is a supplied file, not a
+capture this project observed being taken. It says nothing about how the XP-60
+answers an RQ1 or accepts a DT1, and it cannot confirm what any parameter
+*means*; zero range warnings proves only that no transcribed range is too
+narrow. All 200 table rows remain `DocumentationDerived`. A live *Fetch
+temporary Patch* against the instrument is still wanted, both to exercise the
+`03 00 00 00` area and to check a decoded name against the XP-60's display.
 
 ## Known unknowns
 
-- Whether the XP-60 answers a block-sized RQ1 (`00 00 01 01`) in exactly
-  one 128-byte + one 1-byte packet; the tracker accepts any chunking.
-- Whether Patch Name bytes other than printable ASCII ever occur (raw 32..127
-  is accepted verbatim; 7FH is rendered as `?`).
-- EFX Parameter 1–12 semantics per EFX Type (the map gives raw 0..127;
-  the per-effect tables are a later phase).
-- Reserved or undocumented behaviour when values outside documented ranges
-  are written back (decoding keeps them; writing is not enabled in the UI).
+- **129-byte DT1 payloads.** The fixture carries whole 129-byte Tone blocks in
+  single messages, above the 128-byte split the MIDI Implementation states.
+  Recorded as an open discrepancy in `ROLAND_XP60_PROTOCOL_FACTS.md` §2.1;
+  receiving assumes nothing, sending stays conservative at 128.
+- How the XP-60 itself packetises a reply to a block-sized RQ1
+  (`00 00 01 01`); the tracker accepts any chunking.
+- Parameter *semantics*. The fixture exercises the ranges, not the meanings.
+- EFX Parameter 1–12 per EFX Type (the map gives raw 0..127; the per-effect
+  tables are a later phase).
+- The Performance area: the fixture shows Common 66 bytes + 16 Parts of 25
+  bytes per Performance, plus two block shapes of unknown meaning (58 bytes
+  ×128, 12 bytes ×2). The Performance Address Map is not transcribed — Phase 8.
+- Behaviour when out-of-range values are written back (decoding keeps them;
+  writing is not enabled in the UI).
 
-## Next steps
+## Phase 2 verdict
 
-1. **Hardware capture** (Phase 3 entry): connect the XP-60, *Fetch temporary
-   Patch*, save the raw DT1 hex as `tests/fixtures/xp60/temporary-patch-<name>.syx`
-   and add a golden test asserting byte-exact round trip and the name shown on
-   the XP-60 display. Promote table rows to Hardware-verified as observed.
-2. Send-side verification per Phase 3: write the decoded Patch back to the
-   temporary area with `Xp60PatchCodec::encodeToDataSets` (≤ 128 bytes,
-   ≥ 20 ms), re-fetch, compare.
-3. Only then Phase 4 (visual Patch Editor) on top of `Xp60Patch`.
+Complete. Every roadmap deliverable is implemented and the success condition is
+met against real XP-60 data.
+
+What is unproven is now entirely about the wire, not the tables: whether the
+instrument answers an RQ1 the way the fetch plan expects, and whether it
+accepts a DT1 write. Both are exactly what Phase 3 exists to establish.
+
+## Next steps (Phase 3)
+
+1. Build the **send-and-verify engine**: transmit with
+   `Xp60PatchCodec::encodeToDataSets` (≤ 128 bytes, ≥ 20 ms), read back,
+   compare, report per-block. The DT1 write path is still disabled in the UI
+   and must stay disabled until the temporary-area semantics are verified.
+2. **Hardware session** per `docs/HARDWARE_VALIDATION_XP60.md`: FETCH → DECODE
+   → ENCODE → SEND → FETCH AGAIN → COMPARE against the temporary Patch area.
+   Record the payload sizes the XP-60 sends, which settles the §2.1
+   discrepancy.
+3. Promote table rows to `HardwareVerified` only for behaviour actually
+   observed, then Phase 4 (visual Patch Editor) on top of `Xp60Patch`.

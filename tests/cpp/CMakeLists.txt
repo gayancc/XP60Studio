@@ -76,6 +76,14 @@ xp60studio_add_test(tst_xp60_patch
   SOURCES tst_xp60_patch.cpp
   LIBS xp60studio::xpmodel)
 
+# Validates the model against real XP-60 user data.
+# See tests/fixtures/xp60/README.md for provenance.
+xp60studio_add_test(tst_golden_fixture
+  SOURCES tst_golden_fixture.cpp
+  LIBS xp60studio::xpmodel)
+target_compile_definitions(tst_golden_fixture
+  PRIVATE XP60STUDIO_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/xp60")
+
 # The generated tables must match the protocol document they come from.
 find_package(Python3 COMPONENTS Interpreter QUIET)
 if(Python3_Interpreter_FOUND)
