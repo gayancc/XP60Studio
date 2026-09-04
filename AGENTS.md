@@ -15,6 +15,7 @@ The initial hardware target is the Roland XP-60. Related XP/JV models are future
 Read the documents relevant to the task before changing code:
 
 - `docs/PRODUCT_VISION.md` — what the product should become
+- `docs/FEATURE_BASELINE.md` — mature editor baseline and XP60Studio differentiators
 - `docs/ARCHITECTURE.md` — required technical separation and domain boundaries
 - `docs/ENGINEERING_PRINCIPLES.md` — correctness, testing, data safety, and implementation rules
 - `docs/ROADMAP.md` — ordered development phases
