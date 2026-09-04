@@ -67,3 +67,19 @@ xp60studio_add_test(tst_sysex_stream
 xp60studio_add_test(tst_patch_layout
   SOURCES tst_patch_layout.cpp
   LIBS xp60studio::xpmodel)
+
+xp60studio_add_test(tst_generated_tables
+  SOURCES tst_generated_tables.cpp
+  LIBS xp60studio::xpmodel)
+
+xp60studio_add_test(tst_xp60_patch
+  SOURCES tst_xp60_patch.cpp
+  LIBS xp60studio::xpmodel)
+
+# The generated tables must match the protocol document they come from.
+find_package(Python3 COMPONENTS Interpreter QUIET)
+if(Python3_Interpreter_FOUND)
+  add_test(NAME tst_generated_tables_current
+    COMMAND Python3::Interpreter ${CMAKE_SOURCE_DIR}/tools/generate_patch_tables.py --check
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+endif()

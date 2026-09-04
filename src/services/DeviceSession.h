@@ -10,6 +10,7 @@
 #include "roland/RolandModelId.h"
 #include "roland/RolandSize.h"
 #include "roland/RolandSysExMessage.h"
+#include "xpmodel/Xp60PatchCodec.h"
 
 #include <QObject>
 #include <QTimer>
@@ -63,6 +64,26 @@ public:
         std::uint64_t transportErrors = 0;
     };
 
+    // Phase 2 inspection aid: reading one whole Patch block by block.
+    enum class PatchFetchState {
+        Idle,
+        InProgress,
+        Completed,
+        Failed,
+    };
+
+    struct PatchFetchStatus
+    {
+        PatchFetchState state = PatchFetchState::Idle;
+        roland::RolandAddress base;
+        std::vector<protocol::RequestId> requests;  // one per block, layout order
+        std::size_t completedBlocks = 0;
+        std::size_t totalBlocks = 0;
+        std::string message;                        // human readable outcome
+        std::optional<xpmodel::Xp60Patch> patch;    // present when Completed
+        std::string decodeReport;                   // warnings / errors from the codec
+    };
+
     using SteadyClock = std::function<protocol::TimePoint()>;
     using WallClock = std::function<std::chrono::system_clock::time_point()>;
 
@@ -108,6 +129,14 @@ public:
     std::size_t cancelAllRequests();
     [[nodiscard]] const protocol::RolandRequestTracker& tracker() const noexcept { return m_tracker; }
 
+    // Patch fetch ---------------------------------------------------------------
+    // Issues the RQ1s of Xp60PatchLayout::fetchPlan(base). False when not
+    // connected or a fetch is already running.
+    bool fetchPatch(const roland::RolandAddress& patchBase);
+    bool fetchTemporaryPatch();
+    void cancelPatchFetch();
+    [[nodiscard]] const PatchFetchStatus& patchFetch() const noexcept { return m_patchFetch; }
+
     // Diagnostics -------------------------------------------------------------
     [[nodiscard]] const Statistics& statistics() const noexcept { return m_statistics; }
     [[nodiscard]] const std::deque<diagnostics::ProtocolLogEntry>& log() const noexcept { return m_log; }
@@ -130,6 +159,7 @@ signals:
     void logCleared();
     void operationChanged(quint64 requestId);
     void statisticsChanged();
+    void patchFetchChanged();
 
 private:
     struct Outgoing
@@ -140,6 +170,7 @@ private:
     };
 
     void handleIncomingMessage(midi::MidiBytes bytes);
+    void updatePatchFetch();
     void handleTransportError(midi::TransportError error);
     void handleEndpointsChanged();
     void setState(ConnectionState state, std::string error = {});
@@ -174,6 +205,8 @@ private:
     QTimer m_sendTimer;
     QTimer m_timeoutTimer;
     bool m_automaticTimeoutPolling = true;
+
+    PatchFetchStatus m_patchFetch;
 
     Statistics m_statistics;
     std::deque<diagnostics::ProtocolLogEntry> m_log;

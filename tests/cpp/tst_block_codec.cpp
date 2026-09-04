@@ -23,17 +23,17 @@ constexpr std::array<std::string_view, 2> kSwitchLabels{"OFF", "ON"};
 //   12    coarse tune (SevenBit 16..112, display -48..+48)
 //   13..15 reserved
 const std::array<ParameterDescriptor, 7> kParams{{
-    {"name.1", "Name 1", 0, ParameterEncoding::Ascii, 1, 0x20, 0x7E, 0, {}, {}, "Name", xp60::VerificationStatus::DocumentationDerived, ""},
-    {"name.2", "Name 2", 1, ParameterEncoding::Ascii, 1, 0x20, 0x7E, 0, {}, {}, "Name", xp60::VerificationStatus::DocumentationDerived, ""},
-    {"name.3", "Name 3", 2, ParameterEncoding::Ascii, 1, 0x20, 0x7E, 0, {}, {}, "Name", xp60::VerificationStatus::DocumentationDerived, ""},
-    {"name.4", "Name 4", 3, ParameterEncoding::Ascii, 1, 0x20, 0x7E, 0, {}, {}, "Name", xp60::VerificationStatus::DocumentationDerived, ""},
-    {"tone.switch", "Tone Switch", 4, ParameterEncoding::SevenBit, 1, 0, 1, 0, {}, kSwitchLabels, "Tone", xp60::VerificationStatus::DocumentationDerived, ""},
-    {"wave.number", "Wave Number", 5, ParameterEncoding::Nibble, 2, 0, 254, 1, {}, {}, "Wave", xp60::VerificationStatus::DocumentationDerived, ""},
-    {"tempo", "Tempo", 8, ParameterEncoding::Nibble, 4, 20, 250, 0, "bpm", {}, "Common", xp60::VerificationStatus::DocumentationDerived, ""},
+    {"name.1", "Name 1", 0, ParameterEncoding::Ascii, 1, 0x20, 0x7E, 0, 1, DisplayStyle::Number, {}, {}, "Name", xp60::VerificationStatus::DocumentationDerived, ""},
+    {"name.2", "Name 2", 1, ParameterEncoding::Ascii, 1, 0x20, 0x7E, 0, 1, DisplayStyle::Number, {}, {}, "Name", xp60::VerificationStatus::DocumentationDerived, ""},
+    {"name.3", "Name 3", 2, ParameterEncoding::Ascii, 1, 0x20, 0x7E, 0, 1, DisplayStyle::Number, {}, {}, "Name", xp60::VerificationStatus::DocumentationDerived, ""},
+    {"name.4", "Name 4", 3, ParameterEncoding::Ascii, 1, 0x20, 0x7E, 0, 1, DisplayStyle::Number, {}, {}, "Name", xp60::VerificationStatus::DocumentationDerived, ""},
+    {"tone.switch", "Tone Switch", 4, ParameterEncoding::SevenBit, 1, 0, 1, 0, 1, DisplayStyle::Number, {}, kSwitchLabels, "Tone", xp60::VerificationStatus::DocumentationDerived, ""},
+    {"wave.number", "Wave Number", 5, ParameterEncoding::Nibble, 2, 0, 254, 1, 1, DisplayStyle::Number, {}, {}, "Wave", xp60::VerificationStatus::DocumentationDerived, ""},
+    {"tempo", "Tempo", 8, ParameterEncoding::Nibble, 4, 20, 250, 0, 1, DisplayStyle::Number, "bpm", {}, "Common", xp60::VerificationStatus::DocumentationDerived, ""},
 }};
 const std::array<ParameterDescriptor, 8> kParamsAll{{
     kParams[0], kParams[1], kParams[2], kParams[3], kParams[4], kParams[5], kParams[6],
-    {"pitch.coarse", "Coarse Tune", 12, ParameterEncoding::SevenBit, 1, 16, 112, -64, "semitone", {}, "Pitch", xp60::VerificationStatus::DocumentationDerived, ""},
+    {"pitch.coarse", "Coarse Tune", 12, ParameterEncoding::SevenBit, 1, 16, 112, -64, 1, DisplayStyle::Number, "semitone", {}, "Pitch", xp60::VerificationStatus::DocumentationDerived, ""},
 }};
 const ParameterTable kTable("Synthetic", 16, kParamsAll, TableCompleteness::Complete);
 
@@ -162,8 +162,8 @@ private slots:
     void invalidTableIsReportedNotUsed()
     {
         static const std::array<ParameterDescriptor, 2> overlapping{{
-            {"a", "A", 0, ParameterEncoding::SevenBit, 1, 0, 127, 0, {}, {}, "", xp60::VerificationStatus::Unknown, ""},
-            {"b", "B", 0, ParameterEncoding::SevenBit, 1, 0, 127, 0, {}, {}, "", xp60::VerificationStatus::Unknown, ""},
+            {"a", "A", 0, ParameterEncoding::SevenBit, 1, 0, 127, 0, 1, DisplayStyle::Number, {}, {}, "", xp60::VerificationStatus::Unknown, ""},
+            {"b", "B", 0, ParameterEncoding::SevenBit, 1, 0, 127, 0, 1, DisplayStyle::Number, {}, {}, "", xp60::VerificationStatus::Unknown, ""},
         }};
         const ParameterTable bad("Bad", 2, overlapping, TableCompleteness::Complete);
         const auto result = BlockCodec::decode(bad, ByteVector{0, 0});

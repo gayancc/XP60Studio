@@ -6,6 +6,8 @@ add_library(xp60studio_presentation STATIC
   ProtocolLogModel.cpp
   RequestOperationModel.h
   RequestOperationModel.cpp
+  PatchParameterModel.h
+  PatchParameterModel.cpp
   DevicesViewModel.h
   DevicesViewModel.cpp
   AppShellViewModel.h

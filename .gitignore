@@ -1,5 +1,6 @@
 # Build outputs
 build/
+Testing/   # CTest working directory when ctest runs in the source tree
 build-*/
 cmake-build-*/
 out/

@@ -2,6 +2,7 @@
 
 #include "presentation/ConnectionState.h"
 #include "presentation/MidiEndpointListModel.h"
+#include "presentation/PatchParameterModel.h"
 #include "presentation/ProtocolLogModel.h"
 #include "presentation/RequestOperationModel.h"
 #include "services/DeviceSession.h"
@@ -77,6 +78,20 @@ class DevicesViewModel : public QObject
     Q_PROPERTY(QString sysExHealthText READ sysExHealthText NOTIFY statisticsChanged)
     Q_PROPERTY(QString sysExHealthTone READ sysExHealthTone NOTIFY statisticsChanged)
 
+    // Current Patch inspection (Phase 2)
+    Q_PROPERTY(bool canFetchPatch READ canFetchPatch NOTIFY patchFetchChanged)
+    Q_PROPERTY(bool patchFetchInProgress READ patchFetchInProgress NOTIFY patchFetchChanged)
+    Q_PROPERTY(QString patchFetchStateText READ patchFetchStateText NOTIFY patchFetchChanged)
+    Q_PROPERTY(QString patchFetchTone READ patchFetchTone NOTIFY patchFetchChanged)
+    Q_PROPERTY(QString patchFetchMessage READ patchFetchMessage NOTIFY patchFetchChanged)
+    Q_PROPERTY(int patchFetchCompletedBlocks READ patchFetchCompletedBlocks NOTIFY patchFetchChanged)
+    Q_PROPERTY(int patchFetchTotalBlocks READ patchFetchTotalBlocks NOTIFY patchFetchChanged)
+    Q_PROPERTY(bool currentPatchAvailable READ currentPatchAvailable NOTIFY patchFetchChanged)
+    Q_PROPERTY(QString currentPatchName READ currentPatchName NOTIFY patchFetchChanged)
+    Q_PROPERTY(QString currentPatchSummary READ currentPatchSummary NOTIFY patchFetchChanged)
+    Q_PROPERTY(QString currentPatchDecodeReport READ currentPatchDecodeReport NOTIFY patchFetchChanged)
+    Q_PROPERTY(QAbstractItemModel* patchParameters READ patchParameters CONSTANT)
+
 public:
     explicit DevicesViewModel(services::DeviceSession& session, QObject* parent = nullptr);
 
@@ -137,8 +152,23 @@ public:
     [[nodiscard]] QString sysExHealthText() const;
     [[nodiscard]] QString sysExHealthTone() const;
 
+    [[nodiscard]] bool canFetchPatch() const;
+    [[nodiscard]] bool patchFetchInProgress() const;
+    [[nodiscard]] QString patchFetchStateText() const;
+    [[nodiscard]] QString patchFetchTone() const;
+    [[nodiscard]] QString patchFetchMessage() const;
+    [[nodiscard]] int patchFetchCompletedBlocks() const;
+    [[nodiscard]] int patchFetchTotalBlocks() const;
+    [[nodiscard]] bool currentPatchAvailable() const;
+    [[nodiscard]] QString currentPatchName() const;
+    [[nodiscard]] QString currentPatchSummary() const;
+    [[nodiscard]] QString currentPatchDecodeReport() const;
+    [[nodiscard]] QAbstractItemModel* patchParameters() { return &m_patchParameters; }
+
     // Intents
     Q_INVOKABLE void refreshEndpoints();
+    Q_INVOKABLE void fetchCurrentPatch();
+    Q_INVOKABLE void cancelPatchFetch();
     Q_INVOKABLE void connectDevice();
     Q_INVOKABLE void disconnectDevice();
     Q_INVOKABLE void applyReadPreset(int index);
@@ -158,6 +188,7 @@ signals:
     void canSendRequestChanged();
     void operationsChanged();
     void statisticsChanged();
+    void patchFetchChanged();
 
 private:
     void syncEndpoints();
@@ -168,6 +199,7 @@ private:
     MidiEndpointListModel m_outputs;
     ProtocolLogModel m_log;
     RequestOperationModel m_operations;
+    PatchParameterModel m_patchParameters;
     int m_selectedInput = -1;
     int m_selectedOutput = -1;
     int m_selectedPreset = 0;

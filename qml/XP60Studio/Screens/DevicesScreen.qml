@@ -437,6 +437,131 @@ Item {
                         XpMetricTile { Layout.fillWidth: true; label: "Timeouts"; value: root.devices.timeouts; tone: root.devices.timeouts > 0 ? "warning" : "neutral" }
                     }
 
+                    // Current Patch inspection (Phase 2) ---------------------------------
+                    XpCard {
+                        Layout.fillWidth: true
+                        implicitHeight: patchColumn.implicitHeight + 2 * Metrics.cardPadding
+
+                        ColumnLayout {
+                            id: patchColumn
+                            anchors { left: parent.left; right: parent.right; top: parent.top }
+                            spacing: Metrics.spacingSm
+
+                            XpPanelHeader {
+                                title: "Current Patch · inspection"
+                                glyph: "♫"
+                                StatusPill {
+                                    objectName: "patchFetchPill"
+                                    text: root.devices.patchFetchStateText
+                                    tone: root.devices.patchFetchTone
+                                    pulsing: root.devices.patchFetchInProgress
+                                }
+                            }
+
+                            RowLayout {
+                                spacing: Metrics.spacingMd
+                                Layout.fillWidth: true
+                                XpButton {
+                                    objectName: "fetchPatchButton"
+                                    text: "Fetch temporary Patch"
+                                    variant: "primary"
+                                    glyph: "⇣"
+                                    enabled: root.devices.canFetchPatch
+                                    onClicked: root.devices.fetchCurrentPatch()
+                                }
+                                XpButton {
+                                    text: "Cancel"
+                                    visible: root.devices.patchFetchInProgress
+                                    onClicked: root.devices.cancelPatchFetch()
+                                }
+                                XpLabel {
+                                    visible: root.devices.patchFetchInProgress
+                                    text: root.devices.patchFetchCompletedBlocks + " / " + root.devices.patchFetchTotalBlocks + " blocks"
+                                    role: "mono"
+                                    secondary: true
+                                }
+                                Item { Layout.fillWidth: true }
+                                StatusPill { text: "Read only"; tone: "info"; showDot: false }
+                            }
+
+                            XpLabel {
+                                objectName: "patchFetchMessage"
+                                text: root.devices.patchFetchMessage
+                                role: "caption"
+                                color: root.devices.patchFetchTone === "error" ? Theme.error : Theme.textSecondary
+                                wrapMode: Text.WordWrap
+                                Layout.fillWidth: true
+                            }
+
+                            // Decoded patch identity, echoing the Dashboard "current patch" hierarchy.
+                            Rectangle {
+                                visible: root.devices.currentPatchAvailable
+                                Layout.fillWidth: true
+                                implicitHeight: identityColumn.implicitHeight + 2 * Metrics.spacingMd
+                                radius: Metrics.radiusSm
+                                color: Theme.surfaceRaised
+                                border.width: 1
+                                border.color: Theme.borderSubtle
+                                ColumnLayout {
+                                    id: identityColumn
+                                    anchors { left: parent.left; right: parent.right; top: parent.top; margins: Metrics.spacingMd }
+                                    spacing: 2
+                                    XpLabel { text: "TEMPORARY PATCH"; role: "overline"; secondary: true }
+                                    XpLabel { objectName: "currentPatchName"; text: root.devices.currentPatchName; role: "title"; Layout.fillWidth: true }
+                                    XpLabel { text: root.devices.currentPatchSummary; role: "caption"; secondary: true; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+                                    XpLabel {
+                                        visible: root.devices.currentPatchDecodeReport.length > 0
+                                        text: root.devices.currentPatchDecodeReport
+                                        role: "caption"
+                                        color: Theme.warning
+                                        wrapMode: Text.WordWrap
+                                        Layout.fillWidth: true
+                                    }
+                                }
+                            }
+
+                            ListView {
+                                id: parameterList
+                                objectName: "patchParameterList"
+                                visible: root.devices.patchParameters.count > 0
+                                Layout.fillWidth: true
+                                implicitHeight: Math.min(contentHeight, 320)
+                                clip: true
+                                model: root.devices.patchParameters
+                                QQC.ScrollBar.vertical: XpScrollBar {}
+                                section.property: "block"
+                                section.delegate: Rectangle {
+                                    required property string section
+                                    width: ListView.view.width
+                                    implicitHeight: 24
+                                    color: Theme.surfaceSunken
+                                    XpLabel {
+                                        anchors { left: parent.left; leftMargin: Metrics.spacingSm; verticalCenter: parent.verticalCenter }
+                                        text: section
+                                        role: "overline"
+                                        color: section === "Common" ? Theme.accentText : Theme.toneColor(parseInt(section.substr(5)))
+                                    }
+                                }
+                                delegate: Rectangle {
+                                    id: paramRow
+                                    required property var model
+                                    width: ListView.view.width
+                                    implicitHeight: 24
+                                    color: paramHover.hovered ? Theme.surfaceHover : "transparent"
+                                    HoverHandler { id: paramHover }
+                                    RowLayout {
+                                        anchors { fill: parent; leftMargin: Metrics.spacingSm; rightMargin: Metrics.spacingSm }
+                                        spacing: Metrics.spacingSm
+                                        XpLabel { text: paramRow.model.category; role: "caption"; muted: true; Layout.preferredWidth: 104; elide: Text.ElideRight }
+                                        XpLabel { text: paramRow.model.name; role: "caption"; Layout.fillWidth: true; elide: Text.ElideRight }
+                                        XpLabel { text: paramRow.model.valueText; role: "mono"; color: paramRow.model.isEnum ? Theme.accentText : Theme.textPrimary }
+                                        XpLabel { text: "(" + paramRow.model.rawValue + ")"; role: "mono"; muted: true; Layout.preferredWidth: 44; horizontalAlignment: Text.AlignRight }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     // Protocol log --------------------------------------------------
                     XpCard {
                         Layout.fillWidth: true

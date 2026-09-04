@@ -1,5 +1,7 @@
 #include "xpmodel/ParameterDescriptor.h"
 
+#include <algorithm>
+
 namespace xp60studio::xpmodel {
 
 std::string_view parameterEncodingName(ParameterEncoding encoding) noexcept
@@ -13,6 +15,65 @@ std::string_view parameterEncodingName(ParameterEncoding encoding) noexcept
         return "Ascii";
     }
     return "Unknown";
+}
+
+std::string_view displayStyleName(DisplayStyle style) noexcept
+{
+    switch (style) {
+    case DisplayStyle::Number:
+        return "Number";
+    case DisplayStyle::Pan:
+        return "Pan";
+    case DisplayStyle::NoteName:
+        return "NoteName";
+    }
+    return "Unknown";
+}
+
+std::optional<int> ParameterDescriptor::fromDisplay(int display) const noexcept
+{
+    if (displayScale == 0) {
+        return std::nullopt;
+    }
+    const int numerator = display - displayOffset;
+    if (numerator % displayScale != 0) {
+        return std::nullopt;
+    }
+    return numerator / displayScale;
+}
+
+std::string ParameterDescriptor::formatDisplay(int raw) const
+{
+    if (const auto text = label(raw)) {
+        return std::string(*text);
+    }
+    if (encoding == ParameterEncoding::Ascii) {
+        return std::string(1, static_cast<char>(raw & 0x7F));
+    }
+    const int display = toDisplay(raw);
+    switch (displayStyle) {
+    case DisplayStyle::Pan:
+        if (display < 0) {
+            return "L" + std::to_string(-display);
+        }
+        if (display > 0) {
+            return std::to_string(display) + "R";
+        }
+        return "0";
+    case DisplayStyle::NoteName: {
+        static constexpr const char* kNames[12] = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
+        const int note = std::max(0, display);
+        return std::string(kNames[note % 12]) + std::to_string(note / 12 - 1);
+    }
+    case DisplayStyle::Number:
+        break;
+    }
+    std::string out = display > 0 && displayOffset < 0 ? "+" + std::to_string(display) : std::to_string(display);
+    if (!unit.empty()) {
+        out += " ";
+        out += unit;
+    }
+    return out;
 }
 
 int ParameterDescriptor::encodingMaximum() const noexcept
@@ -61,6 +122,9 @@ std::optional<std::string> ParameterDescriptor::selfCheck() const
     }
     if (rawMax > encodingMaximum()) {
         return std::string(id) + ": rawMax exceeds what the encoding can carry";
+    }
+    if (displayScale == 0) {
+        return std::string(id) + ": displayScale must not be zero";
     }
     if (isEnumeration() && enumLabels.size() != static_cast<std::size_t>(rawMax - rawMin + 1)) {
         return std::string(id) + ": enum label count does not match the raw range";

@@ -12,10 +12,10 @@ namespace {
 constexpr std::array<std::string_view, 3> kWaveGroupLabels{"INT", "PCM", "EXP"};
 
 const std::array<ParameterDescriptor, 4> kGood{{
-    {"name.1", "Name 1", 0, ParameterEncoding::Ascii, 1, 0x20, 0x7E, 0, {}, {}, "Name", xp60::VerificationStatus::DocumentationDerived, ""},
-    {"wave.group", "Wave Group", 1, ParameterEncoding::SevenBit, 1, 0, 2, 0, {}, kWaveGroupLabels, "Wave", xp60::VerificationStatus::DocumentationDerived, ""},
-    {"wave.number", "Wave Number", 2, ParameterEncoding::Nibble, 2, 0, 254, 1, {}, {}, "Wave", xp60::VerificationStatus::DocumentationDerived, ""},
-    {"pitch.coarse", "Coarse Tune", 6, ParameterEncoding::SevenBit, 1, 16, 112, -64, "semitone", {}, "Pitch", xp60::VerificationStatus::DocumentationDerived, ""},
+    {"name.1", "Name 1", 0, ParameterEncoding::Ascii, 1, 0x20, 0x7E, 0, 1, DisplayStyle::Number, {}, {}, "Name", xp60::VerificationStatus::DocumentationDerived, ""},
+    {"wave.group", "Wave Group", 1, ParameterEncoding::SevenBit, 1, 0, 2, 0, 1, DisplayStyle::Number, {}, kWaveGroupLabels, "Wave", xp60::VerificationStatus::DocumentationDerived, ""},
+    {"wave.number", "Wave Number", 2, ParameterEncoding::Nibble, 2, 0, 254, 1, 1, DisplayStyle::Number, {}, {}, "Wave", xp60::VerificationStatus::DocumentationDerived, ""},
+    {"pitch.coarse", "Coarse Tune", 6, ParameterEncoding::SevenBit, 1, 16, 112, -64, 1, DisplayStyle::Number, "semitone", {}, "Pitch", xp60::VerificationStatus::DocumentationDerived, ""},
 }};
 
 } // namespace
@@ -98,10 +98,10 @@ private slots:
     void tableValidationReportsEveryProblemKind()
     {
         static const std::array<ParameterDescriptor, 4> bad{{
-            {"a", "A", 0, ParameterEncoding::SevenBit, 1, 0, 127, 0, {}, {}, "", xp60::VerificationStatus::Unknown, ""},
-            {"b", "B", 0, ParameterEncoding::SevenBit, 1, 0, 127, 0, {}, {}, "", xp60::VerificationStatus::Unknown, ""}, // overlaps a
-            {"a", "A2", 3, ParameterEncoding::Nibble, 2, 0, 255, 0, {}, {}, "", xp60::VerificationStatus::Unknown, ""},   // duplicate id, out of block
-            {"c", "C", 2, ParameterEncoding::SevenBit, 3, 0, 127, 0, {}, {}, "", xp60::VerificationStatus::Unknown, ""},  // unsorted + descriptor
+            {"a", "A", 0, ParameterEncoding::SevenBit, 1, 0, 127, 0, 1, DisplayStyle::Number, {}, {}, "", xp60::VerificationStatus::Unknown, ""},
+            {"b", "B", 0, ParameterEncoding::SevenBit, 1, 0, 127, 0, 1, DisplayStyle::Number, {}, {}, "", xp60::VerificationStatus::Unknown, ""}, // overlaps a
+            {"a", "A2", 3, ParameterEncoding::Nibble, 2, 0, 255, 0, 1, DisplayStyle::Number, {}, {}, "", xp60::VerificationStatus::Unknown, ""},   // duplicate id, out of block
+            {"c", "C", 2, ParameterEncoding::SevenBit, 3, 0, 127, 0, 1, DisplayStyle::Number, {}, {}, "", xp60::VerificationStatus::Unknown, ""},  // unsorted + descriptor
         }};
         const ParameterTable table("Bad", 4, bad, TableCompleteness::Partial);
         const auto issues = table.validate();

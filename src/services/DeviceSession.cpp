@@ -3,6 +3,8 @@
 #include "roland/HexFormat.h"
 #include "roland/RolandCodec.h"
 #include "xp60/Xp60Device.h"
+#include "xpmodel/MemoryImage.h"
+#include "xpmodel/Xp60PatchLayout.h"
 
 #include <QMetaObject>
 
@@ -77,6 +79,8 @@ DeviceSession::DeviceSession(std::unique_ptr<midi::IMidiTransport> transport, QO
     m_transport->setEndpointsChangedHandler([this]() {
         QMetaObject::invokeMethod(this, [this]() { handleEndpointsChanged(); }, Qt::QueuedConnection);
     });
+
+    connect(this, &DeviceSession::operationChanged, this, [this](quint64) { updatePatchFetch(); });
 
     refreshEndpoints();
     logSystem(LogKind::Transport, LogSeverity::Info, "MIDI backend: " + m_transport->backendName());
@@ -160,10 +164,14 @@ void DeviceSession::handleEndpointsChanged()
                                                     [&](const auto& e) { return e.id == out->id; });
         if (inputGone || outputGone) {
             m_transport->closeAll();
+            const auto outstanding = m_tracker.outstanding();
             const std::size_t cancelled = m_tracker.cancelAll(m_steadyClock(), "MIDI endpoint disappeared");
             m_statistics.requestsCancelled += cancelled;
             m_sendQueue.clear();
             setState(ConnectionState::Error, "The connected MIDI device was removed");
+            for (const auto id : outstanding) {
+                emit operationChanged(id.value);
+            }
             emit statisticsChanged();
         }
     }
@@ -389,6 +397,140 @@ void DeviceSession::pumpSendQueue()
     emit statisticsChanged();
     updateTimeoutTimer();
     scheduleSend();
+}
+
+// ---------------------------------------------------------------------------
+// Patch fetch
+// ---------------------------------------------------------------------------
+
+bool DeviceSession::fetchTemporaryPatch()
+{
+    return fetchPatch(xpmodel::Xp60PatchLayout::temporaryPatchAddress());
+}
+
+bool DeviceSession::fetchPatch(const roland::RolandAddress& patchBase)
+{
+    if (m_state != ConnectionState::Connected) {
+        logSystem(LogKind::Operation, LogSeverity::Warning, "Cannot fetch patch: not connected");
+        return false;
+    }
+    if (m_patchFetch.state == PatchFetchState::InProgress) {
+        logSystem(LogKind::Operation, LogSeverity::Warning, "A patch fetch is already in progress");
+        return false;
+    }
+    const auto plan = xpmodel::Xp60PatchLayout::fetchPlan(patchBase);
+    if (plan.empty()) {
+        logSystem(LogKind::Operation, LogSeverity::Error, "Cannot fetch patch: address overflow at " + patchBase.toHexString());
+        return false;
+    }
+
+    m_patchFetch = PatchFetchStatus{};
+    m_patchFetch.state = PatchFetchState::InProgress;
+    m_patchFetch.base = patchBase;
+    m_patchFetch.totalBlocks = plan.size();
+    m_patchFetch.message = "Reading " + std::to_string(plan.size()) + " blocks from " + patchBase.toHexString();
+    for (const auto& request : plan) {
+        const auto id = sendDataRequest(request.address, request.size);
+        if (!id.isValid()) {
+            m_patchFetch.state = PatchFetchState::Failed;
+            m_patchFetch.message = "Could not queue the request for " + std::string(request.block.name);
+            emit patchFetchChanged();
+            return false;
+        }
+        m_patchFetch.requests.push_back(id);
+    }
+    logSystem(LogKind::Operation, LogSeverity::Info, "Patch fetch started: " + m_patchFetch.message);
+    emit patchFetchChanged();
+    // A send failure during queueing marks its request terminal while
+    // updatePatchFetch() is still short-circuited by the "all queued" guard;
+    // evaluate once now that every block has been requested.
+    updatePatchFetch();
+    return true;
+}
+
+void DeviceSession::cancelPatchFetch()
+{
+    if (m_patchFetch.state != PatchFetchState::InProgress) {
+        return;
+    }
+    for (const auto id : m_patchFetch.requests) {
+        cancelRequest(id);
+    }
+    m_patchFetch.state = PatchFetchState::Failed;
+    m_patchFetch.message = "Patch fetch cancelled";
+    emit patchFetchChanged();
+}
+
+void DeviceSession::updatePatchFetch()
+{
+    if (m_patchFetch.state != PatchFetchState::InProgress) {
+        return;
+    }
+    // sendDataRequest() emits operationChanged while fetchPatch() is still
+    // queueing; completion is only meaningful once every block is requested.
+    if (m_patchFetch.requests.size() < m_patchFetch.totalBlocks) {
+        return;
+    }
+    std::size_t completed = 0;
+    for (const auto id : m_patchFetch.requests) {
+        const auto* op = m_tracker.find(id);
+        if (!op) {
+            m_patchFetch.state = PatchFetchState::Failed;
+            m_patchFetch.message = "Request #" + std::to_string(id.value) + " disappeared from the tracker";
+            emit patchFetchChanged();
+            return;
+        }
+        if (op->state == protocol::RequestState::Completed) {
+            ++completed;
+        } else if (protocol::isTerminal(op->state)) {
+            m_patchFetch.state = PatchFetchState::Failed;
+            m_patchFetch.message = "Block read at " + op->request.address().toHexString() + " "
+                + std::string(protocol::requestStateLabel(op->state))
+                + (op->failureReason.empty() ? std::string() : ": " + op->failureReason);
+            logSystem(LogKind::Operation, LogSeverity::Error, "Patch fetch failed: " + m_patchFetch.message);
+            // The remaining block reads no longer serve a purpose.
+            for (const auto other : m_patchFetch.requests) {
+                const auto* otherOp = m_tracker.find(other);
+                if (otherOp && !protocol::isTerminal(otherOp->state)) {
+                    cancelRequest(other);
+                }
+            }
+            emit patchFetchChanged();
+            return;
+        }
+    }
+    if (completed != m_patchFetch.completedBlocks) {
+        m_patchFetch.completedBlocks = completed;
+        m_patchFetch.message = std::to_string(completed) + " / " + std::to_string(m_patchFetch.totalBlocks) + " blocks received";
+        emit patchFetchChanged();
+    }
+    if (completed != m_patchFetch.requests.size()) {
+        return;
+    }
+
+    xpmodel::MemoryImage image;
+    for (const auto id : m_patchFetch.requests) {
+        const auto* op = m_tracker.find(id);
+        image.write(op->request.address(), op->data);
+    }
+    auto decoded = xpmodel::Xp60PatchCodec::decode(image, m_patchFetch.base);
+    m_patchFetch.decodeReport = decoded.describe();
+    if (!decoded.ok()) {
+        m_patchFetch.state = PatchFetchState::Failed;
+        m_patchFetch.message = "All blocks received but the patch did not decode ("
+            + std::to_string(decoded.errorCount()) + " error(s))";
+        logSystem(LogKind::Operation, LogSeverity::Error, "Patch fetch failed: " + m_patchFetch.message, m_patchFetch.decodeReport);
+    } else {
+        m_patchFetch.state = PatchFetchState::Completed;
+        m_patchFetch.patch = std::move(decoded.patch);
+        m_patchFetch.message = "Patch decoded: " + m_patchFetch.patch->summary();
+        if (decoded.hasWarnings()) {
+            m_patchFetch.message += " (" + std::to_string(decoded.issues.size()) + " out-of-range value(s), kept verbatim)";
+        }
+        logSystem(LogKind::Operation, decoded.hasWarnings() ? LogSeverity::Warning : LogSeverity::Info,
+                  "Patch fetch complete: " + m_patchFetch.message, m_patchFetch.decodeReport);
+    }
+    emit patchFetchChanged();
 }
 
 // ---------------------------------------------------------------------------

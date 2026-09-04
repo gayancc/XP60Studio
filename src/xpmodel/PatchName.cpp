@@ -47,6 +47,17 @@ std::string PatchName::text() const
     return out;
 }
 
+std::string PatchName::displayText() const
+{
+    std::string out = text();
+    for (auto& c : out) {
+        if (static_cast<roland::Byte>(c) == 0x7F) {
+            c = '?';
+        }
+    }
+    return out;
+}
+
 std::string PatchName::paddedText() const
 {
     return std::string(m_bytes.begin(), m_bytes.end());

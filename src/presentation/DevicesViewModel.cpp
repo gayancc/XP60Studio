@@ -43,6 +43,7 @@ DevicesViewModel::DevicesViewModel(services::DeviceSession& session, QObject* pa
     connect(&m_session, &services::DeviceSession::connectionStateChanged, this, [this] {
         emit connectionChanged();
         emit canSendRequestChanged();
+        emit patchFetchChanged();
     });
     connect(&m_session, &services::DeviceSession::deviceIdChanged, this, &DevicesViewModel::deviceIdChanged);
     connect(&m_session, &services::DeviceSession::logEntryAdded, this,
@@ -53,6 +54,15 @@ DevicesViewModel::DevicesViewModel(services::DeviceSession& session, QObject* pa
         emit operationsChanged();
     });
     connect(&m_session, &services::DeviceSession::statisticsChanged, this, &DevicesViewModel::statisticsChanged);
+    connect(&m_session, &services::DeviceSession::patchFetchChanged, this, [this] {
+        const auto& fetch = m_session.patchFetch();
+        if (fetch.state == services::DeviceSession::PatchFetchState::Completed && fetch.patch) {
+            m_patchParameters.setPatch(*fetch.patch);
+        } else if (fetch.state == services::DeviceSession::PatchFetchState::InProgress) {
+            m_patchParameters.clear();
+        }
+        emit patchFetchChanged();
+    });
 
     for (const auto& entry : m_session.log()) {
         m_log.append(entry);
@@ -405,6 +415,106 @@ void DevicesViewModel::cancelAllRequests()
 void DevicesViewModel::clearLog()
 {
     m_session.clearLog();
+}
+
+// ---------------------------------------------------------------------------
+// Current Patch inspection
+// ---------------------------------------------------------------------------
+
+bool DevicesViewModel::canFetchPatch() const
+{
+    return connectionState() == ConnectionState::Connected && !patchFetchInProgress();
+}
+
+bool DevicesViewModel::patchFetchInProgress() const
+{
+    return m_session.patchFetch().state == services::DeviceSession::PatchFetchState::InProgress;
+}
+
+QString DevicesViewModel::patchFetchStateText() const
+{
+    switch (m_session.patchFetch().state) {
+    case services::DeviceSession::PatchFetchState::Idle:
+        return QStringLiteral("Not fetched");
+    case services::DeviceSession::PatchFetchState::InProgress:
+        return QStringLiteral("Reading");
+    case services::DeviceSession::PatchFetchState::Completed:
+        return QStringLiteral("Decoded");
+    case services::DeviceSession::PatchFetchState::Failed:
+        return QStringLiteral("Failed");
+    }
+    return {};
+}
+
+QString DevicesViewModel::patchFetchTone() const
+{
+    switch (m_session.patchFetch().state) {
+    case services::DeviceSession::PatchFetchState::Idle:
+        return QStringLiteral("neutral");
+    case services::DeviceSession::PatchFetchState::InProgress:
+        return QStringLiteral("warning");
+    case services::DeviceSession::PatchFetchState::Completed:
+        return QStringLiteral("success");
+    case services::DeviceSession::PatchFetchState::Failed:
+        return QStringLiteral("error");
+    }
+    return QStringLiteral("neutral");
+}
+
+QString DevicesViewModel::patchFetchMessage() const
+{
+    const auto& fetch = m_session.patchFetch();
+    if (fetch.state == services::DeviceSession::PatchFetchState::Idle) {
+        return connectionState() == ConnectionState::Connected
+            ? QStringLiteral("Read the Patch-mode temporary Patch (5 blocks, 589 bytes) and decode it with the Parameter Address Map tables.")
+            : QStringLiteral("Connect to the XP-60 to read its current Patch.");
+    }
+    return QString::fromStdString(fetch.message);
+}
+
+int DevicesViewModel::patchFetchCompletedBlocks() const
+{
+    return static_cast<int>(m_session.patchFetch().completedBlocks);
+}
+
+int DevicesViewModel::patchFetchTotalBlocks() const
+{
+    return static_cast<int>(m_session.patchFetch().totalBlocks);
+}
+
+bool DevicesViewModel::currentPatchAvailable() const
+{
+    return m_session.patchFetch().patch.has_value();
+}
+
+QString DevicesViewModel::currentPatchName() const
+{
+    const auto& patch = m_session.patchFetch().patch;
+    return patch ? QString::fromStdString(patch->name().displayText()) : QString();
+}
+
+QString DevicesViewModel::currentPatchSummary() const
+{
+    const auto& patch = m_session.patchFetch().patch;
+    return patch ? QString::fromStdString(patch->summary()) : QString();
+}
+
+QString DevicesViewModel::currentPatchDecodeReport() const
+{
+    return QString::fromStdString(m_session.patchFetch().decodeReport).trimmed();
+}
+
+void DevicesViewModel::fetchCurrentPatch()
+{
+    if (!canFetchPatch()) {
+        return;
+    }
+    m_session.fetchTemporaryPatch();
+}
+
+void DevicesViewModel::cancelPatchFetch()
+{
+    m_session.cancelPatchFetch();
 }
 
 // ---------------------------------------------------------------------------

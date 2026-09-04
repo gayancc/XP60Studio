@@ -95,6 +95,9 @@ confirms them.
 | User Rhythm Setup | `10 40 00 00` | no | Documentation-derived | USER:1 at `10 40 00 00`, USER:2 at `10 41 00 00`. |
 | User Patch bank | `11 00 00 00` | no | Documentation-derived | USER:001 … USER:128, stride `00 01 00 00`. |
 | Temporary Performance size | `00 00 1F 19` (3993 bytes) | Documentation-derived | From Roland's published RQ1 example. |
+| Patch Common size | `00 00 00 49` (73 bytes) | Documentation-derived | Parameter Address Map p.224; table in `XP60_PATCH_PARAMETER_MAP.md`. |
+| Patch Tone size | `00 00 01 01` (129 bytes) | Documentation-derived | Parameter Address Map p.225. |
+| Tone 1–4 offsets within a Patch | `10 00`, `12 00`, `14 00`, `16 00` | Documentation-derived | Parameter Address Map p.223. |
 | Patch Common size, Tone offsets/sizes (XP-60) | — | Unknown | Phase 2 work; JV-1080 values must not be copied without confirmation. |
 
 ## 4. Safe read presets used by the Devices screen
@@ -119,7 +122,9 @@ All presets are RQ1 (read-only). None writes to the instrument.
   Universal Identity Request is unknown; it is a candidate for the hardware
   session because it would give a documentation-independent model check.
 - **System Common size and the per-region sizes** other than Temporary
-  Performance. Phase 2 reads them from the Parameter Address Map.
+  Performance and Patch. The Patch tables live in
+  `XP60_PATCH_PARAMETER_MAP.md`; Performance, Rhythm Setup and System tables
+  are later phases.
 
 ## 6. Promotion procedure
 

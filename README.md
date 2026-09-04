@@ -105,8 +105,9 @@ src/xp60          XP-60 protocol facts + verification status (no Qt)
 src/midi          IMidiTransport, SysEx assembler, loopback, libremidi backend
 src/protocol      request/response correlation, pacing, timeouts (no Qt)
 src/diagnostics   structured protocol log entries (no Qt)
-src/xpmodel       XP domain model & codecs: parameter tables, block codec,
-                  memory image, .syx stream parsing (no Qt)
+src/xpmodel       XP domain model & codecs: parameter tables (generated from
+                  docs/protocol), block codec, Xp60Patch + codec, memory image,
+                  .syx stream parsing (no Qt)
 src/services      DeviceSession orchestration (Qt Core)
 src/presentation  view models and Qt item models for QML
 src/app           Qt Quick executable
@@ -125,10 +126,11 @@ exists, what is tested, what is still unknown, and
 hardware procedure. Protocol facts and their verification status are tracked in
 [`docs/protocol/ROLAND_XP60_PROTOCOL_FACTS.md`](docs/protocol/ROLAND_XP60_PROTOCOL_FACTS.md).
 
-**Phase 2 — XP-60 Patch Model** is in progress: the table-driven parameter
-metadata, generic block codec, memory image and `.syx` stream parsing are
-implemented and tested; the XP-60 Patch Common / Tone tables await
-transcription of the Roland Parameter Address Map. See
+**Phase 2 — XP-60 Patch Model** is implemented: the Patch Common and Tone
+tables are generated from the transcribed Roland Parameter Address Map, the
+typed `Xp60Patch` model and codec round-trip byte-for-byte, and the Devices
+screen can fetch and decode the XP-60's temporary Patch. Real-patch round-trip
+proof awaits a capture from the instrument. See
 [`docs/PHASE_2_PATCH_MODEL.md`](docs/PHASE_2_PATCH_MODEL.md) and
 [`docs/protocol/XP60_PATCH_PARAMETER_MAP.md`](docs/protocol/XP60_PATCH_PARAMETER_MAP.md).
 

@@ -11,15 +11,16 @@ namespace xp60studio::xpmodel {
 
 // A 12-character XP-60 Patch name (Patch Name 1..12 at Patch Common offset 0).
 //
-// Roland stores one printable ASCII character per byte and pads with spaces.
-// The accepted set is 0x20..0x7E; whether the XP-60 further restricts it is
-// recorded as unknown in docs/protocol/XP60_PATCH_PARAMETER_MAP.md.
+// Roland documents each byte as raw 32..127 (Parameter Address Map, Patch
+// Name 1..12). That exact range is accepted here so a name captured from the
+// instrument always round-trips; how 7FH is rendered is a presentation choice
+// (see displayText()).
 class PatchName
 {
 public:
     static constexpr std::size_t kLength = 12;
     static constexpr roland::Byte kMinChar = 0x20;
-    static constexpr roland::Byte kMaxChar = 0x7E;
+    static constexpr roland::Byte kMaxChar = 0x7F;
     using Bytes = std::array<roland::Byte, kLength>;
 
     PatchName() noexcept; // twelve spaces
@@ -31,8 +32,11 @@ public:
     [[nodiscard]] static std::optional<PatchName> fromText(std::string_view text) noexcept;
 
     [[nodiscard]] const Bytes& bytes() const noexcept { return m_bytes; }
-    // Text without trailing padding.
+    // Text without trailing padding; bytes are returned verbatim.
     [[nodiscard]] std::string text() const;
+    // Like text() but with the one non-printable value in the range (7FH)
+    // shown as '?', for UI use only.
+    [[nodiscard]] std::string displayText() const;
     // Exactly 12 characters, padding included.
     [[nodiscard]] std::string paddedText() const;
     [[nodiscard]] bool isBlank() const noexcept;

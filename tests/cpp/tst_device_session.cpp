@@ -3,12 +3,15 @@
 #include "roland/RolandCodec.h"
 #include "services/DeviceSession.h"
 #include "xp60/Xp60Device.h"
+#include "xpmodel/BlockCodec.h"
+#include "xpmodel/Xp60PatchCodec.h"
 
 #include <QSignalSpy>
 #include <QtTest>
 
 #include <chrono>
 #include <memory>
+#include <random>
 
 using namespace xp60studio;
 using namespace xp60studio::roland;
@@ -310,6 +313,106 @@ private slots:
         f.session->setDeviceId(RolandDeviceId::fromDisplayNumber(20).value());
         f.session->sendDataRequest(kTempPatch, RolandSize(0, 0, 0, 0x0C));
         QCOMPARE(f.transport->sentMessages()[0][2], Byte(0x13));
+    }
+
+    void patchFetchReadsFiveBlocksAndDecodes()
+    {
+        Fixture f;
+        QVERIFY(f.connectDefault());
+        QSignalSpy fetchSpy(f.session.get(), &services::DeviceSession::patchFetchChanged);
+        QVERIFY(f.session->fetchTemporaryPatch());
+        QCOMPARE(f.session->patchFetch().state, services::DeviceSession::PatchFetchState::InProgress);
+        QCOMPARE(f.session->patchFetch().totalBlocks, std::size_t(5));
+        QCOMPARE(f.transport->sentMessages().size(), std::size_t(5)); // pacing 0 ms -> all sent
+        QVERIFY(!f.session->fetchTemporaryPatch()); // one at a time
+
+        // The RQ1s follow the Parameter Address Map blocks.
+        QCOMPARE(QString::fromStdString(toHex(f.transport->sentMessages()[0])),
+                 QStringLiteral("F0 41 10 6A 11 03 00 00 00 00 00 00 49 34 F7"));
+        QCOMPARE(QString::fromStdString(toHex(f.transport->sentMessages()[1])),
+                 QStringLiteral("F0 41 10 6A 11 03 00 10 00 00 00 01 01 6B F7"));
+
+        // Build a synthetic patch and answer block by block, tones in 128 + 1 packets.
+        const auto base = xpmodel::Xp60PatchLayout::temporaryPatchAddress();
+        std::mt19937 rng(11);
+        xpmodel::MemoryImage image;
+        for (const auto& block : xpmodel::Xp60PatchLayout::blocks()) {
+            ByteVector bytes(block.size, 0);
+            for (const auto& p : block.table->parameters()) {
+                std::uniform_int_distribution<int> dist(p.rawMin, p.rawMax);
+                xpmodel::BlockCodec::writeRaw(p, dist(rng), bytes);
+            }
+            if (!block.tone) {
+                const auto name = xpmodel::PatchName::fromText("Warm Orchest")->bytes();
+                std::copy(name.begin(), name.end(), bytes.begin());
+            }
+            image.write(*base.plus(block.offset), bytes);
+        }
+        const auto patch = *xpmodel::Xp60PatchCodec::decode(image, base).patch;
+        const auto replies = xpmodel::Xp60PatchCodec::encodeToDataSets(patch, RolandDeviceId::factoryDefault(), xp60::modelId(), base, 128);
+        QCOMPARE(replies.size(), std::size_t(9));
+        for (std::size_t i = 0; i < replies.size(); ++i) {
+            f.deviceReplies(replies[i]);
+            if (i + 1 < replies.size()) {
+                QCOMPARE(f.session->patchFetch().state, services::DeviceSession::PatchFetchState::InProgress);
+            }
+        }
+        const auto& fetch = f.session->patchFetch();
+        QCOMPARE(fetch.state, services::DeviceSession::PatchFetchState::Completed);
+        QCOMPARE(fetch.completedBlocks, std::size_t(5));
+        QVERIFY(fetch.patch.has_value());
+        QCOMPARE(fetch.patch->name().text(), std::string("Warm Orchest"));
+        QVERIFY(*fetch.patch == patch); // byte-exact through the whole pipeline
+        QVERIFY(fetch.message.find("Patch decoded") != std::string::npos);
+        QVERIFY(fetchSpy.count() >= 3);
+        QCOMPARE(f.session->statistics().requestsCompleted, std::uint64_t(5));
+
+        // A second fetch is allowed once the first finished.
+        QVERIFY(f.session->fetchTemporaryPatch());
+        QCOMPARE(f.session->patchFetch().state, services::DeviceSession::PatchFetchState::InProgress);
+    }
+
+    void patchFetchFailsWhenABlockTimesOut()
+    {
+        Fixture f;
+        QVERIFY(f.connectDefault());
+        QVERIFY(f.session->fetchTemporaryPatch());
+        f.clock.advance(1600ms);
+        f.session->pollTimeouts();
+        QCOMPARE(f.session->patchFetch().state, services::DeviceSession::PatchFetchState::Failed);
+        QVERIFY(f.session->patchFetch().message.find("Timed out") != std::string::npos);
+        QVERIFY(!f.session->patchFetch().patch.has_value());
+        QVERIFY(!f.session->tracker().hasOutstanding()); // remaining blocks timed out too
+    }
+
+    void patchFetchFailsImmediatelyWhenABlockCannotBeSent()
+    {
+        Fixture f;
+        QVERIFY(f.connectDefault());
+        // The third block read fails at the transport.
+        f.session->sendDataRequest(kTempPatch, RolandSize(0, 0, 0, 1));
+        f.transport->clearSentMessages();
+        f.session->cancelAllRequests();
+        f.transport->failNextSend(midi::TransportError::make(midi::TransportErrorCode::SendFailed, "cable"));
+        QVERIFY(f.session->fetchTemporaryPatch());
+        // fetchPatch() returns true (all five were queued) but the fetch is
+        // already failed rather than waiting for timeouts.
+        QCOMPARE(f.session->patchFetch().state, services::DeviceSession::PatchFetchState::Failed);
+        QVERIFY(f.session->patchFetch().message.find("cable") != std::string::npos);
+        QVERIFY(!f.session->tracker().hasOutstanding()); // the other blocks were cancelled
+    }
+
+    void patchFetchRequiresConnection()
+    {
+        Fixture f;
+        QVERIFY(!f.session->fetchTemporaryPatch());
+        QCOMPARE(f.session->patchFetch().state, services::DeviceSession::PatchFetchState::Idle);
+        QVERIFY(f.connectDefault());
+        QVERIFY(f.session->fetchTemporaryPatch());
+        f.session->cancelPatchFetch();
+        QCOMPARE(f.session->patchFetch().state, services::DeviceSession::PatchFetchState::Failed);
+        QVERIFY(!f.session->tracker().hasOutstanding());
+        f.session->disconnectEndpoints();
     }
 
     void logIsBounded()

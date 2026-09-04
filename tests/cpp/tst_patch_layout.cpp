@@ -38,7 +38,11 @@ private slots:
     {
         QVERIFY(!PatchName::fromText("thirteen chars").has_value());
         QVERIFY(!PatchName::fromText("tab\tname").has_value());
-        QVERIFY(!PatchName::fromText(std::string_view("\x7F", 1)).has_value());
+        // 7FH is inside Roland's documented 32..127 range: accepted, shown as '?'.
+        const auto del = PatchName::fromText(std::string_view("\x7F", 1));
+        QVERIFY(del.has_value());
+        QCOMPARE(del->displayText(), std::string("?"));
+        QCOMPARE(del->text().size(), std::size_t(1));
         QVERIFY(!PatchName::fromBytes(ByteVector(11, 'a')).has_value());
         QVERIFY(!PatchName::fromBytes(ByteVector(13, 'a')).has_value());
         ByteVector withHighBit(12, 'a');
@@ -49,39 +53,39 @@ private slots:
         QVERIFY(!PatchName::fromBytes(withControl).has_value());
     }
 
-    void knownPrefixTableDecodesNamesThroughTheGenericCodec()
+    void commonTableDecodesNamesThroughTheGenericCodec()
     {
-        const auto& table = Xp60PatchLayout::patchCommonKnownPrefix();
+        const auto& table = Xp60PatchLayout::patchCommonTable();
         QVERIFY(table.validate().empty());
-        QVERIFY(!table.isComplete());
-        QCOMPARE(table.completeness(), TableCompleteness::Partial);
-        QCOMPARE(table.size(), std::size_t(12));
-        QCOMPARE(table.blockSize(), 12u);
-        QVERIFY(table.reservedRanges().empty());
-        QVERIFY(!table.sourceNote().empty());
-        for (const auto& parameter : table.parameters()) {
-            QCOMPARE(parameter.status, xp60::VerificationStatus::DocumentationDerived);
+        QVERIFY(table.isComplete());
+        QCOMPARE(table.blockSize(), 73u);
+        for (std::size_t i = 0; i < PatchName::kLength; ++i) {
+            const auto& parameter = table.parameters()[i];
             QVERIFY(parameter.isText());
+            QCOMPARE(parameter.offset, static_cast<std::uint32_t>(i));
+            QCOMPARE(parameter.rawMin, int(PatchName::kMinChar));
+            QCOMPARE(parameter.rawMax, int(PatchName::kMaxChar));
         }
 
-        const ByteVector bytes{'W', 'a', 'r', 'm', ' ', 'O', 'r', 'c', 'h', 'e', 's', 't'};
+        ByteVector bytes(73, 0);
+        const ByteVector name{'W', 'a', 'r', 'm', ' ', 'O', 'r', 'c', 'h', 'e', 's', 't'};
+        std::copy(name.begin(), name.end(), bytes.begin());
         const auto decoded = BlockCodec::decode(table, bytes);
-        QVERIFY(decoded.ok());
+        QVERIFY(decoded.ok()); // zeros elsewhere may be out of range -> warnings only
         QCOMPARE(decoded.values->text("common.name."), std::string("Warm Orchest"));
         QCOMPARE(decoded.values->raw("common.name.1").value(), int('W'));
         QCOMPARE(BlockCodec::encode(*decoded.values), bytes);
     }
 
-    void layoutDeclaresItsGapsExplicitly()
+    void layoutIsComplete()
     {
-        QVERIFY(!Xp60PatchLayout::isComplete());
-        QVERIFY(!Xp60PatchLayout::patchCommonSize().has_value());
-        QVERIFY(!Xp60PatchLayout::toneSize().has_value());
-        QVERIFY(!Xp60PatchLayout::patchSize().has_value());
-        for (int tone = 1; tone <= Xp60PatchLayout::kToneCount; ++tone) {
-            QVERIFY(!Xp60PatchLayout::toneOffset(tone).has_value());
-        }
-        QVERIFY(Xp60PatchLayout::missingInputs().find("Parameter Address Map") != std::string_view::npos);
+        QVERIFY(Xp60PatchLayout::isComplete());
+        QCOMPARE(Xp60PatchLayout::patchCommonSize(), 73u);
+        QCOMPARE(Xp60PatchLayout::toneSize(), 129u);
+        QCOMPARE(Xp60PatchLayout::toneOffset(ToneIndex::tone1()), 2048u);
+        QCOMPARE(Xp60PatchLayout::toneOffset(ToneIndex::tone2()), 2304u);
+        QCOMPARE(Xp60PatchLayout::toneOffset(ToneIndex::tone3()), 2560u);
+        QCOMPARE(Xp60PatchLayout::toneOffset(ToneIndex::tone4()), 2816u);
     }
 
     void documentedAddresses()

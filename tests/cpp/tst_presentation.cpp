@@ -6,6 +6,8 @@
 #include "roland/RolandSysExMessage.h"
 #include "services/DeviceSession.h"
 #include "xp60/Xp60Device.h"
+#include "xpmodel/BlockCodec.h"
+#include "xpmodel/Xp60PatchCodec.h"
 
 #include <QAbstractItemModelTester>
 #include <QSignalSpy>
@@ -291,6 +293,63 @@ private slots:
             }
         }
         QCOMPARE(enabled, 1);
+    }
+
+    void patchFetchFlowsIntoTheViewModel()
+    {
+        Fixture f;
+        QAbstractItemModelTester tester(f.devices->patchParameters(), QAbstractItemModelTester::FailureReportingMode::QtTest);
+        QVERIFY(!f.devices->canFetchPatch());
+        QCOMPARE(f.devices->patchFetchStateText(), QStringLiteral("Not fetched"));
+        f.devices->connectDevice();
+        QVERIFY(f.devices->canFetchPatch());
+        QSignalSpy spy(f.devices.get(), &DevicesViewModel::patchFetchChanged);
+        f.devices->fetchCurrentPatch();
+        QVERIFY(f.devices->patchFetchInProgress());
+        QVERIFY(!f.devices->canFetchPatch());
+        QCOMPARE(f.devices->patchFetchTotalBlocks(), 5);
+        QCOMPARE(f.devices->patchFetchTone(), QStringLiteral("warning"));
+
+        const auto base = xpmodel::Xp60PatchLayout::temporaryPatchAddress();
+        xpmodel::MemoryImage image;
+        for (const auto& block : xpmodel::Xp60PatchLayout::blocks()) {
+            roland::ByteVector bytes(block.size, 0);
+            for (const auto& p : block.table->parameters()) {
+                xpmodel::BlockCodec::writeRaw(p, p.rawMin, bytes);
+            }
+            if (!block.tone) {
+                const auto name = xpmodel::PatchName::fromText("Piano 1")->bytes();
+                std::copy(name.begin(), name.end(), bytes.begin());
+            } else {
+                xpmodel::BlockCodec::writeRaw(xpmodel::xp60tables::descriptor(xpmodel::ToneParameter::ToneSwitch),
+                                              block.tone->number() <= 2 ? 1 : 0, bytes);
+            }
+            image.write(*base.plus(block.offset), bytes);
+        }
+        const auto patch = *xpmodel::Xp60PatchCodec::decode(image, base).patch;
+        for (const auto& reply : xpmodel::Xp60PatchCodec::encodeToDataSets(patch, roland::RolandDeviceId::factoryDefault(), xp60::modelId(), base)) {
+            f.deviceReplies(reply);
+        }
+        QVERIFY(!f.devices->patchFetchInProgress());
+        QCOMPARE(f.devices->patchFetchStateText(), QStringLiteral("Decoded"));
+        QCOMPARE(f.devices->patchFetchTone(), QStringLiteral("success"));
+        QVERIFY(f.devices->currentPatchAvailable());
+        QCOMPARE(f.devices->currentPatchName(), QStringLiteral("Piano 1"));
+        QVERIFY(f.devices->currentPatchSummary().contains(QStringLiteral("tones 1,2")));
+        QCOMPARE(f.devices->patchParameters()->rowCount(), 72 + 4 * 128);
+        const auto idx0 = f.devices->patchParameters()->index(0, 0);
+        QCOMPARE(f.devices->patchParameters()->data(idx0, PatchParameterModel::BlockRole).toString(), QStringLiteral("Common"));
+        QCOMPARE(f.devices->patchParameters()->data(idx0, PatchParameterModel::NameRole).toString(), QStringLiteral("Patch Name 1"));
+        QCOMPARE(f.devices->patchParameters()->data(idx0, PatchParameterModel::ValueTextRole).toString(), QStringLiteral("P"));
+        const auto idxTone = f.devices->patchParameters()->index(72, 0);
+        QCOMPARE(f.devices->patchParameters()->data(idxTone, PatchParameterModel::BlockRole).toString(), QStringLiteral("Tone 1"));
+        QCOMPARE(f.devices->patchParameters()->data(idxTone, PatchParameterModel::ValueTextRole).toString(), QStringLiteral("ON"));
+        QCOMPARE(f.devices->patchParameters()->data(idxTone, PatchParameterModel::ToneNumberRole).toInt(), 1);
+        QVERIFY(spy.count() >= 2);
+        QVERIFY(f.devices->canFetchPatch());
+
+        f.devices->disconnectDevice();
+        QVERIFY(!f.devices->canFetchPatch());
     }
 
     void protocolLogModelBounded()

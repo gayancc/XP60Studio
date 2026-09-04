@@ -99,6 +99,29 @@ TestCase {
         compare(validation.color, Theme.error)
     }
 
+    function test_patch_fetch_button_follows_connection() {
+        var screen = createTemporaryObject(screenComponent, testCase)
+        verify(screen)
+        var fetchButton = findChild(screen, "fetchPatchButton")
+        var pill = findChild(screen, "patchFetchPill")
+        verify(fetchButton)
+        verify(pill)
+        compare(fetchButton.enabled, false)
+        compare(pill.text, "Not fetched")
+        testDevices.connectDevice()
+        compare(fetchButton.enabled, true)
+        mouseClick(fetchButton)
+        compare(testDevices.patchFetchInProgress, true)
+        compare(pill.text, "Reading")
+        compare(fetchButton.enabled, false)
+        compare(testDevices.patchFetchTotalBlocks, 5)
+        testDevices.cancelPatchFetch()
+        compare(testDevices.patchFetchInProgress, false)
+        compare(pill.text, "Failed")
+        testDevices.disconnectDevice()
+        compare(fetchButton.enabled, false)
+    }
+
     function test_stacks_to_one_column_when_narrow() {
         var screen = createTemporaryObject(screenComponent, testCase)
         verify(screen)

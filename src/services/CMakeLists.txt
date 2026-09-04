@@ -12,6 +12,7 @@ target_link_libraries(xp60studio_services
     xp60studio::midi
     xp60studio::protocol
     xp60studio::diagnostics
+    xp60studio::xpmodel
 )
 set_target_properties(xp60studio_services PROPERTIES AUTOMOC ON)
 xp60studio_apply_warnings(xp60studio_services)

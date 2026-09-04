@@ -66,7 +66,8 @@ bool BlockValues::setDisplay(std::string_view id, int display) noexcept
     if (!index) {
         return false;
     }
-    return setRawAt(*index, m_table->parameters()[*index].fromDisplay(display));
+    const auto raw = m_table->parameters()[*index].fromDisplay(display);
+    return raw ? setRawAt(*index, *raw) : false;
 }
 
 std::string BlockValues::text(std::string_view idPrefix) const
