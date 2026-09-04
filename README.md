@@ -75,8 +75,55 @@ Detailed project documentation lives in [`docs/`](docs/):
 - `PHASE_1_PROTOCOL_FOUNDATION.md` — first implementation milestone and execution brief
 - `design/` — exact UI target, architecture, component catalog, screen map, and acceptance criteria
 
+## Building
+
+Requirements: a C++20 compiler, CMake 3.22+, Ninja (recommended), Qt 6 with the
+Quick, Quick Controls 2, Quick Test and Test modules (project baseline 6.11.x;
+6.4 is the compile floor), and network access on the first configure so CMake
+can fetch the pinned libremidi release (`cmake/Dependencies.cmake`). On Linux
+also install the ALSA development headers (`libasound2-dev`).
+
+```bash
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug
+cmake --build build
+ctest --test-dir build --output-on-failure
+./build/src/app/XP60Studio
+```
+
+Headless render of the shell (used for documentation and review):
+
+```bash
+QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software \
+XP60STUDIO_SCREENSHOT=devices.png ./build/src/app/XP60Studio
+```
+
+Source layout (lower layers never depend on higher ones):
+
+```text
+src/roland        Roland SysEx types and codec           (no Qt)
+src/xp60          XP-60 protocol facts + verification status (no Qt)
+src/midi          IMidiTransport, SysEx assembler, loopback, libremidi backend
+src/protocol      request/response correlation, pacing, timeouts (no Qt)
+src/diagnostics   structured protocol log entries (no Qt)
+src/services      DeviceSession orchestration (Qt Core)
+src/presentation  view models and Qt item models for QML
+src/app           Qt Quick executable
+qml/XP60Studio    design tokens, reusable controls, shell, screens
+tests/cpp         Qt Test suites          tests/qml  Qt Quick Test suites
+```
+
 ## Current status
 
-Repository initialized. Development begins with Phase 1: Qt/CMake application shell, MIDI abstraction/transport, and Roland SysEx protocol foundation. Advanced product screens must wait for their backing domain phases, but when implemented they should be built directly against the approved mockup rather than as temporary generic UI.
+**Phase 1 — Protocol Foundation + Application Shell** is implemented and
+covered by deterministic tests; it awaits validation against a physical XP-60.
+See [`docs/PHASE_1_EXIT_REPORT.md`](docs/PHASE_1_EXIT_REPORT.md) for what
+exists, what is tested, what is still unknown, and
+[`docs/HARDWARE_VALIDATION_XP60.md`](docs/HARDWARE_VALIDATION_XP60.md) for the
+hardware procedure. Protocol facts and their verification status are tracked in
+[`docs/protocol/ROLAND_XP60_PROTOCOL_FACTS.md`](docs/protocol/ROLAND_XP60_PROTOCOL_FACTS.md).
 
-The first implementation task is tracked as GitHub Issue #1: **Phase 1 — Roland SysEx protocol foundation**.
+Advanced product screens wait for their backing domain phases, and when
+implemented they are built directly against the approved mockup rather than as
+temporary generic UI.
+
+Phase 1 was tracked as GitHub Issue #1: **Phase 1 — Roland SysEx protocol foundation**.
