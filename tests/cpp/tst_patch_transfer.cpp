@@ -1,132 +1,22 @@
-#include "midi/LoopbackMidiTransport.h"
-#include "roland/RolandCodec.h"
+#include "support/FakeXp60.h"
+
 #include "services/PatchTransfer.h"
-#include "xp60/Xp60Device.h"
-#include "xpmodel/SysExStream.h"
-#include "xpmodel/Xp60PatchCodec.h"
 
 #include <QSignalSpy>
 #include <QtTest>
 
 #include <chrono>
-#include <limits>
-#include <fstream>
 #include <memory>
 
 using namespace xp60studio;
 using namespace xp60studio::roland;
 using namespace xp60studio::xpmodel;
+using namespace xp60studio::testsupport;
 using namespace std::chrono_literals;
 
 namespace {
 
-// A stand-in for the instrument: holds a memory image, answers RQ1 from it and
-// applies DT1 to it. Deliberately simple — its job is to let the transfer state
-// machine run end to end, not to emulate an XP-60.
-class FakeXp60
-{
-public:
-    explicit FakeXp60(MemoryImage memory)
-        : m_memory(std::move(memory))
-    {
-    }
-
-    // Corrupts one byte of what the device will report, to simulate a write
-    // that did not fully take.
-    void corruptByte(const RolandAddress& address, Byte value) { m_memory.write(address, ByteVector{value}); }
-    // Applies that corruption automatically once the write has been taken.
-    void corruptOnWrite(const RolandAddress& address, Byte value)
-    {
-        m_corruptAddress = address;
-        m_corruptValue = value;
-        m_corruptPending = true;
-    }
-    // Silently ignores writes, as a device with Rx Exclusive off would.
-    void setAcceptWrites(bool accept) { m_acceptWrites = accept; }
-    void setAnswerRequests(bool answer) { m_answerRequests = answer; }
-    // Answers `n` more requests, then goes quiet — the way a device that
-    // stops responding part way through a transfer would.
-    void answerOnlyNextRequests(std::size_t n) { m_maxAnswers = m_answered + n; }
-
-    [[nodiscard]] const MemoryImage& memory() const noexcept { return m_memory; }
-    [[nodiscard]] std::size_t dataSetsReceived() const noexcept { return m_dataSetsReceived; }
-
-    // Consumes everything the application sent and produces the replies.
-    [[nodiscard]] std::vector<RolandSysExMessage> exchange(midi::LoopbackMidiTransport& transport)
-    {
-        std::vector<RolandSysExMessage> replies;
-        const std::vector<RolandModelId> models{xp60::modelId()};
-        for (const auto& raw : transport.sentMessages()) {
-            const auto decoded = roland::decodeRolandSysEx(ByteSpan(raw.data(), raw.size()), models);
-            if (!decoded.ok()) {
-                continue;
-            }
-            const auto& message = *decoded.message;
-            if (message.isDataSet()) {
-                ++m_dataSetsReceived;
-                if (m_acceptWrites) {
-                    m_memory.addDataSet(message);
-                    if (m_corruptPending && m_memory.contains(m_corruptAddress)) {
-                        m_memory.write(m_corruptAddress, ByteVector{m_corruptValue});
-                    }
-                }
-                continue;
-            }
-            if (!m_answerRequests || m_answered >= m_maxAnswers) {
-                continue;
-            }
-            ++m_answered;
-            const auto bytes = m_memory.read(message.address(), message.size().value());
-            if (!bytes) {
-                continue; // an unreadable range simply gets no answer, like a silent device
-            }
-            const auto whole = RolandSysExMessage::dataSet(message.deviceId(), message.modelId(), message.address(), *bytes);
-            for (auto& chunk : protocol::chunkDataSet(*whole, 128)) {
-                replies.push_back(std::move(chunk));
-            }
-        }
-        transport.clearSentMessages();
-        return replies;
-    }
-
-private:
-    MemoryImage m_memory;
-    bool m_acceptWrites = true;
-    bool m_answerRequests = true;
-    std::size_t m_dataSetsReceived = 0;
-    std::size_t m_maxAnswers = std::numeric_limits<std::size_t>::max();
-    std::size_t m_answered = 0;
-    RolandAddress m_corruptAddress;
-    Byte m_corruptValue = 0;
-    bool m_corruptPending = false;
-};
-
-MemoryImage fixtureImage()
-{
-    std::ifstream in(XP60STUDIO_FIXTURE_DIR "/user-bank-amal.syx", std::ios::binary);
-    const ByteVector data((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
-    const std::vector<RolandModelId> models{xp60::modelId()};
-    return imageFromStream(parseSysExStream(data, models));
-}
-
-const RolandAddress kTemp = Xp60PatchLayout::temporaryPatchAddress();
-
-// Puts a real patch from the fixture into the temporary area.
-MemoryImage temporaryAreaWith(int userPatchNumber)
-{
-    const auto bank = fixtureImage();
-    const auto source = *Xp60PatchLayout::userPatchAddress(userPatchNumber);
-    MemoryImage image;
-    for (const auto& block : Xp60PatchLayout::blocks()) {
-        image.write(*kTemp.plus(block.offset), *bank.read(*source.plus(block.offset), block.size));
-    }
-    return image;
-}
-
-Xp60Patch patchFrom(const MemoryImage& image, const RolandAddress& base)
-{
-    return *Xp60PatchCodec::decode(image, base).patch;
-}
+const RolandAddress kTemp = temporaryPatchAddress();
 
 struct Fixture
 {

@@ -19,11 +19,22 @@ set(XP60STUDIO_QML_FILES
   Controls/XpSpinField.qml
   Controls/XpTextField.qml
   Controls/StatusPill.qml
+  Controls/XpKnob.qml
+  Controls/XpSegmentedControl.qml
+  Controls/XpRangeBar.qml
+  Controls/ParameterValueEditor.qml
+  Controls/ToneCard.qml
+  Controls/ToneMiniEnvelope.qml
+  Controls/EnvelopeEditor.qml
+  Controls/KeyboardStrip.qml
+  Controls/SignalFlowNode.qml
+  Controls/SignalFlowConnector.qml
   Shell/AppNavigationRail.qml
   Shell/AppHeader.qml
   Shell/ConnectionStatusIndicator.qml
   Shell/ScreenHeader.qml
   Screens/DevicesScreen.qml
+  Screens/EditorScreen.qml
   Screens/UnavailableScreen.qml
 )
 

@@ -8,6 +8,7 @@
 #include "midi/LoopbackMidiTransport.h"
 #include "presentation/AppShellViewModel.h"
 #include "presentation/DevicesViewModel.h"
+#include "presentation/PatchEditorViewModel.h"
 #include "presentation/QmlRegistration.h"
 #include "services/DeviceSession.h"
 #include "services/PatchTransfer.h"
@@ -59,6 +60,7 @@ int main(int argc, char* argv[])
     xp60studio::services::DeviceSession session(createTransport());
     xp60studio::services::PatchTransfer transfer(session);
     xp60studio::presentation::DevicesViewModel devices(session, &transfer);
+    xp60studio::presentation::PatchEditorViewModel editor(session, &transfer);
     xp60studio::presentation::AppShellViewModel shell(&devices);
 
     QQmlApplicationEngine engine;
@@ -66,6 +68,7 @@ int main(int argc, char* argv[])
     engine.setInitialProperties({
         {QStringLiteral("shell"), QVariant::fromValue(&shell)},
         {QStringLiteral("devices"), QVariant::fromValue(&devices)},
+        {QStringLiteral("editor"), QVariant::fromValue(&editor)},
     });
     QObject::connect(
         &engine, &QQmlApplicationEngine::objectCreationFailed, &app, [] { QCoreApplication::exit(1); },

@@ -10,6 +10,7 @@ QQC.ApplicationWindow {
 
     required property AppShellViewModel shell
     required property DevicesViewModel devices
+    required property PatchEditorViewModel editor
 
     visible: true
     width: Metrics.windowPreferredWidth
@@ -53,9 +54,16 @@ QQC.ApplicationWindow {
                     devices: window.devices
                 }
 
+                EditorScreen {
+                    objectName: "editorScreen"
+                    anchors.fill: parent
+                    visible: window.shell.currentScreen === "editor"
+                    editor: window.editor
+                }
+
                 UnavailableScreen {
                     anchors.fill: parent
-                    visible: window.shell.currentScreen !== "devices"
+                    visible: window.shell.currentScreen !== "devices" && window.shell.currentScreen !== "editor"
                     screenTitle: window.shell.currentScreenTitle
                     availability: "a later phase"
                 }

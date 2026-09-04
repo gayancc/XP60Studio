@@ -144,6 +144,16 @@ explicitly, targets only the edit buffer, and captures a safety snapshot first.
 The hardware session itself is documented in
 [`docs/HARDWARE_VALIDATION_XP60.md`](docs/HARDWARE_VALIDATION_XP60.md).
 
+**Phase 4 — Visual Patch Editor** has its M2 milestone built: the Editor
+screen reproduces the master mockup's Patch Editor / Four-Tone Mixer, with
+four Tone cards, knobs and exact numeric entry, a draggable envelope editor,
+key/velocity ranges, the signal path, A/B comparison and bounded undo. Editing
+is local and non-destructive; writing still goes through the armed, verified
+Phase 3 path. The M3 Wave Browser is blocked on the XP-60 Waveform List. See
+[`docs/PHASE_4_PATCH_EDITOR.md`](docs/PHASE_4_PATCH_EDITOR.md), which records
+the six documented deviations from the mockup and why each is necessary, and
+[`docs/design/screenshots/phase4-editor-screen.png`](docs/design/screenshots/phase4-editor-screen.png).
+
 Advanced product screens wait for their backing domain phases, and when
 implemented they are built directly against the approved mockup rather than as
 temporary generic UI.

@@ -276,14 +276,20 @@ private slots:
         QCOMPARE(f.shell->currentScreenTitle(), QStringLiteral("Devices"));
         QCOMPARE(f.shell->navigationItems().size(), 8);
         QVERIFY(f.shell->isScreenAvailable(QStringLiteral("devices")));
-        QVERIFY(!f.shell->isScreenAvailable(QStringLiteral("editor")));
+        QVERIFY(f.shell->isScreenAvailable(QStringLiteral("editor"))); // built in Phase 4
+        QVERIFY(!f.shell->isScreenAvailable(QStringLiteral("library")));
         QSignalSpy spy(f.shell.get(), &AppShellViewModel::currentScreenChanged);
-        QVERIFY(!f.shell->navigate(QStringLiteral("editor")));
+        QVERIFY(!f.shell->navigate(QStringLiteral("library")));
         QVERIFY(!f.shell->navigate(QStringLiteral("nonsense")));
         QCOMPARE(f.shell->currentScreen(), QStringLiteral("devices"));
         QCOMPARE(spy.count(), 0);
+        QVERIFY(f.shell->navigate(QStringLiteral("editor")));
+        QCOMPARE(f.shell->currentScreen(), QStringLiteral("editor"));
+        QCOMPARE(spy.count(), 1);
         QVERIFY(f.shell->navigate(QStringLiteral("devices")));
-        QCOMPARE(spy.count(), 0); // unchanged
+        QCOMPARE(spy.count(), 2);
+        QVERIFY(f.shell->navigate(QStringLiteral("devices")));
+        QCOMPARE(spy.count(), 2); // already there
         QCOMPARE(f.shell->appName(), QStringLiteral("XP60Studio"));
         QVERIFY(!f.shell->buildInfo().isEmpty());
 
@@ -294,7 +300,7 @@ private slots:
                 ++enabled;
             }
         }
-        QCOMPARE(enabled, 1);
+        QCOMPARE(enabled, 2); // Devices and Editor
     }
 
     void patchFetchFlowsIntoTheViewModel()

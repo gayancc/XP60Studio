@@ -5,6 +5,7 @@ function(xp60studio_add_test name)
   cmake_parse_arguments(ARG "" "" "SOURCES;LIBS" ${ARGN})
   qt_add_executable(${name} ${ARG_SOURCES})
   target_link_libraries(${name} PRIVATE Qt6::Test ${ARG_LIBS})
+  target_include_directories(${name} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
   set_target_properties(${name} PROPERTIES AUTOMOC ON)
   xp60studio_apply_warnings(${name})
   add_test(NAME ${name} COMMAND ${name})
@@ -94,6 +95,13 @@ xp60studio_add_test(tst_patch_transfer
   SOURCES tst_patch_transfer.cpp
   LIBS xp60studio::services)
 target_compile_definitions(tst_patch_transfer
+  PRIVATE XP60STUDIO_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/xp60")
+
+# Phase 4 — Patch Editor presentation
+xp60studio_add_test(tst_patch_editor
+  SOURCES tst_patch_editor.cpp
+  LIBS xp60studio::presentation)
+target_compile_definitions(tst_patch_editor
   PRIVATE XP60STUDIO_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/xp60")
 
 # The generated tables must match the protocol document they come from.

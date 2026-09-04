@@ -8,6 +8,10 @@ add_library(xp60studio_presentation STATIC
   RequestOperationModel.cpp
   PatchParameterModel.h
   PatchParameterModel.cpp
+  ToneViewModel.h
+  ToneViewModel.cpp
+  PatchEditorViewModel.h
+  PatchEditorViewModel.cpp
   DevicesViewModel.h
   DevicesViewModel.cpp
   AppShellViewModel.h
