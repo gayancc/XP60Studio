@@ -21,6 +21,7 @@ add_library(xp60studio_xpmodel STATIC
   Xp60PatchLayout.cpp
   Xp60Patch.h
   Xp60Effects.h
+  Xp60PatchRouting.h
   Xp60Patch.cpp
   Xp60PatchCodec.h
   Xp60PatchCodec.cpp

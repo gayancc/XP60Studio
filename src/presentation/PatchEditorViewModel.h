@@ -1,6 +1,7 @@
 #pragma once
 
 #include "presentation/ToneViewModel.h"
+#include "presentation/WaveBrowserModel.h"
 #include "presentation/EditorParameterModel.h"
 #include "services/DeviceSession.h"
 #include "services/PatchTransfer.h"
@@ -11,6 +12,7 @@
 #include <QString>
 #include <QStringList>
 #include <QVariantList>
+#include <QVariantMap>
 
 #include <deque>
 #include <memory>
@@ -46,6 +48,7 @@ class PatchEditorViewModel : public QObject
 
     // Tones
     Q_PROPERTY(QVariantList tones READ tones CONSTANT)
+    Q_PROPERTY(WaveBrowserModel* waves READ waves CONSTANT)
     Q_PROPERTY(int selectedTone READ selectedTone WRITE setSelectedTone NOTIFY selectedToneChanged)
     Q_PROPERTY(int enabledToneCount READ enabledToneCount NOTIFY patchChanged)
 
@@ -56,6 +59,7 @@ class PatchEditorViewModel : public QObject
     Q_PROPERTY(QString reverbText READ reverbText NOTIFY patchChanged)
     Q_PROPERTY(QString outputText READ outputText NOTIFY patchChanged)
     Q_PROPERTY(QString routingSummary READ routingSummary NOTIFY patchChanged)
+    Q_PROPERTY(QVariantMap routing READ routing NOTIFY patchChanged)
 
     // Envelope of the selected Tone, for the section in view
     Q_PROPERTY(bool envelopeAvailable READ envelopeAvailable NOTIFY envelopeChanged)
@@ -101,6 +105,7 @@ class PatchEditorViewModel : public QObject
     Q_PROPERTY(QString auditionMessage READ auditionMessage NOTIFY writeChanged)
 
 public:
+    WaveBrowserModel* waves() { return &m_waves; }
     [[nodiscard]] bool writeBusy() const { return m_transfer && m_transfer->isBusy(); }
     Q_INVOKABLE void cancelWrite() { if (m_transfer) m_transfer->cancel(); }
 
@@ -156,6 +161,7 @@ public:
     [[nodiscard]] QString reverbText() const;
     [[nodiscard]] QString outputText() const;
     [[nodiscard]] QString routingSummary() const;
+    [[nodiscard]] QVariantMap routing() const;
 
     [[nodiscard]] bool envelopeAvailable() const;
     [[nodiscard]] QString envelopeTitle() const;
@@ -250,6 +256,7 @@ private:
     int m_section = Sound;
     int m_disclosure = Design;
     EditorParameterModel* m_sectionParameters = nullptr;
+    WaveBrowserModel m_waves{this};
     EditorParameterModel* m_expertParameters = nullptr;
     int m_selectedTone = 1;
     bool m_comparing = false;

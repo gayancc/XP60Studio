@@ -8,6 +8,7 @@ T.Button {
 
     property string variant: "secondary"
     property string glyph: ""
+    property string iconName: ""
     property bool compact: false
 
     implicitWidth: Math.max(implicitBackgroundWidth + leftInset + rightInset,
@@ -52,7 +53,13 @@ T.Button {
     }
 
     contentItem: Row {
-        spacing: Metrics.spacingSm
+        spacing: (control.iconName.length > 0 || control.glyph.length > 0) && control.text.length > 0 ? Metrics.spacingSm : 0
+        XpIcon {
+            visible: control.iconName.length > 0
+            name: control.iconName
+            color: control.labelColor
+            anchors.verticalCenter: parent.verticalCenter
+        }
         XpLabel {
             visible: control.glyph.length > 0
             text: control.glyph
@@ -61,6 +68,7 @@ T.Button {
         }
         XpLabel {
             text: control.text
+            visible: control.text.length > 0
             color: control.labelColor
             font.weight: Typography.weightMedium
             anchors.verticalCenter: parent.verticalCenter

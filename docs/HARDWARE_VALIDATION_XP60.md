@@ -11,6 +11,12 @@ screen (click a row to expand it and copy the raw hex).
 
 ## Preparation
 
+Execution note (2026-09-04): physical validation is deferred to the final device
+acceptance pass at the user's direction. Include Phase 3 round-trip checks,
+`PHASE_4_LIVE_AUDITION.md`, `PHASE_4_EFFECT_ROUTING.md` and the bank-boundary
+capture checklist in `PHASE_4_WAVE_BROWSER.md`. Local development may continue;
+unperformed hardware checks remain open.
+
 | Item | Value to record |
 |---|---|
 | XP-60 firmware version (Utility → Information, or power-on display) | |

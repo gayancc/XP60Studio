@@ -16,7 +16,7 @@ shipping QML against a real Patch out of the golden fixture.
 | Milestone | State |
 |---|---|
 | **M2** Patch Editor / Four-Tone Mixer | **partial — not complete**; see `PHASE_4_REVALIDATION.md` for acceptance gaps and current validation |
-| **M3** Wave Browser | **next** — the official manual is now located; its waveform appendix still needs transcription and validation |
+| **M3** Wave Browser | **partial** — 448 documented internal names, search and inspector; assignment awaits bank-mapping evidence. See `PHASE_4_WAVE_BROWSER.md`. |
 
 ### What M2 covers, and what it does not
 
@@ -24,7 +24,9 @@ The 2026-09-04 revalidation supersedes historical completion claims below.
 The screen defaults to local editing. Explicitly armed live audition now applies
 Solo/Mute, A/B and coalesced parameter changes through verified transfers.
 See `PHASE_4_LIVE_AUDITION.md`. Physical audio/latency checks, EFX-specific byte
-interpretations and remaining routing/visual fidelity are still open.
+interpretations are still open. Header/glyph refinement and keyboard Tone
+controls are implemented; see the latest `PHASE_4_REVALIDATION.md` entry.
+The fixed-chain routing gap is repaired; see `PHASE_4_EFFECT_ROUTING.md`.
 
 Built: the Current Patch header, the visual four-Tone architecture and mixer,
 Tone Solo/Mute, graphical envelope editors for the Sound (Pitch), Filter and
@@ -48,16 +50,16 @@ The 2026-09-04 continuation adds:
   envelopes/ranges; Expert provides searchable, grouped, virtualized controls
   for the selected Tone or Patch Common. All four Tone cards remain visible.
 - Exact numeric entry for both key and velocity bounds, with ordered limits.
-- Colored Tone-to-Structure overview connections at four-column widths.
+- Selected-Tone/Structure-pair connections and a branching effect-routing diagram.
+  See `PHASE_4_EFFECT_ROUTING.md`; MIX/DIRECT and parallel sends follow the manual.
   Wrapped two-column layouts omit them to avoid crossing other Tone cards.
 
-Still not built:
+Still open:
 
-- semantic, per-effect controls based on the official effect algorithm tables
-- safe real-time parameter updates while dragging (throttling and coalescing);
-  today edits are local and reach the instrument only on an explicit Write
-- audible Solo/Mute and A/B
-- Wave Browser (M3, blocked above)
+- semantic, per-effect controls with verified EFX slot/unit mappings
+- physical acceptance of live updates, Solo/Mute and A/B
+- final M2 acceptance after verified EFX semantics and the physical checks
+- Wave assignment and remaining M3 capabilities; catalog development is authorized before final physical validation
 
 ## Architecture
 
@@ -183,7 +185,7 @@ which `AGENTS.md` forbids.
 
 | # | Mockup shows | Built screen shows | Why |
 |---|---|---|---|
-| 1 | Wave names — "Warm Strings", "Choir Aahs", "Analog Bell", "Warm Pad" | The wave identifier, e.g. `INT 005`, with group and gain beneath | The official Owner's Manual is now available locally, but its Waveform List (wave number → name) has not been transcribed. The Parameter Address Map gives only Wave Group Type, Group ID and Wave Number. Catalog transcription belongs to M3. |
+| 1 | Wave names — "Warm Strings", "Choir Aahs", "Analog Bell", "Warm Pad" | The wave identifier, e.g. `INT 005`, with group and gain beneath | The 448-name list is transcribed and searchable in M3. Mapping raw group IDs to INT-A/INT-B still requires XP-60 evidence; see `PHASE_4_WAVE_BROWSER.md`. |
 | 2 | Tone level as `-2.3 dB` | The Roland raw value, e.g. `117` | The Parameter Address Map defines Tone Level as raw 0..127 and gives no conversion to decibels. |
 | 3 | Envelope stage readouts as `0.40 s`, `2.20 s`, `-6.0 dB`, `3.20 s` | Raw times and levels 0..127, with a note on the card stating that the manual gives no conversion | Same reason. The note is shown rather than hidden so the screen never implies a precision it does not have. |
 | 4 | Effect names — MFX "St.Parametric", Chorus "Chorus 1", Structure "4-TONE" | `HEXA-CHORUS`, `Level 127`, `1 / 1` (the structure pair) | All 40 EFX type names are now transcribed from the official Owner's Manual. Chorus has fixed controls and no documented type selector. Reverb is named (`STAGE2`) from the map. EFX-specific slot mappings/units remain open. |
@@ -210,8 +212,8 @@ bytes. The shared harness lives in `tests/cpp/support/FakeXp60.h`.
 against the same fixture; it is a documentation aid and is never registered as
 a test.
 
-Latest Windows validation: **22/22 CTest suites pass**; 45 editor, 20 transfer and
-55 total QML checks pass (including Qt setup/cleanup). Fresh Windows screen captures
+Latest Windows routing validation: **23/23 CTest suites pass**, including a new
+routing suite and editor/QML routing regressions. Fresh Windows screen captures
 are listed in `PHASE_4_REVALIDATION.md`; these supersede the historical capture
 at the start of this document.
 
@@ -224,9 +226,8 @@ this phase promotes any parameter to `HardwareVerified`.
 
 ## Open items
 
-1. **XP-60 Waveform List** — required for M3 (Wave Browser) and to resolve
-   deviation 1. Needed as wave number → name, with category if the manual
-   gives one.
+1. **XP-60 bank mapping** — the 448-name list is transcribed for M3. Raw bank
+   IDs still need XP-60 evidence before resolving deviation 1. Categories are unknown.
 2. **EFX parameter slot/unit mappings** — the 40 EFX type names are now transcribed.
    The fixed Chorus has no documented type selector; its controls follow p.64.
 3. **Envelope time/level units** — if Roland documents a conversion anywhere,

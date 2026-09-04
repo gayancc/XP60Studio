@@ -148,6 +148,13 @@ builds and runs all tests; `-Run` also launches the app, `-SkipTests` skips
 CTest, and `-Jobs 6` controls build parallelism. It sets PATH only for its
 own execution and restores it afterward.
 
+After the Windows build, double-click [`Run-XP60Studio.bat`](Run-XP60Studio.bat)
+in the project folder to open the app. It supplies the local Qt/MinGW runtime
+paths automatically, works regardless of the current directory, and does not
+rebuild or change system settings. Keep it beside `.qt/` and `build-windows/`;
+the batch file alone is not a distributable app package. Missing build/runtime
+files produce a message with setup instructions.
+
 See [Phase 4 revalidation](docs/PHASE_4_REVALIDATION.md) for the current
 acceptance checklist and open hardware gate. M2 is not yet complete.
 

@@ -98,6 +98,12 @@ target_compile_definitions(tst_patch_transfer
   PRIVATE XP60STUDIO_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/xp60")
 
 # Phase 4 — Patch Editor presentation
+xp60studio_add_test(tst_patch_routing
+  SOURCES tst_patch_routing.cpp
+  LIBS xp60studio::services)
+target_compile_definitions(tst_patch_routing
+  PRIVATE XP60STUDIO_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/xp60")
+
 xp60studio_add_test(tst_patch_editor
   SOURCES tst_patch_editor.cpp
   LIBS xp60studio::presentation)
@@ -105,8 +111,15 @@ target_compile_definitions(tst_patch_editor
   PRIVATE XP60STUDIO_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/xp60")
 
 # The generated tables must match the protocol document they come from.
+xp60studio_add_test(tst_wave_browser
+  SOURCES tst_wave_browser.cpp
+  LIBS xp60studio::presentation)
+
 find_package(Python3 COMPONENTS Interpreter QUIET)
 if(Python3_Interpreter_FOUND)
+  add_test(NAME tst_wave_catalog_current
+    COMMAND Python3::Interpreter ${CMAKE_SOURCE_DIR}/tools/generate_wave_catalog.py --check
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
   add_test(NAME tst_generated_tables_current
     COMMAND Python3::Interpreter ${CMAKE_SOURCE_DIR}/tools/generate_patch_tables.py --check
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})

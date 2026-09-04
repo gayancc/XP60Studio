@@ -20,7 +20,18 @@ RowLayout {
     property int labelWidth: 64
     signal edited(int value)
 
-    spacing: Metrics.spacingSm
+    spacing: Metrics.spacingXs
+
+    WheelHandler {
+        enabled: root.editable
+        target: root
+        orientation: Qt.Vertical
+        onWheel: function(event) {
+            var delta = event.angleDelta.y > 0 ? 1 : -1
+            var next = Math.max(root.minimumValue, Math.min(root.maximumValue, root.value + delta))
+            if (next !== root.value) root.edited(next)
+        }
+    }
 
     XpLabel {
         visible: root.label.length > 0
@@ -34,11 +45,32 @@ RowLayout {
         elide: Text.ElideRight
     }
 
+    Rectangle {
+        Layout.preferredWidth: 18
+        Layout.preferredHeight: Metrics.controlHeightSm
+        radius: Metrics.radiusSm
+        color: decArea.pressed ? Theme.surfacePressed : (decArea.containsMouse ? Theme.surfaceHover : Theme.surfaceRaised)
+        border.width: 1
+        border.color: Theme.borderSubtle
+        visible: root.editable
+        XpLabel { anchors.centerIn: parent; text: "−"; role: "caption"; color: Theme.textSecondary }
+        MouseArea {
+            id: decArea
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: {
+                var next = Math.max(root.minimumValue, root.value - 1)
+                if (next !== root.value) root.edited(next)
+            }
+        }
+    }
+
     XpTextField {
         id: field
         objectName: "valueField"
-        Layout.preferredWidth: 68
-        Layout.minimumWidth: 56
+        Layout.preferredWidth: 60
+        Layout.minimumWidth: 48
         Layout.fillWidth: true
         mono: true
         enabled: root.editable
@@ -53,6 +85,35 @@ RowLayout {
                 root.edited(v)
             focus = false
         }
+        Keys.onUpPressed: {
+            var next = Math.min(root.maximumValue, root.value + 1)
+            if (next !== root.value) root.edited(next)
+        }
+        Keys.onDownPressed: {
+            var next = Math.max(root.minimumValue, root.value - 1)
+            if (next !== root.value) root.edited(next)
+        }
         Accessible.name: root.accessibleName
+    }
+
+    Rectangle {
+        Layout.preferredWidth: 18
+        Layout.preferredHeight: Metrics.controlHeightSm
+        radius: Metrics.radiusSm
+        color: incArea.pressed ? Theme.surfacePressed : (incArea.containsMouse ? Theme.surfaceHover : Theme.surfaceRaised)
+        border.width: 1
+        border.color: Theme.borderSubtle
+        visible: root.editable
+        XpLabel { anchors.centerIn: parent; text: "+"; role: "caption"; color: Theme.textSecondary }
+        MouseArea {
+            id: incArea
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: {
+                var next = Math.min(root.maximumValue, root.value + 1)
+                if (next !== root.value) root.edited(next)
+            }
+        }
     }
 }

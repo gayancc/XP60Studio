@@ -13,6 +13,17 @@ Item {
     id: root
 
     required property PatchEditorViewModel editor
+    property bool browsingWaves: false
+
+    WaveBrowserScreen {
+        anchors.fill: parent
+        visible: root.browsingWaves
+        catalog: root.editor.waves
+        onClosed: {
+            root.browsingWaves = false
+            browseWavesButton.forceActiveFocus()
+        }
+    }
 
     // Below this the four Tone cards would be too narrow to read, so they
     // wrap to two rows of two rather than shrinking.
@@ -21,7 +32,7 @@ Item {
 
     XpEmptyState {
         anchors.fill: parent
-        visible: !root.editor.hasPatch
+        visible: !root.editor.hasPatch && !root.browsingWaves
         glyph: "♪"
         title: qsTr("No Patch loaded")
         message: root.editor.emptyStateMessage
@@ -31,14 +42,14 @@ Item {
         id: scroller
         objectName: "editorScroll"
         anchors.fill: parent
-        visible: root.editor.hasPatch
+        visible: root.editor.hasPatch && !root.browsingWaves
         contentWidth: availableWidth
         QQC.ScrollBar.vertical: XpScrollBar { parent: scroller; x: scroller.width - width; height: scroller.availableHeight }
         QQC.ScrollBar.horizontal.policy: QQC.ScrollBar.AlwaysOff
 
         ColumnLayout {
             width: scroller.availableWidth
-            spacing: Metrics.spacingLg
+            spacing: Metrics.spacingMd
 
             // ── Patch header ────────────────────────────────────────────────
             XpCard {
@@ -58,6 +69,15 @@ Item {
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: Metrics.spacingMd
+
+                    XpButton {
+                        id: browseWavesButton
+                        objectName: "browseWavesButton"
+                        text: qsTr("Waves")
+                        onClicked: {
+                            root.browsingWaves = true
+                        }
+                    }
 
                     Rectangle {
                         implicitWidth: badge.implicitWidth + 2 * Metrics.spacingMd
@@ -85,7 +105,7 @@ Item {
                         XpLabel {
                             objectName: "patchNameLabel"
                             text: root.editor.patchName
-                            role: "display"
+                            role: "title"
                             Layout.fillWidth: true
                         }
                         XpLabel {
@@ -100,27 +120,27 @@ Item {
                     }
                     RowLayout {
                         Layout.alignment: Qt.AlignRight
-                        spacing: Metrics.spacingSm
+                        spacing: Metrics.spacingXs
 
                     // A/B original vs current
                     XpButton {
                         objectName: "compareButton"
                         text: root.editor.comparing ? qsTr("A · Original") : qsTr("B · Current")
-                        glyph: "⇄"
+                        iconName: "compare"
                         compact: true
                         variant: root.editor.comparing ? "primary" : "secondary"
                         onClicked: root.editor.comparing = !root.editor.comparing
                     }
                     XpButton {
                         objectName: "undoButton"
-                        text: "↺"; compact: true; variant: "ghost"
+                        iconName: "undo"; compact: true; variant: "ghost"
                         enabled: root.editor.canUndo
                         onClicked: root.editor.undo()
                         Accessible.name: qsTr("Undo")
                     }
                     XpButton {
                         objectName: "redoButton"
-                        text: "↻"; compact: true; variant: "ghost"
+                        iconName: "redo"; compact: true; variant: "ghost"
                         enabled: root.editor.canRedo
                         onClicked: root.editor.redo()
                         Accessible.name: qsTr("Redo")
@@ -158,15 +178,19 @@ Item {
             }
 
             // Write outcome, only once something has happened.
-            ColumnLayout {
+            GridLayout {
+                columns: root.wideTones && !root.editor.liveAudition ? 2 : 1
                 Layout.fillWidth: true
                 Layout.leftMargin: Metrics.screenPadding
                 Layout.rightMargin: Metrics.screenPadding
-                spacing: Metrics.spacingSm
+                columnSpacing: Metrics.spacingMd
+                rowSpacing: Metrics.spacingSm
                 Flow {
-                    Layout.fillWidth: true
+                    Layout.fillWidth: !root.wideTones || root.editor.liveAudition
+                    Layout.preferredWidth: root.wideTones && !root.editor.liveAudition ? startLive.implicitWidth : -1
                     spacing: Metrics.spacingSm
                     XpButton {
+                        id: startLive
                         objectName: "startLiveButton"
                         text: qsTr("Start live audition")
                         visible: !root.editor.liveAudition
@@ -218,37 +242,30 @@ Item {
                 Layout.rightMargin: Metrics.screenPadding
             }
 
-            // ── Section tabs ────────────────────────────────────────────────
-            RowLayout {
+            // Section and disclosure share one compact toolbar at desktop width.
+            GridLayout {
                 Layout.fillWidth: true
                 Layout.leftMargin: Metrics.screenPadding
                 Layout.rightMargin: Metrics.screenPadding
+                columns: root.wideTones ? 2 : 1
+                columnSpacing: Metrics.spacingXl
+                rowSpacing: Metrics.spacingSm
+                XpSegmentedControl {
+                    objectName: "sectionTabs"
+                    visible: root.editor.disclosure === 1
+                    Layout.fillWidth: true
+                    Layout.preferredWidth: 1
+                    model: root.editor.sectionNames
+                    currentIndex: root.editor.section
+                    onActivated: function(index) { root.editor.section = index }
+                }
                 XpSegmentedControl {
                     objectName: "disclosureTabs"
+                    Layout.alignment: Qt.AlignRight
                     model: [qsTr("Play"), qsTr("Design"), qsTr("Expert")]
                     currentIndex: root.editor.disclosure
                     onActivated: function(index) { root.editor.disclosure = index }
                 }
-                XpLabel {
-                    Layout.fillWidth: true
-                    text: root.editor.liveAudition ? qsTr("Live audition · updates are paced and verified")
-                         : root.editor.comparing ? qsTr("Viewing original · editing paused")
-                                                : qsTr("Local editing · Write sends to XP-60")
-                    role: "caption"
-                    secondary: true
-                    wrapMode: Text.WordWrap
-                    horizontalAlignment: Text.AlignRight
-                }
-            }
-            XpSegmentedControl {
-                objectName: "sectionTabs"
-                visible: root.editor.disclosure === 1
-                Layout.fillWidth: true
-                Layout.leftMargin: Metrics.screenPadding
-                Layout.rightMargin: Metrics.screenPadding
-                model: root.editor.sectionNames
-                currentIndex: root.editor.section
-                onActivated: function(index) { root.editor.section = index }
             }
 
             // ── Four Tone cards ─────────────────────────────────────────────
@@ -282,12 +299,10 @@ Item {
                 Layout.fillWidth: true
                 Layout.leftMargin: Metrics.screenPadding
                 Layout.rightMargin: Metrics.screenPadding
-                implicitHeight: flowRow.implicitHeight + 2 * Metrics.cardPadding
+                implicitHeight: routingView.implicitHeight + 2 * Metrics.cardPadding
 
-                // The approved composition connects each coloured Tone to
-                // Structure. This is an overview, not a fabricated diagram
-                // of an individual Structure algorithm. At two-column widths
-                // the cards wrap and these overview lines are omitted.
+                // Connect only the selected Tone/Structure pair. At two-column
+                // widths the cards wrap, so the source is identified in text.
                 Canvas {
                     id: toneConnections
                     objectName: "toneConnections"
@@ -301,10 +316,11 @@ Item {
                         var ctx = getContext("2d")
                         ctx.reset()
                         for (var i = 0; i < 4; ++i) {
+                            if ((root.editor.routing.sourceTones || []).indexOf(i + 1) < 0) continue
                             var card = toneCards.itemAt(i)
                             if (!card) continue
                             var start = card.mapToItem(toneConnections, card.width / 2, card.height)
-                            var end = structureNode.mapToItem(toneConnections, structureNode.width / 2 + (i - 1.5) * 6, 0)
+                            var end = routingView.mapToItem(toneConnections, routingView.sourceCenterX + (i - 1.5) * 6, 0)
                             var channel = 5 + i * 5
                             ctx.beginPath()
                             ctx.moveTo(start.x, 0)
@@ -323,25 +339,13 @@ Item {
                     Component.onCompleted: Qt.callLater(requestPaint)
                 }
 
-                Flow {
-                    id: flowRow
-                    anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter }
-                    spacing: Metrics.spacingSm
-
-                    SignalFlowNode {
-                        id: structureNode
-                        objectName: "structureNode"
-                        title: qsTr("STRUCTURE"); detail: root.editor.structureText
-                    }
-                    SignalFlowConnector { anchors.verticalCenter: undefined; y: 20 }
-                    SignalFlowNode { title: qsTr("MFX"); detail: root.editor.mfxText }
-                    SignalFlowConnector { y: 20 }
-                    SignalFlowNode { title: qsTr("CHORUS"); detail: root.editor.chorusText }
-                    SignalFlowConnector { y: 20 }
-                    SignalFlowNode { title: qsTr("REVERB"); detail: root.editor.reverbText }
-                    SignalFlowConnector { y: 20 }
-                    SignalFlowNode { title: qsTr("OUTPUT"); detail: root.editor.outputText; highlighted: true }
+                EffectRoutingView {
+                    id: routingView
+                    objectName: "effectRoutingView"
+                    anchors { left: parent.left; right: parent.right; top: parent.top }
+                    editor: root.editor
                 }
+
             }
 
             // ── Envelope · ranges · Tone settings ───────────────────────────
@@ -382,7 +386,7 @@ Item {
                         XpPanelHeader {
                             objectName: "envelopeHeader"
                             title: root.editor.envelopeTitle
-                            glyph: "◺"
+                            iconName: "envelope"
                         }
 
                         EnvelopeEditor {
@@ -457,7 +461,7 @@ Item {
                         anchors { left: parent.left; right: parent.right; top: parent.top }
                         spacing: Metrics.spacingSm
 
-                        XpPanelHeader { title: qsTr("KEY RANGE"); glyph: "⌨" }
+                        XpPanelHeader { title: qsTr("KEY RANGE"); iconName: "keyboard" }
                         KeyboardStrip {
                             objectName: "keyboardStrip"
                             Layout.fillWidth: true

@@ -55,6 +55,29 @@ TestCase {
         testEditor.expertParameters.search = ""
     }
 
+    function test_wave_browser_is_read_only_and_keyboard_accessible() {
+        var screen = createTemporaryObject(screenComponent, testCase)
+        testEditor.waves.query = ""
+        testEditor.waves.sourceFilter = 0
+        var before = testEditor.differenceSummary
+        mouseClick(findChild(screen, "browseWavesButton"))
+        verify(screen.browsingWaves)
+        var search = findChild(screen, "waveSearch")
+        tryCompare(search, "activeFocus", true)
+        testEditor.waves.query = "Kalimba"
+        compare(testEditor.waves.count, 1)
+        var list = findChild(screen, "waveResults")
+        list.forceActiveFocus()
+        keyClick(Qt.Key_Down)
+        compare(testEditor.waves.selected.name, "Kalimba")
+        compare(testEditor.differenceSummary, before)
+        verify(!testEditor.modified)
+        keyClick(Qt.Key_Escape)
+        verify(!screen.browsingWaves)
+        tryCompare(findChild(screen, "browseWavesButton"), "activeFocus", true)
+        testEditor.waves.query = ""
+    }
+
     function test_screen_loads_and_binds_to_the_fetched_patch() {
         var screen = createTemporaryObject(screenComponent, testCase)
         verify(screen)
@@ -111,6 +134,78 @@ TestCase {
         mouseClick(arm)
         verify(testEditor.writeArmed)
         mouseClick(arm)
+    }
+
+    function test_tone_switches_support_keyboard_activation() {
+        var screen = createTemporaryObject(screenComponent, testCase)
+        var card = findChild(screen, "toneCard1")
+        var enable = findChild(card, "toneEnableButton")
+        var solo = findChild(card, "toneSoloButton")
+        var mute = findChild(card, "toneMuteButton")
+        var wasEnabled = card.tone.enabled
+        enable.forceActiveFocus()
+        keyClick(Qt.Key_Space)
+        compare(card.tone.enabled, !wasEnabled)
+        keyClick(Qt.Key_Return)
+        compare(card.tone.enabled, wasEnabled)
+        solo.forceActiveFocus()
+        keyClick(Qt.Key_Space)
+        compare(card.tone.solo, true)
+        keyClick(Qt.Key_Return)
+        compare(card.tone.solo, false)
+        mute.forceActiveFocus()
+        keyClick(Qt.Key_Space)
+        compare(card.tone.mute, true)
+        keyClick(Qt.Key_Return)
+        compare(card.tone.mute, false)
+    }
+
+    function test_desktop_toolbar_keeps_all_tones_and_envelope_in_view() {
+        var screen = createTemporaryObject(screenComponent, testCase, { width: 1204, height: 988 })
+        waitForRendering(screen)
+        var sections = findChild(screen, "sectionTabs")
+        var disclosure = findChild(screen, "disclosureTabs")
+        var a = sections.mapToItem(screen, 0, 0)
+        var b = disclosure.mapToItem(screen, 0, 0)
+        compare(Math.round(a.y), Math.round(b.y))
+        verify(a.x + sections.width <= b.x)
+        verify(b.x + disclosure.width <= screen.width)
+        var envelope = findChild(screen, "envelopeEditor")
+        var p = envelope.mapToItem(screen, 0, 0)
+        verify(p.y + envelope.height <= screen.height, "Full envelope graph fits inside the desktop viewport")
+    }
+
+    function test_routing_changes_with_output_and_fits_minimum_width() {
+        var screen = createTemporaryObject(screenComponent, testCase,
+                                           { width: Metrics.windowMinWidth - Metrics.railWidth })
+        testEditor.section = 4
+        testEditor.sectionParameters.group = 3
+        testEditor.sectionParameters.edit("tone.output_assign", 1, 2)
+        var routing = findChild(screen, "effectRoutingView")
+        verify(routing)
+        waitForRendering(screen)
+        // Paired structures may route through Tone 2, so use the displayed owner.
+        var owner = testEditor.routing.outputTone
+        testEditor.selectedTone = owner
+        testEditor.sectionParameters.edit("tone.output_assign", owner, 2)
+        tryVerify(function() { return findChild(routing, "route-source-direct") !== null })
+        verify(!findChild(routing, "route-source-chorus"))
+        var direct = findChild(routing, "routingDirect")
+        verify(direct.visible)
+        verify(direct.highlighted)
+        var mix = findChild(routing, "routingMix")
+        verify(!mix.highlighted)
+        for (var name of ["structureNode", "routingEfx", "routingChorus", "routingReverb", "routingMix", "routingDirect"]) {
+            var node = findChild(routing, name)
+            var pos = node.mapToItem(routing, 0, 0)
+            verify(pos.x >= 0)
+            verify(pos.x + node.width <= routing.width + 1)
+            verify(pos.y + node.height <= routing.implicitHeight)
+        }
+        testEditor.sectionParameters.edit("tone.output_assign", owner, 0)
+        tryVerify(function() { return findChild(routing, "route-source-mix") !== null })
+        verify(!findChild(routing, "route-source-direct"))
+        verify(!direct.visible)
     }
 
     function test_live_audition_requires_arm_and_finishes_explicitly() {

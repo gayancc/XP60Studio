@@ -3,6 +3,7 @@
 #include "xp60/Xp60Device.h"
 #include "xpmodel/Xp60PatchLayout.h"
 #include "xpmodel/Xp60Effects.h"
+#include "xpmodel/Xp60PatchRouting.h"
 
 #include <QVariantMap>
 
@@ -398,12 +399,10 @@ QString PatchEditorViewModel::outputText() const
 QString PatchEditorViewModel::routingSummary() const
 {
     if (!m_current) return {};
-    const auto structure = m_selectedTone <= 2 ? CommonParameter::StructureType12 : CommonParameter::StructureType34;
-    const int type = patch().raw(structure);
-    if (type < 0 || type > 9) return tr("Structure routing is unknown for this raw value.");
-    // Owner's Manual pp.60-61: structures 2-10 combine each pair into
-    // Tone 2/4; the output settings of Tone 1/3 are ignored.
-    const int outputTone = type == 0 ? m_selectedTone : (m_selectedTone <= 2 ? 2 : 4);
+    const auto route = xpmodel::patchRouting(patch(), selectedToneIndex());
+    if (!route.outputTone) return tr("Structure routing is unknown for this raw value.");
+    const int type = route.structureType - 1;
+    const int outputTone = route.outputTone;
     const auto tone = *ToneIndex::fromNumber(outputTone);
     const int output = patch().raw(tone, ToneParameter::OutputAssign);
     QString text = type == 0 ? tr("Tone %1 routing: ").arg(outputTone)
@@ -421,6 +420,46 @@ QString PatchEditorViewModel::routingSummary() const
     }
     text += tr("Chorus output: %1.").arg(QString::fromStdString(patch().displayText(CommonParameter::ChorusOutput)));
     return text;
+}
+
+QVariantMap PatchEditorViewModel::routing() const
+{
+    if (!m_current) return {};
+    const auto route = xpmodel::patchRouting(patch(), selectedToneIndex());
+    const auto nodeName = [](xpmodel::RoutingNode node) -> QString {
+        switch (node) {
+        case xpmodel::RoutingNode::Source: return QStringLiteral("source");
+        case xpmodel::RoutingNode::Efx: return QStringLiteral("efx");
+        case xpmodel::RoutingNode::Chorus: return QStringLiteral("chorus");
+        case xpmodel::RoutingNode::Reverb: return QStringLiteral("reverb");
+        case xpmodel::RoutingNode::Mix: return QStringLiteral("mix");
+        case xpmodel::RoutingNode::Direct: return QStringLiteral("direct");
+        case xpmodel::RoutingNode::Unknown: return QStringLiteral("unknown");
+        }
+        return {};
+    };
+    QVariantList edges;
+    QStringList descriptions;
+    for (const auto& edge : route.edges) {
+        const auto from = nodeName(edge.from);
+        const auto to = nodeName(edge.to);
+        const auto level = edge.level < 0 ? tr("Unknown") : QString::number(edge.level);
+        edges.append(QVariantMap{{QStringLiteral("from"), from}, {QStringLiteral("to"), to},
+                                 {QStringLiteral("level"), level}, {QStringLiteral("open"), edge.open}});
+        descriptions.append(tr("%1 to %2: %3%4").arg(from, to, level,
+                            edge.level < 0 ? QString() : edge.open ? QString() : tr(" (zero path)")));
+    }
+    const auto source = !route.outputTone ? tr("Unknown structure") : route.combined
+        ? tr("Tones %1 + %2").arg(route.outputTone - 1).arg(route.outputTone)
+        : tr("Tone %1").arg(route.outputTone);
+    QVariantList sourceTones;
+    if (route.combined) sourceTones.append(route.outputTone - 1);
+    if (route.outputTone) sourceTones.append(route.outputTone);
+    return {{QStringLiteral("source"), source}, {QStringLiteral("outputTone"), route.outputTone},
+            {QStringLiteral("sourceTones"), sourceTones},
+            {QStringLiteral("structure"), route.structureType ? tr("Type %1").arg(route.structureType) : tr("Unknown")},
+            {QStringLiteral("unknown"), route.unknown}, {QStringLiteral("edges"), edges},
+            {QStringLiteral("description"), descriptions.join(QStringLiteral("; "))}};
 }
 
 // ---------------------------------------------------------------------------

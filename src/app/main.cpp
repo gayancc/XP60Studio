@@ -14,6 +14,7 @@
 #include "services/PatchTransfer.h"
 
 #include <QGuiApplication>
+#include <QIcon>
 #include <QImage>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
@@ -47,6 +48,7 @@ std::unique_ptr<xp60studio::midi::IMidiTransport> createTransport()
 int main(int argc, char* argv[])
 {
     QGuiApplication app(argc, argv);
+    QGuiApplication::setWindowIcon(QIcon(QStringLiteral(":/icons/xp60studio.png")));
     QCoreApplication::setOrganizationName(QStringLiteral("XP60Studio"));
     QCoreApplication::setOrganizationDomain(QStringLiteral("xp60studio.local"));
     QCoreApplication::setApplicationName(QStringLiteral("XP60Studio"));

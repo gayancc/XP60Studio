@@ -69,11 +69,10 @@ Rectangle {
                     anchors.leftMargin: Metrics.spacingMd
                     anchors.rightMargin: Metrics.spacingSm
                     spacing: Metrics.spacingMd
-                    XpLabel {
-                        text: item.modelData.glyph
+                    XpIcon {
+                        name: item.modelData.key
                         color: item.current ? Theme.accentText : (item.available ? Theme.textSecondary : Theme.textDisabled)
                         Layout.preferredWidth: Metrics.iconSize
-                        horizontalAlignment: Text.AlignHCenter
                     }
                     XpLabel {
                         text: item.modelData.label

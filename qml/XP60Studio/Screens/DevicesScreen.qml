@@ -33,9 +33,9 @@ Item {
                 Layout.leftMargin: Metrics.screenPadding
                 Layout.rightMargin: Metrics.screenPadding
                 Layout.topMargin: Metrics.screenPadding
-                title: "Devices"
-                subtitle: "Connect the XP-60, verify Roland SysEx communication, and inspect protocol activity."
-                XpButton { text: "Refresh endpoints"; glyph: "↻"; onClicked: root.devices.refreshEndpoints() }
+                title: "Setup"
+                subtitle: "Set up your MIDI connection and check that XP60Studio can talk to your keyboard."
+                XpButton { text: "Scan for MIDI devices"; glyph: "↻"; onClicked: root.devices.refreshEndpoints() }
             }
 
             GridLayout {
@@ -86,7 +86,7 @@ Item {
                                 rowSpacing: Metrics.spacingSm
                                 Layout.fillWidth: true
 
-                                XpLabel { text: "MIDI IN"; role: "overline"; secondary: true }
+                                XpLabel { text: "From XP-60"; role: "overline"; secondary: true }
                                 XpComboBox {
                                     id: inputPicker
                                     objectName: "inputPicker"
@@ -94,13 +94,13 @@ Item {
                                     model: root.devices.inputs
                                     textRole: "selectionLabel"
                                     enabled: root.devices.connectionState !== ConnectionState.Connected && root.devices.connectionState !== ConnectionState.Connecting && count > 0
-                                    displayText: count === 0 ? "No MIDI inputs found" : currentIndex < 0 ? "Choose MIDI input" : currentText
+                                    displayText: count === 0 ? "No MIDI devices detected" : currentIndex < 0 ? "Choose port" : currentText
                                     currentIndex: root.devices.selectedInputIndex
                                     onActivated: function(index) { root.devices.selectedInputIndex = index }
                                     Accessible.name: "MIDI input"
                                 }
 
-                                XpLabel { text: "MIDI OUT"; role: "overline"; secondary: true }
+                                XpLabel { text: "To XP-60"; role: "overline"; secondary: true }
                                 XpComboBox {
                                     id: outputPicker
                                     objectName: "outputPicker"
@@ -108,13 +108,13 @@ Item {
                                     model: root.devices.outputs
                                     textRole: "selectionLabel"
                                     enabled: root.devices.connectionState !== ConnectionState.Connected && root.devices.connectionState !== ConnectionState.Connecting && count > 0
-                                    displayText: count === 0 ? "No MIDI outputs found" : currentIndex < 0 ? "Choose MIDI output" : currentText
+                                    displayText: count === 0 ? "No MIDI devices detected" : currentIndex < 0 ? "Choose port" : currentText
                                     currentIndex: root.devices.selectedOutputIndex
                                     onActivated: function(index) { root.devices.selectedOutputIndex = index }
                                     Accessible.name: "MIDI output"
                                 }
 
-                                XpLabel { text: "Device ID"; role: "overline"; secondary: true }
+                                XpLabel { text: "XP-60 device number"; role: "overline"; secondary: true }
                                 RowLayout {
                                     spacing: Metrics.spacingMd
                                     Layout.fillWidth: true
@@ -125,12 +125,12 @@ Item {
                                         to: root.devices.deviceIdMaximum
                                         value: root.devices.deviceId
                                         onValueModified: root.devices.deviceId = value
-                                        Accessible.name: "Roland device ID"
+                                        Accessible.name: "XP-60 device number"
                                     }
                                     XpLabel {
-                                        text: "Model ID " + root.devices.modelIdText
-                                        role: "mono"
-                                        secondary: true
+                                        text: "Usually 17 — only change if you set a custom ID on the XP-60"
+                                        role: "caption"
+                                        muted: true
                                     }
                                     Item { Layout.fillWidth: true }
                                 }
@@ -143,24 +143,18 @@ Item {
                                 wrapMode: Text.WordWrap
                                 Layout.fillWidth: true
                             }
-                            XpLabel {
-                                text: "Computer MIDI IN receives from XP-60 OUT. Computer MIDI OUT sends to XP-60 IN."
-                                role: "caption"
-                                muted: true
-                                wrapMode: Text.WordWrap
-                                Layout.fillWidth: true
-                            }
+                            // From/To labels are self-explanatory; no wiring paragraph needed.
                             RowLayout {
                                 Layout.fillWidth: true
-                                XpLabel { text: "Transfer pacing"; role: "caption"; secondary: true }
+                                XpLabel { text: "Connection speed"; role: "caption"; secondary: true }
                                 XpComboBox {
                                     objectName: "pacingPicker"
                                     Layout.fillWidth: true
-                                    model: ["Standard", "Conservative / wireless"]
+                                    model: ["Normal", "Slow (wireless)"]
                                     currentIndex: root.devices.pacingProfile
                                     enabled: !root.devices.hasOutstandingRequests && !root.devices.transferBusy
                                     onActivated: function(index) { root.devices.pacingProfile = index }
-                                    Accessible.name: "Transfer pacing"
+                                    Accessible.name: "Connection speed"
                                 }
                             }
                             XpLabel {
@@ -192,7 +186,7 @@ Item {
                                 Layout.fillWidth: true
                                 XpButton {
                                     objectName: "testConnectionButton"
-                                    text: "Test connection"
+                                    text: "Test XP-60 connection"
                                     enabled: root.devices.canTestConnection
                                     onClicked: root.devices.testConnection()
                                 }
@@ -207,246 +201,296 @@ Item {
                                 color: root.devices.connectionVerified ? Theme.live : Theme.textSecondary
                             }
                             XpLabel {
-                                text: "Wireless MIDI: pair the adapter with the operating system, then refresh and choose its ports. Windows Bluetooth MIDI requires the Windows Runtime backend or a USB MIDI bridge."
+                                text: "Using wireless MIDI? Pair your adapter in your system settings first, then click 'Scan for MIDI devices'."
                                 role: "caption"
                                 muted: true
                                 wrapMode: Text.WordWrap
                                 Layout.fillWidth: true
                             }
-                            XpLabel {
-                                text: root.devices.backendName
-                                role: "caption"
-                                muted: true
-                                wrapMode: Text.WrapAnywhere
-                                Layout.fillWidth: true
-                            }
+                            // Backend name (e.g. libremidi version) hidden from default view;
+                            // available in Advanced diagnostics section.
                         }
                     }
 
-                    // Expert RQ1 read test ------------------------------------------
+                    // Advanced diagnostics (collapsed by default) -----------------
                     XpCard {
                         Layout.fillWidth: true
-                        implicitHeight: requestColumn.implicitHeight + 2 * Metrics.cardPadding
+                        implicitHeight: advancedWrapper.implicitHeight + 2 * Metrics.cardPadding
 
                         ColumnLayout {
-                            id: requestColumn
-                            anchors { left: parent.left; right: parent.right; top: parent.top }
-                            spacing: Metrics.spacingMd
-
-                            XpPanelHeader {
-                                title: "Safe read test · RQ1"
-                                glyph: "⇣"
-                                StatusPill { text: "Read only"; tone: "info"; showDot: false }
-                            }
-
-                            XpLabel {
-                                text: "Ask the XP-60 for a small block of memory and check that a Data Set 1 reply comes back with a valid checksum."
-                                role: "caption"
-                                secondary: true
-                                wrapMode: Text.WordWrap
-                                Layout.fillWidth: true
-                            }
-
-                            GridLayout {
-                                columns: 2
-                                columnSpacing: Metrics.spacingMd
-                                rowSpacing: Metrics.spacingSm
-                                Layout.fillWidth: true
-
-                                XpLabel { text: "Preset"; role: "overline"; secondary: true }
-                                XpComboBox {
-                                    objectName: "presetPicker"
-                                    Layout.fillWidth: true
-                                    model: root.devices.readPresetNames
-                                    currentIndex: root.devices.selectedReadPresetIndex
-                                    onActivated: function(index) { root.devices.applyReadPreset(index) }
-                                    Accessible.name: "Read preset"
-                                }
-
-                                XpLabel { text: "Address"; role: "overline"; secondary: true }
-                                XpTextField {
-                                    objectName: "addressField"
-                                    Layout.fillWidth: true
-                                    mono: true
-                                    text: root.devices.requestAddress
-                                    invalid: !root.devices.requestAddressValid
-                                    placeholderText: "03 00 00 00"
-                                    onTextEdited: root.devices.requestAddress = text
-                                    Accessible.name: "Roland address, four hex bytes"
-                                }
-
-                                XpLabel { text: "Size"; role: "overline"; secondary: true }
-                                RowLayout {
-                                    Layout.fillWidth: true
-                                    spacing: Metrics.spacingMd
-                                    XpTextField {
-                                        objectName: "sizeField"
-                                        Layout.fillWidth: true
-                                        mono: true
-                                        text: root.devices.requestSize
-                                        invalid: !root.devices.requestSizeValid
-                                        placeholderText: "00 00 00 0C"
-                                        onTextEdited: root.devices.requestSize = text
-                                        Accessible.name: "Request size, four hex bytes"
-                                    }
-                                    XpLabel {
-                                        text: root.devices.requestByteCount + " bytes"
-                                        role: "mono"
-                                        secondary: true
-                                    }
-                                }
-                            }
-
-                            XpLabel {
-                                text: root.devices.readPresetDescription
-                                role: "caption"
-                                secondary: true
-                                wrapMode: Text.WordWrap
-                                Layout.fillWidth: true
-                            }
-
-                            RowLayout {
-                                spacing: Metrics.spacingSm
-                                Layout.fillWidth: true
-                                StatusPill { text: root.devices.readPresetStatusText; tone: "warning"; showDot: false }
-                            }
-
-                            XpLabel {
-                                objectName: "requestValidation"
-                                text: root.devices.requestValidationMessage
-                                role: "caption"
-                                color: (root.devices.requestAddressValid && root.devices.requestSizeValid) ? Theme.textSecondary : Theme.error
-                                wrapMode: Text.WordWrap
-                                Layout.fillWidth: true
-                            }
-
-                            RowLayout {
-                                spacing: Metrics.spacingSm
-                                XpButton {
-                                    objectName: "sendRequestButton"
-                                    text: "Send request"
-                                    variant: "primary"
-                                    glyph: "⇣"
-                                    enabled: root.devices.canSendRequest
-                                    onClicked: root.devices.sendRequest()
-                                }
-                                XpButton {
-                                    objectName: "cancelRequestsButton"
-                                    text: "Cancel outstanding"
-                                    enabled: root.devices.hasOutstandingRequests
-                                    onClicked: root.devices.cancelAllRequests()
-                                }
-                            }
-
-                        }
-                    }
-
-                    // Operations ---------------------------------------------------
-                    XpCard {
-                        Layout.fillWidth: true
-                        implicitHeight: operationsColumn.implicitHeight + 2 * Metrics.cardPadding
-
-                        ColumnLayout {
-                            id: operationsColumn
+                            id: advancedWrapper
                             anchors { left: parent.left; right: parent.right; top: parent.top }
                             spacing: Metrics.spacingSm
 
-                            XpPanelHeader {
-                                title: "Requests"
-                                glyph: "≡"
-                                XpLabel { text: root.devices.operations.count + " total"; role: "caption"; muted: true }
-                            }
-
-                            XpEmptyState {
-                                visible: root.devices.operations.count === 0
+                            RowLayout {
                                 Layout.fillWidth: true
-                                implicitHeight: 96
-                                glyph: "◌"
-                                title: "No requests yet"
-                                message: "Requests you send appear here with their state, received bytes and any validation notes."
-                            }
-
-                            ListView {
-                                id: operationsList
-                                visible: count > 0
-                                Layout.fillWidth: true
-                                implicitHeight: Math.min(contentHeight, 320)
-                                clip: true
-                                model: root.devices.operations
                                 spacing: Metrics.spacingSm
-                                QQC.ScrollBar.vertical: XpScrollBar {}
-                                delegate: Rectangle {
-                                    id: opRow
-                                    required property var model
-                                    width: ListView.view.width
-                                    implicitHeight: opColumn.implicitHeight + 2 * Metrics.spacingMd
-                                    radius: Metrics.radiusSm
-                                    color: Theme.surfaceRaised
-                                    border.width: 1
-                                    border.color: Theme.borderSubtle
+                                XpLabel { text: advancedToggle.checked ? "▾" : "▸"; role: "body"; color: Theme.textMuted }
+                                XpLabel { text: "Advanced diagnostics"; role: "overline"; secondary: true; Layout.fillWidth: true }
+                                XpLabel {
+                                    text: "MIDI backend: " + root.devices.backendName + "  ·  Model ID " + root.devices.modelIdText
+                                    role: "caption"
+                                    muted: true
+                                    visible: advancedToggle.checked
+                                }
+                                QQC.Switch {
+                                    id: advancedToggle
+                                    objectName: "advancedToggle"
+                                    checked: false
+                                }
+                            }
+
+                            // All expert content lives inside this column, shown only when toggled.
+                            ColumnLayout {
+                                visible: advancedToggle.checked
+                                Layout.fillWidth: true
+                                spacing: Metrics.spacingLg
+
+                                // Expert RQ1 read test ------------------------------------------
+                                XpCard {
+                                    Layout.fillWidth: true
+                                    implicitHeight: requestColumn.implicitHeight + 2 * Metrics.cardPadding
+
                                     ColumnLayout {
-                                        id: opColumn
-                                        anchors { left: parent.left; right: parent.right; top: parent.top; margins: Metrics.spacingMd }
-                                        spacing: Metrics.spacingXs
+                                        id: requestColumn
+                                        anchors { left: parent.left; right: parent.right; top: parent.top }
+                                        spacing: Metrics.spacingMd
+
+                                        XpPanelHeader {
+                                            title: "Safe read test · RQ1"
+                                            glyph: "⇣"
+                                            StatusPill { text: "Read only"; tone: "info"; showDot: false }
+                                        }
+
+                                        XpLabel {
+                                            text: "Ask the XP-60 for a small block of memory and check that a Data Set 1 reply comes back with a valid checksum."
+                                            role: "caption"
+                                            secondary: true
+                                            wrapMode: Text.WordWrap
+                                            Layout.fillWidth: true
+                                        }
+
+                                        GridLayout {
+                                            columns: 2
+                                            columnSpacing: Metrics.spacingMd
+                                            rowSpacing: Metrics.spacingSm
+                                            Layout.fillWidth: true
+
+                                            XpLabel { text: "Preset"; role: "overline"; secondary: true }
+                                            ColumnLayout {
+                                                Layout.fillWidth: true
+                                                spacing: Metrics.spacingXs
+                                                XpComboBox {
+                                                    id: presetPicker
+                                                    objectName: "presetPicker"
+                                                    Layout.fillWidth: true
+                                                    model: root.devices.readPresetNames
+                                                    currentIndex: root.devices.selectedReadPresetIndex
+                                                    onActivated: function(index) { root.devices.applyReadPreset(index) }
+                                                    Accessible.name: "Read preset"
+                                                }
+                                                Flow {
+                                                    Layout.fillWidth: true
+                                                    spacing: Metrics.spacingXs
+                                                    Repeater {
+                                                        model: root.devices.readPresetNames
+                                                        delegate: XpButton {
+                                                            text: modelData.split(" (")[0]
+                                                            compact: true
+                                                            variant: root.devices.selectedReadPresetIndex === index ? "primary" : "ghost"
+                                                            onClicked: root.devices.applyReadPreset(index)
+                                                        }
+                                                    }
+                                                }
+                                            }
+
+                                            XpLabel { text: "Address"; role: "overline"; secondary: true }
+                                            XpTextField {
+                                                objectName: "addressField"
+                                                Layout.fillWidth: true
+                                                mono: true
+                                                text: root.devices.requestAddress
+                                                invalid: !root.devices.requestAddressValid
+                                                placeholderText: "03 00 00 00"
+                                                onTextEdited: root.devices.requestAddress = text
+                                                Accessible.name: "Roland address, four hex bytes"
+                                            }
+
+                                            XpLabel { text: "Size"; role: "overline"; secondary: true }
+                                            RowLayout {
+                                                Layout.fillWidth: true
+                                                spacing: Metrics.spacingMd
+                                                XpTextField {
+                                                    objectName: "sizeField"
+                                                    Layout.fillWidth: true
+                                                    mono: true
+                                                    text: root.devices.requestSize
+                                                    invalid: !root.devices.requestSizeValid
+                                                    placeholderText: "00 00 00 0C"
+                                                    onTextEdited: root.devices.requestSize = text
+                                                    Accessible.name: "Request size, four hex bytes"
+                                                }
+                                                XpLabel {
+                                                    text: root.devices.requestByteCount + " bytes"
+                                                    role: "mono"
+                                                    secondary: true
+                                                }
+                                            }
+                                        }
+
+                                        XpLabel {
+                                            text: root.devices.readPresetDescription
+                                            role: "caption"
+                                            secondary: true
+                                            wrapMode: Text.WordWrap
+                                            Layout.fillWidth: true
+                                        }
+
                                         RowLayout {
                                             spacing: Metrics.spacingSm
                                             Layout.fillWidth: true
-                                            XpLabel { text: "#" + opRow.model.requestId; role: "mono"; secondary: true }
-                                            XpLabel { text: "RQ1 " + opRow.model.addressHex + "  size " + opRow.model.sizeHex; role: "mono"; Layout.fillWidth: true }
-                                            StatusPill {
-                                                text: opRow.model.stateLabel
-                                                tone: opRow.model.isSuccess ? "success" : (opRow.model.isTerminal ? "error" : "warning")
-                                                pulsing: !opRow.model.isTerminal
-                                            }
+                                            StatusPill { text: root.devices.readPresetStatusText; tone: "warning"; showDot: false }
                                         }
-                                        Rectangle {
-                                            Layout.fillWidth: true
-                                            implicitHeight: 4
-                                            radius: 2
-                                            color: Theme.surfaceSunken
-                                            Rectangle {
-                                                width: parent.width * opRow.model.progress
-                                                height: parent.height
-                                                radius: 2
-                                                color: opRow.model.isSuccess ? Theme.success : (opRow.model.isTerminal ? Theme.error : Theme.accent)
-                                                Behavior on width { NumberAnimation { duration: Motion.durationNormal } }
-                                            }
-                                        }
+
                                         XpLabel {
-                                            text: opRow.model.receivedBytes + " / " + opRow.model.expectedBytes + " bytes · " + opRow.model.chunkCount + " chunk(s)"
+                                            objectName: "requestValidation"
+                                            text: root.devices.requestValidationMessage
                                             role: "caption"
-                                            secondary: true
-                                        }
-                                        XpLabel {
-                                            visible: opRow.model.dataHex.length > 0
-                                            text: opRow.model.dataHex
-                                            role: "mono"
-                                            wrapMode: Text.WrapAnywhere
-                                            maximumLineCount: 3
-                                            Layout.fillWidth: true
-                                        }
-                                        XpLabel {
-                                            visible: opRow.model.isSuccess && opRow.model.dataText.length > 0
-                                            text: "Text: " + opRow.model.dataText
-                                            role: "mono"
-                                            secondary: true
-                                            Layout.fillWidth: true
-                                        }
-                                        XpLabel {
-                                            visible: opRow.model.failureReason.length > 0
-                                            text: opRow.model.failureReason
-                                            role: "caption"
-                                            color: Theme.error
+                                            color: (root.devices.requestAddressValid && root.devices.requestSizeValid) ? Theme.textSecondary : Theme.error
                                             wrapMode: Text.WordWrap
                                             Layout.fillWidth: true
                                         }
-                                        XpLabel {
-                                            visible: opRow.model.notes.length > 0
-                                            text: opRow.model.notes
-                                            role: "caption"
-                                            color: Theme.warning
-                                            wrapMode: Text.WordWrap
+
+                                        RowLayout {
+                                            spacing: Metrics.spacingSm
+                                            XpButton {
+                                                objectName: "sendRequestButton"
+                                                text: "Send request"
+                                                variant: "primary"
+                                                glyph: "⇣"
+                                                enabled: root.devices.canSendRequest
+                                                onClicked: root.devices.sendRequest()
+                                            }
+                                            XpButton {
+                                                objectName: "cancelRequestsButton"
+                                                text: "Cancel outstanding"
+                                                enabled: root.devices.hasOutstandingRequests
+                                                onClicked: root.devices.cancelAllRequests()
+                                            }
+                                        }
+
+                                    }
+                                }
+
+                                // Operations ---------------------------------------------------
+                                XpCard {
+                                    Layout.fillWidth: true
+                                    implicitHeight: operationsColumn.implicitHeight + 2 * Metrics.cardPadding
+
+                                    ColumnLayout {
+                                        id: operationsColumn
+                                        anchors { left: parent.left; right: parent.right; top: parent.top }
+                                        spacing: Metrics.spacingSm
+
+                                        XpPanelHeader {
+                                            title: "Requests"
+                                            glyph: "≡"
+                                            XpLabel { text: root.devices.operations.count + " total"; role: "caption"; muted: true }
+                                        }
+
+                                        XpEmptyState {
+                                            visible: root.devices.operations.count === 0
                                             Layout.fillWidth: true
+                                            implicitHeight: 96
+                                            glyph: "◌"
+                                            title: "No requests yet"
+                                            message: "Requests you send appear here with their state, received bytes and any validation notes."
+                                        }
+
+                                        ListView {
+                                            id: operationsList
+                                            visible: count > 0
+                                            Layout.fillWidth: true
+                                            implicitHeight: Math.min(contentHeight, 320)
+                                            clip: true
+                                            model: root.devices.operations
+                                            spacing: Metrics.spacingSm
+                                            QQC.ScrollBar.vertical: XpScrollBar {}
+                                            delegate: Rectangle {
+                                                id: opRow
+                                                required property var model
+                                                width: ListView.view.width
+                                                implicitHeight: opColumn.implicitHeight + 2 * Metrics.spacingMd
+                                                radius: Metrics.radiusSm
+                                                color: Theme.surfaceRaised
+                                                border.width: 1
+                                                border.color: Theme.borderSubtle
+                                                ColumnLayout {
+                                                    id: opColumn
+                                                    anchors { left: parent.left; right: parent.right; top: parent.top; margins: Metrics.spacingMd }
+                                                    spacing: Metrics.spacingXs
+                                                    RowLayout {
+                                                        spacing: Metrics.spacingSm
+                                                        Layout.fillWidth: true
+                                                        XpLabel { text: "#" + opRow.model.requestId; role: "mono"; secondary: true }
+                                                        XpLabel { text: "RQ1 " + opRow.model.addressHex + "  size " + opRow.model.sizeHex; role: "mono"; Layout.fillWidth: true }
+                                                        StatusPill {
+                                                            text: opRow.model.stateLabel
+                                                            tone: opRow.model.isSuccess ? "success" : (opRow.model.isTerminal ? "error" : "warning")
+                                                            pulsing: !opRow.model.isTerminal
+                                                        }
+                                                    }
+                                                    Rectangle {
+                                                        Layout.fillWidth: true
+                                                        implicitHeight: 4
+                                                        radius: 2
+                                                        color: Theme.surfaceSunken
+                                                        Rectangle {
+                                                            width: parent.width * opRow.model.progress
+                                                            height: parent.height
+                                                            radius: 2
+                                                            color: opRow.model.isSuccess ? Theme.success : (opRow.model.isTerminal ? Theme.error : Theme.accent)
+                                                            Behavior on width { NumberAnimation { duration: Motion.durationNormal } }
+                                                        }
+                                                    }
+                                                    XpLabel {
+                                                        text: opRow.model.receivedBytes + " / " + opRow.model.expectedBytes + " bytes · " + opRow.model.chunkCount + " chunk(s)"
+                                                        role: "caption"
+                                                        secondary: true
+                                                    }
+                                                    XpLabel {
+                                                        visible: opRow.model.dataHex.length > 0
+                                                        text: opRow.model.dataHex
+                                                        role: "mono"
+                                                        wrapMode: Text.WrapAnywhere
+                                                        maximumLineCount: 3
+                                                        Layout.fillWidth: true
+                                                    }
+                                                    XpLabel {
+                                                        visible: opRow.model.isSuccess && opRow.model.dataText.length > 0
+                                                        text: "Text: " + opRow.model.dataText
+                                                        role: "mono"
+                                                        secondary: true
+                                                        Layout.fillWidth: true
+                                                    }
+                                                    XpLabel {
+                                                        visible: opRow.model.failureReason.length > 0
+                                                        text: opRow.model.failureReason
+                                                        role: "caption"
+                                                        color: Theme.error
+                                                        wrapMode: Text.WordWrap
+                                                        Layout.fillWidth: true
+                                                    }
+                                                    XpLabel {
+                                                        visible: opRow.model.notes.length > 0
+                                                        text: opRow.model.notes
+                                                        role: "caption"
+                                                        color: Theme.warning
+                                                        wrapMode: Text.WordWrap
+                                                        Layout.fillWidth: true
+                                                    }
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -472,11 +516,11 @@ Item {
                         columns: Math.max(2, Math.floor((width + Metrics.spacingMd) / (Metrics.metricTileMinWidth + Metrics.spacingMd)))
                         columnSpacing: Metrics.spacingMd
                         rowSpacing: Metrics.spacingMd
-                        XpMetricTile { Layout.fillWidth: true; label: "SysEx"; value: root.devices.sysExHealthText; tone: root.devices.sysExHealthTone }
-                        XpMetricTile { Layout.fillWidth: true; label: "In"; value: root.devices.messagesIn; hint: root.devices.sysExIn + " SysEx" }
-                        XpMetricTile { Layout.fillWidth: true; label: "Out"; value: root.devices.messagesOut; hint: root.devices.sysExOut + " SysEx" }
-                        XpMetricTile { Layout.fillWidth: true; label: "Checksum"; value: root.devices.checksumFailures; hint: "errors"; tone: root.devices.checksumFailures > 0 ? "error" : "neutral" }
-                        XpMetricTile { Layout.fillWidth: true; label: "Timeouts"; value: root.devices.timeouts; tone: root.devices.timeouts > 0 ? "warning" : "neutral" }
+                        XpMetricTile { Layout.fillWidth: true; label: "Connection"; value: root.devices.sysExHealthText; tone: root.devices.sysExHealthTone }
+                        XpMetricTile { Layout.fillWidth: true; label: "Received"; value: root.devices.messagesIn; hint: root.devices.sysExIn + " messages" }
+                        XpMetricTile { Layout.fillWidth: true; label: "Sent"; value: root.devices.messagesOut; hint: root.devices.sysExOut + " messages" }
+                        XpMetricTile { Layout.fillWidth: true; label: "Data integrity"; value: root.devices.checksumFailures; hint: "errors"; tone: root.devices.checksumFailures > 0 ? "error" : "neutral" }
+                        XpMetricTile { Layout.fillWidth: true; label: "Missed replies"; value: root.devices.timeouts; tone: root.devices.timeouts > 0 ? "warning" : "neutral" }
                     }
 
                     // Current Patch inspection (Phase 2) ---------------------------------
@@ -490,7 +534,7 @@ Item {
                             spacing: Metrics.spacingSm
 
                             XpPanelHeader {
-                                title: "Current Patch · inspection"
+                                title: "Current Sound"
                                 glyph: "♫"
                                 StatusPill {
                                     objectName: "patchFetchPill"
@@ -505,7 +549,7 @@ Item {
                                 Layout.fillWidth: true
                                 XpButton {
                                     objectName: "fetchPatchButton"
-                                    text: "Fetch temporary Patch"
+                                    text: "Read current sound"
                                     variant: "primary"
                                     glyph: "⇣"
                                     enabled: root.devices.canFetchPatch
@@ -518,7 +562,9 @@ Item {
                                 }
                                 XpLabel {
                                     visible: root.devices.patchFetchInProgress
-                                    text: root.devices.patchFetchCompletedBlocks + " / " + root.devices.patchFetchTotalBlocks + " blocks"
+                                    text: root.devices.patchFetchTotalBlocks > 0
+                                        ? Math.round(100 * root.devices.patchFetchCompletedBlocks / root.devices.patchFetchTotalBlocks) + "%"
+                                        : "…"
                                     role: "mono"
                                     secondary: true
                                 }
@@ -548,7 +594,7 @@ Item {
                                     id: identityColumn
                                     anchors { left: parent.left; right: parent.right; top: parent.top; margins: Metrics.spacingMd }
                                     spacing: 2
-                                    XpLabel { text: "TEMPORARY PATCH"; role: "overline"; secondary: true }
+                                    XpLabel { text: "CURRENT SOUND"; role: "overline"; secondary: true }
                                     XpLabel { objectName: "currentPatchName"; text: root.devices.currentPatchName; role: "title"; Layout.fillWidth: true }
                                     XpLabel { text: root.devices.currentPatchSummary; role: "caption"; secondary: true; wrapMode: Text.WordWrap; Layout.fillWidth: true }
                                     XpLabel {
@@ -616,7 +662,7 @@ Item {
                             spacing: Metrics.spacingSm
 
                             XpPanelHeader {
-                                title: "Write and verify · DT1"
+                                title: "Send to XP-60"
                                 glyph: "⇅"
                                 StatusPill {
                                     objectName: "transferPill"
@@ -642,7 +688,7 @@ Item {
                                     spacing: Metrics.spacingSm
 
                                     XpLabel {
-                                        text: root.devices.writePlanText
+                                        text: "Sends the sound to your XP-60's edit buffer (temporary — not permanently saved). After sending, XP60Studio reads it back to confirm everything arrived correctly. Your keyboard's permanent sounds are not affected."
                                         role: "caption"
                                         secondary: true
                                         wrapMode: Text.WordWrap
@@ -661,7 +707,7 @@ Item {
                                         spacing: Metrics.spacingSm
                                         XpButton {
                                             objectName: "armWriteButton"
-                                            text: root.devices.writeArmed ? "Armed — disarm" : "Arm write"
+                                            text: root.devices.writeArmed ? "Sending enabled — cancel" : "Enable sending"
                                             variant: root.devices.writeArmed ? "danger" : "secondary"
                                             glyph: root.devices.writeArmed ? "⏻" : "⚿"
                                             enabled: root.devices.writeArmed || root.devices.canArmWrite
@@ -670,7 +716,7 @@ Item {
                                         }
                                         XpLabel {
                                             visible: root.devices.writeArmed
-                                            text: "Armed for one write"
+                                            text: "Ready to send"
                                             role: "caption"
                                             color: Theme.warning
                                         }
@@ -683,7 +729,7 @@ Item {
                                 Layout.fillWidth: true
                                 XpButton {
                                     objectName: "writeVerifyButton"
-                                    text: "Write back & verify"
+                                    text: "Send to XP-60"
                                     variant: "primary"
                                     glyph: "⇅"
                                     enabled: root.devices.canWrite
@@ -738,7 +784,7 @@ Item {
                                     id: mismatchColumn
                                     anchors { left: parent.left; right: parent.right; top: parent.top; margins: Metrics.spacingMd }
                                     spacing: 2
-                                    XpLabel { text: "READ-BACK DIFFERENCES"; role: "overline"; color: Theme.error }
+                                    XpLabel { text: "VERIFICATION MISMATCH"; role: "overline"; color: Theme.error }
                                     XpLabel {
                                         text: root.devices.mismatchReport
                                         role: "mono"
@@ -762,7 +808,7 @@ Item {
                             spacing: Metrics.spacingSm
 
                             XpPanelHeader {
-                                title: "Protocol activity"
+                                title: "Communication Log"
                                 glyph: "∿"
                                 XpLabel { text: root.devices.log.count + " entries"; role: "caption"; muted: true; anchors.verticalCenter: parent.verticalCenter }
                                 XpButton { text: "Clear"; compact: true; variant: "ghost"; onClicked: root.devices.clearLog() }
@@ -821,7 +867,7 @@ Item {
                                             }
                                             StatusPill {
                                                 visible: logRow.model.checksum !== "-"
-                                                text: "checksum " + logRow.model.checksum
+                                                text: logRow.model.checksum === "OK" ? "✓ valid" : "✗ error"
                                                 tone: logRow.model.checksum === "OK" ? "success" : "error"
                                                 showDot: false
                                             }

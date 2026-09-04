@@ -12,6 +12,9 @@ add_library(xp60studio_presentation STATIC
   EditorParameterModel.cpp
   ToneViewModel.h
   ToneViewModel.cpp
+  WaveBrowserModel.h
+  WaveBrowserModel.cpp
+  Xp60WaveCatalog.generated.h
   PatchEditorViewModel.h
   PatchEditorViewModel.cpp
   DevicesViewModel.h

@@ -112,6 +112,15 @@ int main(int argc, char* argv[])
     }
 
     window->resize(width, height);
+    // Local routing variants for visual checks; never sent to the fake device.
+    if (qEnvironmentVariableIsSet("XP60STUDIO_SHOT_OUTPUT")) {
+        using xp60studio::xpmodel::CommonParameter;
+        using xp60studio::xpmodel::ToneParameter;
+        using xp60studio::xpmodel::ToneIndex;
+        editor.setCommonRaw(CommonParameter::StructureType12, 0);
+        editor.setToneRaw(ToneIndex::tone1(), ToneParameter::OutputAssign,
+                          qEnvironmentVariableIntValue("XP60STUDIO_SHOT_OUTPUT"));
+    }
     if (qEnvironmentVariableIsSet("XP60STUDIO_SHOT_LIVE")) {
         editor.armWrite();
         editor.startLiveAudition();
@@ -127,7 +136,14 @@ int main(int argc, char* argv[])
         }
     }
     if (qEnvironmentVariableIsSet("XP60STUDIO_SHOT_SECTION")) {
+        // Section selection is independent of catalog browsing.
         editor.setSection(qEnvironmentVariableIntValue("XP60STUDIO_SHOT_SECTION"));
+    }
+    if (qEnvironmentVariableIsSet("XP60STUDIO_SHOT_WAVES")) {
+        auto* button = window->findChild<QObject*>(QStringLiteral("browseWavesButton"));
+        if (button) QMetaObject::invokeMethod(button, "clicked");
+        editor.waves()->setQuery(qEnvironmentVariable("XP60STUDIO_SHOT_WAVES"));
+        editor.waves()->selectRow(0);
     }
     if (qEnvironmentVariableIsSet("XP60STUDIO_SHOT_DISCLOSURE")) {
         editor.setDisclosure(qEnvironmentVariableIntValue("XP60STUDIO_SHOT_DISCLOSURE"));

@@ -36,6 +36,10 @@ TestCase {
         verify(screen.twoColumns)
         var connectButton = findChild(screen, "connectButton")
         var disconnectButton = findChild(screen, "disconnectButton")
+        // Open advanced diagnostics to access expert controls
+        var advToggle = findChild(screen, "advancedToggle")
+        advToggle.checked = true
+        wait(30)
         var sendButton = findChild(screen, "sendRequestButton")
         verify(connectButton)
         verify(disconnectButton)
@@ -56,12 +60,16 @@ TestCase {
         verify(screen)
         var connectButton = findChild(screen, "connectButton")
         var disconnectButton = findChild(screen, "disconnectButton")
+        // Open advanced diagnostics to access expert controls
+        var advToggle = findChild(screen, "advancedToggle")
+        advToggle.checked = true
+        wait(30)
         var sendButton = findChild(screen, "sendRequestButton")
         var pill = findChild(screen, "connectionPill")
         compare(pill.text, "Disconnected")
         mouseClick(connectButton)
         tryCompare(testDevices, "connectionState", ConnectionState.Connected)
-        compare(pill.text, "MIDI ports open")
+        compare(pill.text, "Connected")
         compare(pill.tone, "warning")
         compare(connectButton.enabled, false)
         compare(disconnectButton.enabled, true)
@@ -92,6 +100,10 @@ TestCase {
         verify(screen)
         testDevices.connectDevice()
         tryCompare(testDevices, "connectionState", ConnectionState.Connected)
+        // Open advanced diagnostics to access expert controls
+        var advToggle = findChild(screen, "advancedToggle")
+        advToggle.checked = true
+        wait(30)
         var sendButton = findChild(screen, "sendRequestButton")
         var addressField = findChild(screen, "addressField")
         var validation = findChild(screen, "requestValidation")
@@ -139,13 +151,13 @@ TestCase {
         verify(fetchButton)
         verify(pill)
         compare(fetchButton.enabled, false)
-        compare(pill.text, "Not fetched")
+        compare(pill.text, "Not read yet")
         testDevices.connectDevice()
         tryCompare(testDevices, "connectionState", ConnectionState.Connected)
         compare(fetchButton.enabled, true)
         mouseClick(fetchButton)
         compare(testDevices.patchFetchInProgress, true)
-        compare(pill.text, "Reading")
+        compare(pill.text, "Reading…")
         compare(fetchButton.enabled, false)
         compare(testDevices.patchFetchTotalBlocks, 5)
         testDevices.cancelPatchFetch()
@@ -178,7 +190,7 @@ TestCase {
         tryCompare(testDevices, "connectionState", ConnectionState.Connected)
         compare(armButton.enabled, false)
         compare(writeButton.enabled, false)
-        verify(reason.text.indexOf("Fetch the temporary Patch") >= 0)
+        verify(reason.text.indexOf("Read the current sound first") >= 0)
 
         // Clicking arm does nothing while it is refused.
         mouseClick(armButton)

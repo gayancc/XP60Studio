@@ -64,9 +64,8 @@ numeric raw ranges, fingerprinting or codec behavior.
 Printed pp.60-61 establish that Structures 2-10 combine a pair into Tone 2/4
 and ignore Tone 1/3 output settings. The selected-Tone routing summary follows
 that rule, distinguishes MIX/EFX/DIRECT, and identifies ignored effects sends.
-Undocumented `<OUTPUT-2>` values are explicitly unknown. The existing processor
-overview is not a complete graph of these branches; that visual refinement
-remains open.
+Undocumented `<OUTPUT-2>` values are explicitly unknown. The processor overview has since been replaced by the branching configuration
+graph described in `PHASE_4_EFFECT_ROUTING.md`.
 
 The manual's fixed Chorus processor exposes Level, Rate, Depth, Pre-Delay,
 Feedback and Output (p.64); it does not provide the decorative "Chorus 1" type

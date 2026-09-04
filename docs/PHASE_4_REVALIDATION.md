@@ -1,7 +1,7 @@
 # Phase 4 revalidation — 2026-09-04
 
 Status: **revalidation, safety repairs, local sections and explicit live audition
-implemented; M2 is not complete; M3 has not started.**
+implemented; M2 remains open; M3 searchable catalog implemented with assignment pending.**
 
 Review baseline: `07c4219`, on `origin/claude/phase-2-patch-model`.
 The local `main` branch was still at Phase 1 (`214bf30`). Work continues on
@@ -15,8 +15,9 @@ The local `main` branch was still at Phase 1 (`214bf30`). Work continues on
 4. Check each M2 requirement against working controls and model behavior;
    compare fresh screenshots with the approved mockup.
 5. Finish remaining M2 features, with meaningful regression coverage.
-6. Close M2 only after behavioral, visual and hardware prerequisites pass;
-   then proceed to M3 using source-verified waveform metadata.
+6. Close M2 only after behavioral, visual and hardware prerequisites pass.
+   Per the subsequent user direction, continue M3 local work now and retain
+   physical-device acceptance as the final gate.
 
 ## Evidence and phase status
 
@@ -43,10 +44,10 @@ The local `main` branch was still at Phase 1 (`214bf30`). Work continues on
 | Effects | Common EFX, Chorus, Reverb and selected-Tone routing are editable, with all 40 documented EFX type names. EFX-specific byte-slot mappings/names/units remain unverified; raw fields are explicitly labelled. |
 | Play/Design/Expert | Implemented over one working Patch and history. Expert has scope/group/search and virtualized enum/numeric controls; the four-Tone architecture remains visible. |
 | A/B original/current | Display/history guards repaired; live audition now sends the selected A/B Patch without replacing local history. Physical audio check deferred. |
-| Signal flow | Colored Tone-to-Structure overview connectors accompany the common effect nodes at four-column widths. A documentation-derived summary explains Structure pair outputs, DIRECT and effect sends. The fixed overview still needs an accurate branching diagram. |
+| Signal flow | Colored Tone-to-Structure overview connectors accompany the common effect nodes at four-column widths. A documentation-derived summary explains Structure pair outputs, DIRECT and effect sends. Replaced by a selected-Tone/Structure-pair branching diagram for MIX, EFX, DIRECT, parallel sends and Chorus output; see `PHASE_4_EFFECT_ROUTING.md`. |
 | Safe real-time updates | Implemented as coalesced changed-span updates with one transfer in flight and complete read-back verification. Actual latency/audio behavior awaits hardware testing. |
 | Explicit write and result | Present; Cancel write is now exposed and queued DT1 cancellation is repaired and tested. |
-| Visual acceptance | Fresh screenshots retain the four-Tone composition, add colored overview connections, and show usable numeric bounds at minimum width. Enlarged header/navigation and remaining glyph/routing-detail differences keep full M2 visual acceptance open. |
+| Visual acceptance | Fresh screenshots retain the four-Tone composition, add colored overview connections, and show usable numeric bounds at minimum width. The compact header, shared desktop toolbar and original line icons are now implemented. Screenshot review follows the routing exception documented in `PHASE_4_EFFECT_ROUTING.md`. |
 
 ## Repairs in this working branch
 
@@ -185,6 +186,35 @@ were performed during this review.
 
 ## Remaining execution order
 
+### Routing continuation
+
+The fixed series chain is replaced by the documented selected-Tone/Structure-pair
+graph. MIX/DIRECT destinations, independent Tone sends, EFX sends and all three
+Chorus output modes update with selection, edits, history and A/B. Effects and
+Expert expand exact send values; other sections keep a compact graph. See
+`PHASE_4_EFFECT_ROUTING.md` for source references, scope and the remaining EFX
+mapping evidence procedure.
+
+Windows validation: **23/23 CTest suites pass**. The new routing suite has
+8 passing Qt checks; editor has 46 and QML has 56, including setup/cleanup.
+Reviewed normal and minimum-width FakeXp60 captures:
+
+- `design/screenshots/phase4-routing-compact-windows.png`
+- `design/screenshots/phase4-routing-effects-windows.png`
+- `design/screenshots/phase4-routing-effects-windows-minimum.png`
+
+Final QML layout recheck passes (56 Qt checks). MIX and DIRECT variants were
+also rendered at 1024×680 from local fixture edits; DIRECT has no effect-send
+arrows and MIX bypasses EFX. `git diff --check` passes. `graphify update .`
+updated the code graph (2,409 nodes / 5,050 edges); its parser reports partial
+extraction in 40 files and no nodes for `hooks.json`. Compilation and tests,
+not the graph, are the validation evidence; semantic document updates are separate.
+
+No hardware writes were performed. M2 is still open for EFX mappings, physical
+acceptance and remaining shell/header/glyph visual fidelity; M3 has not started.
+
+### Next acceptance work
+
 The user explicitly deferred physical validation to a separate manual task and
 authorized continued implementation. This changes execution order, not evidence:
 the Phase 3 hardware loop and M2 hardware acceptance remain unperformed.
@@ -194,8 +224,42 @@ LFO, documented Effects fields, disclosure and exact range entry are now
 implemented and tested locally. Explicit paced/coalesced audition and live
 updates are now implemented, along with all 40 EFX type labels and a documented
 Structure-aware routing summary. See [live audition](PHASE_4_LIVE_AUDITION.md).
-Remaining work is EFX-specific byte-slot/unit mappings and routing/visual fidelity.
+Remaining M2 behavior work is EFX-specific byte-slot/unit mappings and physical acceptance.
+The header/glyph refinement is implemented and reviewed below.
+The fixed-chain routing defect is repaired and locally tested; the evidence needed
+for EFX mappings is specified in `PHASE_4_EFFECT_ROUTING.md`.
 Physical validation must establish the hardware path before hardware-dependent
-behavior can be accepted. Only close M2 after those gaps pass, then begin M3 with
-source-verified wave number/name/source metadata; unknown categories and expansion
-mappings must remain explicitly unknown.
+behavior can be accepted. Only close M2 after those gaps pass. The user subsequently
+authorized continuing local work before final physical validation. M3 catalog
+development may proceed with documented names and bank numbering; unknown categories
+and expansion mappings remain explicit. See `PHASE_4_WAVE_BROWSER.md`.
+
+## Header, icons and keyboard refinement
+
+The editor now uses the title type scale for Patch identity and places section
+navigation beside Play/Design/Expert at normal desktop width. Idle audition
+controls and guidance share a row; narrow windows and active audition wrap.
+The four Tone cards begin roughly 100 pixels higher at 1440×1040 than the
+previous routing capture. Unused DIRECT destinations no longer reserve a row;
+DIRECT and unknown routes still display their destination explicitly.
+
+`XpIcon` supplies original, scalable line icons for navigation, A/B, undo/redo,
+Tone power, envelope and keyboard headings. It uses Theme colors and Metrics
+sizes and avoids platform font/emoji substitutions. The existing button and
+panel-header controls consume it; no external icon dependency was added.
+Tone enable, Solo and Mute now support Space/Enter with visible focus and retain
+their existing model/history/live-audition behavior.
+
+Reviewed captures (fixture/FakeXp60, no physical verification):
+
+- `design/screenshots/phase4-editor-refined-windows.png` — 1440×1040.
+- `design/screenshots/phase4-editor-refined-windows-minimum.png` — 1024×680.
+- `design/screenshots/phase4-editor-refined-live-minimum.png` — simulated audition.
+
+The four-Tone composition, colored routing, envelope and key-range panels
+remain the anchors. Exact-value controls continue below the fold, accessible by
+vertical scrolling. Hardware-truth exceptions for routing, wave identifiers and
+raw units still apply. This is local visual/interaction evidence; M2 cannot close
+until EFX slot mappings and physical hardware acceptance are established.
+
+Validation: all 23 CTest suites pass; the final QML recheck reports 58 passing checks, including keyboard Tone switches and full envelope visibility at 1440x1040. Normal/minimum/live captures were reviewed. The code graph was refreshed (2,410 nodes / 5,051 edges), with the same partial-parser limitations noted above. No physical MIDI writes were performed.

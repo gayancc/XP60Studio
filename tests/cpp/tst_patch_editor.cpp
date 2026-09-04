@@ -109,6 +109,32 @@ class PatchEditorTest : public QObject
     Q_OBJECT
 
 private slots:
+    void routingFollowsSelectionHistoryAndABWithoutSending()
+    {
+        Fixture f;
+        f.loadPatch();
+        const auto original = f.editor->routing();
+        const auto sent = f.device->dataSetsReceived();
+        f.editor->setCommonRaw(CommonParameter::StructureType12, 0);
+        f.editor->setToneRaw(ToneIndex::tone1(), ToneParameter::OutputAssign, 2);
+        const auto direct = f.editor->routing();
+        const auto edges = direct.value("edges").toList();
+        QCOMPARE(edges.size(), 1);
+        QCOMPARE(edges.first().toMap().value("to").toString(), QStringLiteral("direct"));
+        f.editor->setComparing(true);
+        QCOMPARE(f.editor->routing(), original);
+        f.editor->setComparing(false);
+        QCOMPARE(f.editor->routing(), direct);
+        f.editor->undo();
+        f.editor->redo();
+        QCOMPARE(f.editor->routing(), direct);
+        QSignalSpy changed(f.editor.get(), &PatchEditorViewModel::patchChanged);
+        f.editor->setSelectedTone(3);
+        QVERIFY(!changed.isEmpty());
+        QVERIFY(f.editor->routing().value("outputTone").toInt() >= 3);
+        f.pump();
+        QCOMPARE(f.device->dataSetsReceived(), sent);
+    }
     void efxNamesAndStructureRoutingFollowTheRolandManual()
     {
         Fixture f;

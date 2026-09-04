@@ -80,7 +80,7 @@ Rectangle {
                     Layout.fillWidth: true
                 }
             }
-            // Tone enable: the asterisk marker in the mockup.
+            // Explicit enable marker, with mouse and keyboard parity.
             Rectangle {
                 objectName: "toneEnableButton"
                 implicitWidth: 26
@@ -88,14 +88,20 @@ Rectangle {
                 radius: Metrics.radiusSm
                 color: enableHover.hovered ? Theme.surfaceHover : "transparent"
                 border.width: 1
-                border.color: root.tone.enabled ? root.toneColor : Theme.border
+                border.color: activeFocus ? Theme.focusRing : root.tone.enabled ? root.toneColor : Theme.border
                 Accessible.role: Accessible.CheckBox
                 Accessible.name: qsTr("Tone %1 enabled").arg(root.tone.toneNumber)
                 Accessible.checked: root.tone.enabled
-                XpLabel {
+                activeFocusOnTab: true
+                Keys.onPressed: function(event) {
+                    if (event.key === Qt.Key_Space || event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                        root.tone.enabled = !root.tone.enabled
+                        event.accepted = true
+                    }
+                }
+                XpIcon {
                     anchors.centerIn: parent
-                    text: "*"
-                    role: "title"
+                    name: "power"
                     color: root.tone.enabled ? root.toneColor : Theme.textDisabled
                 }
                 HoverHandler { id: enableHover }
@@ -220,10 +226,18 @@ Rectangle {
                         color: active ? (modelData.solo ? Theme.warning : Theme.error)
                              : auditionHover.hovered ? Theme.surfaceHover : Theme.surfaceRaised
                         border.width: 1
-                        border.color: active ? "transparent" : Theme.borderStrong
+                        border.color: activeFocus ? Theme.focusRing : active ? "transparent" : Theme.borderStrong
                         Accessible.role: Accessible.Button
                         Accessible.name: (modelData.solo ? qsTr("Solo Tone %1") : qsTr("Mute Tone %1")).arg(root.tone.toneNumber)
                         Accessible.checked: active
+                        activeFocusOnTab: true
+                        Keys.onPressed: function(event) {
+                            if (event.key === Qt.Key_Space || event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                                if (modelData.solo) root.tone.solo = !root.tone.solo
+                                else root.tone.mute = !root.tone.mute
+                                event.accepted = true
+                            }
+                        }
                         XpLabel {
                             anchors.centerIn: parent
                             text: auditionButton.modelData.key

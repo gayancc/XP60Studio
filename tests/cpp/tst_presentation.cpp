@@ -202,7 +202,7 @@ private slots:
         f.devices->connectDevice();
         QTRY_COMPARE(f.devices->connectionState(), ConnectionState::Connected);
         QCOMPARE(f.devices->connectionState(), ConnectionState::Connected);
-        QCOMPARE(f.devices->connectionStateText(), QStringLiteral("MIDI ports open"));
+        QCOMPARE(f.devices->connectionStateText(), QStringLiteral("Connected"));
         QVERIFY(f.devices->connectionDetail().contains(QStringLiteral("XP-60 IN")));
         QVERIFY(!f.devices->canConnect());
         QVERIFY(f.devices->canDisconnect());
@@ -222,7 +222,7 @@ private slots:
         QVERIFY(!f.devices->hasEndpoints());
         QVERIFY(!f.devices->canConnect());
         QCOMPARE(f.devices->selectedInputIndex(), -1);
-        QVERIFY(f.devices->connectionDetail().contains(QStringLiteral("No MIDI endpoints")));
+        QVERIFY(f.devices->connectionDetail().contains(QStringLiteral("No MIDI devices found")));
 
         // Hot-plug: endpoints appear, selection defaults, connect becomes possible.
         f.transport->addInput("in-1", "XP-60 IN");
@@ -317,7 +317,7 @@ private slots:
                  QStringLiteral("AwaitingData"));
         QCOMPARE(f.transport->sentMessages().size(), std::size_t(1));
         QCOMPARE(f.devices->messagesOut(), 1);
-        QCOMPARE(f.devices->sysExHealthText(), QStringLiteral("Not tested"));
+        QCOMPARE(f.devices->sysExHealthText(), QStringLiteral("Not tested yet"));
 
         const roland::ByteVector name{'W', 'a', 'r', 'm', ' ', 'O', 'r', 'c', 'h', 'e', 's', 't'};
         f.deviceReplies(roland::RolandSysExMessage::dataSet(roland::RolandDeviceId::factoryDefault(), xp60::modelId(),
@@ -331,7 +331,7 @@ private slots:
         QCOMPARE(f.devices->operations()->data(index, RequestOperationModel::ProgressRole).toDouble(), 1.0);
         QCOMPARE(f.devices->requestsCompleted(), 1);
         QCOMPARE(f.devices->messagesIn(), 1);
-        QCOMPARE(f.devices->sysExHealthText(), QStringLiteral("Working"));
+        QCOMPARE(f.devices->sysExHealthText(), QStringLiteral("All good ✓"));
         QCOMPARE(f.devices->sysExHealthTone(), QStringLiteral("success"));
 
         // Log model has OUT and IN Roland lines.
@@ -362,7 +362,7 @@ private slots:
         f.now += std::chrono::duration_cast<protocol::Clock::duration>(2000ms);
         f.session->pollTimeouts();
         QCOMPARE(f.devices->timeouts(), 1);
-        QCOMPARE(f.devices->sysExHealthText(), QStringLiteral("No response"));
+        QCOMPARE(f.devices->sysExHealthText(), QStringLiteral("No reply from XP-60"));
         QCOMPARE(f.devices->sysExHealthTone(), QStringLiteral("error"));
         QVERIFY(!f.devices->hasOutstandingRequests());
 
@@ -413,7 +413,7 @@ private slots:
         Fixture f;
         QAbstractItemModelTester tester(f.devices->patchParameters(), QAbstractItemModelTester::FailureReportingMode::QtTest);
         QVERIFY(!f.devices->canFetchPatch());
-        QCOMPARE(f.devices->patchFetchStateText(), QStringLiteral("Not fetched"));
+        QCOMPARE(f.devices->patchFetchStateText(), QStringLiteral("Not read yet"));
         f.devices->connectDevice();
         QTRY_COMPARE(f.devices->connectionState(), ConnectionState::Connected);
         QVERIFY(f.devices->canFetchPatch());
@@ -445,7 +445,7 @@ private slots:
             f.deviceReplies(reply);
         }
         QVERIFY(!f.devices->patchFetchInProgress());
-        QCOMPARE(f.devices->patchFetchStateText(), QStringLiteral("Decoded"));
+        QCOMPARE(f.devices->patchFetchStateText(), QStringLiteral("Ready"));
         QCOMPARE(f.devices->patchFetchTone(), QStringLiteral("success"));
         QVERIFY(f.devices->currentPatchAvailable());
         QCOMPARE(f.devices->currentPatchName(), QStringLiteral("Piano 1"));
@@ -481,7 +481,7 @@ private slots:
         QTRY_COMPARE(f.devices->connectionState(), ConnectionState::Connected);
         // Connected but nothing read yet: arming is still refused, and says why.
         QVERIFY(!f.devices->canArmWrite());
-        QVERIFY(f.devices->armBlockedReason().contains(QStringLiteral("Fetch the temporary Patch first")));
+        QVERIFY(f.devices->armBlockedReason().contains(QStringLiteral("Read the current sound first")));
         f.devices->armWrite();
         QVERIFY(!f.devices->writeArmed());
         f.devices->writeBackAndVerify();
