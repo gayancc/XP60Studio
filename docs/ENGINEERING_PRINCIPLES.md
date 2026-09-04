@@ -45,13 +45,7 @@ Never change correct logic simply to make an assertion green.
 
 Known-good SysEx fixtures, hardware captures, and documentation-derived mappings are valuable project assets.
 
-Where licensing permits, retain fixtures and document:
-
-- origin
-- device/model
-- expected interpretation
-- checksum status
-- whether verified on physical hardware
+Where licensing permits, retain fixtures and document origin, device/model, expected interpretation, checksum status, and whether verified on physical hardware.
 
 ## 5. Do not guess protocol facts
 
@@ -74,16 +68,6 @@ Prefer:
 
 When Codex cannot test against the user's physical XP-60, it should say exactly what must be tested.
 
-Example:
-
-```text
-Hardware check required:
-1. Connect XP-60 via MIDI IN/OUT.
-2. Request temporary Patch address X.
-3. Capture returned SysEx.
-4. Confirm whether byte N changes when Tone 2 Level is moved from A to B.
-```
-
 Never claim a behavior is hardware-verified unless actual evidence exists.
 
 ## 8. Non-destructive by default
@@ -102,27 +86,11 @@ This allows future decoder corrections without losing the source evidence.
 
 ## 10. Provenance matters
 
-A patch should retain where it came from:
-
-- source file
-- source bank
-- slot/index
-- import timestamp
-- relevant device/model metadata
-
-Large-library cleanup is impossible to trust without provenance.
+A patch should retain where it came from: source file, source bank, slot/index, import timestamp, and relevant device/model metadata.
 
 ## 11. Derived metadata is not hardware data
 
-Values such as:
-
-- Patch DNA
-- similarity score
-- category prediction
-- brightness score
-- compatibility score
-
-are derived application metadata.
+Values such as Patch DNA, similarity score, category prediction, brightness score, and compatibility score are derived application metadata.
 
 Never serialize them as though they were Roland parameters.
 
@@ -132,53 +100,55 @@ Exact duplicate detection should use canonical parameter representation.
 
 Near-duplicate scoring must be explainable through actual differences.
 
-Avoid opaque similarity scores that cannot tell the user why two patches are considered related.
-
 ## 13. Strong domain types
 
-Use explicit types for concepts such as:
-
-- Roland addresses
-- Roland sizes
-- device/model IDs
-- Patch slots
-- Tone index
-- raw vs displayed parameter values
+Use explicit types for concepts such as Roland addresses, Roland sizes, device/model IDs, Patch slots, Tone index, and raw vs displayed parameter values.
 
 Avoid spreading anonymous integers and raw byte offsets throughout the codebase.
 
 ## 14. UI must not own protocol logic
 
-Visual controls request domain operations.
+QML and visual controls request domain/application operations.
 
-They do not build DT1 messages, calculate Roland checksums, or know XP memory addresses.
+They do not build DT1 messages, calculate Roland checksums, know XP memory addresses, or call libremidi directly.
 
-## 15. Avoid premature generic abstraction
+## 15. Approved mockup fidelity is a product requirement
+
+For the four anchor screens, `docs/design/xp60studio-ui-master-mockup.jpg` is the authoritative visual implementation target.
+
+When the relevant roadmap phase begins, reproduce the mockup as closely as technically possible in composition, panel structure, hierarchy, spacing/density, component proportions, Tone color semantics, control grouping, and visual character.
+
+Do not replace it with a generic Qt layout merely because that is faster.
+
+A major deviation requires a documented reason: verified XP-60 behavior, accessibility, platform constraints, responsive layout necessity, or a demonstrated usability issue.
+
+UI PRs for anchor screens should include implementation screenshots where possible and be reviewed against `docs/design/UI_ACCEPTANCE_CRITERIA.md`.
+
+## 16. Reuse the UI design system
+
+Do not independently style every screen.
+
+Use the QML theme tokens and reusable components defined by the design documentation. Repeated conceptual controls should look and behave consistently.
+
+## 17. Avoid premature generic abstraction
 
 XP-50, XP-80, XP-30, JV-1080, and JV-2080 are future opportunities.
 
 Do not create an over-general device framework before the XP-60 is understood.
 
-Extract common behavior when there is actual evidence of commonality.
-
-## 16. Performance and responsiveness
+## 18. Performance and responsiveness
 
 Do not perform substantial parsing, library analysis, database work, or long transfers on the UI thread.
 
-Meaningful long-running operations should provide:
+Meaningful long-running operations should provide progress, cancellation, error reporting, and retry/resume behavior where appropriate.
 
-- progress
-- cancellation
-- error reporting
-- resumable/retry behavior where appropriate
-
-## 17. MIDI pacing matters
+## 19. MIDI pacing matters
 
 Different interfaces may tolerate different SysEx rates.
 
-The transfer system should eventually support configurable pacing and safe defaults rather than assuming maximum-speed bulk transmission is reliable.
+The transfer system should support configurable pacing and safe defaults rather than assuming maximum-speed bulk transmission is reliable.
 
-## 18. Validate transfers
+## 20. Validate transfers
 
 Where the XP-60 supports reliable read-back, prefer:
 
@@ -186,9 +156,9 @@ Where the XP-60 supports reliable read-back, prefer:
 send -> read back -> compare -> verify
 ```
 
-A successful API call or completed byte write is not the same thing as verified hardware state.
+A completed byte write is not the same thing as verified hardware state.
 
-## 19. Actionable errors
+## 21. Actionable errors
 
 Bad:
 
@@ -207,15 +177,15 @@ Last successful response: 4.2 seconds ago
 
 Provide deeper technical details separately for experts.
 
-## 20. Build vertically, but in order
+## 22. Build vertically, but in order
 
 Each roadmap phase should become demonstrably usable before large amounts of work are added above it.
 
 Do not build Patch DNA before patch decoding exists.
 Do not build smart bank generation before the librarian exists.
-Do not build a polished stage mode before reliable device communication exists.
+Do not build polished stage mode before reliable device communication exists.
 
-## 21. Review existing work first
+## 23. Review existing work first
 
 Before changing a subsystem:
 
@@ -227,40 +197,33 @@ Before changing a subsystem:
 
 Avoid rewriting working code simply because a different design is aesthetically preferable.
 
-## 22. Build and test continuously
+## 24. Build and test continuously
 
 After implementation:
 
-- build the affected targets
+- build affected targets
 - run relevant tests
 - investigate failures
-- keep the repository in a coherent state
+- keep the repository coherent
 
 Do not leave known compile failures hidden behind incomplete work.
 
-## 23. No fake completeness
+## 25. No fake completeness
 
 If an implementation supports only part of an XP structure, mark it clearly as partial.
 
 Do not fill unknown fields with invented defaults and call the feature complete.
 
-## 24. User experience over parameter dumping
+Do not display mockup-only future controls as working features unless their backing behavior exists.
+
+## 26. User experience over parameter dumping
 
 The product is for musicians, not only protocol engineers.
 
 Expose the full XP-60 depth, but organize it through progressive disclosure, context, visualization, and musical terminology.
 
-## 25. Keep expert inspection available
+## 27. Keep expert inspection available
 
 User-friendly design must not hide evidence.
 
-Experts should eventually be able to inspect:
-
-- raw SysEx
-- decoded command
-- address
-- payload
-- checksum
-- corresponding parameter
-
-This is essential for debugging and long-term trust.
+Experts should eventually be able to inspect raw SysEx, decoded command, address, payload, checksum, and corresponding parameter.

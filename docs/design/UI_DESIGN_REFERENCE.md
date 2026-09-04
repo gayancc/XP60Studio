@@ -1,29 +1,72 @@
 # XP60Studio UI Design Reference
 
-This document records the approved high-level visual direction for XP60Studio.
+This document records the approved visual target for XP60Studio.
 
 ## Master mockup
 
 ![XP60Studio approved UI master mockup](./xp60studio-ui-master-mockup.jpg)
 
-The image is an approved **design direction**, not a pixel-perfect implementation contract. It is the primary visual reference for the application's overall character and the first four major UX surfaces:
+The image is the **authoritative implementation target** for the visual language and the four anchor screens:
 
-1. Dashboard / command center
-2. Patch Editor / four-Tone mixer
+1. Dashboard / Command Center
+2. Patch Editor / Four-Tone Mixer
 3. Wave Browser
-4. Bank Builder / library intelligence
+4. Bank Builder / Library Intelligence
+
+Codex should reproduce these screens as closely as technically possible rather than treating the image as loose inspiration.
+
+## Fidelity requirement
+
+For the four anchor screens, match the mockup closely in:
+
+- application shell and navigation rail
+- major panel placement
+- content hierarchy
+- dark theme and surface layering
+- spacing and density
+- component proportions
+- tone-card layout
+- Tone 1/2/3/4 color semantics
+- signal-flow composition
+- envelope-editor placement and visual treatment
+- quick-action placement
+- right-side summary/inspector panels
+- search/filter composition
+- bank-grid composition
+- status badges and warning placement
+- typography hierarchy
+- border/radius/shadow character
+- control grouping
+- overall premium music-software character
+
+Do not simplify the mockup into a generic form, property grid, admin dashboard, or stock Qt application.
+
+## Allowed deviations
+
+A deviation from the mockup is acceptable only when one of these applies:
+
+1. verified XP-60 behavior makes the depicted interaction inaccurate;
+2. accessibility requires a change;
+3. Windows/macOS platform behavior requires a change;
+4. the mockup contains illustrative data that is not supported by verified device metadata;
+5. a measured layout must adapt at smaller desktop sizes;
+6. implementation testing demonstrates a clear usability problem.
+
+When a major deviation is necessary, document it in the relevant implementation/PR notes rather than silently redesigning the screen.
+
+The rule is: **preserve the mockup exactly where it represents valid product behavior; change only what must change.**
 
 ## Design intent
 
 The product should feel like premium professional music-production software rather than an enterprise CRUD/admin application.
 
-Preserve these characteristics when implementing the UI:
+Preserve these characteristics:
 
 - dark, focused working environment suitable for long sound-design sessions
 - strong information hierarchy rather than dense property grids
 - clear XP-60 connection state at all times
 - musical, visual representation of the four-Tone architecture
-- color-coded Tone identity used consistently across related controls and signal-flow visualization
+- stable color-coded Tone identity across related controls and routing
 - visual envelopes and signal flow instead of relying only on numeric forms
 - compact but readable panels with meaningful grouping
 - progressive disclosure: musician-friendly first, exact technical depth available when requested
@@ -35,24 +78,37 @@ Preserve these characteristics when implementing the UI:
 
 ### Dashboard
 
-Treat this as a command center. Prioritize current patch, four-Tone contribution, device status, library state, bank activity, and obvious next actions. Do not turn it into a generic KPI dashboard.
+Match the top-left mockup panel: persistent left navigation, current-patch hero, four-Tone contribution, Quick Actions, and right-side Library / Bank Builder / Device Diagnostics cards.
+
+Do not turn it into a generic KPI dashboard.
 
 ### Patch Editor / Four-Tone Mixer
 
-The four Tone cards are the main visual anchors. The user should immediately understand which waves are active, their relative contribution, tuning/octave, pan, mute/solo state, and how the Tones flow into Structure, MFX, Chorus, Reverb, and output.
+Match the top-right mockup panel: four large Tone cards, Sound/Filter/Amp/Motion/Effects navigation, signal flow from Tones through Structure/MFX/Chorus/Reverb/Output, large envelope editor, key/velocity controls, and contextual Tone settings.
 
-Graphical Pitch/TVF/TVA envelope editing should be central to the design workflow. Exact XP values remain accessible in expert contexts.
+The four Tone cards are the main visual anchors. The user should immediately understand active waves, contribution, tuning/octave, pan, mute/solo state, and routing.
 
 ### Wave Browser
 
-Make source and expansion compatibility obvious. Searching and filtering should be fast enough for large libraries. Missing expansion requirements must never be hidden or silently substituted.
+Match the bottom-left mockup panel: search, source/category filters, high-density result list, availability badges, and a right-side details/compatibility inspector.
+
+Missing expansion requirements must never be hidden or silently substituted.
 
 ### Bank Builder
 
-Treat the 128-slot bank as a performance-oriented sound collection. Provide category organization, drag/drop, compatibility warnings, duplicate analysis, comparison, and clear occupancy/state feedback without reducing the experience to a plain table.
+Match the bottom-right mockup panel: bank selector, summary metrics, category rail, visual 128-slot bank grid, drag/reorder affordance, comparison panel, and compatibility/warning panel.
 
-## Implementation rule
+Do not reduce the bank experience to a plain table.
 
-Do not build these advanced screens before the protocol and XP-60 model phases identified in `docs/ROADMAP.md` are ready. When the project reaches the corresponding UI phases, use this mockup together with `docs/PRODUCT_VISION.md`, `docs/FEATURE_BASELINE.md`, and `docs/ARCHITECTURE.md`.
+## Supporting implementation documents
 
-If an implementation must diverge from the mockup because of real XP-60 behavior, accessibility, platform constraints, or superior validated UX, preserve the design principles rather than blindly reproducing pixels.
+- [`UI_IMPLEMENTATION_ARCHITECTURE.md`](UI_IMPLEMENTATION_ARCHITECTURE.md)
+- [`COMPONENT_CATALOG.md`](COMPONENT_CATALOG.md)
+- [`SCREEN_AND_FEATURE_MAP.md`](SCREEN_AND_FEATURE_MAP.md)
+- [`UI_ACCEPTANCE_CRITERIA.md`](UI_ACCEPTANCE_CRITERIA.md)
+
+## Implementation timing
+
+Do not build advanced screens before their backing protocol/domain roadmap phases are ready. The existence of a finished mockup does not justify placeholder backend logic.
+
+When a screen becomes eligible for implementation, build it against the approved mockup and acceptance criteria from the beginning rather than creating a temporary generic UI intended to be redesigned later.
