@@ -37,6 +37,11 @@ TestCase {
         XpRangeBar { width: 200; lower: 1; upper: 127 }
     }
 
+    Component {
+        id: keybedComponent
+        KeyboardStrip { width: 400; firstNote: 36; lastNote: 96; lowerNote: 48; upperNote: 79 }
+    }
+
     function init() {
         // Every test starts from the just-fetched Patch: no local edits, no
         // history, not comparing, not armed.
@@ -201,6 +206,118 @@ TestCase {
 
         testEditor.selectedTone = 3
         compare(strip.accentColor, Theme.toneColor(3))
+    }
+
+    // -- Keybed ---------------------------------------------------------------
+
+    function test_keybed_uses_real_piano_geometry() {
+        var kb = createTemporaryObject(keybedComponent, testCase)
+        verify(kb)
+
+        // The five black keys of an octave, and only those.
+        var blacks = []
+        for (var n = 60; n < 72; ++n)
+            if (kb.isBlack(n)) blacks.push(n - 60)
+        compare(blacks, [1, 3, 6, 8, 10])
+
+        // Seven white keys per octave, so a 61-note window has 36.
+        compare(kb.whiteCount, 36)
+        verify(kb.whiteWidth > 0)
+
+        // Black keys are narrower than white ones and sit over the boundary
+        // between their neighbours, not on equal slices.
+        verify(kb.blackWidth < kb.whiteWidth)
+        var ww = kb.whiteWidth, bw = kb.blackWidth
+        var cSharp = kb.keyLeft(61, ww, bw) + bw / 2
+        var cRight = kb.keyRight(60, ww, bw)
+        verify(Math.abs(cSharp - cRight) < ww * 0.25, "C# straddles the C/D boundary")
+        // The middle black of the three-key group is centred exactly.
+        var gSharp = kb.keyLeft(68, ww, bw) + bw / 2
+        verify(Math.abs(gSharp - kb.keyRight(67, ww, bw)) < 0.6, "G# is centred on the G/A boundary")
+
+        // White keys march left to right without gaps.
+        compare(kb.keyLeft(60, ww, bw), kb.keyLeft(59, ww, bw) + ww)
+    }
+
+    function test_keybed_geometry_follows_a_resize() {
+        var kb = createTemporaryObject(keybedComponent, testCase)
+        verify(kb)
+        var before = kb.whiteWidth
+        var edgeBefore = kb.keyLeft(60, kb.whiteWidth, kb.blackWidth)
+        kb.width = 800
+        verify(kb.whiteWidth > before)
+        verify(kb.keyLeft(60, kb.whiteWidth, kb.blackWidth) > edgeBefore)
+    }
+
+    function test_keybed_hit_testing_prefers_black_keys() {
+        var kb = createTemporaryObject(keybedComponent, testCase)
+        verify(kb)
+        var ww = kb.whiteWidth, bw = kb.blackWidth
+        // The middle of a black key, in its upper part, is that black key.
+        var x = kb.keyLeft(61, ww, bw) + bw / 2
+        compare(kb.noteAt(x, 4), 61)
+        // The same column near the front belongs to the white key under it.
+        verify(!kb.isBlack(kb.noteAt(x, kb.height - 6)))
+    }
+
+    function test_keybed_range_edits_and_animates() {
+        var kb = createTemporaryObject(keybedComponent, testCase)
+        verify(kb)
+        var lower = -1, upper = -1
+        kb.rangeEdited.connect(function(l, u) { lower = l; upper = u })
+
+        // The drawn range eases to a new value instead of jumping.
+        kb.lowerNote = 60
+        tryCompare(kb, "animLower", 60)
+        compare(kb.animUpper, 79)
+
+        // Keyboard: space picks the edge, arrows move it, Shift by an octave.
+        kb.forceActiveFocus()
+        keyClick(Qt.Key_Right)
+        compare(lower, 61)
+        keyClick(Qt.Key_Space)
+        keyClick(Qt.Key_Right, Qt.ShiftModifier)
+        compare(upper, 91)
+    }
+
+    function test_keybed_never_lets_the_edges_cross() {
+        var kb = createTemporaryObject(keybedComponent, testCase)
+        verify(kb)
+        var lower = -1, upper = -1
+        kb.rangeEdited.connect(function(l, u) { lower = l; upper = u })
+        kb.lowerNote = 79
+        kb.upperNote = 79
+        kb.forceActiveFocus()
+        keyClick(Qt.Key_Right) // lower edge, would pass the upper
+        compare(lower, 79)
+        compare(upper, 79)
+    }
+
+    function test_keybed_emphasis_follows_the_velocity_window() {
+        var kb = createTemporaryObject(keybedComponent, testCase)
+        verify(kb)
+        kb.velocityLower = 1
+        kb.velocityUpper = 127
+        var wide = kb.velocityEmphasis
+        kb.velocityLower = 100
+        kb.velocityUpper = 110
+        verify(kb.velocityEmphasis < wide, "a narrow velocity window reads more faintly")
+        verify(kb.velocityEmphasis > 0)
+    }
+
+    function test_key_range_panel_names_the_instruments_own_keys() {
+        var screen = createTemporaryObject(screenComponent, testCase)
+        verify(screen)
+        var strip = findChild(screen, "keyboardStrip")
+        var note = findChild(screen, "keyRangeNote")
+        verify(strip)
+        verify(note)
+        // The window is the XP-60's keybed, handed down from the device facts.
+        compare(strip.firstNote, testEditor.keyboardWindowLower)
+        compare(strip.lastNote, testEditor.keyboardWindowUpper)
+        compare(strip.velocityUpper, testEditor.velocityUpper)
+        compare(note.text, testEditor.keyRangeNote)
+        verify(note.text.length > 0)
     }
 
     // -- New controls --------------------------------------------------------

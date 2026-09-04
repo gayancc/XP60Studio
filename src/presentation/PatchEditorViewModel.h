@@ -66,6 +66,12 @@ class PatchEditorViewModel : public QObject
     Q_PROPERTY(QString keyRangeUpperText READ keyRangeUpperText NOTIFY rangeChanged)
     Q_PROPERTY(int velocityLower READ velocityLower WRITE setVelocityLower NOTIFY rangeChanged)
     Q_PROPERTY(int velocityUpper READ velocityUpper WRITE setVelocityUpper NOTIFY rangeChanged)
+    // The span of notes the keybed control should draw, and whether the
+    // selected range reaches outside the XP-60's own keys.
+    Q_PROPERTY(int keyboardWindowLower READ keyboardWindowLower NOTIFY rangeChanged)
+    Q_PROPERTY(int keyboardWindowUpper READ keyboardWindowUpper NOTIFY rangeChanged)
+    Q_PROPERTY(bool keyRangeExceedsKeybed READ keyRangeExceedsKeybed NOTIFY rangeChanged)
+    Q_PROPERTY(QString keyRangeNote READ keyRangeNote NOTIFY rangeChanged)
 
     // Contextual Tone settings
     Q_PROPERTY(QVariantList toneSettings READ toneSettings NOTIFY patchChanged)
@@ -149,6 +155,10 @@ public:
     void setVelocityLower(int value);
     [[nodiscard]] int velocityUpper() const;
     void setVelocityUpper(int value);
+    [[nodiscard]] int keyboardWindowLower() const;
+    [[nodiscard]] int keyboardWindowUpper() const;
+    [[nodiscard]] bool keyRangeExceedsKeybed() const;
+    [[nodiscard]] QString keyRangeNote() const;
 
     [[nodiscard]] QVariantList toneSettings() const;
     Q_INVOKABLE void setToneSetting(const QString& parameterId, int raw);

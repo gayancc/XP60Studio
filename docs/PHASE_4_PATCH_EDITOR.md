@@ -92,6 +92,55 @@ succeeded, the user must arm, and the write is followed by a read-back that
 compares every parameter. The editor exposes `canArmWrite`, `writeArmed`,
 `canWrite` and the transfer's own state text; it adds no path around them.
 
+## The keybed
+
+`docs/design/screenshots/phase4-key-range.png`
+
+The key range control is a real keyboard, not a row of equal slices. Seven
+white keys to the octave; the five black keys at 60 % of a white key's width,
+each straddling the boundary between its neighbours the way a piano's do — the
+middle black of a three-key group centred on the boundary, the outer ones
+shifted outward. Keys carry a vertical gradient and a shaded front, black keys
+a gloss line and a drop shadow onto the whites, and the octaves are marked
+C2, C3, … so a key can be identified without counting.
+
+It is **drawn, not photographed.** A bitmap of a keyboard cannot survive the
+things this control has to do: stretch to any panel width without distorting
+the key proportions, take the Tone's accent colour, stay crisp on a HiDPI
+display, and work in either theme. It would also be a third-party asset with
+its own licence in a repository that has none. Canvas drawing gives all of
+that and repaints once per change.
+
+**What it draws is the instrument's own keybed.** Roland's Key Range
+parameters span the whole MIDI note range (0..127, C-1..G9), but the XP-60
+itself has 61 keys, C2..C7. Drawing all 128 notes in a panel this wide leaves
+about four pixels per key — a barcode, not a keyboard. So the strip draws the
+XP-60's 61 keys, and widens to whole octaves whenever a Patch's range reaches
+past them, saying plainly that the range is *"Past the XP-60's 61 keys — MIDI
+only"*. Nothing is clamped: a range outside the keybed is legal, writable, and
+playable from a sequencer, and the screen says so instead of hiding it. The
+keybed span lives in `xp60::keybed()` beside the other device facts, marked
+`DocumentationDerived` from the product specification, so QML never invents a
+hardware fact.
+
+## Motion
+
+Animation is used to explain a change, never as decoration, and every duration
+comes from the `Motion` singleton, so the reduced-motion switch turns all of it
+off at once.
+
+| Where | What moves | Why |
+|---|---|---|
+| Keybed range | the two edges, the front glow and the range bar ease to a new position (`durationFast`) | a drag, an undo, a revert or a re-fetch reads as the range moving rather than the panel redrawing |
+| Keybed and velocity handles | the grabbed edge thickens and brightens | the pointer and the keyboard both show which end is being moved |
+| Keybed hover | the key under the pointer lifts in brightness | says what a click would grab, without sending a note |
+| Velocity window | the active part of the soft-to-hard ramp eases between values (`durationFast`) | the same reading as the keybed, on the other axis |
+| Keybed emphasis | the range wash and glow fade with the velocity window (`durationNormal`) | a Tone that only answers a narrow band of velocity is drawn more faintly, so the two controls read as one setting |
+
+Nothing loops while idle. Colour is never the only signal: the range also has
+hard edges, a bar, and the two note names beneath it, and the out-of-keybed
+state is stated in words as well as in warning colour.
+
 ## Deviations from the mockup
 
 Each is allowed by `docs/design/UI_DESIGN_REFERENCE.md` § *Allowed deviations*,
@@ -107,6 +156,7 @@ which `AGENTS.md` forbids.
 | 4 | Effect names — MFX "St.Parametric", Chorus "Chorus 1", Structure "4-TONE" | `Type 11`, `Level 127`, `1 / 1` (the structure pair) | The EFX and Chorus type name lists are not transcribed; the map gives the raw index. Reverb *is* named (`STAGE2`) because its eight labels are in the map. |
 | 5 | Envelope stage boxes in one row of four | Two rows of two | Rule 6 — at the mockup's column proportions four label-plus-field pairs crush the numeric fields to a few pixels, and every value must stay typeable. |
 | 6 | Tone card octave box only | Octave box, plus the exact semitone count when the tuning is not a whole octave | Rule 1 — Coarse Tune is per-semitone on the XP-60, so an octave stepper alone cannot express every value a Patch may already hold. The line is blank when the tuning *is* a whole octave. |
+| 7 | Keybed labelled `C-2` … `G8`, drawn across the full note range | `C-1` … `G9`, drawn as the XP-60's 61 keys and widened only when the range needs it | Rule 1 and rule 6. Roland's Parameter Address Map names the Key Range bounds `C-1..Upper`, so C-1..G9 is the instrument's own convention and the mockup's octave numbering is one octave off it. Drawing all 128 notes at this panel width gives about four pixels a key; see **The keybed** above. |
 
 Nothing above changes the composition, colour system, hierarchy or interaction
 model of the mockup; the four anchor screens are still the target.
@@ -115,8 +165,8 @@ model of the mockup; the four anchor screens are still the target.
 
 | Test | Covers |
 |---|---|
-| `tst_patch_editor` (28 cases) | empty state, adopting a fetched Patch, tone card binding, refused values, octave stepping, pan/level formatting, solo/mute leaving data untouched, sections and envelopes, the three-level Level envelope, envelope dragging and exact entry, key/velocity ordering, contextual settings, undo/redo/revert/bounded history, A/B freezing, patch-name validation, arming and writing, mismatch reporting, re-fetch |
-| `tst_qml` — `EditorScreen` (16 cases) | screen binds to a real fetched Patch, four colour-coded Tone cards, grid reflow, section tabs driving the envelope, a knob edit reaching the Patch, write gated behind arming, A/B, undo/redo/revert button state, raw-unit envelope readouts, key range and velocity following the selected Tone, and the new controls' keyboard, range and signal behaviour |
+| `tst_patch_editor` (31 cases) | empty state, adopting a fetched Patch, tone card binding, refused values, octave stepping, pan/level formatting, solo/mute leaving data untouched, sections and envelopes, the three-level Level envelope, envelope dragging and exact entry, key/velocity ordering, contextual settings, undo/redo/revert/bounded history, A/B freezing, patch-name validation, arming and writing, mismatch reporting, re-fetch, the keybed window and what it says when a range reaches past the instrument's keys |
+| `tst_qml` — `EditorScreen` (23 cases) | screen binds to a real fetched Patch, four colour-coded Tone cards, grid reflow, section tabs driving the envelope, a knob edit reaching the Patch, write gated behind arming, A/B, undo/redo/revert button state, raw-unit envelope readouts, key range and velocity following the selected Tone, the keybed's piano geometry, its behaviour under a resize, black-key hit testing, range animation and edge ordering, velocity emphasis, and the new controls' keyboard, range and signal behaviour |
 
 Both run against `tests/fixtures/xp60/user-bank-amal.syx`, a real XP-60 user
 bank, through a `FakeXp60` that answers RQ1 and applies DT1 — so the screen is

@@ -189,3 +189,16 @@ To move a row to *Hardware-verified*:
    hardware log section of that document.
 3. Change the status here and, when a constant is involved, change the
    `VerificationStatus` in `src/xp60/Xp60Device.cpp` in the same commit.
+
+## Keybed
+
+| Fact | Value | Status | Source |
+|---|---|---|---|
+| Keys | 61, C2..C7 (MIDI 36..96) | Documentation-derived | Roland XP-60 product specification |
+| Velocity | yes, with channel aftertouch | Documentation-derived | Roland XP-60 product specification |
+
+This is the instrument's physical keyboard, not a limit on the Patch Key Range
+parameters, which the Parameter Address Map defines over the whole MIDI note
+range (0..127, `C-1..G9`). The editor uses it to draw a keyboard at a readable
+size and to say when a range falls outside what the XP-60's own keys can play;
+it never clamps a value. Implemented as `xp60::keybed()`.

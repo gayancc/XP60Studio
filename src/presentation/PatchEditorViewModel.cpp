@@ -1,5 +1,6 @@
 #include "presentation/PatchEditorViewModel.h"
 
+#include "xp60/Xp60Device.h"
 #include "xpmodel/Xp60PatchLayout.h"
 
 #include <QVariantMap>
@@ -569,6 +570,67 @@ void PatchEditorViewModel::setVelocityUpper(int value)
         return;
     }
     setToneRaw(selectedToneIndex(), ToneParameter::VelocityRangeUpper, std::clamp(value, velocityLower(), 127));
+}
+
+// The keybed the control draws: the XP-60's own 61 keys, widened to whole
+// octaves whenever the Patch's range reaches past them. Key Range itself stays
+// 0..127 — the window only decides what is worth drawing at a readable size.
+namespace {
+
+constexpr int kOctave = 12;
+
+int floorToOctave(int note)
+{
+    return std::max(0, (note / kOctave) * kOctave);
+}
+
+int ceilToOctave(int note)
+{
+    return std::min(127, ((note + kOctave - 1) / kOctave) * kOctave);
+}
+
+} // namespace
+
+int PatchEditorViewModel::keyboardWindowLower() const
+{
+    const auto keys = xp60::keybed();
+    if (!m_current) {
+        return keys.lowestNote;
+    }
+    return std::min(keys.lowestNote, floorToOctave(keyRangeLower()));
+}
+
+int PatchEditorViewModel::keyboardWindowUpper() const
+{
+    const auto keys = xp60::keybed();
+    if (!m_current) {
+        return keys.highestNote;
+    }
+    return std::max(keys.highestNote, ceilToOctave(keyRangeUpper()));
+}
+
+bool PatchEditorViewModel::keyRangeExceedsKeybed() const
+{
+    if (!m_current) {
+        return false;
+    }
+    const auto keys = xp60::keybed();
+    return keyRangeLower() < keys.lowestNote || keyRangeUpper() > keys.highestNote;
+}
+
+QString PatchEditorViewModel::keyRangeNote() const
+{
+    if (!m_current) {
+        return {};
+    }
+    const auto keys = xp60::keybed();
+    if (!keyRangeExceedsKeybed()) {
+        return QStringLiteral("Within the XP-60's %1 keys").arg(keys.noteCount);
+
+    }
+    // Not an error: the parameter is 0..127 and a sequencer can reach these
+    // notes. Say so rather than hiding or clamping it.
+    return QStringLiteral("Past the XP-60's %1 keys — MIDI only").arg(keys.noteCount);
 }
 
 // ---------------------------------------------------------------------------

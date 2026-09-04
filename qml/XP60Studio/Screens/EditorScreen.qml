@@ -328,6 +328,13 @@ Item {
                             Layout.fillWidth: true
                             lowerNote: root.editor.keyRangeLower
                             upperNote: root.editor.keyRangeUpper
+                            // The window comes from the instrument's own keybed,
+                            // widened when the Patch reaches past it; QML does
+                            // not decide what the XP-60's keyboard is.
+                            firstNote: root.editor.keyboardWindowLower
+                            lastNote: root.editor.keyboardWindowUpper
+                            velocityLower: root.editor.velocityLower
+                            velocityUpper: root.editor.velocityUpper
                             accentColor: Theme.toneColor(root.editor.selectedTone)
                             onRangeEdited: function(lower, upper) {
                                 root.editor.keyRangeLower = lower
@@ -339,6 +346,15 @@ Item {
                             XpLabel { objectName: "keyLowerText"; text: root.editor.keyRangeLowerText; role: "mono" }
                             Item { Layout.fillWidth: true }
                             XpLabel { text: root.editor.keyRangeUpperText; role: "mono" }
+                        }
+                        XpLabel {
+                            objectName: "keyRangeNote"
+                            Layout.fillWidth: true
+                            text: root.editor.keyRangeNote
+                            role: "caption"
+                            muted: !root.editor.keyRangeExceedsKeybed
+                            color: root.editor.keyRangeExceedsKeybed ? Theme.warning : Theme.textMuted
+                            wrapMode: Text.WordWrap
                         }
 
                         XpDivider { Layout.fillWidth: true }

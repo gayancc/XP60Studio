@@ -233,6 +233,11 @@ std::span<const SafeReadPreset> safeReadPresets() noexcept
     return std::span<const SafeReadPreset>(kSafeReadPresets.data(), kSafeReadPresets.size());
 }
 
+Keybed keybed() noexcept
+{
+    return {};
+}
+
 TransferDefaults transferDefaults() noexcept
 {
     return TransferDefaults{};

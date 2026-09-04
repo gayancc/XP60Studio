@@ -1,6 +1,7 @@
 #include "support/FakeXp60.h"
 
 #include "presentation/PatchEditorViewModel.h"
+#include "xp60/Xp60Device.h"
 #include "xpmodel/Xp60PatchLayout.h"
 #include "presentation/ToneViewModel.h"
 #include "services/PatchTransfer.h"
@@ -396,6 +397,59 @@ private slots:
 
         QVERIFY(!f.editor->keyRangeLowerText().isEmpty());
         QVERIFY(!f.editor->keyRangeUpperText().isEmpty());
+    }
+
+    void theKeybedWindowComesFromTheInstrumentAndWidensForTheRange()
+    {
+        Fixture f;
+        f.loadPatch();
+        f.editor->setSelectedTone(1);
+        const auto keys = xp60::keybed();
+        QCOMPARE(keys.noteCount, 61);
+        QCOMPARE(keys.lowestNote, 36); // C2
+        QCOMPARE(keys.highestNote, 96); // C7
+
+        // A range inside the instrument's own keys leaves the window alone.
+        f.editor->setKeyRangeLower(48);
+        f.editor->setKeyRangeUpper(79);
+        QCOMPARE(f.editor->keyboardWindowLower(), keys.lowestNote);
+        QCOMPARE(f.editor->keyboardWindowUpper(), keys.highestNote);
+        QVERIFY(!f.editor->keyRangeExceedsKeybed());
+        QVERIFY(f.editor->keyRangeNote().contains(QStringLiteral("Within")));
+
+        // A range past them widens the window to whole octaves, and the screen
+        // says so rather than clamping a value the parameter allows.
+        f.editor->setKeyRangeUpper(127);
+        f.editor->setKeyRangeLower(0);
+        QCOMPARE(f.editor->keyboardWindowLower(), 0);
+        QCOMPARE(f.editor->keyboardWindowUpper(), 127);
+        QVERIFY(f.editor->keyRangeExceedsKeybed());
+        QVERIFY(f.editor->keyRangeNote().contains(QStringLiteral("MIDI")));
+        QCOMPARE(f.editor->keyRangeLower(), 0);
+        QCOMPARE(f.editor->keyRangeUpper(), 127);
+    }
+
+    void theKeybedWindowSnapsToWholeOctaves()
+    {
+        Fixture f;
+        f.loadPatch();
+        f.editor->setSelectedTone(1);
+        f.editor->setKeyRangeLower(0);
+        f.editor->setKeyRangeUpper(100); // C7 is 96, so the window must grow
+        QCOMPARE(f.editor->keyboardWindowUpper(), 108); // next C above, C8
+        f.editor->setKeyRangeUpper(96);
+        f.editor->setKeyRangeLower(25); // between C1 (24) and C2 (36)
+        QCOMPARE(f.editor->keyboardWindowLower(), 24);
+    }
+
+    void withoutAPatchTheKeybedWindowIsTheInstrumentsOwn()
+    {
+        Fixture f;
+        const auto keys = xp60::keybed();
+        QCOMPARE(f.editor->keyboardWindowLower(), keys.lowestNote);
+        QCOMPARE(f.editor->keyboardWindowUpper(), keys.highestNote);
+        QVERIFY(!f.editor->keyRangeExceedsKeybed());
+        QVERIFY(f.editor->keyRangeNote().isEmpty());
     }
 
     // -- Contextual settings -------------------------------------------------

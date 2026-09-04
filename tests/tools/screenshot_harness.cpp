@@ -92,6 +92,23 @@ int main(int argc, char* argv[])
         qWarning("Root object is not a QQuickWindow");
         return 2;
     }
+    // Optional: capture a specific key/velocity range, for documenting states
+    // the fixture Patch does not happen to contain.
+    if (qEnvironmentVariableIsSet("XP60STUDIO_SHOT_KEYS")) {
+        const auto parts = qEnvironmentVariable("XP60STUDIO_SHOT_KEYS").split(QLatin1Char(','));
+        if (parts.size() == 2) {
+            editor.setKeyRangeUpper(parts[1].toInt());
+            editor.setKeyRangeLower(parts[0].toInt());
+        }
+    }
+    if (qEnvironmentVariableIsSet("XP60STUDIO_SHOT_VELOCITY")) {
+        const auto parts = qEnvironmentVariable("XP60STUDIO_SHOT_VELOCITY").split(QLatin1Char(','));
+        if (parts.size() == 2) {
+            editor.setVelocityLower(parts[0].toInt());
+            editor.setVelocityUpper(parts[1].toInt());
+        }
+    }
+
     window->resize(width, height);
     if (!shell.navigate(screenId)) {
         qWarning("Screen '%s' is not available", qPrintable(screenId));
