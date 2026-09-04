@@ -44,12 +44,15 @@ Start with [`AGENTS.md`](AGENTS.md). Codex and human contributors should use it 
 
 Detailed project documentation lives in [`docs/`](docs/):
 
-- `PRODUCT_VISION.md` — product goals, UX model, feature direction
+- `PRODUCT_VISION.md` — product goals, UX model, and advanced feature direction
+- `FEATURE_BASELINE.md` — mature XP-60 editor baseline and XP60Studio differentiators
 - `ARCHITECTURE.md` — technical boundaries and core layers
 - `ENGINEERING_PRINCIPLES.md` — correctness, testing, safety, and workflow rules
 - `ROADMAP.md` — phased development plan
-- `PHASE_1_PROTOCOL_FOUNDATION.md` — first implementation milestone
+- `PHASE_1_PROTOCOL_FOUNDATION.md` — first implementation milestone and execution brief
 
 ## Current status
 
 Repository initialized. Development should begin with Phase 1: MIDI and Roland SysEx protocol foundation. Do not begin advanced UI or intelligent-library features until protocol correctness and round-trip behavior are established.
+
+The first implementation task is tracked as GitHub Issue #1: **Phase 1 — Roland SysEx protocol foundation**.
