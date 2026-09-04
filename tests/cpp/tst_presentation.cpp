@@ -5,9 +5,11 @@
 #include "presentation/ProtocolLogModel.h"
 #include "roland/RolandSysExMessage.h"
 #include "services/DeviceSession.h"
+#include "services/PatchTransfer.h"
 #include "xp60/Xp60Device.h"
 #include "xpmodel/BlockCodec.h"
 #include "xpmodel/Xp60PatchCodec.h"
+#include "xpmodel/Xp60PatchLayout.h"
 
 #include <QAbstractItemModelTester>
 #include <QSignalSpy>
@@ -26,6 +28,7 @@ struct Fixture
 {
     midi::LoopbackMidiTransport* transport = nullptr;
     std::unique_ptr<services::DeviceSession> session;
+    std::unique_ptr<services::PatchTransfer> transfer;
     std::unique_ptr<DevicesViewModel> devices;
     std::unique_ptr<AppShellViewModel> shell;
     protocol::TimePoint now{std::chrono::duration_cast<protocol::Clock::duration>(1000ms)};
@@ -44,7 +47,8 @@ struct Fixture
         auto pacing = session->pacing();
         pacing.interMessageDelay = 0ms;
         session->setPacing(pacing);
-        devices = std::make_unique<DevicesViewModel>(*session);
+        transfer = std::make_unique<services::PatchTransfer>(*session);
+        devices = std::make_unique<DevicesViewModel>(*session, transfer.get());
         shell = std::make_unique<AppShellViewModel>(devices.get());
     }
 
@@ -168,8 +172,6 @@ private slots:
         QVERIFY(f.devices->requestSizeValid());
         QVERIFY(!f.devices->canSendRequest()); // not connected
         QVERIFY(f.devices->requestValidationMessage().contains(QStringLiteral("Connect")));
-        QVERIFY(!f.devices->dataSetEnabled());
-        QVERIFY(!f.devices->dataSetDisabledReason().isEmpty());
 
         QSignalSpy fields(f.devices.get(), &DevicesViewModel::requestFieldsChanged);
         f.devices->setRequestAddress(QStringLiteral("03 00 00 8C"));
@@ -350,6 +352,69 @@ private slots:
 
         f.devices->disconnectDevice();
         QVERIFY(!f.devices->canFetchPatch());
+    }
+
+    void writingRequiresAReadThenArming()
+    {
+        Fixture f;
+        QVERIFY(f.devices->writeSupported());
+        QVERIFY(!f.devices->canArmWrite());
+        QVERIFY(!f.devices->writeArmed());
+        QVERIFY(!f.devices->canWrite());
+        QVERIFY(f.devices->armBlockedReason().contains(QStringLiteral("Connect")));
+        QVERIFY(f.devices->writePlanText().contains(QStringLiteral("03 00 00 00")));
+        QVERIFY(f.devices->writePlanText().contains(QStringLiteral("permanent User patches are not touched")));
+
+        f.devices->connectDevice();
+        // Connected but nothing read yet: arming is still refused, and says why.
+        QVERIFY(!f.devices->canArmWrite());
+        QVERIFY(f.devices->armBlockedReason().contains(QStringLiteral("Fetch the temporary Patch first")));
+        f.devices->armWrite();
+        QVERIFY(!f.devices->writeArmed());
+        f.devices->writeBackAndVerify();
+        QCOMPARE(f.devices->transferStateText(), QStringLiteral("Idle")); // nothing happened
+
+        // A successful read unlocks arming.
+        f.devices->fetchCurrentPatch();
+        const auto base = xpmodel::Xp60PatchLayout::temporaryPatchAddress();
+        xpmodel::MemoryImage image;
+        for (const auto& block : xpmodel::Xp60PatchLayout::blocks()) {
+            roland::ByteVector bytes(block.size, 0);
+            for (const auto& p : block.table->parameters()) {
+                xpmodel::BlockCodec::writeRaw(p, p.rawMin, bytes);
+            }
+            if (!block.tone) {
+                const auto name = xpmodel::PatchName::fromText("Piano 1")->bytes();
+                std::copy(name.begin(), name.end(), bytes.begin());
+            }
+            image.write(*base.plus(block.offset), bytes);
+        }
+        const auto patch = *xpmodel::Xp60PatchCodec::decode(image, base).patch;
+        for (const auto& reply : xpmodel::Xp60PatchCodec::encodeToDataSets(
+                 patch, roland::RolandDeviceId::factoryDefault(), xp60::modelId(), base)) {
+            f.deviceReplies(reply);
+        }
+        QVERIFY(f.devices->currentPatchAvailable());
+        QVERIFY(f.devices->canArmWrite());
+        QVERIFY(f.devices->armBlockedReason().isEmpty());
+
+        QSignalSpy spy(f.devices.get(), &DevicesViewModel::transferChanged);
+        f.devices->armWrite();
+        QVERIFY(f.devices->writeArmed());
+        QVERIFY(f.devices->canWrite());
+        QVERIFY(spy.count() >= 1);
+
+        // Disarming is always available.
+        f.devices->disarmWrite();
+        QVERIFY(!f.devices->writeArmed());
+        QVERIFY(!f.devices->canWrite());
+
+        // Disconnecting clears arming.
+        f.devices->armWrite();
+        QVERIFY(f.devices->writeArmed());
+        f.devices->disconnectDevice();
+        QVERIFY(!f.devices->writeArmed());
+        QVERIFY(!f.devices->canArmWrite());
     }
 
     void protocolLogModelBounded()

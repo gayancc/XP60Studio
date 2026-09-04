@@ -30,15 +30,12 @@ TestCase {
         var connectButton = findChild(screen, "connectButton")
         var disconnectButton = findChild(screen, "disconnectButton")
         var sendButton = findChild(screen, "sendRequestButton")
-        var dataSetButton = findChild(screen, "dataSetButton")
         verify(connectButton)
         verify(disconnectButton)
         verify(sendButton)
-        verify(dataSetButton)
         compare(connectButton.enabled, true)
         compare(disconnectButton.enabled, false)
         compare(sendButton.enabled, false)
-        compare(dataSetButton.enabled, false)
         var inputPicker = findChild(screen, "inputPicker")
         verify(inputPicker)
         compare(inputPicker.count, 1)
@@ -120,6 +117,39 @@ TestCase {
         compare(pill.text, "Failed")
         testDevices.disconnectDevice()
         compare(fetchButton.enabled, false)
+    }
+
+    function test_write_is_gated_behind_a_read_then_arming() {
+        var screen = createTemporaryObject(screenComponent, testCase)
+        verify(screen)
+        var armButton = findChild(screen, "armWriteButton")
+        var writeButton = findChild(screen, "writeVerifyButton")
+        var pill = findChild(screen, "transferPill")
+        var reason = findChild(screen, "armBlockedReason")
+        verify(armButton)
+        verify(writeButton)
+        verify(pill)
+
+        // Offline: neither arming nor writing is possible, and the reason is shown.
+        compare(armButton.enabled, false)
+        compare(writeButton.enabled, false)
+        compare(pill.text, "Idle")
+        compare(reason.visible, true)
+        verify(reason.text.indexOf("Connect") >= 0)
+
+        // Connected but no Patch read yet: still refused, with a different reason.
+        testDevices.connectDevice()
+        compare(armButton.enabled, false)
+        compare(writeButton.enabled, false)
+        verify(reason.text.indexOf("Fetch the temporary Patch") >= 0)
+
+        // Clicking arm does nothing while it is refused.
+        mouseClick(armButton)
+        compare(testDevices.writeArmed, false)
+
+        // The mismatch panel only exists when there is a mismatch to report.
+        var mismatch = findChild(screen, "mismatchPanel")
+        compare(mismatch.visible, false)
     }
 
     function test_stacks_to_one_column_when_narrow() {

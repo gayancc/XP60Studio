@@ -1,6 +1,8 @@
 add_library(xp60studio_services STATIC
   DeviceSession.h
   DeviceSession.cpp
+  PatchTransfer.h
+  PatchTransfer.cpp
 )
 add_library(xp60studio::services ALIAS xp60studio_services)
 target_include_directories(xp60studio_services PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)

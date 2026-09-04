@@ -84,6 +84,18 @@ xp60studio_add_test(tst_golden_fixture
 target_compile_definitions(tst_golden_fixture
   PRIVATE XP60STUDIO_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/xp60")
 
+xp60studio_add_test(tst_patch_diff
+  SOURCES tst_patch_diff.cpp
+  LIBS xp60studio::xpmodel)
+target_compile_definitions(tst_patch_diff
+  PRIVATE XP60STUDIO_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/xp60")
+
+xp60studio_add_test(tst_patch_transfer
+  SOURCES tst_patch_transfer.cpp
+  LIBS xp60studio::services)
+target_compile_definitions(tst_patch_transfer
+  PRIVATE XP60STUDIO_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/xp60")
+
 # The generated tables must match the protocol document they come from.
 find_package(Python3 COMPONENTS Interpreter QUIET)
 if(Python3_Interpreter_FOUND)

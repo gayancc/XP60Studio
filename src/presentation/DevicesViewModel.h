@@ -6,6 +6,7 @@
 #include "presentation/ProtocolLogModel.h"
 #include "presentation/RequestOperationModel.h"
 #include "services/DeviceSession.h"
+#include "services/PatchTransfer.h"
 
 #include <QObject>
 #include <QString>
@@ -60,8 +61,6 @@ class DevicesViewModel : public QObject
     Q_PROPERTY(int requestByteCount READ requestByteCount NOTIFY requestFieldsChanged)
     Q_PROPERTY(bool canSendRequest READ canSendRequest NOTIFY canSendRequestChanged)
     Q_PROPERTY(bool hasOutstandingRequests READ hasOutstandingRequests NOTIFY operationsChanged)
-    Q_PROPERTY(bool dataSetEnabled READ dataSetEnabled CONSTANT)
-    Q_PROPERTY(QString dataSetDisabledReason READ dataSetDisabledReason CONSTANT)
 
     // Diagnostics
     Q_PROPERTY(QAbstractItemModel* log READ log CONSTANT)
@@ -92,8 +91,26 @@ class DevicesViewModel : public QObject
     Q_PROPERTY(QString currentPatchDecodeReport READ currentPatchDecodeReport NOTIFY patchFetchChanged)
     Q_PROPERTY(QAbstractItemModel* patchParameters READ patchParameters CONSTANT)
 
+    // Write and verify (Phase 3)
+    Q_PROPERTY(bool writeSupported READ writeSupported NOTIFY transferChanged)
+    Q_PROPERTY(bool canArmWrite READ canArmWrite NOTIFY transferChanged)
+    Q_PROPERTY(bool writeArmed READ writeArmed NOTIFY transferChanged)
+    Q_PROPERTY(bool canWrite READ canWrite NOTIFY transferChanged)
+    Q_PROPERTY(bool canRestoreSnapshot READ canRestoreSnapshot NOTIFY transferChanged)
+    Q_PROPERTY(bool transferBusy READ transferBusy NOTIFY transferChanged)
+    Q_PROPERTY(QString transferStateText READ transferStateText NOTIFY transferChanged)
+    Q_PROPERTY(QString transferTone READ transferTone NOTIFY transferChanged)
+    Q_PROPERTY(QString transferMessage READ transferMessage NOTIFY transferChanged)
+    Q_PROPERTY(QString writePlanText READ writePlanText CONSTANT)
+    Q_PROPERTY(QString armBlockedReason READ armBlockedReason NOTIFY transferChanged)
+    Q_PROPERTY(QString mismatchReport READ mismatchReport NOTIFY transferChanged)
+    Q_PROPERTY(QString safetySnapshotName READ safetySnapshotName NOTIFY transferChanged)
+
 public:
-    explicit DevicesViewModel(services::DeviceSession& session, QObject* parent = nullptr);
+    // `transfer` is optional: without it the write-and-verify surface reports
+    // itself unsupported and the UI hides it.
+    explicit DevicesViewModel(services::DeviceSession& session, services::PatchTransfer* transfer = nullptr,
+                              QObject* parent = nullptr);
 
     [[nodiscard]] QAbstractItemModel* inputs() { return &m_inputs; }
     [[nodiscard]] QAbstractItemModel* outputs() { return &m_outputs; }
@@ -135,8 +152,6 @@ public:
     [[nodiscard]] int requestByteCount() const;
     [[nodiscard]] bool canSendRequest() const;
     [[nodiscard]] bool hasOutstandingRequests() const;
-    [[nodiscard]] bool dataSetEnabled() const { return false; }
-    [[nodiscard]] QString dataSetDisabledReason() const;
 
     [[nodiscard]] QAbstractItemModel* log() { return &m_log; }
     [[nodiscard]] QAbstractItemModel* operations() { return &m_operations; }
@@ -165,8 +180,29 @@ public:
     [[nodiscard]] QString currentPatchDecodeReport() const;
     [[nodiscard]] QAbstractItemModel* patchParameters() { return &m_patchParameters; }
 
+    [[nodiscard]] bool writeSupported() const { return m_transfer != nullptr; }
+    [[nodiscard]] bool canArmWrite() const;
+    [[nodiscard]] bool writeArmed() const;
+    [[nodiscard]] bool canWrite() const;
+    [[nodiscard]] bool canRestoreSnapshot() const;
+    [[nodiscard]] bool transferBusy() const;
+    [[nodiscard]] QString transferStateText() const;
+    [[nodiscard]] QString transferTone() const;
+    [[nodiscard]] QString transferMessage() const;
+    [[nodiscard]] QString writePlanText() const;
+    [[nodiscard]] QString armBlockedReason() const;
+    [[nodiscard]] QString mismatchReport() const;
+    [[nodiscard]] QString safetySnapshotName() const;
+
     // Intents
     Q_INVOKABLE void refreshEndpoints();
+    Q_INVOKABLE void armWrite();
+    Q_INVOKABLE void disarmWrite();
+    // Writes the Patch just fetched back to the temporary area and verifies it.
+    // This is the Phase 3 round trip; it needs arming.
+    Q_INVOKABLE void writeBackAndVerify();
+    Q_INVOKABLE void restoreSafetySnapshot();
+    Q_INVOKABLE void cancelTransfer();
     Q_INVOKABLE void fetchCurrentPatch();
     Q_INVOKABLE void cancelPatchFetch();
     Q_INVOKABLE void connectDevice();
@@ -189,12 +225,14 @@ signals:
     void operationsChanged();
     void statisticsChanged();
     void patchFetchChanged();
+    void transferChanged();
 
 private:
     void syncEndpoints();
     void clampSelection();
 
     services::DeviceSession& m_session;
+    services::PatchTransfer* m_transfer = nullptr;
     MidiEndpointListModel m_inputs;
     MidiEndpointListModel m_outputs;
     ProtocolLogModel m_log;

@@ -122,13 +122,14 @@ accepts a DT1 write. Both are exactly what Phase 3 exists to establish.
 
 ## Next steps (Phase 3)
 
-1. Build the **send-and-verify engine**: transmit with
-   `Xp60PatchCodec::encodeToDataSets` (≤ 128 bytes, ≥ 20 ms), read back,
-   compare, report per-block. The DT1 write path is still disabled in the UI
-   and must stay disabled until the temporary-area semantics are verified.
-2. **Hardware session** per `docs/HARDWARE_VALIDATION_XP60.md`: FETCH → DECODE
-   → ENCODE → SEND → FETCH AGAIN → COMPARE against the temporary Patch area.
-   Record the payload sizes the XP-60 sends, which settles the §2.1
-   discrepancy.
+The send-and-verify engine is now built (`services::PatchTransfer`,
+`xpmodel::Xp60PatchDiff`) and covered on the loopback transport. What remains
+is the hardware session itself:
+
+1. **Hardware session** per `docs/HARDWARE_VALIDATION_XP60.md`, steps 1–8a:
+   FETCH → DECODE → ENCODE → SEND → FETCH AGAIN → COMPARE against the
+   temporary Patch area, plus the parameter spot-checks that test *meaning*.
+2. Record the payload sizes the XP-60 sends, which settles the §2.1
+   129-byte discrepancy.
 3. Promote table rows to `HardwareVerified` only for behaviour actually
    observed, then Phase 4 (visual Patch Editor) on top of `Xp60Patch`.

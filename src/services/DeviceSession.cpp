@@ -234,6 +234,9 @@ void DeviceSession::disconnectEndpoints()
     }
     m_sendQueue.clear();
     m_sendTimer.stop();
+    while (!m_dataSetBatches.empty()) {
+        finishDataSetBatch(DataSetBatchId{m_dataSetBatches.begin()->first}, false, "Disconnected");
+    }
     m_transport->closeAll();
     if (m_state != ConnectionState::Disconnected) {
         setState(ConnectionState::Disconnected);
@@ -284,12 +287,60 @@ protocol::RequestId DeviceSession::sendDataRequest(const roland::RolandAddress& 
     }
     const auto request = roland::RolandSysExMessage::dataRequest(m_deviceId, m_modelId, address, size);
     const auto id = m_tracker.enqueue(request, m_steadyClock());
-    m_sendQueue.push_back(Outgoing{request.encode(), id, request});
+    m_sendQueue.push_back(Outgoing{request.encode(), id, request, DataSetBatchId{}});
     logSystem(LogKind::Operation, LogSeverity::Info,
               "Request #" + std::to_string(id.value) + " queued: " + request.summary(), {}, id.value);
     emit operationChanged(id.value);
     scheduleSend();
     return id;
+}
+
+DeviceSession::DataSetBatchId DeviceSession::sendDataSets(const std::vector<roland::RolandSysExMessage>& messages)
+{
+    if (m_state != ConnectionState::Connected) {
+        logSystem(LogKind::Operation, LogSeverity::Warning, "Cannot send data: not connected");
+        return DataSetBatchId{};
+    }
+    if (messages.empty()) {
+        return DataSetBatchId{};
+    }
+    for (const auto& message : messages) {
+        if (!message.isDataSet()) {
+            logSystem(LogKind::Operation, LogSeverity::Error, "sendDataSets refused: not every message is a DT1");
+            return DataSetBatchId{};
+        }
+    }
+
+    const DataSetBatchId id{m_nextBatchId++};
+    m_dataSetBatches[id.value] = DataSetBatch{messages.size(), false, {}};
+    for (const auto& message : messages) {
+        m_sendQueue.push_back(Outgoing{message.encode(), protocol::RequestId{}, message, id});
+    }
+    logSystem(LogKind::Operation, LogSeverity::Info,
+              "Queued " + std::to_string(messages.size()) + " DT1 message(s) to "
+                  + messages.front().address().toHexString());
+    // Start sending on the next turn of the event loop, never inside this
+    // call: with a short pacing interval the whole batch would otherwise
+    // finish — and dataSetBatchFinished fire — before the caller had received
+    // the batch id it needs to recognise its own batch.
+    QMetaObject::invokeMethod(this, [this] { scheduleSend(); }, Qt::QueuedConnection);
+    return id;
+}
+
+void DeviceSession::finishDataSetBatch(DataSetBatchId id, bool ok, std::string error)
+{
+    const auto it = m_dataSetBatches.find(id.value);
+    if (it == m_dataSetBatches.end()) {
+        return;
+    }
+    m_dataSetBatches.erase(it);
+    // Drop any of this batch's messages still queued behind a failure.
+    if (!ok) {
+        for (auto queued = m_sendQueue.begin(); queued != m_sendQueue.end();) {
+            queued = queued->batchId == id ? m_sendQueue.erase(queued) : std::next(queued);
+        }
+    }
+    emit dataSetBatchFinished(id.value, ok, QString::fromStdString(error));
 }
 
 bool DeviceSession::cancelRequest(protocol::RequestId id)
@@ -374,6 +425,9 @@ void DeviceSession::pumpSendQueue()
         logSystem(LogKind::Transport, LogSeverity::Error, "Send failed: " + error.message,
                   roland::toHex(roland::ByteSpan(bytes.data(), bytes.size())));
         emit statisticsChanged();
+        if (outgoing.batchId.isValid()) {
+            finishDataSetBatch(outgoing.batchId, false, error.message);
+        }
         scheduleSend();
         return;
     }
@@ -393,6 +447,12 @@ void DeviceSession::pumpSendQueue()
         appendLog(diagnostics::logRolandMessage(LogDirection::Out, *outgoing.roland, outputName(), requestId, m_wallClock()));
     } else {
         appendLog(diagnostics::logRawMidi(LogDirection::Out, bytes, outputName(), m_wallClock()));
+    }
+    if (outgoing.batchId.isValid()) {
+        const auto batch = m_dataSetBatches.find(outgoing.batchId.value);
+        if (batch != m_dataSetBatches.end() && --batch->second.remaining == 0) {
+            finishDataSetBatch(outgoing.batchId, true, {});
+        }
     }
     emit statisticsChanged();
     updateTimeoutTimer();

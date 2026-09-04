@@ -17,6 +17,7 @@
 
 #include <chrono>
 #include <deque>
+#include <map>
 #include <functional>
 #include <memory>
 #include <mutex>
@@ -62,6 +63,15 @@ public:
         std::uint64_t requestsCancelled = 0;
         std::uint64_t requestsFailed = 0;
         std::uint64_t transportErrors = 0;
+    };
+
+    // A batch of DT1 messages queued together. DT1 has no reply, so the batch
+    // finishes when the last message has left the transport.
+    struct DataSetBatchId
+    {
+        std::uint64_t value = 0;
+        [[nodiscard]] constexpr bool isValid() const noexcept { return value != 0; }
+        friend constexpr auto operator<=>(const DataSetBatchId&, const DataSetBatchId&) noexcept = default;
     };
 
     // Phase 2 inspection aid: reading one whole Patch block by block.
@@ -132,6 +142,12 @@ public:
     // Patch fetch ---------------------------------------------------------------
     // Issues the RQ1s of Xp60PatchLayout::fetchPlan(base). False when not
     // connected or a fetch is already running.
+    // Queues DT1 messages for transmission with the configured pacing.
+    // Returns an invalid id when not connected or the list is empty.
+    // dataSetBatchFinished() reports the outcome.
+    DataSetBatchId sendDataSets(const std::vector<roland::RolandSysExMessage>& messages);
+    [[nodiscard]] std::size_t pendingDataSetBatches() const noexcept { return m_dataSetBatches.size(); }
+
     bool fetchPatch(const roland::RolandAddress& patchBase);
     bool fetchTemporaryPatch();
     void cancelPatchFetch();
@@ -160,6 +176,7 @@ signals:
     void operationChanged(quint64 requestId);
     void statisticsChanged();
     void patchFetchChanged();
+    void dataSetBatchFinished(quint64 batchId, bool ok, const QString& error);
 
 private:
     struct Outgoing
@@ -167,7 +184,17 @@ private:
         midi::MidiBytes bytes;
         protocol::RequestId requestId;
         std::optional<roland::RolandSysExMessage> roland;
+        DataSetBatchId batchId;
     };
+
+    struct DataSetBatch
+    {
+        std::size_t remaining = 0;
+        bool failed = false;
+        std::string error;
+    };
+
+    void finishDataSetBatch(DataSetBatchId id, bool ok, std::string error);
 
     void handleIncomingMessage(midi::MidiBytes bytes);
     void updatePatchFetch();
@@ -201,6 +228,8 @@ private:
     midi::SysExAssembler m_assembler;
 
     std::deque<Outgoing> m_sendQueue;
+    std::map<std::uint64_t, DataSetBatch> m_dataSetBatches;
+    std::uint64_t m_nextBatchId = 1;
     std::optional<protocol::TimePoint> m_lastSendAt;
     QTimer m_sendTimer;
     QTimer m_timeoutTimer;

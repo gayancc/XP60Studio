@@ -10,6 +10,7 @@
 #include "presentation/DevicesViewModel.h"
 #include "presentation/QmlRegistration.h"
 #include "services/DeviceSession.h"
+#include "services/PatchTransfer.h"
 
 #include <QGuiApplication>
 #include <QImage>
@@ -56,7 +57,8 @@ int main(int argc, char* argv[])
     xp60studio::presentation::registerQmlTypes();
 
     xp60studio::services::DeviceSession session(createTransport());
-    xp60studio::presentation::DevicesViewModel devices(session);
+    xp60studio::services::PatchTransfer transfer(session);
+    xp60studio::presentation::DevicesViewModel devices(session, &transfer);
     xp60studio::presentation::AppShellViewModel shell(&devices);
 
     QQmlApplicationEngine engine;

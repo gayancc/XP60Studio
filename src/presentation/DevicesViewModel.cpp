@@ -35,15 +35,20 @@ ConnectionState toPresentation(services::DeviceSession::ConnectionState state)
 
 } // namespace
 
-DevicesViewModel::DevicesViewModel(services::DeviceSession& session, QObject* parent)
+DevicesViewModel::DevicesViewModel(services::DeviceSession& session, services::PatchTransfer* transfer, QObject* parent)
     : QObject(parent)
     , m_session(session)
+    , m_transfer(transfer)
 {
+    if (m_transfer) {
+        connect(m_transfer, &services::PatchTransfer::changed, this, &DevicesViewModel::transferChanged);
+    }
     connect(&m_session, &services::DeviceSession::endpointsChanged, this, &DevicesViewModel::syncEndpoints);
     connect(&m_session, &services::DeviceSession::connectionStateChanged, this, [this] {
         emit connectionChanged();
         emit canSendRequestChanged();
         emit patchFetchChanged();
+        emit transferChanged();
     });
     connect(&m_session, &services::DeviceSession::deviceIdChanged, this, &DevicesViewModel::deviceIdChanged);
     connect(&m_session, &services::DeviceSession::logEntryAdded, this,
@@ -62,6 +67,7 @@ DevicesViewModel::DevicesViewModel(services::DeviceSession& session, QObject* pa
             m_patchParameters.clear();
         }
         emit patchFetchChanged();
+        emit transferChanged();
     });
 
     for (const auto& entry : m_session.log()) {
@@ -390,12 +396,6 @@ bool DevicesViewModel::hasOutstandingRequests() const
     return m_session.tracker().hasOutstanding();
 }
 
-QString DevicesViewModel::dataSetDisabledReason() const
-{
-    return QStringLiteral("Writing (DT1) stays disabled until the temporary-memory semantics are verified on a "
-                          "physical XP-60. See docs/HARDWARE_VALIDATION_XP60.md.");
-}
-
 bool DevicesViewModel::sendRequest()
 {
     if (!canSendRequest()) {
@@ -515,6 +515,152 @@ void DevicesViewModel::fetchCurrentPatch()
 void DevicesViewModel::cancelPatchFetch()
 {
     m_session.cancelPatchFetch();
+}
+
+// ---------------------------------------------------------------------------
+// Write and verify
+// ---------------------------------------------------------------------------
+
+using TransferState = services::PatchTransfer::State;
+
+bool DevicesViewModel::canArmWrite() const
+{
+    return m_transfer && m_transfer->canArm() && currentPatchAvailable();
+}
+
+bool DevicesViewModel::writeArmed() const
+{
+    return m_transfer && m_transfer->isArmed();
+}
+
+bool DevicesViewModel::canWrite() const
+{
+    return writeArmed() && currentPatchAvailable() && !transferBusy();
+}
+
+bool DevicesViewModel::canRestoreSnapshot() const
+{
+    return m_transfer && m_transfer->safetySnapshot().has_value() && writeArmed() && !transferBusy();
+}
+
+bool DevicesViewModel::transferBusy() const
+{
+    return m_transfer && m_transfer->isBusy();
+}
+
+QString DevicesViewModel::transferStateText() const
+{
+    return m_transfer ? QString::fromStdString(m_transfer->stateLabel()) : QString();
+}
+
+QString DevicesViewModel::transferTone() const
+{
+    if (!m_transfer) {
+        return QStringLiteral("neutral");
+    }
+    switch (m_transfer->state()) {
+    case TransferState::Verified:
+        return QStringLiteral("success");
+    case TransferState::Mismatch:
+    case TransferState::Failed:
+        return QStringLiteral("error");
+    case TransferState::Cancelled:
+        return QStringLiteral("warning");
+    case TransferState::Idle:
+        return QStringLiteral("neutral");
+    default:
+        return QStringLiteral("warning");
+    }
+}
+
+QString DevicesViewModel::transferMessage() const
+{
+    if (!m_transfer) {
+        return {};
+    }
+    if (m_transfer->state() == TransferState::Idle) {
+        // The plan is already stated in the arming panel; do not repeat it.
+        return {};
+    }
+    return QString::fromStdString(m_transfer->message());
+}
+
+QString DevicesViewModel::writePlanText() const
+{
+    return m_transfer ? QString::fromStdString(m_transfer->writePlanDescription()) : QString();
+}
+
+QString DevicesViewModel::armBlockedReason() const
+{
+    if (!m_transfer || m_transfer->isArmed() || m_transfer->isBusy()) {
+        return {};
+    }
+    if (connectionState() != ConnectionState::Connected) {
+        return QStringLiteral("Connect to the XP-60 first.");
+    }
+    if (!m_transfer->readVerified()) {
+        return QStringLiteral("Fetch the temporary Patch first. A successful read is what shows the address map is "
+                              "right for this instrument, and only then is a write safe to attempt.");
+    }
+    if (!currentPatchAvailable()) {
+        return QStringLiteral("Fetch a Patch first: the write sends back the Patch that was read.");
+    }
+    return {};
+}
+
+QString DevicesViewModel::mismatchReport() const
+{
+    if (!m_transfer || !m_transfer->diff() || m_transfer->diff()->identical()) {
+        return {};
+    }
+    return QString::fromStdString(m_transfer->diff()->describe(12)).trimmed();
+}
+
+QString DevicesViewModel::safetySnapshotName() const
+{
+    if (!m_transfer || !m_transfer->safetySnapshot()) {
+        return {};
+    }
+    return QString::fromStdString(m_transfer->safetySnapshot()->name().displayText());
+}
+
+void DevicesViewModel::armWrite()
+{
+    if (m_transfer) {
+        m_transfer->arm();
+    }
+}
+
+void DevicesViewModel::disarmWrite()
+{
+    if (m_transfer) {
+        m_transfer->disarm();
+    }
+}
+
+void DevicesViewModel::writeBackAndVerify()
+{
+    if (!canWrite()) {
+        return;
+    }
+    const auto& patch = m_session.patchFetch().patch;
+    if (patch) {
+        m_transfer->writeAndVerifyTemporaryPatch(*patch);
+    }
+}
+
+void DevicesViewModel::restoreSafetySnapshot()
+{
+    if (canRestoreSnapshot()) {
+        m_transfer->restoreSafetySnapshot();
+    }
+}
+
+void DevicesViewModel::cancelTransfer()
+{
+    if (m_transfer) {
+        m_transfer->cancel();
+    }
 }
 
 // ---------------------------------------------------------------------------

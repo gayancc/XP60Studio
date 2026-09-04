@@ -108,7 +108,8 @@ src/diagnostics   structured protocol log entries (no Qt)
 src/xpmodel       XP domain model & codecs: parameter tables (generated from
                   docs/protocol), block codec, Xp60Patch + codec, memory image,
                   .syx stream parsing (no Qt)
-src/services      DeviceSession orchestration (Qt Core)
+src/services      DeviceSession orchestration and PatchTransfer
+                  (write -> read back -> compare -> verify) (Qt Core)
 src/presentation  view models and Qt item models for QML
 src/app           Qt Quick executable
 qml/XP60Studio    design tokens, reusable controls, shell, screens
@@ -135,6 +136,13 @@ a real XP-60 user bank (`tests/fixtures/xp60/`): all 128 patches decode with
 zero out-of-range values and round-trip byte-exact. See
 [`docs/PHASE_2_PATCH_MODEL.md`](docs/PHASE_2_PATCH_MODEL.md) and
 [`docs/protocol/XP60_PATCH_PARAMETER_MAP.md`](docs/protocol/XP60_PATCH_PARAMETER_MAP.md).
+
+**Phase 3 — Hardware Round-Trip Validation** has its engine in place: the
+Devices screen can write a Patch back to the XP-60's temporary area and verify
+it by reading it back and comparing every parameter. Writing is armed
+explicitly, targets only the edit buffer, and captures a safety snapshot first.
+The hardware session itself is documented in
+[`docs/HARDWARE_VALIDATION_XP60.md`](docs/HARDWARE_VALIDATION_XP60.md).
 
 Advanced product screens wait for their backing domain phases, and when
 implemented they are built directly against the approved mockup rather than as

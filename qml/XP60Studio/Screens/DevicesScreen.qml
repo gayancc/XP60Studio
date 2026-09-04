@@ -278,24 +278,6 @@ Item {
                                 }
                             }
 
-                            XpDivider { Layout.fillWidth: true }
-
-                            RowLayout {
-                                spacing: Metrics.spacingMd
-                                Layout.fillWidth: true
-                                XpButton {
-                                    objectName: "dataSetButton"
-                                    text: "Write test (DT1)"
-                                    enabled: root.devices.dataSetEnabled
-                                }
-                                XpLabel {
-                                    text: root.devices.dataSetDisabledReason
-                                    role: "caption"
-                                    muted: true
-                                    wrapMode: Text.WordWrap
-                                    Layout.fillWidth: true
-                                }
-                            }
                         }
                     }
 
@@ -556,6 +538,152 @@ Item {
                                         XpLabel { text: paramRow.model.name; role: "caption"; Layout.fillWidth: true; elide: Text.ElideRight }
                                         XpLabel { text: paramRow.model.valueText; role: "mono"; color: paramRow.model.isEnum ? Theme.accentText : Theme.textPrimary }
                                         XpLabel { text: "(" + paramRow.model.rawValue + ")"; role: "mono"; muted: true; Layout.preferredWidth: 44; horizontalAlignment: Text.AlignRight }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Write and verify (Phase 3) ----------------------------------------
+                    XpCard {
+                        visible: root.devices.writeSupported
+                        Layout.fillWidth: true
+                        implicitHeight: writeColumn.implicitHeight + 2 * Metrics.cardPadding
+
+                        ColumnLayout {
+                            id: writeColumn
+                            anchors { left: parent.left; right: parent.right; top: parent.top }
+                            spacing: Metrics.spacingSm
+
+                            XpPanelHeader {
+                                title: "Write and verify · DT1"
+                                glyph: "⇅"
+                                StatusPill {
+                                    objectName: "transferPill"
+                                    text: root.devices.transferStateText
+                                    tone: root.devices.transferTone
+                                    pulsing: root.devices.transferBusy
+                                }
+                            }
+
+                            // Writing to the instrument is an armed action: the plan is
+                            // stated in full before the control becomes usable.
+                            Rectangle {
+                                Layout.fillWidth: true
+                                implicitHeight: armColumn.implicitHeight + 2 * Metrics.spacingMd
+                                radius: Metrics.radiusSm
+                                color: root.devices.writeArmed ? Theme.warningSoft : Theme.surfaceSunken
+                                border.width: 1
+                                border.color: root.devices.writeArmed ? Theme.warning : Theme.borderSubtle
+
+                                ColumnLayout {
+                                    id: armColumn
+                                    anchors { left: parent.left; right: parent.right; top: parent.top; margins: Metrics.spacingMd }
+                                    spacing: Metrics.spacingSm
+
+                                    XpLabel {
+                                        text: root.devices.writePlanText
+                                        role: "caption"
+                                        secondary: true
+                                        wrapMode: Text.WordWrap
+                                        Layout.fillWidth: true
+                                    }
+                                    XpLabel {
+                                        objectName: "armBlockedReason"
+                                        visible: root.devices.armBlockedReason.length > 0
+                                        text: root.devices.armBlockedReason
+                                        role: "caption"
+                                        color: Theme.textMuted
+                                        wrapMode: Text.WordWrap
+                                        Layout.fillWidth: true
+                                    }
+                                    RowLayout {
+                                        spacing: Metrics.spacingSm
+                                        XpButton {
+                                            objectName: "armWriteButton"
+                                            text: root.devices.writeArmed ? "Armed — disarm" : "Arm write"
+                                            variant: root.devices.writeArmed ? "danger" : "secondary"
+                                            glyph: root.devices.writeArmed ? "⏻" : "⚿"
+                                            enabled: root.devices.writeArmed || root.devices.canArmWrite
+                                            onClicked: root.devices.writeArmed ? root.devices.disarmWrite()
+                                                                               : root.devices.armWrite()
+                                        }
+                                        XpLabel {
+                                            visible: root.devices.writeArmed
+                                            text: "Armed for one write"
+                                            role: "caption"
+                                            color: Theme.warning
+                                        }
+                                    }
+                                }
+                            }
+
+                            RowLayout {
+                                spacing: Metrics.spacingSm
+                                Layout.fillWidth: true
+                                XpButton {
+                                    objectName: "writeVerifyButton"
+                                    text: "Write back & verify"
+                                    variant: "primary"
+                                    glyph: "⇅"
+                                    enabled: root.devices.canWrite
+                                    onClicked: root.devices.writeBackAndVerify()
+                                }
+                                XpButton {
+                                    objectName: "restoreSnapshotButton"
+                                    text: "Restore snapshot"
+                                    visible: root.devices.safetySnapshotName.length > 0
+                                    enabled: root.devices.canRestoreSnapshot
+                                    onClicked: root.devices.restoreSafetySnapshot()
+                                }
+                                XpButton {
+                                    text: "Cancel"
+                                    visible: root.devices.transferBusy
+                                    onClicked: root.devices.cancelTransfer()
+                                }
+                                Item { Layout.fillWidth: true }
+                                XpLabel {
+                                    visible: root.devices.safetySnapshotName.length > 0
+                                    text: "Snapshot: " + root.devices.safetySnapshotName
+                                    role: "caption"
+                                    muted: true
+                                    elide: Text.ElideRight
+                                    Layout.maximumWidth: 220
+                                }
+                            }
+
+                            XpLabel {
+                                objectName: "transferMessage"
+                                visible: text.length > 0
+                                text: root.devices.transferMessage
+                                role: "caption"
+                                color: root.devices.transferTone === "error" ? Theme.error
+                                     : root.devices.transferTone === "success" ? Theme.success : Theme.textSecondary
+                                wrapMode: Text.WordWrap
+                                Layout.fillWidth: true
+                            }
+
+                            // A read-back mismatch is shown parameter by parameter,
+                            // never summarised away.
+                            Rectangle {
+                                objectName: "mismatchPanel"
+                                visible: root.devices.mismatchReport.length > 0
+                                Layout.fillWidth: true
+                                implicitHeight: mismatchColumn.implicitHeight + 2 * Metrics.spacingMd
+                                radius: Metrics.radiusSm
+                                color: Theme.errorSoft
+                                border.width: 1
+                                border.color: Qt.rgba(Theme.error.r, Theme.error.g, Theme.error.b, 0.45)
+                                ColumnLayout {
+                                    id: mismatchColumn
+                                    anchors { left: parent.left; right: parent.right; top: parent.top; margins: Metrics.spacingMd }
+                                    spacing: 2
+                                    XpLabel { text: "READ-BACK DIFFERENCES"; role: "overline"; color: Theme.error }
+                                    XpLabel {
+                                        text: root.devices.mismatchReport
+                                        role: "mono"
+                                        wrapMode: Text.WordWrap
+                                        Layout.fillWidth: true
                                     }
                                 }
                             }

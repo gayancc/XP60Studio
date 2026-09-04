@@ -3,6 +3,7 @@
 #include "presentation/DevicesViewModel.h"
 #include "presentation/QmlRegistration.h"
 #include "services/DeviceSession.h"
+#include "services/PatchTransfer.h"
 
 #include <QQmlContext>
 #include <QQmlEngine>
@@ -38,7 +39,8 @@ public slots:
         auto pacing = m_session->pacing();
         pacing.interMessageDelay = std::chrono::milliseconds(0);
         m_session->setPacing(pacing);
-        m_devices = std::make_unique<xp60studio::presentation::DevicesViewModel>(*m_session);
+        m_transfer = std::make_unique<xp60studio::services::PatchTransfer>(*m_session);
+        m_devices = std::make_unique<xp60studio::presentation::DevicesViewModel>(*m_session, m_transfer.get());
         m_shell = std::make_unique<xp60studio::presentation::AppShellViewModel>(m_devices.get());
 
         engine->rootContext()->setContextProperty(QStringLiteral("testDevices"), m_devices.get());
@@ -48,6 +50,7 @@ public slots:
 private:
     xp60studio::midi::LoopbackMidiTransport* m_transport = nullptr;
     std::unique_ptr<xp60studio::services::DeviceSession> m_session;
+    std::unique_ptr<xp60studio::services::PatchTransfer> m_transfer;
     std::unique_ptr<xp60studio::presentation::DevicesViewModel> m_devices;
     std::unique_ptr<xp60studio::presentation::AppShellViewModel> m_shell;
 };
