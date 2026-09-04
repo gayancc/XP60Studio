@@ -11,6 +11,12 @@ screen (click a row to expand it and copy the raw hex).
 
 ## Preparation
 
+Execution note (2026-09-04): physical validation is deferred to the final device
+acceptance pass at the user's direction. Include Phase 3 round-trip checks,
+`PHASE_4_LIVE_AUDITION.md`, `PHASE_4_EFFECT_ROUTING.md` and the bank-boundary
+capture checklist in `PHASE_4_WAVE_BROWSER.md`. Local development may continue;
+unperformed hardware checks remain open.
+
 | Item | Value to record |
 |---|---|
 | XP-60 firmware version (Utility → Information, or power-on display) | |
@@ -97,22 +103,71 @@ F0 41 10 6A 11 01 00 00 00 00 00 1F 19 47 F7
 - Expect five *Completed* cards with identical `Text:` and identical raw hex.
 - Record: any difference, and the time between OUT and IN lines (latency).
 
-### 8. Temporary-area write and read-back — **only after 1–7 pass**
+### 7a. Fetch and decode the whole temporary Patch
 
-Precondition: steps 2–7 confirm the `03 00 00 00` temporary Patch area and its
-12-byte name field. The Devices screen has no write action in Phase 1; this
-step is performed with the Phase 2 tooling once it exists, and is listed here
-so the expectation is fixed now.
+- Devices → **Current Patch · inspection** → **Fetch temporary Patch**.
+- Expect five RQ1/DT1 exchanges (`03 00 00 00` 73 bytes, then `03 00 10 00`,
+  `03 00 12 00`, `03 00 14 00`, `03 00 16 00`, 129 bytes each) and the card to
+  show the decoded patch name, a summary line and all 584 parameters.
+- **Compare the decoded name with the XP-60's display.** They must match.
+- Spot-check three or four parameters against the XP-60's own edit pages
+  (Tone switches, a wave number, cutoff, a reverb type). This is the only step
+  that tests parameter *meaning* rather than structure.
+- Record: the payload size of each incoming DT1 (the `bytes=` figure on the IN
+  lines). **This settles the open 129-byte question** in
+  `docs/protocol/ROLAND_XP60_PROTOCOL_FACTS.md` §2.1: note whether the XP-60
+  sends 129 bytes in one message or splits at 128.
+- Record: the gap between consecutive DT1s from the timestamps.
 
-- Write the 12-byte name `XP60STUDIO  ` to `03 00 00 00` with a DT1.
-- Read it back with the step 2 request. Expect the read-back to equal the
-  written bytes and the XP-60 display to show the new name.
-- Confirm that permanent User memory is untouched: read USER:001's name before
-  and after; they must be identical.
+### 8. Temporary-area write and read-back — **only after 1–7a pass**
+
+This is the Phase 3 round trip: FETCH → DECODE → ENCODE → SEND → FETCH AGAIN →
+COMPARE. The application performs it; nothing needs to be assembled by hand.
+
+Safety properties built into the action, worth understanding before using it:
+
+- the only writable target is the **temporary** Patch area (`03 00 00 00`), the
+  edit buffer. Permanent User memory is not reachable from this screen at all;
+- the write must be **armed** immediately beforehand, and one arming permits
+  exactly one write;
+- arming is refused until a temporary-Patch read has succeeded in this session
+  — which is what steps 1–7a establish;
+- the Patch present beforehand is captured automatically as a **safety
+  snapshot** and can be written back with one action.
+
+Procedure:
+
+- Devices → **Write and verify · DT1**. Read the plan text, then **Arm write**.
+- Press **Write back & verify**. The card walks through: capturing safety
+  snapshot → sending → reading back → comparing.
+- Expect **Verified**: the read-back equals what was sent, parameter for
+  parameter.
+- If it reports **Read-back mismatch**, the differences are listed by name
+  ("Tone 2 Cutoff Frequency: 84 → 83"). Record every one. Do not dismiss them;
+  a mismatch means the codec, the address map or the transfer is wrong.
+- Confirm permanent memory is untouched: read USER:001's name (step 2 preset)
+  before and after. They must be identical.
+- Press **Restore snapshot** (arming again) and confirm the original patch
+  returns.
 - Power-cycle the XP-60. The temporary edit **must not persist**; the startup
-  state follows the XP-60 **Power Up Mode** setting (`LAST-SET` or `DEFAULT`),
-  so do not require the exact previous temporary patch to reappear.
-- Record: all four raw messages.
+  state follows the XP-60's **Power Up Mode** setting (`LAST-SET` or
+  `DEFAULT`), so do not require the exact previous temporary patch to reappear.
+- Record: the raw hex of the outgoing DT1s and the read-back DT1s, and the
+  transfer card's final message.
+
+### 8a. Deliberate mismatch check
+
+Confidence in a verifier that has never failed is worth little.
+
+- Fetch the temporary Patch, arm, and write it back. Verified.
+- Now change one parameter on the **XP-60's own front panel** (for example
+  Tone 1 level), then press **Write back & verify** again without re-fetching.
+- Expect **Verified** still, because the app rewrites its own copy over the
+  panel edit.
+- Then fetch, arm, write, and while it is sending, change a value on the panel.
+  A mismatch here is informative rather than a defect.
+- The dependable check: confirm that the mismatch report names the parameter
+  you changed when one does occur.
 
 ## Additional observations worth capturing
 

@@ -10,12 +10,16 @@
 #include "roland/RolandModelId.h"
 #include "roland/RolandSize.h"
 #include "roland/RolandSysExMessage.h"
+#include "xpmodel/Xp60PatchCodec.h"
 
 #include <QObject>
 #include <QTimer>
+#include <QFutureWatcher>
+#include <atomic>
 
 #include <chrono>
 #include <deque>
+#include <map>
 #include <functional>
 #include <memory>
 #include <mutex>
@@ -44,6 +48,10 @@ public:
         Connected,
         Error,
     };
+    enum class LinkState { Unchecked, Checking, Responding, Failed };
+    LinkState linkState() const { return m_linkState; }
+    std::string linkMessage() const { return m_linkMessage; }
+    bool testConnection();
 
     struct Statistics
     {
@@ -61,6 +69,38 @@ public:
         std::uint64_t requestsCancelled = 0;
         std::uint64_t requestsFailed = 0;
         std::uint64_t transportErrors = 0;
+    };
+
+    // A batch of DT1 messages queued together. DT1 has no reply, so the batch
+    // finishes when the last message has left the transport.
+    struct DataSetBatchId
+    {
+        std::uint64_t value = 0;
+        [[nodiscard]] constexpr bool isValid() const noexcept { return value != 0; }
+        friend constexpr auto operator<=>(const DataSetBatchId&, const DataSetBatchId&) noexcept = default;
+    };
+
+    // Phase 2 inspection aid: reading one whole Patch block by block.
+    enum class PatchFetchState {
+        Idle,
+        InProgress,
+        Completed,
+        Failed,
+    };
+
+    enum class PatchFetchPurpose { Editing, Transfer };
+
+    struct PatchFetchStatus
+    {
+        PatchFetchState state = PatchFetchState::Idle;
+        PatchFetchPurpose purpose = PatchFetchPurpose::Editing;
+        roland::RolandAddress base;
+        std::vector<protocol::RequestId> requests;  // one per block, layout order
+        std::size_t completedBlocks = 0;
+        std::size_t totalBlocks = 0;
+        std::string message;                        // human readable outcome
+        std::optional<xpmodel::Xp60Patch> patch;    // present when Completed
+        std::string decodeReport;                   // warnings / errors from the codec
     };
 
     using SteadyClock = std::function<protocol::TimePoint()>;
@@ -98,6 +138,9 @@ public:
     [[nodiscard]] std::optional<midi::MidiEndpointInfo> connectedInput() const;
     [[nodiscard]] std::optional<midi::MidiEndpointInfo> connectedOutput() const;
     bool connectEndpoints(const std::string& inputId, const std::string& outputId);
+    // Production UI uses the asynchronous path; synchronous entry remains for
+    // deterministic fixtures and non-UI callers. Both share the same cleanup.
+    void connectEndpointsAsync(const std::string& inputId, const std::string& outputId);
     void disconnectEndpoints();
 
     // Requests ----------------------------------------------------------------
@@ -107,6 +150,21 @@ public:
     bool cancelRequest(protocol::RequestId id);
     std::size_t cancelAllRequests();
     [[nodiscard]] const protocol::RolandRequestTracker& tracker() const noexcept { return m_tracker; }
+
+    // Patch fetch ---------------------------------------------------------------
+    // Issues the RQ1s of Xp60PatchLayout::fetchPlan(base). False when not
+    // connected or a fetch is already running.
+    // Queues DT1 messages for transmission with the configured pacing.
+    // Returns an invalid id when not connected or the list is empty.
+    // dataSetBatchFinished() reports the outcome.
+    DataSetBatchId sendDataSets(const std::vector<roland::RolandSysExMessage>& messages);
+    bool cancelDataSetBatch(DataSetBatchId id);
+    [[nodiscard]] std::size_t pendingDataSetBatches() const noexcept { return m_dataSetBatches.size(); }
+
+    bool fetchPatch(const roland::RolandAddress& patchBase, PatchFetchPurpose purpose = PatchFetchPurpose::Editing);
+    bool fetchTemporaryPatch(PatchFetchPurpose purpose = PatchFetchPurpose::Editing);
+    void cancelPatchFetch();
+    [[nodiscard]] const PatchFetchStatus& patchFetch() const noexcept { return m_patchFetch; }
 
     // Diagnostics -------------------------------------------------------------
     [[nodiscard]] const Statistics& statistics() const noexcept { return m_statistics; }
@@ -124,12 +182,15 @@ public slots:
 signals:
     void endpointsChanged();
     void connectionStateChanged();
+    void linkStateChanged();
     void deviceIdChanged();
     void pacingChanged();
     void logEntryAdded(const xp60studio::diagnostics::ProtocolLogEntry& entry);
     void logCleared();
     void operationChanged(quint64 requestId);
     void statisticsChanged();
+    void patchFetchChanged();
+    void dataSetBatchFinished(quint64 batchId, bool ok, const QString& error);
 
 private:
     struct Outgoing
@@ -137,11 +198,28 @@ private:
         midi::MidiBytes bytes;
         protocol::RequestId requestId;
         std::optional<roland::RolandSysExMessage> roland;
+        DataSetBatchId batchId;
     };
 
+    struct DataSetBatch
+    {
+        std::size_t remaining = 0;
+        bool failed = false;
+        std::string error;
+    };
+
+    void finishDataSetBatch(DataSetBatchId id, bool ok, std::string error);
+
     void handleIncomingMessage(midi::MidiBytes bytes);
+    void updatePatchFetch();
     void handleTransportError(midi::TransportError error);
     void handleEndpointsChanged();
+    void checkOpenEndpoints();
+    void endConnection(ConnectionState state, const std::string& reason);
+    midi::TransportError openEndpoints(const std::string& inputId, const std::string& outputId);
+    bool finishConnection(const midi::TransportError& error);
+    void updateConnectionTest();
+    void setLinkState(LinkState state, std::string message);
     void setState(ConnectionState state, std::string error = {});
     void appendLog(diagnostics::ProtocolLogEntry entry);
     void logSystem(diagnostics::LogKind kind, diagnostics::LogSeverity severity, std::string summary,
@@ -165,15 +243,27 @@ private:
     std::vector<midi::MidiEndpointInfo> m_outputs;
     ConnectionState m_state = ConnectionState::Disconnected;
     std::string m_lastError;
+    std::atomic<std::uint64_t> m_connectionEpoch{0};
+    QFutureWatcher<midi::TransportError> m_connectionOpen;
+    bool m_openPending = false;
+    bool m_cancelOpen = false;
+    bool m_endingConnection = false;
+    LinkState m_linkState = LinkState::Unchecked;
+    std::string m_linkMessage = "Open both MIDI ports, then test the connection.";
+    protocol::RequestId m_connectionTest;
 
     std::mutex m_assemblerMutex;
     midi::SysExAssembler m_assembler;
 
     std::deque<Outgoing> m_sendQueue;
+    std::map<std::uint64_t, DataSetBatch> m_dataSetBatches;
+    std::uint64_t m_nextBatchId = 1;
     std::optional<protocol::TimePoint> m_lastSendAt;
     QTimer m_sendTimer;
     QTimer m_timeoutTimer;
     bool m_automaticTimeoutPolling = true;
+
+    PatchFetchStatus m_patchFetch;
 
     Statistics m_statistics;
     std::deque<diagnostics::ProtocolLogEntry> m_log;

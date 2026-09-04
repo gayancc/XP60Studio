@@ -40,6 +40,20 @@ QVariant MidiEndpointListModel::data(const QModelIndex& index, int role) const
         return QString::fromStdString(endpoint.displayName);
     case BackendNameRole:
         return QString::fromStdString(endpoint.backendName);
+    case SelectionLabelRole: {
+        int matches = 0;
+        int ordinal = 0;
+        for (int i = 0; i < rowCount(); ++i) {
+            const auto& other = m_endpoints[static_cast<std::size_t>(i)];
+            if (other.displayName == endpoint.displayName && other.backendName == endpoint.backendName) {
+                ++matches;
+                if (i <= index.row()) ++ordinal;
+            }
+        }
+        auto label = QString::fromStdString(endpoint.displayName) + QStringLiteral(" · ") + QString::fromStdString(endpoint.backendName);
+        if (matches > 1) label += QStringLiteral(" · port %1").arg(ordinal);
+        return label;
+    }
     case IsVirtualRole:
         return endpoint.isVirtual;
     default:
@@ -54,6 +68,7 @@ QHash<int, QByteArray> MidiEndpointListModel::roleNames() const
         {DisplayNameRole, "displayName"},
         {BackendNameRole, "backendName"},
         {IsVirtualRole, "isVirtual"},
+        {SelectionLabelRole, "selectionLabel"},
     };
 }
 

@@ -129,6 +129,11 @@ UI remains diagnostic/inspection focused.
 
 # Phase 4 — Visual Patch Editor + Wave Browser
 
+Execution update (2026-09-04): the user deferred physical validation to final
+device acceptance and authorized remaining local work. M3 catalog development
+can proceed while M2 EFX mappings and hardware checks remain open. See
+`PHASE_4_WAVE_BROWSER.md`; this does not promote any hardware behavior to verified.
+
 Goal: implement the first polished product surfaces and make Patch editing musically understandable.
 
 Visual targets:

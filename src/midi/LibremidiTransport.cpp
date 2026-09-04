@@ -4,10 +4,21 @@
 
 #include <algorithm>
 #include <sstream>
+#ifdef LIBREMIDI_WINUWP
+#include <roapi.h>
+#include <winrt/base.h>
+#endif
 
 namespace xp60studio::midi {
 
 namespace {
+
+struct RuntimeApartment {
+#ifdef LIBREMIDI_WINUWP
+    HRESULT result = RoInitialize(RO_INIT_MULTITHREADED);
+    ~RuntimeApartment() { if (SUCCEEDED(result)) RoUninitialize(); }
+#endif
+};
 
 std::string apiDisplayName(libremidi::API api)
 {
@@ -74,8 +85,19 @@ struct LibremidiTransport::Impl
         };
         conf.on_warning = [](std::string_view, const libremidi::source_location&) {};
 
-        observer = std::make_unique<libremidi::observer>(conf, libremidi::midi1::observer_default_configuration());
-        api = observer->get_current_api();
+        observers.push_back(std::make_unique<libremidi::observer>(conf, libremidi::midi1::observer_default_configuration()));
+        api = observers.front()->get_current_api();
+#ifdef LIBREMIDI_WINUWP
+        if (api != libremidi::API::WINDOWS_UWP) {
+            try {
+                observers.push_back(std::make_unique<libremidi::observer>(conf, libremidi::API::WINDOWS_UWP));
+            } catch (const std::exception& error) {
+                startupWarning = "Windows Runtime MIDI unavailable: " + std::string(error.what());
+            } catch (const winrt::hresult_error& error) {
+                startupWarning = "Windows Runtime MIDI unavailable: " + winrt::to_string(error.message());
+            }
+        }
+#endif
     }
 
     void notifyEndpointsChanged()
@@ -114,11 +136,10 @@ struct LibremidiTransport::Impl
         }
     }
 
-    void ensureInput()
+    void ensureInput(libremidi::API selectedApi)
     {
-        if (input) {
-            return;
-        }
+        if (input && input->get_current_api() == selectedApi) return;
+        input.reset();
         libremidi::input_configuration conf;
         conf.on_message = [this](libremidi::message&& message) {
             MidiEvent event;
@@ -134,20 +155,25 @@ struct LibremidiTransport::Impl
         conf.ignore_timing = true;
         conf.ignore_sensing = true;
         conf.timestamps = libremidi::timestamp_mode::SystemMonotonic;
-        input = std::make_unique<libremidi::midi_in>(conf, libremidi::midi_in_configuration_for(*observer));
+        input = std::make_unique<libremidi::midi_in>(conf, libremidi::midi_in_configuration_for(observerFor(selectedApi)));
     }
 
-    void ensureOutput()
+    void ensureOutput(libremidi::API selectedApi)
     {
-        if (output) {
-            return;
-        }
+        if (output && output->get_current_api() == selectedApi) return;
+        output.reset();
         libremidi::output_configuration conf;
         conf.on_error = [this](std::string_view text, const libremidi::source_location&) {
             notifyError(TransportError::make(TransportErrorCode::Internal, "MIDI output: " + std::string(text)));
         };
         conf.on_warning = [](std::string_view, const libremidi::source_location&) {};
-        output = std::make_unique<libremidi::midi_out>(conf, libremidi::midi_out_configuration_for(*observer));
+        output = std::make_unique<libremidi::midi_out>(conf, libremidi::midi_out_configuration_for(observerFor(selectedApi)));
+    }
+
+    libremidi::observer& observerFor(libremidi::API selectedApi)
+    {
+        for (auto& observer : observers) if (observer->get_current_api() == selectedApi) return *observer;
+        throw std::runtime_error("The selected MIDI backend is unavailable");
     }
 
     std::vector<MidiEndpointInfo> enumerate(EndpointDirection direction)
@@ -155,13 +181,21 @@ struct LibremidiTransport::Impl
         std::vector<MidiEndpointInfo> result;
         std::lock_guard lock(portMutex);
         if (direction == EndpointDirection::Input) {
-            inputPorts = observer->get_input_ports();
+            inputPorts.clear();
+            for (auto& observer : observers) {
+                auto ports = observer->get_input_ports();
+                inputPorts.insert(inputPorts.end(), ports.begin(), ports.end());
+            }
             for (const auto& port : inputPorts) {
                 result.push_back(MidiEndpointInfo{makeEndpointId(port, direction), makeDisplayName(port),
                                                   apiDisplayName(port.api), direction, isVirtualPort(port)});
             }
         } else {
-            outputPorts = observer->get_output_ports();
+            outputPorts.clear();
+            for (auto& observer : observers) {
+                auto ports = observer->get_output_ports();
+                outputPorts.insert(outputPorts.end(), ports.begin(), ports.end());
+            }
             for (const auto& port : outputPorts) {
                 result.push_back(MidiEndpointInfo{makeEndpointId(port, direction), makeDisplayName(port),
                                                   apiDisplayName(port.api), direction, isVirtualPort(port)});
@@ -170,8 +204,10 @@ struct LibremidiTransport::Impl
         return result;
     }
 
+    RuntimeApartment apartment;
     libremidi::API api{};
-    std::unique_ptr<libremidi::observer> observer;
+    std::vector<std::unique_ptr<libremidi::observer>> observers;
+    std::string startupWarning;
     std::unique_ptr<libremidi::midi_in> input;
     std::unique_ptr<libremidi::midi_out> output;
 
@@ -194,8 +230,16 @@ LibremidiTransport::LibremidiTransport()
 
 LibremidiTransport::~LibremidiTransport()
 {
+    setReceiveHandler({});
+    setErrorHandler({});
+    setEndpointsChangedHandler({});
     closeInput();
     closeOutput();
+    m_impl->input.reset();
+    m_impl->output.reset();
+    // Observers may invoke callbacks during teardown; destroy them while the
+    // callback state and its mutex still exist.
+    m_impl->observers.clear();
 }
 
 std::string LibremidiTransport::libraryVersion()
@@ -205,7 +249,10 @@ std::string LibremidiTransport::libraryVersion()
 
 std::string LibremidiTransport::backendName() const
 {
-    return "libremidi " + libraryVersion() + " / " + apiDisplayName(m_impl->api);
+    std::string result = "libremidi " + libraryVersion();
+    for (const auto& observer : m_impl->observers) result += " / " + apiDisplayName(observer->get_current_api());
+    if (!m_impl->startupWarning.empty()) result += " (" + m_impl->startupWarning + ")";
+    return result;
 }
 
 std::vector<MidiEndpointInfo> LibremidiTransport::enumerateInputs()
@@ -219,7 +266,9 @@ std::vector<MidiEndpointInfo> LibremidiTransport::enumerateOutputs()
 }
 
 TransportError LibremidiTransport::openInput(const std::string& endpointId)
+try
 {
+    RuntimeApartment apartment;
     // Refresh so a freshly plugged device can be opened right away.
     const auto inputs = enumerateInputs();
     const auto it = std::find_if(inputs.begin(), inputs.end(), [&](const auto& e) { return e.id == endpointId; });
@@ -229,7 +278,7 @@ TransportError LibremidiTransport::openInput(const std::string& endpointId)
     const auto index = static_cast<std::size_t>(std::distance(inputs.begin(), it));
 
     std::lock_guard lock(m_impl->portMutex);
-    m_impl->ensureInput();
+    m_impl->ensureInput(m_impl->inputPorts[index].api);
     if (m_impl->input->is_port_open()) {
         m_impl->input->close_port();
     }
@@ -240,9 +289,19 @@ TransportError LibremidiTransport::openInput(const std::string& endpointId)
     m_impl->openInput = *it;
     return TransportError::none();
 }
+#ifdef LIBREMIDI_WINUWP
+catch (const winrt::hresult_error& error) {
+    return TransportError::make(TransportErrorCode::OpenFailed, "MIDI input: " + winrt::to_string(error.message()));
+}
+#endif
+catch (const std::exception& error) {
+    return TransportError::make(TransportErrorCode::OpenFailed, error.what());
+}
 
 TransportError LibremidiTransport::openOutput(const std::string& endpointId)
+try
 {
+    RuntimeApartment apartment;
     const auto outputs = enumerateOutputs();
     const auto it = std::find_if(outputs.begin(), outputs.end(), [&](const auto& e) { return e.id == endpointId; });
     if (it == outputs.end()) {
@@ -251,7 +310,7 @@ TransportError LibremidiTransport::openOutput(const std::string& endpointId)
     const auto index = static_cast<std::size_t>(std::distance(outputs.begin(), it));
 
     std::lock_guard lock(m_impl->portMutex);
-    m_impl->ensureOutput();
+    m_impl->ensureOutput(m_impl->outputPorts[index].api);
     if (m_impl->output->is_port_open()) {
         m_impl->output->close_port();
     }
@@ -261,6 +320,14 @@ TransportError LibremidiTransport::openOutput(const std::string& endpointId)
     }
     m_impl->openOutput = *it;
     return TransportError::none();
+}
+#ifdef LIBREMIDI_WINUWP
+catch (const winrt::hresult_error& error) {
+    return TransportError::make(TransportErrorCode::OpenFailed, "MIDI output: " + winrt::to_string(error.message()));
+}
+#endif
+catch (const std::exception& error) {
+    return TransportError::make(TransportErrorCode::OpenFailed, error.what());
 }
 
 void LibremidiTransport::closeInput()
@@ -306,6 +373,7 @@ std::optional<MidiEndpointInfo> LibremidiTransport::openOutputEndpoint() const
 }
 
 TransportError LibremidiTransport::send(MidiByteSpan message)
+try
 {
     if (message.empty()) {
         return TransportError::make(TransportErrorCode::InvalidMessage, "Empty MIDI message");
@@ -318,6 +386,14 @@ TransportError LibremidiTransport::send(MidiByteSpan message)
         return fromLibremidi(TransportErrorCode::SendFailed, "MIDI send failed", err);
     }
     return TransportError::none();
+}
+#ifdef LIBREMIDI_WINUWP
+catch (const winrt::hresult_error& error) {
+    return TransportError::make(TransportErrorCode::SendFailed, "MIDI send: " + winrt::to_string(error.message()));
+}
+#endif
+catch (const std::exception& error) {
+    return TransportError::make(TransportErrorCode::SendFailed, error.what());
 }
 
 void LibremidiTransport::setReceiveHandler(ReceiveHandler handler)

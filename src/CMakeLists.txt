@@ -5,6 +5,8 @@
 #   midi_libremidi - libremidi backend for IMidiTransport          (no Qt)
 #   protocol    - request/response correlation, pacing             (no Qt)
 #   diagnostics - structured protocol log entries and formatting   (no Qt)
+#   xpmodel     - XP domain model & codecs: parameter tables, block  (no Qt)
+#                 codec, memory image, .syx stream parsing
 #   services    - DeviceSession orchestration                      (Qt Core)
 #   presentation- view models / Qt item models for QML             (Qt Core/Qml)
 #   app         - Qt Quick executable
@@ -13,6 +15,7 @@ add_subdirectory(xp60)
 add_subdirectory(midi)
 add_subdirectory(protocol)
 add_subdirectory(diagnostics)
+add_subdirectory(xpmodel)
 add_subdirectory(services)
 add_subdirectory(presentation)
 

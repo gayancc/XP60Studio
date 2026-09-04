@@ -8,6 +8,7 @@ set(XP60STUDIO_QML_FILES
   Theme/Metrics.qml
   Theme/Motion.qml
   Controls/XpButton.qml
+  Controls/XpIcon.qml
   Controls/XpCard.qml
   Controls/XpComboBox.qml
   Controls/XpDivider.qml
@@ -19,11 +20,25 @@ set(XP60STUDIO_QML_FILES
   Controls/XpSpinField.qml
   Controls/XpTextField.qml
   Controls/StatusPill.qml
+  Controls/XpKnob.qml
+  Controls/XpSegmentedControl.qml
+  Controls/XpRangeBar.qml
+  Controls/ParameterValueEditor.qml
+  Controls/EditorParameterPanel.qml
+  Controls/ToneCard.qml
+  Controls/ToneMiniEnvelope.qml
+  Controls/EnvelopeEditor.qml
+  Controls/KeyboardStrip.qml
+  Controls/SignalFlowNode.qml
+  Controls/SignalFlowConnector.qml
+  Controls/EffectRoutingView.qml
   Shell/AppNavigationRail.qml
   Shell/AppHeader.qml
   Shell/ConnectionStatusIndicator.qml
   Shell/ScreenHeader.qml
   Screens/DevicesScreen.qml
+  Screens/EditorScreen.qml
+  Screens/WaveBrowserScreen.qml
   Screens/UnavailableScreen.qml
 )
 

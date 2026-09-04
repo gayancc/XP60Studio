@@ -105,14 +105,64 @@ src/xp60          XP-60 protocol facts + verification status (no Qt)
 src/midi          IMidiTransport, SysEx assembler, loopback, libremidi backend
 src/protocol      request/response correlation, pacing, timeouts (no Qt)
 src/diagnostics   structured protocol log entries (no Qt)
-src/services      DeviceSession orchestration (Qt Core)
+src/xpmodel       XP domain model & codecs: parameter tables (generated from
+                  docs/protocol), block codec, Xp60Patch + codec, memory image,
+                  .syx stream parsing (no Qt)
+src/services      DeviceSession orchestration and PatchTransfer
+                  (write -> read back -> compare -> verify) (Qt Core)
 src/presentation  view models and Qt item models for QML
 src/app           Qt Quick executable
 qml/XP60Studio    design tokens, reusable controls, shell, screens
 tests/cpp         Qt Test suites          tests/qml  Qt Quick Test suites
+tests/fixtures    real Roland SysEx used as golden fixtures
+tools/            research utilities (Python; not part of the runtime)
 ```
 
 ## Current status
+
+### Windows setup and revalidation
+
+The local setup uses Qt 6.11.2 and MinGW 13.1, a pairing supported by
+[Qt's Windows baseline](https://doc.qt.io/qt-6/windows.html). Dependencies
+are isolated under `.qt/` and `.venv-build/`, excluded from Git.
+
+From the repository root in PowerShell, with Python 3 available:
+
+```powershell
+python -m venv .venv-build
+./.venv-build/Scripts/python.exe -m pip install aqtinstall==3.3.0 cmake==4.4.3 ninja==1.13.2
+./.venv-build/Scripts/python.exe -m aqt install-tool windows desktop tools_mingw1310 qt.tools.win64_mingw1310 -O .qt
+./.venv-build/Scripts/python.exe tools/install_windows_qt.py
+./tools/build_windows.ps1
+```
+
+For native Windows Bluetooth MIDI, also run
+`./tools/install_windows_winrt.ps1` before building. It installs checksum-verified
+C++/WinRT headers locally. See [MIDI connections](docs/MIDI_CONNECTIONS.md) for
+MIDI IN/OUT selection, connection testing, CME WIDI Master routes and the
+remaining physical validation procedure.
+
+The Qt installer adapter handles the published split MinGW repository while
+retaining aqt's archive checksum validation. The build script configures,
+builds and runs all tests; `-Run` also launches the app, `-SkipTests` skips
+CTest, and `-Jobs 6` controls build parallelism. It sets PATH only for its
+own execution and restores it afterward.
+
+After the Windows build, double-click [`Run-XP60Studio.bat`](Run-XP60Studio.bat)
+in the project folder to open the app. It supplies the local Qt/MinGW runtime
+paths automatically, works regardless of the current directory, and does not
+rebuild or change system settings. Keep it beside `.qt/` and `build-windows/`;
+the batch file alone is not a distributable app package. Missing build/runtime
+files produce a message with setup instructions.
+
+See [Phase 4 revalidation](docs/PHASE_4_REVALIDATION.md) for the current
+acceptance checklist and open hardware gate. M2 is not yet complete.
+
+[Live audition](docs/PHASE_4_LIVE_AUDITION.md) documents explicitly armed,
+paced temporary-Patch updates, Solo/Mute and A/B, stop/restore behavior, and
+the current effects metadata. Physical XP-60/WIDI acceptance remains separate.
+
+### Implementation history
 
 **Phase 1 — Protocol Foundation + Application Shell** is implemented and
 covered by deterministic tests; it awaits validation against a physical XP-60.
@@ -121,6 +171,32 @@ exists, what is tested, what is still unknown, and
 [`docs/HARDWARE_VALIDATION_XP60.md`](docs/HARDWARE_VALIDATION_XP60.md) for the
 hardware procedure. Protocol facts and their verification status are tracked in
 [`docs/protocol/ROLAND_XP60_PROTOCOL_FACTS.md`](docs/protocol/ROLAND_XP60_PROTOCOL_FACTS.md).
+
+**Phase 2 — XP-60 Patch Model** is complete. The Patch Common and Tone tables
+are generated from the transcribed Roland Parameter Address Map, the typed
+`Xp60Patch` model and codec round-trip byte-for-byte, and the Devices screen
+can fetch and decode the XP-60's current Patch. The model is validated against
+a real XP-60 user bank (`tests/fixtures/xp60/`): all 128 patches decode with
+zero out-of-range values and round-trip byte-exact. See
+[`docs/PHASE_2_PATCH_MODEL.md`](docs/PHASE_2_PATCH_MODEL.md) and
+[`docs/protocol/XP60_PATCH_PARAMETER_MAP.md`](docs/protocol/XP60_PATCH_PARAMETER_MAP.md).
+
+**Phase 3 — Hardware Round-Trip Validation** has its engine in place: the
+Devices screen can write a Patch back to the XP-60's temporary area and verify
+it by reading it back and comparing every parameter. Writing is armed
+explicitly, targets only the edit buffer, and captures a safety snapshot first.
+The hardware session itself is documented in
+[`docs/HARDWARE_VALIDATION_XP60.md`](docs/HARDWARE_VALIDATION_XP60.md).
+
+**Phase 4 — Visual Patch Editor** has its M2 milestone built: the Editor
+screen reproduces the master mockup's Patch Editor / Four-Tone Mixer, with
+four Tone cards, knobs and exact numeric entry, a draggable envelope editor,
+key/velocity ranges, the signal path, A/B comparison and bounded undo. Editing
+is local and non-destructive; writing still goes through the armed, verified
+Phase 3 path. The M3 Wave Browser is blocked on the XP-60 Waveform List. See
+[`docs/PHASE_4_PATCH_EDITOR.md`](docs/PHASE_4_PATCH_EDITOR.md), which records
+the six documented deviations from the mockup and why each is necessary, and
+[`docs/design/screenshots/phase4-editor-screen.png`](docs/design/screenshots/phase4-editor-screen.png).
 
 Advanced product screens wait for their backing domain phases, and when
 implemented they are built directly against the approved mockup rather than as

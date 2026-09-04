@@ -73,6 +73,24 @@ struct SafeReadPreset
 
 [[nodiscard]] std::span<const SafeReadPreset> safeReadPresets() noexcept;
 
+// The instrument's own keybed.
+//
+// Patch key-range parameters span the whole MIDI note range (0..127, C-1..G9),
+// but the XP-60's physical keyboard is a 61-note C2..C7. Editors use this to
+// show a keyboard at a readable size and to say when a range falls outside
+// what the instrument itself can play; it never limits what may be written.
+struct Keybed
+{
+    int lowestNote = 36;  // C2
+    int highestNote = 96; // C7
+    int noteCount = 61;
+    bool velocitySensitive = true;
+    VerificationStatus status = VerificationStatus::DocumentationDerived;
+    std::string_view sourceNote = "Roland XP-60 product specification (61 keys, velocity and channel aftertouch)";
+};
+
+[[nodiscard]] Keybed keybed() noexcept;
+
 // Transfer pacing defaults for the XP-60.
 struct TransferDefaults
 {

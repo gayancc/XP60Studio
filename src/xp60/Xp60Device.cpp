@@ -22,7 +22,11 @@ constexpr std::string_view kMidiImplementationNote =
     "XP-60/XP-80 MIDI Implementation (owner's manual appendix); confirm with a hardware capture "
     "before relying on offsets beyond the base address.";
 
-const std::array<MemoryRegion, 8> kRegions{{
+const std::array<MemoryRegion, 8>& regions()
+{
+    // Function-local so other translation units can use these facts during
+    // their own static initialisation (RolandAddress is not constexpr).
+    static const std::array<MemoryRegion, 8> kRegions{{
     MemoryRegion{
         "system",
         "System",
@@ -106,8 +110,12 @@ const std::array<MemoryRegion, 8> kRegions{{
         kMidiImplementationNote,
     },
 }};
+    return kRegions;
+}
 
-const std::array<SafeReadPreset, 4> kSafeReadPresets{{
+const std::array<SafeReadPreset, 4>& presets()
+{
+    static const std::array<SafeReadPreset, 4> kSafeReadPresets{{
     SafeReadPreset{
         "temporary-patch-name",
         "Temporary Patch name (12 bytes)",
@@ -144,11 +152,17 @@ const std::array<SafeReadPreset, 4> kSafeReadPresets{{
         VerificationStatus::ProjectDefined,
     },
 }};
+    return kSafeReadPresets;
+}
 
 // Roland XP-60/XP-80 MIDI Implementation: Model ID = 6AH. The published RQ1
 // example is F0 41 10 6A 11 01 00 00 00 00 00 1F 19 47 F7 and the published
 // DT1 example is F0 41 10 6A 12 01 00 00 28 06 51 F7; both are test fixtures.
-const roland::RolandModelId kModelId{0x6A};
+const roland::RolandModelId& modelIdConstant()
+{
+    static const roland::RolandModelId kModelId{0x6A};
+    return kModelId;
+}
 
 } // namespace
 
@@ -184,7 +198,7 @@ std::string_view verificationStatusLabel(VerificationStatus status) noexcept
 
 const roland::RolandModelId& modelId() noexcept
 {
-    return kModelId;
+    return modelIdConstant();
 }
 
 VerificationStatus modelIdStatus() noexcept
@@ -199,12 +213,13 @@ roland::RolandDeviceId factoryDefaultDeviceId() noexcept
 
 std::span<const MemoryRegion> knownMemoryRegions() noexcept
 {
+    const auto& kRegions = regions();
     return std::span<const MemoryRegion>(kRegions.data(), kRegions.size());
 }
 
 const MemoryRegion* findMemoryRegion(std::string_view id) noexcept
 {
-    for (const auto& region : kRegions) {
+    for (const auto& region : regions()) {
         if (region.id == id) {
             return &region;
         }
@@ -214,7 +229,13 @@ const MemoryRegion* findMemoryRegion(std::string_view id) noexcept
 
 std::span<const SafeReadPreset> safeReadPresets() noexcept
 {
+    const auto& kSafeReadPresets = presets();
     return std::span<const SafeReadPreset>(kSafeReadPresets.data(), kSafeReadPresets.size());
+}
+
+Keybed keybed() noexcept
+{
+    return {};
 }
 
 TransferDefaults transferDefaults() noexcept

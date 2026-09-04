@@ -4,4 +4,5 @@ add_subdirectory(cpp)
 
 if(XP60STUDIO_BUILD_APP)
   add_subdirectory(qml)
+  add_subdirectory(tools)
 endif()

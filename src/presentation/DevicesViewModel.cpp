@@ -35,14 +35,24 @@ ConnectionState toPresentation(services::DeviceSession::ConnectionState state)
 
 } // namespace
 
-DevicesViewModel::DevicesViewModel(services::DeviceSession& session, QObject* parent)
+DevicesViewModel::DevicesViewModel(services::DeviceSession& session, services::PatchTransfer* transfer, QObject* parent)
     : QObject(parent)
     , m_session(session)
+    , m_transfer(transfer)
 {
+    if (m_transfer) {
+        connect(m_transfer, &services::PatchTransfer::changed, this, &DevicesViewModel::transferChanged);
+        connect(m_transfer, &services::PatchTransfer::changed, this, &DevicesViewModel::connectionChanged);
+        connect(m_transfer, &services::PatchTransfer::changed, this, &DevicesViewModel::canSendRequestChanged);
+        connect(m_transfer, &services::PatchTransfer::changed, this, &DevicesViewModel::patchFetchChanged);
+    }
+    connect(&m_session, &services::DeviceSession::linkStateChanged, this, &DevicesViewModel::connectionChanged);
     connect(&m_session, &services::DeviceSession::endpointsChanged, this, &DevicesViewModel::syncEndpoints);
     connect(&m_session, &services::DeviceSession::connectionStateChanged, this, [this] {
         emit connectionChanged();
         emit canSendRequestChanged();
+        emit patchFetchChanged();
+        emit transferChanged();
     });
     connect(&m_session, &services::DeviceSession::deviceIdChanged, this, &DevicesViewModel::deviceIdChanged);
     connect(&m_session, &services::DeviceSession::logEntryAdded, this,
@@ -51,8 +61,19 @@ DevicesViewModel::DevicesViewModel(services::DeviceSession& session, QObject* pa
     connect(&m_session, &services::DeviceSession::operationChanged, this, [this](quint64) {
         m_operations.refresh(m_session.tracker());
         emit operationsChanged();
+        emit connectionChanged();
     });
     connect(&m_session, &services::DeviceSession::statisticsChanged, this, &DevicesViewModel::statisticsChanged);
+    connect(&m_session, &services::DeviceSession::patchFetchChanged, this, [this] {
+        const auto& fetch = m_session.patchFetch();
+        if (fetch.state == services::DeviceSession::PatchFetchState::Completed && fetch.patch) {
+            m_patchParameters.setPatch(*fetch.patch);
+        } else if (fetch.state == services::DeviceSession::PatchFetchState::InProgress) {
+            m_patchParameters.clear();
+        }
+        emit patchFetchChanged();
+        emit transferChanged();
+    });
 
     for (const auto& entry : m_session.log()) {
         m_log.append(entry);
@@ -69,54 +90,130 @@ void DevicesViewModel::syncEndpoints()
 {
     m_inputs.setEndpoints(m_session.inputs());
     m_outputs.setEndpoints(m_session.outputs());
-    clampSelection();
+    restoreSelection();
     emit endpointsChanged();
     emit connectionChanged();
 }
 
-void DevicesViewModel::clampSelection()
+void DevicesViewModel::restoreSelection()
 {
-    const int inputs = m_inputs.count();
-    const int outputs = m_outputs.count();
-    int input = m_selectedInput;
-    int output = m_selectedOutput;
-    if (input >= inputs) {
-        input = inputs - 1;
-    }
-    if (input < 0 && inputs > 0) {
-        input = 0;
-    }
-    if (output >= outputs) {
-        output = outputs - 1;
-    }
-    if (output < 0 && outputs > 0) {
-        output = 0;
-    }
-    if (input != m_selectedInput || output != m_selectedOutput) {
-        m_selectedInput = input;
-        m_selectedOutput = output;
-        emit selectionChanged();
-    }
+    const auto restore = [](const MidiEndpointListModel& model, std::optional<midi::MidiEndpointInfo>& preferred) {
+        if (preferred) {
+            const auto exact = model.indexOfId(QString::fromStdString(preferred->id));
+            if (exact >= 0) return exact;
+            // Replug may change an OS handle. Resolve a unique name/backend,
+            // never a row number or an ambiguous pair of identically named ports.
+            int found = -1;
+            for (int i = 0; i < model.count(); ++i) {
+                const auto& e = model.endpoints()[static_cast<std::size_t>(i)];
+                if (e.displayName == preferred->displayName && e.backendName == preferred->backendName) {
+                    if (found >= 0) return -1;
+                    found = i;
+                }
+            }
+            return found;
+        }
+        // A lone port is an unambiguous convenience; multiple choices require
+        // the musician to explicitly choose which interface reaches the XP-60.
+        if (model.count() == 1) { preferred = model.endpoints().front(); return 0; }
+        return -1;
+    };
+    m_selectedInput = restore(m_inputs, m_preferredInput);
+    m_selectedOutput = restore(m_outputs, m_preferredOutput);
+    emit selectionChanged();
+}
+
+void DevicesViewModel::useConnectionSettings(QSettings* settings)
+{
+    m_settings = settings;
+    if (!settings) return;
+    const auto load = [&](const QString& direction) -> std::optional<midi::MidiEndpointInfo> {
+        const auto prefix = QStringLiteral("midi/") + direction + QLatin1Char('/');
+        const auto id = settings->value(prefix + QStringLiteral("id")).toString();
+        if (id.isEmpty()) return {};
+        return midi::MidiEndpointInfo{id.toStdString(), settings->value(prefix + QStringLiteral("name")).toString().toStdString(),
+            settings->value(prefix + QStringLiteral("backend")).toString().toStdString(),
+            direction == QStringLiteral("input") ? midi::EndpointDirection::Input : midi::EndpointDirection::Output, false};
+    };
+    m_preferredInput = load(QStringLiteral("input"));
+    m_preferredOutput = load(QStringLiteral("output"));
+    const int profile = settings->value(QStringLiteral("midi/pacingProfile"), 0).toInt();
+    const int id = settings->value(QStringLiteral("midi/deviceId"), deviceId()).toInt();
+    setPacingProfile(profile);
+    setDeviceId(id);
+    restoreSelection();
+    emit connectionChanged();
+}
+
+void DevicesViewModel::saveConnectionSettings()
+{
+    if (!m_settings) return;
+    const auto save = [&](const QString& direction, const std::optional<midi::MidiEndpointInfo>& port) {
+        if (!port) { m_settings->remove(QStringLiteral("midi/") + direction); return; }
+        const auto prefix = QStringLiteral("midi/") + direction + QLatin1Char('/');
+        m_settings->setValue(prefix + QStringLiteral("id"), QString::fromStdString(port->id));
+        m_settings->setValue(prefix + QStringLiteral("name"), QString::fromStdString(port->displayName));
+        m_settings->setValue(prefix + QStringLiteral("backend"), QString::fromStdString(port->backendName));
+    };
+    save(QStringLiteral("input"), m_preferredInput);
+    save(QStringLiteral("output"), m_preferredOutput);
+    m_settings->setValue(QStringLiteral("midi/deviceId"), deviceId());
+    m_settings->setValue(QStringLiteral("midi/pacingProfile"), m_pacingProfile);
+}
+
+QString DevicesViewModel::selectionMessage() const
+{
+    if (m_selectedInput < 0 && m_preferredInput) return tr("Previously used input '%1' is unavailable. Reconnect it or choose another.").arg(QString::fromStdString(m_preferredInput->displayName));
+    if (m_selectedOutput < 0 && m_preferredOutput) return tr("Previously used output '%1' is unavailable. Reconnect it or choose another.").arg(QString::fromStdString(m_preferredOutput->displayName));
+    if (m_selectedInput < 0 || m_selectedOutput < 0) return tr("Choose both ports — 'To XP-60' sends data, 'From XP-60' receives replies.");
+    return tr("Both ports selected. Click Connect to start, then Test XP-60 connection to verify.");
+}
+
+bool DevicesViewModel::canTestConnection() const
+{
+    return m_session.connectionState() == services::DeviceSession::ConnectionState::Connected
+        && !m_session.tracker().hasOutstanding() && !(m_transfer && (m_transfer->isBusy() || m_transfer->liveActive()));
+}
+
+void DevicesViewModel::setPacingProfile(int profile)
+{
+    if (profile < 0 || profile > 1 || m_session.tracker().hasOutstanding() || (m_transfer && (m_transfer->isBusy() || m_transfer->liveActive()))) return;
+    auto pacing = m_session.pacing();
+    const auto defaults = xp60::transferDefaults();
+    pacing.interMessageDelay = profile == 1 ? std::chrono::milliseconds(60) : defaults.interMessageDelay;
+    pacing.maxDataSetPayloadBytes = profile == 1 ? 64 : defaults.maxDataSetPayloadBytes;
+    pacing.timeouts.firstResponse = profile == 1 ? std::chrono::milliseconds(5000) : defaults.firstResponseTimeout;
+    pacing.timeouts.betweenChunks = profile == 1 ? std::chrono::milliseconds(3000) : defaults.betweenChunkTimeout;
+    m_session.setPacing(pacing);
+    m_pacingProfile = profile;
+    saveConnectionSettings();
+    emit connectionChanged();
 }
 
 void DevicesViewModel::setSelectedInputIndex(int index)
 {
+    if (canDisconnect() || connectionState() == ConnectionState::Connecting) return;
     const int clamped = std::clamp(index, -1, m_inputs.count() - 1);
     if (clamped == m_selectedInput) {
         return;
     }
     m_selectedInput = clamped;
+    m_preferredInput = clamped >= 0 ? std::optional(m_inputs.endpoints()[static_cast<std::size_t>(clamped)]) : std::nullopt;
+    saveConnectionSettings();
     emit selectionChanged();
     emit connectionChanged();
 }
 
 void DevicesViewModel::setSelectedOutputIndex(int index)
 {
+    if (canDisconnect() || connectionState() == ConnectionState::Connecting) return;
     const int clamped = std::clamp(index, -1, m_outputs.count() - 1);
     if (clamped == m_selectedOutput) {
         return;
     }
     m_selectedOutput = clamped;
+    m_preferredOutput = clamped >= 0 ? std::optional(m_outputs.endpoints()[static_cast<std::size_t>(clamped)]) : std::nullopt;
+    saveConnectionSettings();
     emit selectionChanged();
     emit connectionChanged();
 }
@@ -153,7 +250,7 @@ QString DevicesViewModel::connectionStateText() const
     case ConnectionState::Connecting:
         return QStringLiteral("Connecting");
     case ConnectionState::Connected:
-        return QStringLiteral("Connected");
+        return connectionVerified() ? tr("XP-60 verified ✓") : tr("Connected");
     case ConnectionState::Error:
         return QStringLiteral("Connection error");
     }
@@ -168,10 +265,10 @@ QString DevicesViewModel::connectionDetail() const
     case ConnectionState::Error:
         return lastError();
     case ConnectionState::Connecting:
-        return QStringLiteral("Opening MIDI endpoints");
+        return lastError().isEmpty() ? tr("Connecting… You can cancel while waiting.") : lastError();
     case ConnectionState::Disconnected:
-        return hasEndpoints() ? QStringLiteral("Select MIDI IN and MIDI OUT, then connect")
-                              : QStringLiteral("No MIDI endpoints found. Connect an interface and refresh.");
+        return hasEndpoints() ? QStringLiteral("Select your MIDI ports above, then click Connect.")
+                              : QStringLiteral("No MIDI devices found. Plug in your MIDI interface and click 'Scan for MIDI devices'.");
     }
     return {};
 }
@@ -197,7 +294,7 @@ bool DevicesViewModel::canConnect() const
 
 bool DevicesViewModel::canDisconnect() const
 {
-    return connectionState() == ConnectionState::Connected;
+    return connectionState() == ConnectionState::Connected || connectionState() == ConnectionState::Connecting;
 }
 
 QString DevicesViewModel::lastError() const
@@ -210,8 +307,10 @@ void DevicesViewModel::connectDevice()
     if (!canConnect()) {
         return;
     }
-    m_session.connectEndpoints(m_inputs.endpointIdAt(m_selectedInput).toStdString(),
-                               m_outputs.endpointIdAt(m_selectedOutput).toStdString());
+    m_preferredInput = m_inputs.endpoints()[static_cast<std::size_t>(m_selectedInput)];
+    m_preferredOutput = m_outputs.endpoints()[static_cast<std::size_t>(m_selectedOutput)];
+    saveConnectionSettings();
+    m_session.connectEndpointsAsync(m_preferredInput->id, m_preferredOutput->id);
 }
 
 void DevicesViewModel::disconnectDevice()
@@ -232,6 +331,7 @@ void DevicesViewModel::setDeviceId(int displayNumber)
 {
     if (const auto id = roland::RolandDeviceId::fromDisplayNumber(displayNumber)) {
         m_session.setDeviceId(*id);
+        saveConnectionSettings();
     } else {
         // Reject silently but re-announce the current value so a bound control snaps back.
         emit deviceIdChanged();
@@ -367,23 +467,18 @@ QString DevicesViewModel::requestValidationMessage() const
     if (connectionState() != ConnectionState::Connected) {
         return QStringLiteral("Connect to the XP-60 to send this request.");
     }
-    return QStringLiteral("Read-only request for %1 byte(s). Nothing is written to the XP-60.").arg(size->value());
+    return QStringLiteral("Safe read-only request for %1 byte(s). Nothing is written to the XP-60.").arg(size->value());
 }
 
 bool DevicesViewModel::canSendRequest() const
 {
-    return connectionState() == ConnectionState::Connected && requestAddressValid() && requestSizeValid();
+    return connectionState() == ConnectionState::Connected && requestAddressValid() && requestSizeValid()
+        && !transferBusy();
 }
 
 bool DevicesViewModel::hasOutstandingRequests() const
 {
     return m_session.tracker().hasOutstanding();
-}
-
-QString DevicesViewModel::dataSetDisabledReason() const
-{
-    return QStringLiteral("Writing (DT1) stays disabled until the temporary-memory semantics are verified on a "
-                          "physical XP-60. See docs/HARDWARE_VALIDATION_XP60.md.");
 }
 
 bool DevicesViewModel::sendRequest()
@@ -405,6 +500,251 @@ void DevicesViewModel::cancelAllRequests()
 void DevicesViewModel::clearLog()
 {
     m_session.clearLog();
+}
+
+// ---------------------------------------------------------------------------
+// Current Patch inspection
+// ---------------------------------------------------------------------------
+
+bool DevicesViewModel::canFetchPatch() const
+{
+    return connectionState() == ConnectionState::Connected && !patchFetchInProgress() && !transferBusy();
+}
+
+bool DevicesViewModel::patchFetchInProgress() const
+{
+    return m_session.patchFetch().state == services::DeviceSession::PatchFetchState::InProgress;
+}
+
+QString DevicesViewModel::patchFetchStateText() const
+{
+    switch (m_session.patchFetch().state) {
+    case services::DeviceSession::PatchFetchState::Idle:
+        return QStringLiteral("Not read yet");
+    case services::DeviceSession::PatchFetchState::InProgress:
+        return QStringLiteral("Reading…");
+    case services::DeviceSession::PatchFetchState::Completed:
+        return QStringLiteral("Ready");
+    case services::DeviceSession::PatchFetchState::Failed:
+        return QStringLiteral("Failed");
+    }
+    return {};
+}
+
+QString DevicesViewModel::patchFetchTone() const
+{
+    switch (m_session.patchFetch().state) {
+    case services::DeviceSession::PatchFetchState::Idle:
+        return QStringLiteral("neutral");
+    case services::DeviceSession::PatchFetchState::InProgress:
+        return QStringLiteral("warning");
+    case services::DeviceSession::PatchFetchState::Completed:
+        return QStringLiteral("success");
+    case services::DeviceSession::PatchFetchState::Failed:
+        return QStringLiteral("error");
+    }
+    return QStringLiteral("neutral");
+}
+
+QString DevicesViewModel::patchFetchMessage() const
+{
+    const auto& fetch = m_session.patchFetch();
+    if (fetch.state == services::DeviceSession::PatchFetchState::Idle) {
+        return connectionState() == ConnectionState::Connected
+            ? QStringLiteral("Click 'Read current sound' to see what's loaded on your XP-60.")
+            : QStringLiteral("Connect to the XP-60 to read its current sound.");
+    }
+    return QString::fromStdString(fetch.message);
+}
+
+int DevicesViewModel::patchFetchCompletedBlocks() const
+{
+    return static_cast<int>(m_session.patchFetch().completedBlocks);
+}
+
+int DevicesViewModel::patchFetchTotalBlocks() const
+{
+    return static_cast<int>(m_session.patchFetch().totalBlocks);
+}
+
+bool DevicesViewModel::currentPatchAvailable() const
+{
+    return m_session.patchFetch().patch.has_value();
+}
+
+QString DevicesViewModel::currentPatchName() const
+{
+    const auto& patch = m_session.patchFetch().patch;
+    return patch ? QString::fromStdString(patch->name().displayText()) : QString();
+}
+
+QString DevicesViewModel::currentPatchSummary() const
+{
+    const auto& patch = m_session.patchFetch().patch;
+    return patch ? QString::fromStdString(patch->summary()) : QString();
+}
+
+QString DevicesViewModel::currentPatchDecodeReport() const
+{
+    return QString::fromStdString(m_session.patchFetch().decodeReport).trimmed();
+}
+
+void DevicesViewModel::fetchCurrentPatch()
+{
+    if (!canFetchPatch()) {
+        return;
+    }
+    m_session.fetchTemporaryPatch();
+}
+
+void DevicesViewModel::cancelPatchFetch()
+{
+    m_session.cancelPatchFetch();
+}
+
+// ---------------------------------------------------------------------------
+// Write and verify
+// ---------------------------------------------------------------------------
+
+using TransferState = services::PatchTransfer::State;
+
+bool DevicesViewModel::canArmWrite() const
+{
+    return m_transfer && m_transfer->canArm() && currentPatchAvailable();
+}
+
+bool DevicesViewModel::writeArmed() const
+{
+    return m_transfer && m_transfer->isArmed();
+}
+
+bool DevicesViewModel::canWrite() const
+{
+    return writeArmed() && currentPatchAvailable() && !transferBusy();
+}
+
+bool DevicesViewModel::canRestoreSnapshot() const
+{
+    return m_transfer && m_transfer->safetySnapshot().has_value() && writeArmed() && !transferBusy();
+}
+
+bool DevicesViewModel::transferBusy() const
+{
+    return m_transfer && (m_transfer->isBusy() || m_transfer->liveActive());
+}
+
+QString DevicesViewModel::transferStateText() const
+{
+    return m_transfer ? QString::fromStdString(m_transfer->stateLabel()) : QString();
+}
+
+QString DevicesViewModel::transferTone() const
+{
+    if (!m_transfer) {
+        return QStringLiteral("neutral");
+    }
+    switch (m_transfer->state()) {
+    case TransferState::Verified:
+        return QStringLiteral("success");
+    case TransferState::Mismatch:
+    case TransferState::Failed:
+        return QStringLiteral("error");
+    case TransferState::Cancelled:
+        return QStringLiteral("warning");
+    case TransferState::Idle:
+        return QStringLiteral("neutral");
+    default:
+        return QStringLiteral("warning");
+    }
+}
+
+QString DevicesViewModel::transferMessage() const
+{
+    if (!m_transfer) {
+        return {};
+    }
+    if (m_transfer->state() == TransferState::Idle) {
+        // The plan is already stated in the arming panel; do not repeat it.
+        return {};
+    }
+    return QString::fromStdString(m_transfer->message());
+}
+
+QString DevicesViewModel::writePlanText() const
+{
+    return m_transfer ? QString::fromStdString(m_transfer->writePlanDescription()) : QString();
+}
+
+QString DevicesViewModel::armBlockedReason() const
+{
+    if (!m_transfer || m_transfer->isArmed() || (m_transfer->isBusy() || m_transfer->liveActive())) {
+        return {};
+    }
+    if (connectionState() != ConnectionState::Connected) {
+        return QStringLiteral("Connect to the XP-60 first.");
+    }
+    if (!m_transfer->readVerified()) {
+        return QStringLiteral("Read the current sound first — XP60Studio needs to verify communication is working before sending.");
+    }
+    if (!currentPatchAvailable()) {
+        return QStringLiteral("Read a sound first — the send function sends back what was read.");
+    }
+    return {};
+}
+
+QString DevicesViewModel::mismatchReport() const
+{
+    if (!m_transfer || !m_transfer->diff() || m_transfer->diff()->identical()) {
+        return {};
+    }
+    return QString::fromStdString(m_transfer->diff()->describe(12)).trimmed();
+}
+
+QString DevicesViewModel::safetySnapshotName() const
+{
+    if (!m_transfer || !m_transfer->safetySnapshot()) {
+        return {};
+    }
+    return QString::fromStdString(m_transfer->safetySnapshot()->name().displayText());
+}
+
+void DevicesViewModel::armWrite()
+{
+    if (m_transfer) {
+        m_transfer->arm();
+    }
+}
+
+void DevicesViewModel::disarmWrite()
+{
+    if (m_transfer) {
+        m_transfer->disarm();
+    }
+}
+
+void DevicesViewModel::writeBackAndVerify()
+{
+    if (!canWrite()) {
+        return;
+    }
+    const auto& patch = m_session.patchFetch().patch;
+    if (patch) {
+        m_transfer->writeAndVerifyTemporaryPatch(*patch);
+    }
+}
+
+void DevicesViewModel::restoreSafetySnapshot()
+{
+    if (canRestoreSnapshot()) {
+        m_transfer->restoreSafetySnapshot();
+    }
+}
+
+void DevicesViewModel::cancelTransfer()
+{
+    if (m_transfer) {
+        m_transfer->cancel();
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -460,33 +800,33 @@ QString DevicesViewModel::sysExHealthText() const
 {
     const auto& stats = m_session.statistics();
     if (connectionState() != ConnectionState::Connected) {
-        return QStringLiteral("Unknown");
+        return QStringLiteral("Not tested yet");
     }
     if (stats.requestsCompleted == 0 && stats.requestsTimedOut == 0 && stats.checksumFailures == 0) {
-        return QStringLiteral("Not tested");
+        return QStringLiteral("Not tested yet");
     }
     if (stats.checksumFailures > 0) {
-        return QStringLiteral("Checksum errors");
+        return QStringLiteral("Data errors");
     }
     if (stats.requestsTimedOut > 0 && stats.requestsCompleted == 0) {
-        return QStringLiteral("No response");
+        return QStringLiteral("No reply from XP-60");
     }
     if (stats.requestsTimedOut > 0) {
-        return QStringLiteral("Intermittent");
+        return QStringLiteral("Unstable connection");
     }
-    return QStringLiteral("Working");
+    return QStringLiteral("All good ✓");
 }
 
 QString DevicesViewModel::sysExHealthTone() const
 {
     const QString text = sysExHealthText();
-    if (text == QStringLiteral("Working")) {
+    if (text == QStringLiteral("All good ✓")) {
         return QStringLiteral("success");
     }
-    if (text == QStringLiteral("Checksum errors") || text == QStringLiteral("No response")) {
+    if (text == QStringLiteral("Data errors") || text == QStringLiteral("No reply from XP-60")) {
         return QStringLiteral("error");
     }
-    if (text == QStringLiteral("Intermittent")) {
+    if (text == QStringLiteral("Unstable connection")) {
         return QStringLiteral("warning");
     }
     return QStringLiteral("neutral");

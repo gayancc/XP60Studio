@@ -2,13 +2,16 @@
 
 #include "presentation/ConnectionState.h"
 #include "presentation/MidiEndpointListModel.h"
+#include "presentation/PatchParameterModel.h"
 #include "presentation/ProtocolLogModel.h"
 #include "presentation/RequestOperationModel.h"
 #include "services/DeviceSession.h"
+#include "services/PatchTransfer.h"
 
 #include <QObject>
 #include <QString>
 #include <QStringList>
+#include <QSettings>
 
 namespace xp60studio::presentation {
 
@@ -38,6 +41,11 @@ class DevicesViewModel : public QObject
     Q_PROPERTY(bool canConnect READ canConnect NOTIFY connectionChanged)
     Q_PROPERTY(bool canDisconnect READ canDisconnect NOTIFY connectionChanged)
     Q_PROPERTY(QString lastError READ lastError NOTIFY connectionChanged)
+    Q_PROPERTY(bool connectionVerified READ connectionVerified NOTIFY connectionChanged)
+    Q_PROPERTY(bool canTestConnection READ canTestConnection NOTIFY connectionChanged)
+    Q_PROPERTY(QString connectionTestMessage READ connectionTestMessage NOTIFY connectionChanged)
+    Q_PROPERTY(QString selectionMessage READ selectionMessage NOTIFY selectionChanged)
+    Q_PROPERTY(int pacingProfile READ pacingProfile WRITE setPacingProfile NOTIFY connectionChanged)
 
     // Device configuration
     Q_PROPERTY(int deviceId READ deviceId WRITE setDeviceId NOTIFY deviceIdChanged)
@@ -59,8 +67,6 @@ class DevicesViewModel : public QObject
     Q_PROPERTY(int requestByteCount READ requestByteCount NOTIFY requestFieldsChanged)
     Q_PROPERTY(bool canSendRequest READ canSendRequest NOTIFY canSendRequestChanged)
     Q_PROPERTY(bool hasOutstandingRequests READ hasOutstandingRequests NOTIFY operationsChanged)
-    Q_PROPERTY(bool dataSetEnabled READ dataSetEnabled CONSTANT)
-    Q_PROPERTY(QString dataSetDisabledReason READ dataSetDisabledReason CONSTANT)
 
     // Diagnostics
     Q_PROPERTY(QAbstractItemModel* log READ log CONSTANT)
@@ -77,8 +83,49 @@ class DevicesViewModel : public QObject
     Q_PROPERTY(QString sysExHealthText READ sysExHealthText NOTIFY statisticsChanged)
     Q_PROPERTY(QString sysExHealthTone READ sysExHealthTone NOTIFY statisticsChanged)
 
+    // Current Patch inspection (Phase 2)
+    Q_PROPERTY(bool canFetchPatch READ canFetchPatch NOTIFY patchFetchChanged)
+    Q_PROPERTY(bool patchFetchInProgress READ patchFetchInProgress NOTIFY patchFetchChanged)
+    Q_PROPERTY(QString patchFetchStateText READ patchFetchStateText NOTIFY patchFetchChanged)
+    Q_PROPERTY(QString patchFetchTone READ patchFetchTone NOTIFY patchFetchChanged)
+    Q_PROPERTY(QString patchFetchMessage READ patchFetchMessage NOTIFY patchFetchChanged)
+    Q_PROPERTY(int patchFetchCompletedBlocks READ patchFetchCompletedBlocks NOTIFY patchFetchChanged)
+    Q_PROPERTY(int patchFetchTotalBlocks READ patchFetchTotalBlocks NOTIFY patchFetchChanged)
+    Q_PROPERTY(bool currentPatchAvailable READ currentPatchAvailable NOTIFY patchFetchChanged)
+    Q_PROPERTY(QString currentPatchName READ currentPatchName NOTIFY patchFetchChanged)
+    Q_PROPERTY(QString currentPatchSummary READ currentPatchSummary NOTIFY patchFetchChanged)
+    Q_PROPERTY(QString currentPatchDecodeReport READ currentPatchDecodeReport NOTIFY patchFetchChanged)
+    Q_PROPERTY(QAbstractItemModel* patchParameters READ patchParameters CONSTANT)
+
+    // Write and verify (Phase 3)
+    Q_PROPERTY(bool writeSupported READ writeSupported NOTIFY transferChanged)
+    Q_PROPERTY(bool canArmWrite READ canArmWrite NOTIFY transferChanged)
+    Q_PROPERTY(bool writeArmed READ writeArmed NOTIFY transferChanged)
+    Q_PROPERTY(bool canWrite READ canWrite NOTIFY transferChanged)
+    Q_PROPERTY(bool canRestoreSnapshot READ canRestoreSnapshot NOTIFY transferChanged)
+    Q_PROPERTY(bool transferBusy READ transferBusy NOTIFY transferChanged)
+    Q_PROPERTY(QString transferStateText READ transferStateText NOTIFY transferChanged)
+    Q_PROPERTY(QString transferTone READ transferTone NOTIFY transferChanged)
+    Q_PROPERTY(QString transferMessage READ transferMessage NOTIFY transferChanged)
+    Q_PROPERTY(QString writePlanText READ writePlanText CONSTANT)
+    Q_PROPERTY(QString armBlockedReason READ armBlockedReason NOTIFY transferChanged)
+    Q_PROPERTY(QString mismatchReport READ mismatchReport NOTIFY transferChanged)
+    Q_PROPERTY(QString safetySnapshotName READ safetySnapshotName NOTIFY transferChanged)
+
 public:
-    explicit DevicesViewModel(services::DeviceSession& session, QObject* parent = nullptr);
+    bool connectionVerified() const { return m_session.linkState() == services::DeviceSession::LinkState::Responding; }
+    bool canTestConnection() const;
+    QString connectionTestMessage() const { return QString::fromStdString(m_session.linkMessage()); }
+    QString selectionMessage() const;
+    int pacingProfile() const { return m_pacingProfile; }
+    void setPacingProfile(int profile);
+    Q_INVOKABLE void testConnection() { if (canTestConnection()) m_session.testConnection(); }
+    // Settings are injected by the application; unit tests never use a user's preferences.
+    void useConnectionSettings(QSettings* settings);
+    // `transfer` is optional: without it the write-and-verify surface reports
+    // itself unsupported and the UI hides it.
+    explicit DevicesViewModel(services::DeviceSession& session, services::PatchTransfer* transfer = nullptr,
+                              QObject* parent = nullptr);
 
     [[nodiscard]] QAbstractItemModel* inputs() { return &m_inputs; }
     [[nodiscard]] QAbstractItemModel* outputs() { return &m_outputs; }
@@ -120,8 +167,6 @@ public:
     [[nodiscard]] int requestByteCount() const;
     [[nodiscard]] bool canSendRequest() const;
     [[nodiscard]] bool hasOutstandingRequests() const;
-    [[nodiscard]] bool dataSetEnabled() const { return false; }
-    [[nodiscard]] QString dataSetDisabledReason() const;
 
     [[nodiscard]] QAbstractItemModel* log() { return &m_log; }
     [[nodiscard]] QAbstractItemModel* operations() { return &m_operations; }
@@ -137,8 +182,44 @@ public:
     [[nodiscard]] QString sysExHealthText() const;
     [[nodiscard]] QString sysExHealthTone() const;
 
+    [[nodiscard]] bool canFetchPatch() const;
+    [[nodiscard]] bool patchFetchInProgress() const;
+    [[nodiscard]] QString patchFetchStateText() const;
+    [[nodiscard]] QString patchFetchTone() const;
+    [[nodiscard]] QString patchFetchMessage() const;
+    [[nodiscard]] int patchFetchCompletedBlocks() const;
+    [[nodiscard]] int patchFetchTotalBlocks() const;
+    [[nodiscard]] bool currentPatchAvailable() const;
+    [[nodiscard]] QString currentPatchName() const;
+    [[nodiscard]] QString currentPatchSummary() const;
+    [[nodiscard]] QString currentPatchDecodeReport() const;
+    [[nodiscard]] QAbstractItemModel* patchParameters() { return &m_patchParameters; }
+
+    [[nodiscard]] bool writeSupported() const { return m_transfer != nullptr; }
+    [[nodiscard]] bool canArmWrite() const;
+    [[nodiscard]] bool writeArmed() const;
+    [[nodiscard]] bool canWrite() const;
+    [[nodiscard]] bool canRestoreSnapshot() const;
+    [[nodiscard]] bool transferBusy() const;
+    [[nodiscard]] QString transferStateText() const;
+    [[nodiscard]] QString transferTone() const;
+    [[nodiscard]] QString transferMessage() const;
+    [[nodiscard]] QString writePlanText() const;
+    [[nodiscard]] QString armBlockedReason() const;
+    [[nodiscard]] QString mismatchReport() const;
+    [[nodiscard]] QString safetySnapshotName() const;
+
     // Intents
     Q_INVOKABLE void refreshEndpoints();
+    Q_INVOKABLE void armWrite();
+    Q_INVOKABLE void disarmWrite();
+    // Writes the Patch just fetched back to the temporary area and verifies it.
+    // This is the Phase 3 round trip; it needs arming.
+    Q_INVOKABLE void writeBackAndVerify();
+    Q_INVOKABLE void restoreSafetySnapshot();
+    Q_INVOKABLE void cancelTransfer();
+    Q_INVOKABLE void fetchCurrentPatch();
+    Q_INVOKABLE void cancelPatchFetch();
     Q_INVOKABLE void connectDevice();
     Q_INVOKABLE void disconnectDevice();
     Q_INVOKABLE void applyReadPreset(int index);
@@ -158,18 +239,27 @@ signals:
     void canSendRequestChanged();
     void operationsChanged();
     void statisticsChanged();
+    void patchFetchChanged();
+    void transferChanged();
 
 private:
     void syncEndpoints();
-    void clampSelection();
+    void restoreSelection();
+    void saveConnectionSettings();
 
     services::DeviceSession& m_session;
+    services::PatchTransfer* m_transfer = nullptr;
     MidiEndpointListModel m_inputs;
     MidiEndpointListModel m_outputs;
     ProtocolLogModel m_log;
     RequestOperationModel m_operations;
+    PatchParameterModel m_patchParameters;
     int m_selectedInput = -1;
     int m_selectedOutput = -1;
+    std::optional<midi::MidiEndpointInfo> m_preferredInput;
+    std::optional<midi::MidiEndpointInfo> m_preferredOutput;
+    QSettings* m_settings = nullptr;
+    int m_pacingProfile = 0;
     int m_selectedPreset = 0;
     QString m_requestAddress;
     QString m_requestSize;

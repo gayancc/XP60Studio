@@ -11,10 +11,11 @@ Rectangle {
     property string label: ""
     property string detail: ""
     property bool compact: false
+    property bool verified: false
 
     readonly property string tone: {
         switch (connectionState) {
-        case ConnectionState.Connected: return "live"
+        case ConnectionState.Connected: return verified ? "live" : "warning"
         case ConnectionState.Connecting: return "warning"
         case ConnectionState.Error: return "error"
         }

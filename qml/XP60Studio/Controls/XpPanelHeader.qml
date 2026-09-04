@@ -8,10 +8,16 @@ RowLayout {
 
     property string title: ""
     property string glyph: ""
+    property string iconName: ""
     default property alias trailing: trailingRow.data
 
     spacing: Metrics.spacingSm
     Layout.fillWidth: true
+    XpIcon {
+        visible: root.iconName.length > 0
+        name: root.iconName
+        color: Theme.accentText
+    }
 
     XpLabel {
         visible: root.glyph.length > 0

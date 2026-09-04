@@ -8,14 +8,14 @@ namespace xp60studio::presentation {
 
 namespace {
 
-// Glyphs are simple text placeholders until the icon set is added; they keep
-// the rail readable without shipping binary assets in Phase 1.
+// The rail resolves XpIcon by the stable key. Legacy text glyph metadata is
+// retained for nonvisual consumers; it no longer determines the rendered icon.
 const std::vector<AppShellViewModel::NavigationItem>& items()
 {
     static const std::vector<AppShellViewModel::NavigationItem> kItems{
         {QStringLiteral("dashboard"), QStringLiteral("Dashboard"), QStringLiteral("▦"), false, QStringLiteral("Phase 5")},
         {QStringLiteral("library"), QStringLiteral("Library"), QStringLiteral("▤"), false, QStringLiteral("Phase 5")},
-        {QStringLiteral("editor"), QStringLiteral("Editor"), QStringLiteral("✎"), false, QStringLiteral("Phase 4")},
+        {QStringLiteral("editor"), QStringLiteral("Editor"), QStringLiteral("✎"), true, QString()},
         {QStringLiteral("banks"), QStringLiteral("Banks"), QStringLiteral("▥"), false, QStringLiteral("Phase 6")},
         {QStringLiteral("performance"), QStringLiteral("Performance"), QStringLiteral("♪"), false, QStringLiteral("Phase 8")},
         {QStringLiteral("compare"), QStringLiteral("Compare"), QStringLiteral("⇄"), false, QStringLiteral("Phase 9")},
@@ -119,7 +119,7 @@ QString AppShellViewModel::connectionLabel() const
 {
     switch (connectionState()) {
     case ConnectionState::Connected:
-        return QStringLiteral("XP-60 LIVE");
+        return connectionVerified() ? QStringLiteral("XP-60 RESPONDED") : QStringLiteral("MIDI OPEN");
     case ConnectionState::Connecting:
         return QStringLiteral("XP-60 CONNECTING");
     case ConnectionState::Error:

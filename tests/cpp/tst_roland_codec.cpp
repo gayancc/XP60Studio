@@ -180,7 +180,7 @@ private slots:
             fixed[fixed.size() - 2] = RolandChecksum::compute(body);
         }
         const auto decoded = decodeRolandSysEx(fixed, kXp60);
-        QVERIFY2(decoded.ok(), describe(*decoded.failure).c_str());
+        QVERIFY2(decoded.ok(), decoded.failure ? describe(*decoded.failure).c_str() : "decode succeeded");
         QCOMPARE(hexOf(decoded.message->encode()), hexOf(fixed));
     }
 

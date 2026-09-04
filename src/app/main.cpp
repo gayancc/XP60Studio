@@ -8,15 +8,19 @@
 #include "midi/LoopbackMidiTransport.h"
 #include "presentation/AppShellViewModel.h"
 #include "presentation/DevicesViewModel.h"
+#include "presentation/PatchEditorViewModel.h"
 #include "presentation/QmlRegistration.h"
 #include "services/DeviceSession.h"
+#include "services/PatchTransfer.h"
 
 #include <QGuiApplication>
+#include <QIcon>
 #include <QImage>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQuickStyle>
 #include <QQuickWindow>
+#include <QSettings>
 #include <QTimer>
 #include <QUrl>
 
@@ -44,6 +48,7 @@ std::unique_ptr<xp60studio::midi::IMidiTransport> createTransport()
 int main(int argc, char* argv[])
 {
     QGuiApplication app(argc, argv);
+    QGuiApplication::setWindowIcon(QIcon(QStringLiteral(":/icons/xp60studio.png")));
     QCoreApplication::setOrganizationName(QStringLiteral("XP60Studio"));
     QCoreApplication::setOrganizationDomain(QStringLiteral("xp60studio.local"));
     QCoreApplication::setApplicationName(QStringLiteral("XP60Studio"));
@@ -56,7 +61,11 @@ int main(int argc, char* argv[])
     xp60studio::presentation::registerQmlTypes();
 
     xp60studio::services::DeviceSession session(createTransport());
-    xp60studio::presentation::DevicesViewModel devices(session);
+    xp60studio::services::PatchTransfer transfer(session);
+    QSettings connectionSettings;
+    xp60studio::presentation::DevicesViewModel devices(session, &transfer);
+    devices.useConnectionSettings(&connectionSettings);
+    xp60studio::presentation::PatchEditorViewModel editor(session, &transfer);
     xp60studio::presentation::AppShellViewModel shell(&devices);
 
     QQmlApplicationEngine engine;
@@ -64,6 +73,7 @@ int main(int argc, char* argv[])
     engine.setInitialProperties({
         {QStringLiteral("shell"), QVariant::fromValue(&shell)},
         {QStringLiteral("devices"), QVariant::fromValue(&devices)},
+        {QStringLiteral("editor"), QVariant::fromValue(&editor)},
     });
     QObject::connect(
         &engine, &QQmlApplicationEngine::objectCreationFailed, &app, [] { QCoreApplication::exit(1); },

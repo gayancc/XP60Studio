@@ -40,6 +40,7 @@ set(XP60STUDIO_QT_MINIMUM "6.4")
 
 find_package(Qt6 ${XP60STUDIO_QT_MINIMUM} REQUIRED COMPONENTS
   Core
+  Concurrent
   Gui
   Qml
   Quick

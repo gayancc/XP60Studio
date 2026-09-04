@@ -1,5 +1,9 @@
 # Build outputs
 build/
+.venv-build/
+.qt/
+aqtinstall.log
+Testing/   # CTest working directory when ctest runs in the source tree
 build-*/
 cmake-build-*/
 out/
@@ -21,3 +25,4 @@ CMakeUserPresets.json
 # OS
 .DS_Store
 Thumbs.db
+/graphify-out

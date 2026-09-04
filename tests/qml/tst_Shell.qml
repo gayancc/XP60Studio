@@ -31,7 +31,7 @@ TestCase {
         testDevices.disconnectDevice()
     }
 
-    function test_navigation_rail_lists_all_destinations_with_one_enabled() {
+    function test_navigation_rail_lists_all_destinations_and_gates_unbuilt_ones() {
         var rail = createTemporaryObject(railComponent, testCase)
         verify(rail)
         compare(testShell.navigationItems.length, 8)
@@ -39,11 +39,15 @@ TestCase {
         for (var i = 0; i < testShell.navigationItems.length; ++i) {
             if (testShell.navigationItems[i].enabled) enabled++
         }
-        compare(enabled, 1)
+        compare(enabled, 2) // Devices and Editor
         compare(testShell.currentScreen, "devices")
         // Disabled destinations must not navigate.
-        compare(testShell.navigate("editor"), false)
+        compare(testShell.navigate("library"), false)
         compare(testShell.currentScreen, "devices")
+        // Enabled ones must.
+        compare(testShell.navigate("editor"), true)
+        compare(testShell.currentScreen, "editor")
+        testShell.navigate("devices")
     }
 
     function test_connection_indicator_reflects_state_by_text_and_tone() {
@@ -51,6 +55,8 @@ TestCase {
         verify(indicator)
         compare(indicator.tone, "neutral")
         indicator.connectionState = ConnectionState.Connected
+        compare(indicator.tone, "warning")
+        indicator.verified = true
         compare(indicator.tone, "live")
         indicator.connectionState = ConnectionState.Error
         compare(indicator.tone, "error")
@@ -63,8 +69,9 @@ TestCase {
         verify(header)
         compare(testShell.connectionLabel, "XP-60 OFFLINE")
         testDevices.connectDevice()
+        tryCompare(testDevices, "connectionState", ConnectionState.Connected)
         compare(testShell.connectionState, ConnectionState.Connected)
-        compare(testShell.connectionLabel, "XP-60 LIVE")
+        compare(testShell.connectionLabel, "MIDI OPEN")
         testDevices.disconnectDevice()
         compare(testShell.connectionLabel, "XP-60 OFFLINE")
     }
