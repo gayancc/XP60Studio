@@ -1,0 +1,23 @@
+# Build outputs
+build/
+build-*/
+cmake-build-*/
+out/
+*.user
+CMakeLists.txt.user*
+CMakeUserPresets.json
+
+# Qt / QML tooling
+.qmlls.ini
+*.qmlc
+*.jsc
+.qtc_clangd/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db

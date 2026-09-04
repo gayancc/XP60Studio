@@ -1,0 +1,21 @@
+# Layer order (lower layers never depend on higher ones):
+#   roland      - Roland SysEx protocol types and codec           (no Qt)
+#   xp60        - XP-60 specific protocol facts                    (no Qt)
+#   midi        - IMidiTransport, SysEx assembly, loopback         (no Qt)
+#   midi_libremidi - libremidi backend for IMidiTransport          (no Qt)
+#   protocol    - request/response correlation, pacing             (no Qt)
+#   diagnostics - structured protocol log entries and formatting   (no Qt)
+#   services    - DeviceSession orchestration                      (Qt Core)
+#   presentation- view models / Qt item models for QML             (Qt Core/Qml)
+#   app         - Qt Quick executable
+add_subdirectory(roland)
+add_subdirectory(xp60)
+add_subdirectory(midi)
+add_subdirectory(protocol)
+add_subdirectory(diagnostics)
+add_subdirectory(services)
+add_subdirectory(presentation)
+
+if(XP60STUDIO_BUILD_APP)
+  add_subdirectory(app)
+endif()
