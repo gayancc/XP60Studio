@@ -13,14 +13,14 @@ namespace {
 const std::vector<AppShellViewModel::NavigationItem>& items()
 {
     static const std::vector<AppShellViewModel::NavigationItem> kItems{
-        {QStringLiteral("dashboard"), QStringLiteral("Dashboard"), QStringLiteral("▦"), false, QStringLiteral("Phase 5")},
-        {QStringLiteral("library"), QStringLiteral("Library"), QStringLiteral("▤"), false, QStringLiteral("Phase 5")},
+        {QStringLiteral("dashboard"), QStringLiteral("Dashboard"), QStringLiteral("▦"), false, QStringLiteral("Coming soon")},
+        {QStringLiteral("library"), QStringLiteral("Library"), QStringLiteral("▤"), false, QStringLiteral("Coming soon")},
         {QStringLiteral("editor"), QStringLiteral("Editor"), QStringLiteral("✎"), true, QString()},
-        {QStringLiteral("banks"), QStringLiteral("Banks"), QStringLiteral("▥"), false, QStringLiteral("Phase 6")},
-        {QStringLiteral("performance"), QStringLiteral("Performance"), QStringLiteral("♪"), false, QStringLiteral("Phase 8")},
-        {QStringLiteral("compare"), QStringLiteral("Compare"), QStringLiteral("⇄"), false, QStringLiteral("Phase 9")},
+        {QStringLiteral("banks"), QStringLiteral("Banks"), QStringLiteral("▥"), false, QStringLiteral("Coming soon")},
+        {QStringLiteral("performance"), QStringLiteral("Performance"), QStringLiteral("♪"), false, QStringLiteral("Coming soon")},
+        {QStringLiteral("compare"), QStringLiteral("Compare"), QStringLiteral("⇄"), false, QStringLiteral("Coming soon")},
         {QStringLiteral("devices"), QStringLiteral("Devices"), QStringLiteral("⌁"), true, QString()},
-        {QStringLiteral("settings"), QStringLiteral("Settings"), QStringLiteral("⚙"), false, QStringLiteral("Later")},
+        {QStringLiteral("settings"), QStringLiteral("Settings"), QStringLiteral("⚙"), false, QStringLiteral("Coming soon")},
     };
     return kItems;
 }
@@ -117,15 +117,17 @@ ConnectionState AppShellViewModel::connectionState() const
 
 QString AppShellViewModel::connectionLabel() const
 {
+    // Musician-facing shell copy. Verified handshake is a secondary badge in
+    // the indicator, not the primary connection string.
     switch (connectionState()) {
     case ConnectionState::Connected:
-        return connectionVerified() ? QStringLiteral("XP-60 RESPONDED") : QStringLiteral("MIDI OPEN");
+        return connectionVerified() ? QStringLiteral("XP-60 LIVE") : QStringLiteral("Connected");
     case ConnectionState::Connecting:
-        return QStringLiteral("XP-60 CONNECTING");
+        return QStringLiteral("Connecting");
     case ConnectionState::Error:
-        return QStringLiteral("XP-60 ERROR");
+        return QStringLiteral("Connection error");
     case ConnectionState::Disconnected:
-        return QStringLiteral("XP-60 OFFLINE");
+        return QStringLiteral("Offline");
     }
     return {};
 }

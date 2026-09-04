@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Layouts
 import XP60Studio
 import XP60Studio.Presentation
 
@@ -12,6 +13,7 @@ Rectangle {
     property string detail: ""
     property bool compact: false
     property bool verified: false
+    property bool showDetail: false
 
     readonly property string tone: {
         switch (connectionState) {
@@ -23,40 +25,75 @@ Rectangle {
     }
     readonly property color foreground: Theme.toneForeground(tone)
 
-    implicitWidth: row.implicitWidth + 2 * Metrics.spacingMd
-    implicitHeight: compact ? 26 : 30
+    implicitWidth: content.implicitWidth + 2 * Metrics.spacingMd
+    implicitHeight: compact ? (showDetail && detail.length ? 44 : 26) : (showDetail && detail.length ? 46 : 30)
     radius: Metrics.radiusPill
     color: Theme.toneBackground(tone)
     border.width: Metrics.borderWidth
     border.color: Qt.rgba(foreground.r, foreground.g, foreground.b, 0.35)
 
-    Accessible.role: Accessible.StaticText
-    Accessible.name: root.label + (root.detail.length ? ", " + root.detail : "")
+    Behavior on color {
+        enabled: !Motion.reducedMotion
+        ColorAnimation { duration: Motion.durationNormal; easing.type: Motion.easingStandard }
+    }
+    Behavior on border.color {
+        enabled: !Motion.reducedMotion
+        ColorAnimation { duration: Motion.durationNormal; easing.type: Motion.easingStandard }
+    }
 
-    Row {
-        id: row
+    Accessible.role: Accessible.StaticText
+    Accessible.name: root.label
+                             + (root.verified && root.connectionState === ConnectionState.Connected ? ", verified" : "")
+                             + (root.detail.length ? ", " + root.detail : "")
+
+    ColumnLayout {
+        id: content
         anchors.centerIn: parent
-        spacing: Metrics.spacingSm
-        Rectangle {
-            width: 8
-            height: 8
-            radius: 4
-            color: root.foreground
-            anchors.verticalCenter: parent.verticalCenter
-            SequentialAnimation on opacity {
-                running: root.connectionState === ConnectionState.Connecting && !Motion.reducedMotion
-                loops: Animation.Infinite
-                NumberAnimation { to: 0.25; duration: 500 }
-                NumberAnimation { to: 1.0; duration: 500 }
+        spacing: 1
+
+        Row {
+            spacing: Metrics.spacingSm
+            Layout.alignment: Qt.AlignHCenter
+            Rectangle {
+                width: 8
+                height: 8
+                radius: 4
+                color: root.foreground
+                anchors.verticalCenter: parent.verticalCenter
+                SequentialAnimation on opacity {
+                    running: root.connectionState === ConnectionState.Connecting && !Motion.reducedMotion
+                    loops: Animation.Infinite
+                    NumberAnimation { to: 0.25; duration: 500 }
+                    NumberAnimation { to: 1.0; duration: 500 }
+                }
+            }
+            XpLabel {
+                text: root.label
+                role: compact ? "caption" : "body"
+                font.weight: Typography.weightMedium
+                font.letterSpacing: 0.6
+                color: root.foreground
+                anchors.verticalCenter: parent.verticalCenter
+            }
+            StatusPill {
+                visible: root.verified && root.connectionState === ConnectionState.Connected && !root.compact
+                text: "Verified"
+                tone: "live"
+                showDot: false
+                anchors.verticalCenter: parent.verticalCenter
             }
         }
+
         XpLabel {
-            text: root.label
-            role: compact ? "caption" : "body"
-            font.weight: Typography.weightMedium
-            font.letterSpacing: 0.6
+            visible: root.showDetail && root.detail.length > 0
+            text: root.detail
+            role: "overline"
             color: root.foreground
-            anchors.verticalCenter: parent.verticalCenter
+            opacity: 0.85
+            elide: Text.ElideMiddle
+            Layout.maximumWidth: root.compact ? 200 : 360
+            Layout.alignment: Qt.AlignHCenter
+            horizontalAlignment: Text.AlignHCenter
         }
     }
 }

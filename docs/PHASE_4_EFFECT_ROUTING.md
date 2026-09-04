@@ -75,6 +75,15 @@ To resolve this in the deferred manual verification task:
    memory, then fetch again. Do not store over a permanent User Patch.
 3. Record the before/after values shown on the instrument, changed Common
    offsets and raw bytes. Repeat at adjacent values and both endpoints.
+   Run `tools/capture_diff.py BEFORE AFTER --markdown` to name every byte that
+   moved: it resolves each changed address against the same transcribed
+   Parameter Address Map that generates the C++ tables, so the reported
+   parameter is a document row rather than a reading of the hex by eye. It
+   accepts a binary `.syx` or hex text copied from the Protocol activity panel,
+   and reports coverage differences, out-of-range values and addresses it
+   cannot resolve instead of hiding them. **A changed byte is a correlation,
+   not a proven slot assignment** — the mapping is established by the whole
+   procedure below, not by one diff.
 4. For nonlinear rates, frequencies, delays and balance, capture every supported
    displayed step or find an explicit Roland conversion table. Do not infer a
    linear conversion from two endpoints.

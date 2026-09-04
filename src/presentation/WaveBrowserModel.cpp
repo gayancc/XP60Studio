@@ -26,12 +26,15 @@ QVariant WaveBrowserModel::data(const QModelIndex& index, int role) const
     case BankRole: return QString::fromLatin1(wave.bank);
     case NumberRole: return wave.number;
     case KeyRole: return key(wave);
+    case PageRole: return wave.page;
+    case AvailabilityRole: return QStringLiteral("available");
     default: return {};
     }
 }
 QHash<int, QByteArray> WaveBrowserModel::roleNames() const
 {
-    return {{NameRole, "waveName"}, {BankRole, "bank"}, {NumberRole, "number"}, {KeyRole, "waveKey"}};
+    return {{NameRole, "waveName"}, {BankRole, "bank"}, {NumberRole, "number"}, {KeyRole, "waveKey"},
+            {PageRole, "page"}, {AvailabilityRole, "availability"}};
 }
 void WaveBrowserModel::setQuery(const QString& query)
 {

@@ -116,7 +116,9 @@ F0 41 10 6A 11 01 00 00 00 00 00 1F 19 47 F7
 - Record: the payload size of each incoming DT1 (the `bytes=` figure on the IN
   lines). **This settles the open 129-byte question** in
   `docs/protocol/ROLAND_XP60_PROTOCOL_FACTS.md` §2.1: note whether the XP-60
-  sends 129 bytes in one message or splits at 128.
+  sends 129 bytes in one message or splits at 128. Saving the captured hex and
+  running `tools/capture_diff.py` over it prints the distinct DT1 payload sizes
+  seen, which is the observation §2.1 asks for.
 - Record: the gap between consecutive DT1s from the timestamps.
 
 ### 8. Temporary-area write and read-back — **only after 1–7a pass**
@@ -154,6 +156,13 @@ Procedure:
   `DEFAULT`), so do not require the exact previous temporary patch to reappear.
 - Record: the raw hex of the outgoing DT1s and the read-back DT1s, and the
   transfer card's final message.
+- Save that hex to two files and run
+  `tools/capture_diff.py sent.txt readback.txt` as an independent check of the
+  application's own comparison. The tool resolves each address against the
+  transcribed Parameter Address Map, so an agreement is a second reading of the
+  same bytes rather than the verifier grading itself. It accepts hex text
+  copied from the Protocol activity panel as well as binary `.syx`, and reports
+  address coverage differences separately from value differences.
 
 ### 8a. Deliberate mismatch check
 

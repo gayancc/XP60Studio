@@ -263,3 +263,51 @@ raw units still apply. This is local visual/interaction evidence; M2 cannot clos
 until EFX slot mappings and physical hardware acceptance are established.
 
 Validation: all 23 CTest suites pass; the final QML recheck reports 58 passing checks, including keyboard Tone switches and full envelope visibility at 1440x1040. Normal/minimum/live captures were reviewed. The code graph was refreshed (2,410 nodes / 5,051 edges), with the same partial-parser limitations noted above. No physical MIDI writes were performed.
+
+## Hardware-session evidence tooling
+
+The two remaining M2/M3 gaps — EFX Parameter 1-12 byte slots and the INT-A/INT-B
+wave group mapping — are both blocked on the same deferred physical session, and
+both produce the same artifact: a before capture, one deliberate front-panel
+change, an after capture, and a statement of which Patch bytes moved. Doing that
+by eye over 2,945 bytes per Patch is where a wrong slot assignment would enter
+the codebase.
+
+`tools/capture_diff.py` (research utility, not part of the runtime) performs the
+comparison. It assembles both captures into address images through the existing
+`syx_inspect` parser, then resolves every changed address against the same
+transcribed Parameter Address Map that generates the C++ tables, via
+`generate_patch_tables.parse_tables`. A reported parameter name is therefore a
+row in `docs/protocol/XP60_PATCH_PARAMETER_MAP.md`, not a second transcription
+that could drift from the generated tables. Multi-byte nibble parameters are
+decoded and reported once with all their bytes; display text follows the same
+rules as `ParameterDescriptor::formatDisplay`.
+
+Nothing is normalized away. Addresses present in only one capture are reported
+separately from value differences, so a partial capture cannot masquerade as an
+unchanged parameter. Addresses outside a documented Patch region, offsets in the
+gaps between documented blocks, Performance Part 10 (the untranscribed Rhythm
+Setup) and raw values outside the transcribed range are each reported with the
+reason. Captures with a bad checksum are reported and the tool exits non-zero,
+because such a capture is not usable as evidence. `--markdown` prints evidence
+rows in the shape `PHASE_4_EFFECT_ROUTING.md` asks for. Input may be a binary
+`.syx` or hex text copied from the Devices screen's Protocol activity panel, so
+a session needs no separate SysEx utility.
+
+This does not establish any EFX slot or wave mapping. A changed byte is a
+correlation; the procedures in `PHASE_4_EFFECT_ROUTING.md` and
+`PHASE_4_WAVE_BROWSER.md` are still what turns one into evidence, and both still
+require the physical instrument. What changes is that the session now has a
+checkable instrument-independent reading of its own captures instead of hand
+comparison, and that `HARDWARE_VALIDATION_XP60.md` step 8 gains a second reading
+of the read-back that does not come from the verifier being tested.
+
+Validation: `tools/capture_diff.py --self-test` is registered as the CTest
+`tst_capture_diff` beside the two existing generator checks. It covers 7-bit,
+nibble and ASCII parameters, Tone placement, User Patch numbering, coverage
+differences, unresolved regions, block gaps, the Rhythm Setup part,
+out-of-range values, hex-text input and checksum rejection. Run against the
+real fixture, the tool reports zero changes for a file compared with itself and
+names exactly the two edited parameters in a deliberately modified copy. No
+production, presentation or QML code was changed, and no hardware writes were
+performed.

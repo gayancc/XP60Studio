@@ -21,6 +21,7 @@ set(XP60STUDIO_QML_FILES
   Controls/XpTextField.qml
   Controls/StatusPill.qml
   Controls/XpKnob.qml
+  Controls/XpFader.qml
   Controls/XpSegmentedControl.qml
   Controls/XpRangeBar.qml
   Controls/ParameterValueEditor.qml
@@ -32,6 +33,18 @@ set(XP60STUDIO_QML_FILES
   Controls/SignalFlowNode.qml
   Controls/SignalFlowConnector.qml
   Controls/EffectRoutingView.qml
+  Controls/FourToneMixer.qml
+  Controls/LfoShapeSelector.qml
+  Controls/LfoPreview.qml
+  Controls/DeviceConnectionCard.qml
+  Controls/DeviceHealthCard.qml
+  Controls/SafeReadFlow.qml
+  Controls/OperationProgressRow.qml
+  Controls/ProtocolActivityPanel.qml
+  Controls/TransferMismatchCard.qml
+  Controls/WaveSearchBar.qml
+  Controls/WaveResultRow.qml
+  Controls/WaveAvailabilityBadge.qml
   Shell/AppNavigationRail.qml
   Shell/AppHeader.qml
   Shell/ConnectionStatusIndicator.qml

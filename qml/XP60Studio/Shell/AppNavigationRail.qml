@@ -20,7 +20,6 @@ Rectangle {
         anchors.margins: Metrics.spacingMd
         spacing: Metrics.spacingXs
 
-        // Wordmark
         Row {
             Layout.leftMargin: Metrics.spacingSm
             Layout.topMargin: Metrics.spacingSm
@@ -45,8 +44,13 @@ Rectangle {
                 border.width: current ? 1 : 0
                 border.color: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.5)
 
+                Behavior on color {
+                    enabled: !Motion.reducedMotion
+                    ColorAnimation { duration: Motion.durationFast; easing.type: Motion.easingStandard }
+                }
+
                 Accessible.role: Accessible.Button
-                Accessible.name: modelData.label + (available ? "" : ", available in " + modelData.availability)
+                Accessible.name: modelData.label + (available ? "" : ", " + modelData.availability)
                 activeFocusOnTab: available
                 Keys.onPressed: function(event) {
                     if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
@@ -97,7 +101,6 @@ Rectangle {
 
         Item { Layout.fillHeight: true }
 
-        // Device summary card (mockup: "XP-60 LIVE / Connected" with device art)
         Rectangle {
             Layout.fillWidth: true
             implicitHeight: deviceColumn.implicitHeight + 2 * Metrics.spacingMd
@@ -110,34 +113,37 @@ Rectangle {
                 id: deviceColumn
                 anchors { left: parent.left; right: parent.right; top: parent.top; margins: Metrics.spacingMd }
                 spacing: Metrics.spacingSm
+
                 ConnectionStatusIndicator {
                     connectionState: root.shell.connectionState
                     verified: root.shell.connectionVerified
                     label: root.shell.connectionLabel
                     compact: true
+                    Layout.fillWidth: true
                 }
+
                 XpLabel {
                     text: root.shell.deviceName
-                    role: "caption"
-                    secondary: true
+                    role: "body"
+                    font.weight: Typography.weightMedium
                     Layout.fillWidth: true
                 }
-                Rectangle {
+
+                XpLabel {
+                    visible: root.shell.connectionDetail.length > 0
+                    text: root.shell.connectionDetail
+                    role: "caption"
+                    secondary: true
+                    wrapMode: Text.WordWrap
                     Layout.fillWidth: true
-                    implicitHeight: 34
-                    radius: Metrics.radiusSm
-                    color: Theme.surfaceSunken
-                    border.width: 1
-                    border.color: Theme.borderSubtle
-                    // Stylised keyboard strip standing in for the device image.
-                    Row {
-                        anchors.centerIn: parent
-                        spacing: 2
-                        Repeater {
-                            model: 14
-                            Rectangle { width: 6; height: 18; radius: 1; color: index % 2 ? Theme.borderStrong : Theme.textMuted; opacity: 0.6 }
-                        }
-                    }
+                }
+
+                XpLabel {
+                    visible: root.shell.connectionState === ConnectionState.Disconnected
+                    text: "Open Devices to connect"
+                    role: "caption"
+                    muted: true
+                    Layout.fillWidth: true
                 }
             }
         }

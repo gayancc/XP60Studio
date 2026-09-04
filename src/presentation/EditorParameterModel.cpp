@@ -121,7 +121,9 @@ void EditorParameterModel::rebuild()
         }
     }
     endResetModel();
+    ++m_valuesTick;
     emit countChanged();
+    emit valuesChanged();
 }
 
 void EditorParameterModel::refreshValues()
@@ -131,6 +133,8 @@ void EditorParameterModel::refreshValues()
     } else {
         // Preserve delegates and keyboard focus while a value is edited.
         emit dataChanged(index(0), index(rowCount() - 1), {RawRole, ValueTextRole, MinimumRole, MaximumRole});
+        ++m_valuesTick;
+        emit valuesChanged();
     }
 }
 
@@ -201,13 +205,75 @@ void EditorParameterModel::edit(const QString& id, int toneNumber, int raw)
     const auto it = std::find_if(m_rows.begin(), m_rows.end(), [&](const Row& row) {
         return row.toneNumber == toneNumber && qstr(row.descriptor->id) == id;
     });
-    if (it == m_rows.end() || !it->descriptor->isRawInRange(raw)) return;
-    if (toneNumber == 0) {
-        m_editor.setCommonRaw(static_cast<xpmodel::CommonParameter>(it->parameterIndex), raw);
-    } else {
-        m_editor.setToneRaw(xpmodel::ToneIndex::all()[static_cast<std::size_t>(toneNumber - 1)],
-                           static_cast<xpmodel::ToneParameter>(it->parameterIndex), raw);
+    if (it != m_rows.end()) {
+        if (!it->descriptor->isRawInRange(raw)) return;
+        if (toneNumber == 0) {
+            m_editor.setCommonRaw(static_cast<xpmodel::CommonParameter>(it->parameterIndex), raw);
+        } else {
+            m_editor.setToneRaw(xpmodel::ToneIndex::all()[static_cast<std::size_t>(toneNumber - 1)],
+                               static_cast<xpmodel::ToneParameter>(it->parameterIndex), raw);
+        }
+        return;
     }
+    // Allow visual controls to edit known parameters for the selected Tone even
+    // when a group filter hides the row (e.g. LFO shape chips).
+    if (toneNumber <= 0 || toneNumber != m_editor.selectedTone()) return;
+    const auto& table = tables::patchToneTable();
+    const auto& parameters = table.parameters();
+    for (std::size_t i = 0; i < parameters.size(); ++i) {
+        if (qstr(parameters[i].id) != id || !parameters[i].isRawInRange(raw)) continue;
+        m_editor.setToneRaw(xpmodel::ToneIndex::all()[static_cast<std::size_t>(toneNumber - 1)],
+                           static_cast<xpmodel::ToneParameter>(i), raw);
+        return;
+    }
+}
+
+int EditorParameterModel::rawForId(const QString& parameterId) const
+{
+    if (!m_editor.hasPatch()) return 0;
+    for (const auto& row : m_rows) {
+        if (qstr(row.descriptor->id) != parameterId) continue;
+        const auto& block = row.toneNumber == 0 ? m_editor.patch().common()
+            : m_editor.patch().tone(xpmodel::ToneIndex::all()[static_cast<std::size_t>(row.toneNumber - 1)]);
+        return block.rawAt(row.parameterIndex);
+    }
+    const int toneNumber = m_editor.selectedTone();
+    if (toneNumber <= 0) return 0;
+    const auto& table = tables::patchToneTable();
+    const auto& parameters = table.parameters();
+    for (std::size_t i = 0; i < parameters.size(); ++i) {
+        if (qstr(parameters[i].id) != parameterId) continue;
+        return m_editor.patch().tone(xpmodel::ToneIndex::all()[static_cast<std::size_t>(toneNumber - 1)]).rawAt(i);
+    }
+    return 0;
+}
+
+QStringList EditorParameterModel::choicesForId(const QString& parameterId) const
+{
+    for (int i = 0; i < rowCount(); ++i) {
+        const auto idx = index(i, 0);
+        if (data(idx, IdRole).toString() != parameterId) continue;
+        return data(idx, ChoicesRole).toStringList();
+    }
+    // Fall back to the tone table so LFO shapes remain available even when filtered.
+    const auto& table = tables::patchToneTable();
+    for (const auto& p : table.parameters()) {
+        if (qstr(p.id) != parameterId) continue;
+        QStringList labels;
+        for (const auto label : p.enumLabels) labels.append(qstr(label));
+        return labels;
+    }
+    return {};
+}
+
+QString EditorParameterModel::valueTextForId(const QString& parameterId) const
+{
+    if (!m_editor.hasPatch()) return {};
+    for (int i = 0; i < rowCount(); ++i) {
+        const auto idx = index(i, 0);
+        if (data(idx, IdRole).toString() == parameterId) return data(idx, ValueTextRole).toString();
+    }
+    return {};
 }
 
 } // namespace xp60studio::presentation

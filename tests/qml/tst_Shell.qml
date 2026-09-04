@@ -19,12 +19,12 @@ TestCase {
 
     Component {
         id: headerComponent
-        AppHeader { shell: testShell; backendName: "Loopback"; width: 800 }
+        AppHeader { shell: testShell; width: 800 }
     }
 
     Component {
         id: indicatorComponent
-        ConnectionStatusIndicator { connectionState: ConnectionState.Disconnected; label: "XP-60 OFFLINE" }
+        ConnectionStatusIndicator { connectionState: ConnectionState.Disconnected; label: "Offline" }
     }
 
     function init() {
@@ -67,12 +67,12 @@ TestCase {
     function test_header_follows_shell_connection() {
         var header = createTemporaryObject(headerComponent, testCase)
         verify(header)
-        compare(testShell.connectionLabel, "XP-60 OFFLINE")
+        compare(testShell.connectionLabel, "Offline")
         testDevices.connectDevice()
         tryCompare(testDevices, "connectionState", ConnectionState.Connected)
         compare(testShell.connectionState, ConnectionState.Connected)
-        compare(testShell.connectionLabel, "MIDI OPEN")
+        compare(testShell.connectionLabel, "Connected")
         testDevices.disconnectDevice()
-        compare(testShell.connectionLabel, "XP-60 OFFLINE")
+        compare(testShell.connectionLabel, "Offline")
     }
 }

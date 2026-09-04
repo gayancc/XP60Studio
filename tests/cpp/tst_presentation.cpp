@@ -162,7 +162,7 @@ private slots:
         f.deviceReplies(roland::RolandSysExMessage::dataSet(roland::RolandDeviceId::factoryDefault(), xp60::modelId(),
             roland::RolandAddress(3, 0, 0, 0), roland::ByteVector(12, 'A')).value());
         QVERIFY(f.devices->connectionVerified());
-        QCOMPARE(f.shell->connectionLabel(), QStringLiteral("XP-60 RESPONDED"));
+        QCOMPARE(f.shell->connectionLabel(), QStringLiteral("XP-60 LIVE"));
         QCOMPARE(f.transport->sentMessages().size(), std::size_t(1));
         QCOMPARE(f.transport->sentMessages().front()[4], std::uint8_t(0x11)); // RQ1 only
         f.devices->setDeviceId(18);
@@ -191,7 +191,7 @@ private slots:
         QVERIFY(f.devices->canConnect());
         QVERIFY(!f.devices->canDisconnect());
         QCOMPARE(f.devices->connectionState(), ConnectionState::Disconnected);
-        QCOMPARE(f.shell->connectionLabel(), QStringLiteral("XP-60 OFFLINE"));
+        QCOMPARE(f.shell->connectionLabel(), QStringLiteral("Offline"));
 
         f.devices->setSelectedInputIndex(-1);
         QVERIFY(!f.devices->canConnect());
@@ -208,7 +208,7 @@ private slots:
         QVERIFY(f.devices->canDisconnect());
         QVERIFY(connectionSpy.count() >= 1);
         QVERIFY(shellSpy.count() >= 1);
-        QCOMPARE(f.shell->connectionLabel(), QStringLiteral("MIDI OPEN"));
+        QCOMPARE(f.shell->connectionLabel(), QStringLiteral("Connected"));
         QCOMPARE(f.shell->connectionState(), ConnectionState::Connected);
 
         f.devices->disconnectDevice();
@@ -242,7 +242,7 @@ private slots:
         QTRY_COMPARE(f.devices->connectionState(), ConnectionState::Error);
         QCOMPARE(f.devices->lastError(), QStringLiteral("port busy"));
         QCOMPARE(f.devices->connectionDetail(), QStringLiteral("port busy"));
-        QCOMPARE(f.shell->connectionLabel(), QStringLiteral("XP-60 ERROR"));
+        QCOMPARE(f.shell->connectionLabel(), QStringLiteral("Connection error"));
         QVERIFY(f.devices->canConnect()); // user may retry
     }
 

@@ -37,7 +37,6 @@ QQC.ApplicationWindow {
 
             AppHeader {
                 shell: window.shell
-                backendName: window.devices.backendName
                 Layout.fillWidth: true
             }
 

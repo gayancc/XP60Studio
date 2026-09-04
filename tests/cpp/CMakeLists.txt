@@ -123,4 +123,9 @@ if(Python3_Interpreter_FOUND)
   add_test(NAME tst_generated_tables_current
     COMMAND Python3::Interpreter ${CMAKE_SOURCE_DIR}/tools/generate_patch_tables.py --check
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+  # The hardware-session capture comparator resolves addresses against the same
+  # transcribed Parameter Address Map; its self-test fails if that drifts.
+  add_test(NAME tst_capture_diff
+    COMMAND Python3::Interpreter ${CMAKE_SOURCE_DIR}/tools/capture_diff.py --self-test
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 endif()

@@ -16,7 +16,7 @@ class WaveBrowserModel final : public QAbstractListModel
     Q_PROPERTY(QVariantMap selected READ selected NOTIFY selectionChanged)
     Q_PROPERTY(int selectedRow READ selectedRow NOTIFY selectionChanged)
 public:
-    enum Role { NameRole = Qt::UserRole + 1, BankRole, NumberRole, KeyRole };
+    enum Role { NameRole = Qt::UserRole + 1, BankRole, NumberRole, KeyRole, PageRole, AvailabilityRole };
     explicit WaveBrowserModel(QObject* parent = nullptr);
     int rowCount(const QModelIndex& parent = {}) const override;
     QVariant data(const QModelIndex& index, int role) const override;

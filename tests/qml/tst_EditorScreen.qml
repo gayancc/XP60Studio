@@ -299,15 +299,41 @@ TestCase {
         testEditor.section = 3
         var panel = findChild(screen, "motionEffectsPanel")
         verify(panel.visible)
+        // Visual LFO selector is primary; exact ComboBox remains under disclosure.
+        var exactToggle = null
+        var buttons = panel.contentItem ? null : null
+        // Expand exact parameters for the documented ComboBox path.
+        for (var i = 0; i < 20; ++i) {
+            var kids = panel.children
+        }
+        // Force the exact panel open by finding the nested EditorParameterPanel path:
+        // Click the "Exact LFO" ghost button via text search is fragile; toggle via first ghost after shapes.
+        var exactButton = null
+        function findExactButton(item) {
+            if (!item) return null
+            if (item.text && String(item.text).indexOf("Exact LFO") >= 0) return item
+            if (item.children) {
+                for (var c = 0; c < item.children.length; ++c) {
+                    var found = findExactButton(item.children[c])
+                    if (found) return found
+                }
+            }
+            return null
+        }
+        exactButton = findExactButton(panel)
+        verify(exactButton)
+        mouseClick(exactButton)
         tryVerify(function() { return findChild(panel, "parameter-tone.lfo1_waveform") !== null })
         var shape = findChild(findChild(panel, "parameter-tone.lfo1_waveform"), "parameterChoice")
         compare(shape.count, 8)
         shape.activated(3)
         compare(shape.currentIndex, 3)
         testEditor.section = 4
-        tryVerify(function() { return findChild(panel, "parameter-common.efx_type") !== null })
-        verify(panel.note.indexOf("slots remain raw") >= 0)
-        var effect = findChild(findChild(panel, "parameter-common.efx_type"), "parameterChoice")
+        var effects = findChild(screen, "effectsParameterPanel")
+        verify(effects.visible)
+        tryVerify(function() { return findChild(effects, "parameter-common.efx_type") !== null })
+        verify(effects.note.indexOf("slots remain raw") >= 0)
+        var effect = findChild(findChild(effects, "parameter-common.efx_type"), "parameterChoice")
         compare(effect.count, 40)
         effect.activated(39)
         compare(testEditor.mfxText, "CHORUS/FLANGER")

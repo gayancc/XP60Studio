@@ -26,3 +26,7 @@ CMakeUserPresets.json
 .DS_Store
 Thumbs.db
 /graphify-out
+
+# Python bytecode from the research utilities in tools/
+__pycache__/
+*.pyc

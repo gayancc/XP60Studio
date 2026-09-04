@@ -13,6 +13,7 @@ Rectangle {
     required property ToneViewModel tone
     property bool selected: false
     signal clicked()
+    signal browseWaves()
 
     readonly property color toneColor: Theme.toneColor(tone.toneNumber)
     readonly property bool dimmed: !tone.enabled || !tone.audible
@@ -111,17 +112,46 @@ Rectangle {
 
         Rectangle { Layout.fillWidth: true; implicitHeight: 1; color: Qt.rgba(root.toneColor.r, root.toneColor.g, root.toneColor.b, 0.35) }
 
-        // Wave
+        // Wave — opens Wave Browser (browse-only until assignment verified)
         ColumnLayout {
             Layout.fillWidth: true
             spacing: 1
             XpLabel { text: qsTr("Wave"); role: "overline"; secondary: true }
-            XpLabel {
-                text: root.tone.waveSourceText
-                role: "caption"
-                muted: true
-                elide: Text.ElideRight
+            Rectangle {
                 Layout.fillWidth: true
+                implicitHeight: waveCol.implicitHeight + Metrics.spacingXs
+                radius: Metrics.radiusSm
+                color: waveHover.hovered ? Theme.surfaceHover : "transparent"
+                border.width: waveFocus.activeFocus ? 1 : 0
+                border.color: Theme.focusRing
+                Accessible.role: Accessible.Button
+                Accessible.name: qsTr("Browse waves for Tone %1").arg(root.tone.toneNumber)
+                activeFocusOnTab: true
+                Keys.onPressed: function(event) {
+                    if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
+                        root.browseWaves(); event.accepted = true
+                    }
+                }
+                TapHandler { onTapped: root.browseWaves() }
+                HoverHandler { id: waveHover }
+                FocusScope { id: waveFocus; anchors.fill: parent }
+                ColumnLayout {
+                    id: waveCol
+                    anchors { left: parent.left; right: parent.right; top: parent.top }
+                    spacing: 1
+                    XpLabel {
+                        text: root.tone.waveSourceText
+                        role: "caption"
+                        muted: true
+                        elide: Text.ElideRight
+                        Layout.fillWidth: true
+                    }
+                    XpLabel {
+                        text: qsTr("Browse waves")
+                        role: "overline"
+                        color: Theme.accentText
+                    }
+                }
             }
         }
 

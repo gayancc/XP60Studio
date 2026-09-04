@@ -118,6 +118,12 @@ Item {
             title: qsTr("STRUCTURE"); detail: root.routing.structure || ""
             detailLines: root.detailed ? 2 : 1
             highlighted: true; accentColor: Theme.toneColor(root.editor.selectedTone)
+            interactive: true
+            selected: root.editor.section === 0 || root.editor.section === 4
+            onActivated: {
+                root.editor.disclosure = 1
+                root.editor.section = 4
+            }
         }
         SignalFlowNode {
             id: efxNode
@@ -127,6 +133,12 @@ Item {
             title: qsTr("MFX / EFX"); detail: root.editor.mfxText
             detailLines: root.detailed ? 2 : 1
             highlighted: diagram.active("efx"); accentColor: Theme.tone4
+            interactive: true
+            selected: root.editor.disclosure === 1 && root.editor.section === 4
+            onActivated: {
+                root.editor.disclosure = 1
+                root.editor.section = 4
+            }
         }
         SignalFlowNode {
             id: chorusNode
@@ -137,6 +149,11 @@ Item {
             title: qsTr("CHORUS"); detail: root.editor.chorusText
             detailLines: root.detailed ? 2 : 1
             highlighted: diagram.active("chorus"); accentColor: Theme.tone2
+            interactive: true
+            onActivated: {
+                root.editor.disclosure = 1
+                root.editor.section = 4
+            }
         }
         SignalFlowNode {
             id: reverbNode
@@ -147,6 +164,11 @@ Item {
             title: qsTr("REVERB"); detail: root.editor.reverbText
             detailLines: root.detailed ? 2 : 1
             highlighted: diagram.active("reverb"); accentColor: Theme.tone3
+            interactive: true
+            onActivated: {
+                root.editor.disclosure = 1
+                root.editor.section = 4
+            }
         }
         SignalFlowNode {
             id: mixNode
@@ -156,6 +178,11 @@ Item {
             title: qsTr("MIX OUT"); detail: root.editor.outputText
             detailLines: root.detailed ? 2 : 1
             highlighted: diagram.active("mix")
+            interactive: true
+            onActivated: {
+                root.editor.disclosure = 1
+                root.editor.section = 4
+            }
         }
         SignalFlowNode {
             id: directNode

@@ -52,8 +52,13 @@ live-update, Solo/Mute, A/B, routing and EFX capture checks. Also:
 2. On the XP-60 panel choose INT-A 001, INT-A 255, INT-B 001 and INT-B 193.
    Fetch after each change; save raw captures and panel labels to establish
    group type, group ID and zero-based number at the bank boundaries.
+   `tools/capture_diff.py BEFORE AFTER` names the changed Tone bytes and
+   decodes the two-byte nibble Wave Number, so the Wave Group Type / Group ID /
+   Number triple is read from the document's own rows rather than by hand.
 3. Compare several interior entries with displayed Roland names; record any
-   differences without normalizing them away.
+   differences without normalizing them away. The tool reports addresses it
+   cannot resolve and values outside the transcribed range rather than
+   suppressing them; treat both as evidence, not noise.
 4. After mapping is evidenced, implement **Use in Tone** as one atomic local
    edit with undo, A/B and established armed live-update behavior. Test bank
    boundaries and preserve unmapped expansion references.

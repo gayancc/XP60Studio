@@ -3,13 +3,11 @@ import QtQuick.Layouts
 import XP60Studio
 import XP60Studio.Presentation
 
-// Global header: current screen title, the live connection indicator in the
-// centre (as in the mockup), backend badge and version on the right.
+// Global header: screen title, live XP-60 identity in the centre, muted version.
 Rectangle {
     id: root
 
     required property AppShellViewModel shell
-    property string backendName: ""
 
     implicitHeight: Metrics.headerHeight
     color: Theme.headerBackground
@@ -35,24 +33,12 @@ Rectangle {
             verified: root.shell.connectionVerified
             label: root.shell.connectionLabel
             detail: root.shell.connectionDetail
+            showDetail: root.width >= 1100
             Layout.alignment: Qt.AlignVCenter
         }
 
         Item { Layout.fillWidth: true }
 
-        StatusPill {
-            text: "MIDI"
-            tone: "accent"
-            showDot: false
-            Accessible.description: root.backendName
-        }
-        XpLabel {
-            text: root.backendName
-            role: "caption"
-            muted: true
-            elide: Text.ElideMiddle
-            Layout.maximumWidth: 260
-        }
         XpLabel {
             text: "v" + root.shell.appVersion
             role: "caption"

@@ -269,28 +269,16 @@ Item {
             }
 
             // ── Four Tone cards ─────────────────────────────────────────────
-            GridLayout {
+            FourToneMixer {
                 id: toneGrid
-                objectName: "toneGrid"
+                editor: root.editor
+                wide: root.wideTones
                 Layout.fillWidth: true
                 Layout.leftMargin: Metrics.screenPadding
                 Layout.rightMargin: Metrics.screenPadding
-                columns: root.wideTones ? 4 : 2
-                columnSpacing: Metrics.spacingMd
-                rowSpacing: Metrics.spacingMd
-
-                Repeater {
-                    id: toneCards
-                    model: root.editor.tones
-                    delegate: ToneCard {
-                        required property var modelData
-                        objectName: "toneCard" + modelData.toneNumber
-                        Layout.fillWidth: true
-                        Layout.preferredWidth: 1
-                        tone: modelData
-                        selected: root.editor.selectedTone === modelData.toneNumber
-                        onClicked: root.editor.selectedTone = modelData.toneNumber
-                    }
+                onBrowseWavesRequested: function(toneNumber) {
+                    root.editor.selectedTone = toneNumber
+                    root.browsingWaves = true
                 }
             }
 
@@ -317,7 +305,7 @@ Item {
                         ctx.reset()
                         for (var i = 0; i < 4; ++i) {
                             if ((root.editor.routing.sourceTones || []).indexOf(i + 1) < 0) continue
-                            var card = toneCards.itemAt(i)
+                            var card = toneGrid.itemAt(i)
                             if (!card) continue
                             var start = card.mapToItem(toneConnections, card.width / 2, card.height)
                             var end = routingView.mapToItem(toneConnections, routingView.sourceCenterX + (i - 1.5) * 6, 0)
@@ -572,17 +560,199 @@ Item {
             }
 
             EditorParameterPanel {
-                objectName: "motionEffectsPanel"
-                visible: root.editor.disclosure === 1 && root.editor.section >= 3
+                objectName: "effectsParameterPanel"
+                visible: root.editor.disclosure === 1 && root.editor.section === 4
                 Layout.fillWidth: true
                 Layout.leftMargin: Metrics.screenPadding
                 Layout.rightMargin: Metrics.screenPadding
                 editor: root.editor
                 parameters: root.editor.sectionParameters
-                title: root.editor.section === 3 ? qsTr("MOTION · LFO & CONTROLLERS") : qsTr("EFFECTS & ROUTING")
-                note: root.editor.section === 4
-                      ? qsTr("EFX types follow Roland's 40-effect list. The 12 effect-specific slots remain raw until their byte mappings and units are verified. Chorus and Reverb follow the parameter map.")
-                      : qsTr("Both LFOs include shape, rate, delay, fade and Pitch/Filter/Level/Pan depths. Rates and times use XP values; no Hz or seconds conversion is assumed.")
+                title: qsTr("EFFECTS & ROUTING")
+                note: qsTr("EFX types follow Roland's 40-effect list. The 12 effect-specific slots remain raw until their byte mappings and units are verified. Chorus and Reverb follow the parameter map.")
+            }
+
+            // Motion / LFO — visual shape first, exact panel secondary
+            XpCard {
+                objectName: "motionEffectsPanel"
+                visible: root.editor.disclosure === 1 && root.editor.section === 3
+                Layout.fillWidth: true
+                Layout.leftMargin: Metrics.screenPadding
+                Layout.rightMargin: Metrics.screenPadding
+                implicitHeight: motionColumn.implicitHeight + 2 * Metrics.cardPadding
+                accentColor: Theme.toneColor(root.editor.selectedTone)
+
+                ColumnLayout {
+                    id: motionColumn
+                    anchors { left: parent.left; right: parent.right; top: parent.top }
+                    spacing: Metrics.spacingMd
+
+                    XpPanelHeader {
+                        title: qsTr("MOTION · LFO")
+                        StatusPill {
+                            text: qsTr("Tone %1").arg(root.editor.selectedTone)
+                            tone: "accent"
+                            showDot: false
+                        }
+                    }
+
+                    GridLayout {
+                        Layout.fillWidth: true
+                        columns: root.wideBottom ? 2 : 1
+                        columnSpacing: Metrics.spacingLg
+                        rowSpacing: Metrics.spacingMd
+
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: Metrics.spacingSm
+                            XpLabel { text: qsTr("LFO 1 SHAPE"); role: "overline"; secondary: true }
+                            LfoShapeSelector {
+                                Layout.fillWidth: true
+                                shapes: {
+                                    var _ = root.editor.sectionParameters.valuesTick
+                                    return root.editor.sectionParameters.choicesForId("tone.lfo1_waveform")
+                                }
+                                currentRaw: {
+                                    var _ = root.editor.sectionParameters.valuesTick
+                                    return root.editor.sectionParameters.rawForId("tone.lfo1_waveform")
+                                }
+                                accentColor: Theme.toneColor(root.editor.selectedTone)
+                                editable: !root.editor.comparing
+                                onShapeSelected: function(raw) {
+                                    root.editor.sectionParameters.edit("tone.lfo1_waveform", root.editor.selectedTone, raw)
+                                }
+                            }
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: Metrics.spacingMd
+                                ColumnLayout {
+                                    XpLabel { text: qsTr("Rate"); role: "overline"; secondary: true }
+                                    XpKnob {
+                                        from: 0; to: 127
+                                        value: {
+                                            var _ = root.editor.sectionParameters.valuesTick
+                                            return root.editor.sectionParameters.rawForId("tone.lfo1_rate")
+                                        }
+                                        accentColor: Theme.toneColor(root.editor.selectedTone)
+                                        onMoved: root.editor.sectionParameters.edit("tone.lfo1_rate", root.editor.selectedTone, Math.round(value))
+                                    }
+                                    XpLabel {
+                                        text: {
+                                            var _ = root.editor.sectionParameters.valuesTick
+                                            return root.editor.sectionParameters.valueTextForId("tone.lfo1_rate")
+                                        }
+                                        role: "mono"
+                                        Layout.alignment: Qt.AlignHCenter
+                                    }
+                                }
+                                ColumnLayout {
+                                    XpLabel { text: qsTr("Delay"); role: "overline"; secondary: true }
+                                    XpKnob {
+                                        from: 0; to: 127
+                                        value: {
+                                            var _ = root.editor.sectionParameters.valuesTick
+                                            return root.editor.sectionParameters.rawForId("tone.lfo1_delay_time")
+                                        }
+                                        accentColor: Theme.toneColor(root.editor.selectedTone)
+                                        onMoved: root.editor.sectionParameters.edit("tone.lfo1_delay_time", root.editor.selectedTone, Math.round(value))
+                                    }
+                                    XpLabel {
+                                        text: {
+                                            var _ = root.editor.sectionParameters.valuesTick
+                                            return root.editor.sectionParameters.valueTextForId("tone.lfo1_delay_time")
+                                        }
+                                        role: "mono"
+                                        Layout.alignment: Qt.AlignHCenter
+                                    }
+                                }
+                                Item { Layout.fillWidth: true }
+                            }
+                        }
+
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: Metrics.spacingSm
+                            XpLabel { text: qsTr("LFO 2 SHAPE"); role: "overline"; secondary: true }
+                            LfoShapeSelector {
+                                Layout.fillWidth: true
+                                shapes: {
+                                    var _ = root.editor.sectionParameters.valuesTick
+                                    return root.editor.sectionParameters.choicesForId("tone.lfo2_waveform")
+                                }
+                                currentRaw: {
+                                    var _ = root.editor.sectionParameters.valuesTick
+                                    return root.editor.sectionParameters.rawForId("tone.lfo2_waveform")
+                                }
+                                accentColor: Theme.toneColor(root.editor.selectedTone)
+                                editable: !root.editor.comparing
+                                onShapeSelected: function(raw) {
+                                    root.editor.sectionParameters.edit("tone.lfo2_waveform", root.editor.selectedTone, raw)
+                                }
+                            }
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: Metrics.spacingMd
+                                ColumnLayout {
+                                    XpLabel { text: qsTr("Rate"); role: "overline"; secondary: true }
+                                    XpKnob {
+                                        from: 0; to: 127
+                                        value: {
+                                            var _ = root.editor.sectionParameters.valuesTick
+                                            return root.editor.sectionParameters.rawForId("tone.lfo2_rate")
+                                        }
+                                        accentColor: Theme.toneColor(root.editor.selectedTone)
+                                        onMoved: root.editor.sectionParameters.edit("tone.lfo2_rate", root.editor.selectedTone, Math.round(value))
+                                    }
+                                    XpLabel {
+                                        text: {
+                                            var _ = root.editor.sectionParameters.valuesTick
+                                            return root.editor.sectionParameters.valueTextForId("tone.lfo2_rate")
+                                        }
+                                        role: "mono"
+                                        Layout.alignment: Qt.AlignHCenter
+                                    }
+                                }
+                                ColumnLayout {
+                                    XpLabel { text: qsTr("Delay"); role: "overline"; secondary: true }
+                                    XpKnob {
+                                        from: 0; to: 127
+                                        value: {
+                                            var _ = root.editor.sectionParameters.valuesTick
+                                            return root.editor.sectionParameters.rawForId("tone.lfo2_delay_time")
+                                        }
+                                        accentColor: Theme.toneColor(root.editor.selectedTone)
+                                        onMoved: root.editor.sectionParameters.edit("tone.lfo2_delay_time", root.editor.selectedTone, Math.round(value))
+                                    }
+                                    XpLabel {
+                                        text: {
+                                            var _ = root.editor.sectionParameters.valuesTick
+                                            return root.editor.sectionParameters.valueTextForId("tone.lfo2_delay_time")
+                                        }
+                                        role: "mono"
+                                        Layout.alignment: Qt.AlignHCenter
+                                    }
+                                }
+                                Item { Layout.fillWidth: true }
+                            }
+                        }
+                    }
+
+                    XpButton {
+                        text: motionExact.checked ? qsTr("Hide exact LFO parameters") : qsTr("Exact LFO & controller values")
+                        variant: "ghost"
+                        compact: true
+                        onClicked: motionExact.checked = !motionExact.checked
+                    }
+                    QQC.Switch { id: motionExact; visible: false; checked: false }
+
+                    EditorParameterPanel {
+                        visible: motionExact.checked
+                        Layout.fillWidth: true
+                        editor: root.editor
+                        parameters: root.editor.sectionParameters
+                        title: qsTr("EXACT MOTION PARAMETERS")
+                        note: qsTr("Both LFOs include shape, rate, delay, fade and Pitch/Filter/Level/Pan depths. Rates and times use XP values; no Hz or seconds conversion is assumed.")
+                    }
+                }
             }
 
             EditorParameterPanel {
@@ -599,8 +769,9 @@ Item {
                 note: qsTr("Numeric fields edit raw XP values; menu labels are from the parameter map. EFX type-specific meanings and physical timing units remain unverified.")
             }
 
+            // Play mode: musical summary — exact patch commons stay behind disclosure
             XpCard {
-                visible: root.editor.disclosure !== 2
+                visible: root.editor.disclosure === 0
                 Layout.fillWidth: true
                 Layout.leftMargin: Metrics.screenPadding
                 Layout.rightMargin: Metrics.screenPadding
@@ -609,7 +780,99 @@ Item {
                 ColumnLayout {
                     id: playColumn
                     anchors { left: parent.left; right: parent.right; top: parent.top }
-                    XpPanelHeader { title: qsTr("PATCH PLAY SETTINGS") }
+                    spacing: Metrics.spacingMd
+                    XpPanelHeader {
+                        title: qsTr("PLAY")
+                        StatusPill { text: qsTr("Audition & Tone mix"); tone: "info"; showDot: false }
+                    }
+                    XpLabel {
+                        Layout.fillWidth: true
+                        text: qsTr("Shape the sound with the four Tone cards above. Use Design for envelopes, ranges and LFO; Expert for every documented value.")
+                        role: "caption"
+                        secondary: true
+                        wrapMode: Text.WordWrap
+                    }
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: Metrics.spacingMd
+                        Repeater {
+                            model: root.editor.tones
+                            delegate: Rectangle {
+                                required property var modelData
+                                Layout.fillWidth: true
+                                implicitHeight: 48
+                                radius: Metrics.radiusSm
+                                color: Theme.toneBackground("neutral")
+                                border.width: 1
+                                border.color: Qt.rgba(Theme.toneColor(modelData.toneNumber).r, Theme.toneColor(modelData.toneNumber).g, Theme.toneColor(modelData.toneNumber).b, 0.5)
+                                ColumnLayout {
+                                    anchors { fill: parent; margins: Metrics.spacingSm }
+                                    spacing: 2
+                                    XpLabel {
+                                        text: qsTr("T%1").arg(modelData.toneNumber)
+                                        role: "overline"
+                                        color: Theme.toneColor(modelData.toneNumber)
+                                    }
+                                    Rectangle {
+                                        Layout.fillWidth: true
+                                        implicitHeight: 8
+                                        radius: 2
+                                        color: Theme.surfaceSunken
+                                        Rectangle {
+                                            width: parent.width * (modelData.enabled ? modelData.level / 127 : 0)
+                                            height: parent.height
+                                            radius: 2
+                                            color: Theme.toneColor(modelData.toneNumber)
+                                            opacity: modelData.audible ? 1 : 0.35
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    XpButton {
+                        text: playExact.checked ? qsTr("Hide exact play settings") : qsTr("Exact Tone play settings")
+                        variant: "ghost"
+                        compact: true
+                        onClicked: playExact.checked = !playExact.checked
+                    }
+                    QQC.Switch { id: playExact; visible: false; checked: false }
+                    GridLayout {
+                        visible: playExact.checked
+                        Layout.fillWidth: true
+                        columns: width >= 900 ? 5 : 2
+                        columnSpacing: Metrics.spacingLg
+                        Repeater {
+                            model: root.editor.toneSettings
+                            delegate: ParameterValueEditor {
+                                required property var modelData
+                                Layout.fillWidth: true
+                                label: modelData.name
+                                labelWidth: 90
+                                value: modelData.raw
+                                displayText: modelData.valueText
+                                minimumValue: modelData.minimum
+                                maximumValue: modelData.maximum
+                                editable: !root.editor.comparing
+                                onEdited: function(v) { root.editor.setToneSetting(modelData.parameterId, v) }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Design/Expert still expose exact Tone settings when not in Play
+            XpCard {
+                visible: root.editor.disclosure === 1
+                Layout.fillWidth: true
+                Layout.leftMargin: Metrics.screenPadding
+                Layout.rightMargin: Metrics.screenPadding
+                Layout.bottomMargin: Metrics.screenPadding
+                implicitHeight: designPlayColumn.implicitHeight + 2 * Metrics.cardPadding
+                ColumnLayout {
+                    id: designPlayColumn
+                    anchors { left: parent.left; right: parent.right; top: parent.top }
+                    XpPanelHeader { title: qsTr("TONE PLAY SETTINGS") }
                     GridLayout {
                         Layout.fillWidth: true
                         columns: width >= 900 ? 5 : 2

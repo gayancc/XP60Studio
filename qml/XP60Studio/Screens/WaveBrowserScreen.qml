@@ -4,7 +4,7 @@ import QtQuick.Layouts
 import XP60Studio
 import XP60Studio.Presentation
 
-// M3 catalog workspace. Source labels are not converted to device addresses.
+// M3 catalog workspace — visual exploration; assignment awaits hardware mapping.
 FocusScope {
     id: root
     required property WaveBrowserModel catalog
@@ -30,26 +30,46 @@ FocusScope {
             XpButton { objectName: "closeWaveBrowser"; text: qsTr("Back to Editor"); onClicked: root.closed() }
         }
 
-        RowLayout {
+        WaveSearchBar {
+            id: search
             Layout.fillWidth: true
-            XpTextField {
-                id: search
-                objectName: "waveSearch"
-                Layout.fillWidth: true
-                placeholderText: qsTr("Search name, bank or number…")
-                text: root.catalog.query
-                onTextEdited: root.catalog.query = text
+            text: root.catalog.query
+            onTextEdited: root.catalog.query = text
+        }
+
+        Flow {
+            Layout.fillWidth: true
+            spacing: Metrics.spacingXs
+            Repeater {
+                model: [
+                    { label: qsTr("All"), value: 0 },
+                    { label: "INT-A", value: 1 },
+                    { label: "INT-B", value: 2 },
+                    { label: qsTr("Expansion"), value: 3 }
+                ]
+                delegate: XpButton {
+                    required property var modelData
+                    text: modelData.label
+                    compact: true
+                    variant: root.catalog.sourceFilter === modelData.value ? "primary" : "ghost"
+                    onClicked: root.catalog.sourceFilter = modelData.value
+                }
             }
+            // Keep ComboBox for accessibility / tests
             XpComboBox {
                 objectName: "waveSourceFilter"
                 Accessible.name: qsTr("Waveform source")
+                visible: false
+                width: 0
+                height: 0
                 model: [qsTr("All sources"), "INT-A", "INT-B", qsTr("Expansion")]
                 currentIndex: root.catalog.sourceFilter
                 onActivated: root.catalog.sourceFilter = currentIndex
             }
         }
+
         XpLabel {
-            text: qsTr("%1 results · 448 documented internal waveforms · Categories unknown").arg(root.catalog.count)
+            text: qsTr("%1 results · Internal ROM catalog · Category taxonomy not verified").arg(root.catalog.count)
             role: "caption"; secondary: true
         }
 
@@ -69,7 +89,7 @@ FocusScope {
                     spacing: Metrics.spacingSm
                     RowLayout {
                         XpLabel { text: qsTr("WAVEFORM"); role: "overline"; secondary: true; Layout.fillWidth: true }
-                        XpLabel { text: qsTr("SOURCE / NUMBER"); role: "overline"; secondary: true }
+                        XpLabel { text: qsTr("AVAILABILITY"); role: "overline"; secondary: true }
                     }
                     XpDivider { Layout.fillWidth: true }
                     ListView {
@@ -91,41 +111,30 @@ FocusScope {
                             root.catalog.selectRow(Math.max(0, currentIndex - 1))
                             positionViewAtIndex(currentIndex, ListView.Contain)
                         }
-                        delegate: QQC.ItemDelegate {
-                            id: waveRow
-                            required property int index
-                            required property string waveName
-                            required property string waveKey
+                        delegate: WaveResultRow {
                             width: results.width - 12
-                            height: 46
-                            Accessible.name: waveName + ", " + waveKey
-                            onClicked: {
+                            catalogMissing: root.catalog.sourceFilter === 3
+                            selected: root.catalog.selectedRow === index
+                            listFocused: results.activeFocus
+                            onActivated: {
                                 root.catalog.selectRow(index)
                                 results.forceActiveFocus()
-                            }
-                            background: Rectangle {
-                                radius: Metrics.radiusSm
-                                color: root.catalog.selectedRow === waveRow.index ? Theme.selection : (waveRow.hovered ? Theme.surfaceHover : "transparent")
-                                border.width: results.activeFocus && root.catalog.selectedRow === waveRow.index ? 1 : 0
-                                border.color: Theme.focusRing
-                            }
-                            contentItem: RowLayout {
-                                XpLabel { text: waveRow.waveName; Layout.fillWidth: true; elide: Text.ElideRight }
-                                XpLabel { text: waveRow.waveKey; role: "caption"; secondary: true }
                             }
                         }
                         XpEmptyState {
                             anchors.fill: parent
                             visible: root.catalog.count === 0
                             title: root.catalog.sourceFilter === 3 ? qsTr("Expansion catalog unavailable") : qsTr("No matching waveforms")
-                            message: root.catalog.sourceFilter === 3 ? qsTr("Expansion names and installed-board compatibility have not been verified.") : qsTr("Try another name, number or source.")
+                            message: root.catalog.sourceFilter === 3
+                                     ? qsTr("Expansion names and installed-board compatibility have not been verified.")
+                                     : qsTr("Try another name, number or source.")
                         }
                     }
                 }
             }
 
             XpCard {
-                Layout.preferredWidth: root.wide ? 320 : -1
+                Layout.preferredWidth: root.wide ? 340 : -1
                 Layout.fillWidth: !root.wide
                 Layout.fillHeight: root.wide
                 implicitHeight: detailColumn.implicitHeight + 2 * Metrics.cardPadding
@@ -134,22 +143,53 @@ FocusScope {
                     anchors { left: parent.left; right: parent.right; top: parent.top }
                     spacing: Metrics.spacingSm
                     XpLabel { text: qsTr("WAVE DETAILS"); role: "overline"; color: Theme.accentText }
-                    XpLabel { text: root.catalog.selected.name || qsTr("Select a waveform"); role: "title"; Layout.fillWidth: true; elide: Text.ElideRight }
-                    XpLabel { text: root.catalog.selected.key || qsTr("Browse with mouse or arrow keys"); secondary: true }
-                    XpDivider { Layout.fillWidth: true }
                     XpLabel {
+                        text: root.catalog.selected.name || qsTr("Select a waveform")
+                        role: "title"
                         Layout.fillWidth: true
-                        text: root.catalog.selected.name ? qsTr("Internal ROM · Roland XP-60/80 Waveform List, page %1").arg(root.catalog.selected.page) : qsTr("Names and bank numbering come from Roland’s waveform list.")
+                        elide: Text.ElideRight
+                    }
+                    RowLayout {
+                        Layout.fillWidth: true
+                        WaveAvailabilityBadge {
+                            availability: root.catalog.sourceFilter === 3 ? "missing_catalog"
+                                          : (root.catalog.selected.name ? "available" : "unknown")
+                        }
+                        StatusPill {
+                            visible: root.catalog.selected.bank !== undefined && root.catalog.selected.bank.length > 0
+                            text: root.catalog.selected.bank || ""
+                            tone: "accent"
+                            showDot: false
+                        }
+                        Item { Layout.fillWidth: true }
+                    }
+                    XpDivider { Layout.fillWidth: true }
+
+                    GridLayout {
+                        Layout.fillWidth: true
+                        columns: 2
+                        columnSpacing: Metrics.spacingMd
+                        rowSpacing: Metrics.spacingXs
+                        visible: root.catalog.selected.name !== undefined && root.catalog.selected.name.length > 0
+                        XpLabel { text: qsTr("Bank"); role: "overline"; secondary: true }
+                        XpLabel { text: root.catalog.selected.bank || "—"; role: "body" }
+                        XpLabel { text: qsTr("Number"); role: "overline"; secondary: true }
+                        XpLabel { text: root.catalog.selected.key || "—"; role: "mono" }
+                        XpLabel { text: qsTr("Source page"); role: "overline"; secondary: true }
+                        XpLabel { text: root.catalog.selected.page || "—"; role: "mono" }
+                        XpLabel { text: qsTr("Category"); role: "overline"; secondary: true }
+                        XpLabel { text: qsTr("Unknown"); role: "caption"; muted: true }
+                    }
+
+                    XpLabel {
+                        visible: !root.catalog.selected.name
+                        Layout.fillWidth: true
+                        text: qsTr("Browse with mouse or arrow keys. Names and bank numbering come from Roland’s waveform list.")
                         wrapMode: Text.WordWrap; role: "caption"; secondary: true
                     }
                     XpLabel {
                         Layout.fillWidth: true
-                        text: qsTr("Category, sample rate and loop metadata: unknown. Audio preview is unavailable.")
-                        wrapMode: Text.WordWrap; role: "caption"; muted: true
-                    }
-                    XpLabel {
-                        Layout.fillWidth: true
-                        text: qsTr("Wave assignment awaits XP-60 bank-mapping validation. Browsing leaves your Patch unchanged.")
+                        text: qsTr("Audio preview unavailable. Wave assignment awaits XP-60 bank-mapping validation.")
                         wrapMode: Text.WordWrap; role: "caption"; color: Theme.warning
                     }
                 }
