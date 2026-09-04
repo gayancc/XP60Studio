@@ -16,24 +16,45 @@ Read the documents relevant to the task before changing code:
 
 - `docs/PRODUCT_VISION.md` — what the product should become
 - `docs/FEATURE_BASELINE.md` — mature editor baseline and XP60Studio differentiators
-- `docs/ARCHITECTURE.md` — required technical separation and domain boundaries
+- `docs/ARCHITECTURE.md` — authoritative technical layers and dependency boundaries
 - `docs/ENGINEERING_PRINCIPLES.md` — correctness, testing, data safety, and implementation rules
 - `docs/ROADMAP.md` — ordered development phases
 - `docs/PHASE_1_PROTOCOL_FOUNDATION.md` — current first milestone
-- `docs/design/UI_DESIGN_REFERENCE.md` — approved UI direction and master mockup for later UI phases
+- `docs/design/UI_DESIGN_REFERENCE.md` — approved visual direction
+- `docs/design/UI_IMPLEMENTATION_ARCHITECTURE.md` — authoritative Qt Quick/QML implementation contract
+- `docs/design/COMPONENT_CATALOG.md` — reusable XP60Studio component system
+- `docs/design/SCREEN_AND_FEATURE_MAP.md` — feature-to-screen mapping and mockup references
 
 ## Approved visual direction
 
-The master visual reference is `docs/design/xp60studio-ui-master-mockup.jpg`. When implementing Dashboard, Patch Editor, Wave Browser, Bank Builder, or related design-system work, read `docs/design/UI_DESIGN_REFERENCE.md` and use the mockup as the primary visual direction together with the product and architecture docs.
+The master visual reference is:
 
-The mockup is a design direction, not a command to copy pixels blindly. Real XP-60 behavior, accessibility, platform constraints, and validated usability take precedence while preserving the approved visual principles.
+`docs/design/xp60studio-ui-master-mockup.jpg`
 
-## Technology direction
+The four anchor screens in the master mockup are:
+
+- Dashboard / Command Center
+- Patch Editor / Four-Tone Mixer
+- Wave Browser
+- Bank Builder / Library Intelligence
+
+When implementing any UI, use the master mockup together with `UI_DESIGN_REFERENCE.md`, `UI_IMPLEMENTATION_ARCHITECTURE.md`, `COMPONENT_CATALOG.md`, and `SCREEN_AND_FEATURE_MAP.md`.
+
+The mockup is a design direction, not permission to invent unsupported XP-60 behavior. Hardware truth, accessibility, platform constraints, and validated usability take precedence while preserving the approved visual system.
+
+## Authoritative technology direction
 
 Production application:
 
-- C++
-- JUCE
+- **C++20**
+- **Qt 6.11.x** current project baseline
+- **Qt Quick / QML** for application UI
+- **Qt Quick Controls** and **Qt Quick Layouts** as UI foundations
+- custom XP60Studio QML design/component library for the actual visual language
+- **CMake** build system
+- **libremidi 5.x** as the default MIDI implementation behind an internal `IMidiTransport` abstraction; pin an exact compatible release/commit during integration
+
+Do **not** introduce JUCE as the application/UI framework. Do not introduce Qt Widgets, Electron/WebView, Dear ImGui, React, or another primary UI stack unless the architecture is explicitly revised.
 
 Python may be used for research utilities, SysEx analysis, fixture generation, and bulk-data investigation, but it must not become the core production runtime.
 
@@ -45,14 +66,26 @@ The UI must never construct Roland SysEx directly.
 
 Keep these concerns separated:
 
-1. UI
-2. application services / orchestration
-3. library intelligence
-4. XP domain model
-5. Roland SysEx protocol
-6. MIDI transport
+1. QML screens and XP60Studio UI components
+2. C++ presentation/view-model layer
+3. application services / orchestration
+4. library intelligence and persistence
+5. XP domain model and codecs
+6. Roland SysEx protocol
+7. MIDI transport abstraction
+8. libremidi/platform backend
 
-Hardware/protocol code must remain independent from visual controls.
+QML must not know Roland addresses, checksum bytes, or libremidi APIs. Hardware/protocol code must remain independent from visual controls.
+
+## UI implementation rule
+
+Do not build each screen as a one-off collection of styled rectangles and controls.
+
+Reuse the component system defined in `docs/design/COMPONENT_CATALOG.md` and shared Theme/Typography/Metrics/Motion tokens.
+
+Before creating a major new screen, consult `docs/design/SCREEN_AND_FEATURE_MAP.md`. Prefer existing screens, inspectors, drawers, and reusable components over inventing new navigation destinations.
+
+The application must not degrade into a generic CRUD/admin UI merely because stock controls are easier to implement.
 
 ## Protocol-first rule
 
@@ -94,16 +127,20 @@ Important deterministic test areas include:
 - corrupted/truncated SysEx handling
 - duplicate fingerprints
 - compatibility analysis
+- presentation-model state transitions
+- local vs hardware/verified/dirty UI states
 
 ## User-data safety
 
 Local editing and experimentation should be non-destructive by default.
 
-Writing to the XP-60 must always be explicit. The UI must eventually distinguish clearly between:
+Writing to the XP-60 must always be explicit. The UI must distinguish clearly between:
 
 - LOCAL
 - ON XP-60
 - MODIFIED / UNSAVED
+- VERIFIED
+- MISMATCH / FAILED
 
 Never silently replace missing expansion waveforms, discard imported patches, or overwrite hardware state.
 
@@ -112,7 +149,8 @@ Never silently replace missing expansion waveforms, discard imported patches, or
 For every phase:
 
 - inspect existing implementation before changing it
-- reuse sound abstractions instead of duplicating logic
+- read relevant project/design docs first
+- reuse sound abstractions and UI components instead of duplicating logic
 - avoid speculative generic architecture
 - keep protocol facts traceable
 - build frequently
@@ -121,6 +159,8 @@ For every phase:
 - do not present placeholders as finished functionality
 - keep long-running import/analysis/transfer work off the UI thread
 - provide cancellation/progress for meaningful background operations
+- keep QML primarily presentation/interaction focused; business/domain logic belongs in C++
+- expose large datasets through Qt models rather than materializing thousands of QML objects
 
 When physical hardware verification is required, state exactly what must be tested and what observation is needed. Never claim hardware verification without hardware evidence.
 
@@ -128,7 +168,7 @@ When physical hardware verification is required, state exactly what must be test
 
 Start with **Phase 1 — Protocol Foundation** unless the user explicitly directs otherwise.
 
-Do not jump ahead into Patch DNA, AI classification, morphing, elaborate dashboards, smart-bank generation, or setlists until the protocol foundation is reliable.
+Phase 1 should establish the Qt/CMake application shell, C++/QML boundary, minimal diagnostics UI, MIDI abstraction/implementation, and Roland protocol foundation. It is not the phase for the polished Dashboard, Patch Editor, Bank Builder, Patch DNA, morphing, smart-bank generation, or setlists.
 
 ## Product standard
 
@@ -136,7 +176,7 @@ A musician should not need to understand hundreds of Roland parameters merely to
 
 - Which Tone is producing this part of the sound?
 - Which waveform is missing?
-- Which imported patches actually work on my installed expansions?
+- Which imported patches actually work with my installed expansions?
 - Are these two patches really duplicates?
 - Did all 128 patches actually reach the keyboard?
 - Can I restore exactly what was on the XP-60 before this change?
