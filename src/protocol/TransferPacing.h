@@ -15,7 +15,7 @@ namespace xp60studio::protocol {
 struct TransferPacing
 {
     std::chrono::milliseconds interMessageDelay{20};
-    std::size_t maxDataSetPayloadBytes{256};
+    std::size_t maxDataSetPayloadBytes{128};
     RequestTimeouts timeouts{};
 
     [[nodiscard]] bool isValid() const noexcept

@@ -59,8 +59,8 @@ RolandDecodeResult decodeRolandSysEx(ByteSpan bytes, std::span<const RolandModel
         return fail(RolandParseError::InvalidDeviceId, 2, "device ID byte " + toHex(bytes[2]));
     }
 
-    // Locate the model ID: longest match first so a 00 6A model is not
-    // mistaken for a hypothetical single-byte 00 model.
+    // Locate the model ID: longest match first so a two-byte model such as
+    // 00 10 is not mistaken for a hypothetical single-byte 00 model.
     std::size_t modelOffset = 3;
     std::optional<RolandModelId> modelId;
     std::size_t bestLength = 0;

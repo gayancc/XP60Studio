@@ -59,24 +59,37 @@ Each step lists the action, the expected observation, and what to record.
 ### 5. Device / model IDs match
 
 - Same reply. Expect `device=17` (or the configured ID) and the raw hex to
-  contain `41 <dev> 00 6A 12` after `F0`.
-- If the XP-60 replies with a **single-byte** model ID (`41 <dev> 6A 12`), the
-  log will show `Roland SysEx rejected: UnsupportedModel`. Record the raw hex —
-  this would change `xp60::modelId()` and must be fed back into
-  `docs/protocol/ROLAND_XP60_PROTOCOL_FACTS.md`.
+  contain `41 <dev> 6A 12` immediately after `F0` (single-byte model ID `6A`,
+  as in the XP-60/XP-80 MIDI Implementation).
+- If the XP-60 instead replies with a **two-byte** model ID (`41 <dev> 00 6A 12`),
+  the log will show `Roland SysEx rejected: UnsupportedModel`. Record the raw
+  hex — this would contradict the manual and must be fed back into
+  `docs/protocol/ROLAND_XP60_PROTOCOL_FACTS.md` before anything else changes.
 - Record: the exact bytes between `F0` and the address.
 
-### 6. Address and size match the request / chunking behaviour
+### 6. Roland-published RQ1 example: address, size and packet behaviour
 
-- Preset **User Patch USER:001 name** → Send. Expect address `11 00 00 00`,
-  12 bytes, one chunk.
-- Then enter a larger request by hand: address `11 00 00 00`, size `00 00 02 00`
-  (256 bytes) → Send. Expect completion in **one** DT1 chunk of 256 bytes.
-- Then size `00 00 03 00` (384 bytes) → Send. Expect **two** chunks (256 + 128)
-  arriving in ascending address order with no *notes* on the request card. If
-  the request times out after the first chunk, or arrives as differently sized
-  chunks, record the exact chunk sizes and gaps (timestamps on the log lines).
-- Record: chunk count, chunk sizes, timestamps, any notes shown.
+Roland documents this exact request in the MIDI Implementation, so model ID,
+address, size and checksum are all independently verifiable:
+
+```text
+F0 41 10 6A 11 01 00 00 00 00 00 1F 19 47 F7
+```
+
+- Preset **Temporary Performance (Roland RQ1 example, 3993 bytes)** → Send.
+  With device ID 17 the OUT line's raw hex must be byte-for-byte the packet
+  above.
+- Expect the reply as **several DT1 packets, each carrying at most 128 data
+  bytes**, arriving **at least 20 ms apart** in ascending address order
+  starting at `01 00 00 00`, until the request card reaches 3993 / 3993 bytes
+  and turns **Completed** with no *notes*.
+- If the request times out mid-way, or packets are larger than 128 bytes, or
+  arrive out of order (the card shows notes), record the exact packet sizes,
+  addresses and log timestamps — these observations set the real
+  `TransferPacing` defaults.
+- Also send preset **User Patch USER:001 name**. Expect address `11 00 00 00`,
+  12 bytes, one packet.
+- Record: packet count, packet sizes, timestamps between packets, any notes.
 
 ### 7. Repeated reads are stable
 
@@ -96,16 +109,18 @@ so the expectation is fixed now.
   written bytes and the XP-60 display to show the new name.
 - Confirm that permanent User memory is untouched: read USER:001's name before
   and after; they must be identical.
-- Power-cycling the XP-60 must restore the original temporary patch (temporary
-  memory is not saved).
+- Power-cycle the XP-60. The temporary edit **must not persist**; the startup
+  state follows the XP-60 **Power Up Mode** setting (`LAST-SET` or `DEFAULT`),
+  so do not require the exact previous temporary patch to reappear.
 - Record: all four raw messages.
 
 ## Additional observations worth capturing
 
 - Send a request with a **wrong device ID** (e.g. 18 while the XP-60 is 17).
   Expect a timeout and no reply. Confirms the device-ID filter.
-- Send the **System, first 16 bytes** preset. Record the raw hex; it becomes the
-  first System fixture.
+- Send the **System, first 16 bytes (project-defined)** preset. Record the raw
+  hex; it becomes the first System fixture. The 16-byte size is a project
+  choice, so a differently sized reply is information, not a failure.
 - Note whether the XP-60 transmits anything unsolicited while idle (Active
   Sensing is ignored by the transport; anything else appears in the log).
 

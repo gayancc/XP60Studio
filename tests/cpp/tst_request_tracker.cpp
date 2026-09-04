@@ -75,28 +75,29 @@ private slots:
     {
         RolandRequestTracker tracker(timeouts());
         const RolandAddress address(0x11, 0, 0, 0);
-        const auto id = tracker.enqueue(rq1(address, 600), at(0ms));
+        // XP-60 packets carry at most 128 data bytes: 300 = 128 + 128 + 44.
+        const auto id = tracker.enqueue(rq1(address, 300), at(0ms));
         tracker.markSent(id, at(0ms));
 
-        auto m1 = tracker.onDataSet(dt1(address, 256, 0x01), at(20ms));
+        auto m1 = tracker.onDataSet(dt1(address, 128, 0x01), at(20ms));
         QCOMPARE(m1.outcome, RolandRequestTracker::MatchOutcome::Accepted);
         QCOMPARE(tracker.find(id)->state, RequestState::Receiving);
-        QCOMPARE(tracker.find(id)->receivedBytes, 256u);
+        QCOMPARE(tracker.find(id)->receivedBytes, 128u);
         // Between-chunk timeout now applies from last activity.
         QCOMPARE(*tracker.nextDeadline(), at(1020ms));
 
-        auto m2 = tracker.onDataSet(dt1(*address.plus(256), 256, 0x02), at(40ms));
+        auto m2 = tracker.onDataSet(dt1(*address.plus(128), 128, 0x02), at(40ms));
         QCOMPARE(m2.outcome, RolandRequestTracker::MatchOutcome::Accepted);
-        QCOMPARE(tracker.find(id)->receivedBytes, 512u);
+        QCOMPARE(tracker.find(id)->receivedBytes, 256u);
 
-        auto m3 = tracker.onDataSet(dt1(*address.plus(512), 88, 0x03), at(60ms));
+        auto m3 = tracker.onDataSet(dt1(*address.plus(256), 44, 0x03), at(60ms));
         QCOMPARE(m3.outcome, RolandRequestTracker::MatchOutcome::Completed);
         const auto* op = tracker.find(id);
         QCOMPARE(op->state, RequestState::Completed);
         QCOMPARE(op->chunkCount, 3u);
         QCOMPARE(op->data[0], Byte(0x01));
-        QCOMPARE(op->data[256], Byte(0x02));
-        QCOMPARE(op->data[599], Byte(0x03));
+        QCOMPARE(op->data[128], Byte(0x02));
+        QCOMPARE(op->data[299], Byte(0x03));
         QVERIFY(op->notes.empty());
     }
 
@@ -193,14 +194,14 @@ private slots:
     {
         RolandRequestTracker tracker(timeouts());
         const RolandAddress address(0x11, 0, 0, 0);
-        const auto id = tracker.enqueue(rq1(address, 512), at(0ms));
+        const auto id = tracker.enqueue(rq1(address, 256), at(0ms));
         tracker.markSent(id, at(0ms));
-        tracker.onDataSet(dt1(address, 256), at(1400ms)); // arrives before the first-response deadline
+        tracker.onDataSet(dt1(address, 128), at(1400ms)); // arrives before the first-response deadline
         QVERIFY(tracker.expire(at(2399ms)).empty());
         QCOMPARE(tracker.expire(at(2400ms)).size(), std::size_t(1));
         const auto* op = tracker.find(id);
         QCOMPARE(op->state, RequestState::TimedOut);
-        QCOMPARE(op->receivedBytes, 256u); // partial data preserved for inspection
+        QCOMPARE(op->receivedBytes, 128u); // partial data preserved for inspection
     }
 
     void unsentRequestsNeverTimeOut()
@@ -289,20 +290,24 @@ private slots:
             data[i] = static_cast<Byte>(i % 128);
         }
         const auto whole = RolandSysExMessage::dataSet(kDevice, kModel, RolandAddress(0x11, 0, 0, 0), data).value();
-        const auto chunks = chunkDataSet(whole, 256);
-        QCOMPARE(chunks.size(), std::size_t(3));
-        QCOMPARE(chunks[0].data().size(), std::size_t(256));
-        QCOMPARE(chunks[1].data().size(), std::size_t(256));
-        QCOMPARE(chunks[2].data().size(), std::size_t(88));
+        // XP-60 rule: packets of 128 bytes or less. 600 = 4 * 128 + 88.
+        const auto chunks = chunkDataSet(whole, xp60::transferDefaults().maxDataSetPayloadBytes);
+        QCOMPARE(chunks.size(), std::size_t(5));
+        for (std::size_t i = 0; i < 4; ++i) {
+            QCOMPARE(chunks[i].data().size(), std::size_t(128));
+        }
+        QCOMPARE(chunks[4].data().size(), std::size_t(88));
         QCOMPARE(QString::fromStdString(chunks[0].address().toHexString()), QStringLiteral("11 00 00 00"));
-        QCOMPARE(QString::fromStdString(chunks[1].address().toHexString()), QStringLiteral("11 00 02 00"));
-        QCOMPARE(QString::fromStdString(chunks[2].address().toHexString()), QStringLiteral("11 00 04 00"));
-        QCOMPARE(chunks[2].data()[87], data[599]);
+        QCOMPARE(QString::fromStdString(chunks[1].address().toHexString()), QStringLiteral("11 00 01 00"));
+        QCOMPARE(QString::fromStdString(chunks[2].address().toHexString()), QStringLiteral("11 00 02 00"));
+        QCOMPARE(QString::fromStdString(chunks[3].address().toHexString()), QStringLiteral("11 00 03 00"));
+        QCOMPARE(QString::fromStdString(chunks[4].address().toHexString()), QStringLiteral("11 00 04 00"));
+        QCOMPARE(chunks[4].data()[87], data[599]);
         // Every chunk is a valid message on its own.
         for (const auto& chunk : chunks) {
             QVERIFY(chunk.encode().back() == 0xF7);
         }
-        QVERIFY(chunkDataSet(rq1(RolandAddress(), 4), 256).empty());
+        QVERIFY(chunkDataSet(rq1(RolandAddress(), 4), 128).empty());
         QVERIFY(chunkDataSet(whole, 0).empty());
         QCOMPARE(chunkDataSet(whole, 1000).size(), std::size_t(1));
     }
@@ -313,7 +318,7 @@ private slots:
         QVERIFY(pacing.isValid());
         pacing.maxDataSetPayloadBytes = 0;
         QVERIFY(!pacing.isValid());
-        pacing.maxDataSetPayloadBytes = 256;
+        pacing.maxDataSetPayloadBytes = 128;
         pacing.timeouts.firstResponse = 0ms;
         QVERIFY(!pacing.isValid());
     }

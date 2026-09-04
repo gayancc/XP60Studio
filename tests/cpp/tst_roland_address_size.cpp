@@ -127,11 +127,13 @@ private slots:
 
     void modelIdKeepsLengthAsPartOfIdentity()
     {
-        const RolandModelId xp{0x00, 0x6A};
-        const RolandModelId jv{0x6A};
-        QCOMPARE(xp.size(), std::size_t(2));
-        QVERIFY(xp != jv);
-        QCOMPARE(QString::fromStdString(xp.toHexString()), QStringLiteral("00 6A"));
+        const RolandModelId xp{0x6A};
+        const RolandModelId twoByte{0x00, 0x6A};
+        QCOMPARE(xp.size(), std::size_t(1));
+        QCOMPARE(twoByte.size(), std::size_t(2));
+        QVERIFY(xp != twoByte);
+        QCOMPARE(QString::fromStdString(xp.toHexString()), QStringLiteral("6A"));
+        QCOMPARE(QString::fromStdString(twoByte.toHexString()), QStringLiteral("00 6A"));
         QVERIFY(!RolandModelId::fromBytes(ByteVector{}).has_value());
         QVERIFY(!RolandModelId::fromBytes(ByteVector{0x80}).has_value());
         QVERIFY(!RolandModelId::fromBytes(ByteVector{0, 0, 0, 0, 0}).has_value());
@@ -141,11 +143,11 @@ private slots:
     // Hex utilities ----------------------------------------------------------
     void hexRoundTrip()
     {
-        const ByteVector bytes{0xF0, 0x41, 0x10, 0x00, 0x6A, 0x12, 0xF7};
-        QCOMPARE(QString::fromStdString(toHex(bytes)), QStringLiteral("F0 41 10 00 6A 12 F7"));
-        QCOMPARE(QString::fromStdString(toHex(bytes, "")), QStringLiteral("F04110006A12F7"));
-        QCOMPARE(parseHexBytes("F0 41 10 00 6A 12 F7").value(), bytes);
-        QCOMPARE(parseHexBytes("F04110006A12F7").value(), bytes);
+        const ByteVector bytes{0xF0, 0x41, 0x10, 0x6A, 0x12, 0x00, 0xF7};
+        QCOMPARE(QString::fromStdString(toHex(bytes)), QStringLiteral("F0 41 10 6A 12 00 F7"));
+        QCOMPARE(QString::fromStdString(toHex(bytes, "")), QStringLiteral("F041106A1200F7"));
+        QCOMPARE(parseHexBytes("F0 41 10 6A 12 00 F7").value(), bytes);
+        QCOMPARE(parseHexBytes("F041106A1200F7").value(), bytes);
         QVERIFY(!parseHexBytes("F0 4").has_value());
         QVERIFY(!parseHexBytes("zz").has_value());
     }

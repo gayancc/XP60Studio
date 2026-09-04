@@ -19,7 +19,7 @@ by hand):
 | Layer | Target | Contents |
 |---|---|---|
 | Roland SysEx protocol (no Qt) | `xp60studio_roland` | `RolandAddress`, `RolandSize` (7-bit quads with carry arithmetic), `RolandChecksum`, `RolandCommand` (RQ1/DT1), `RolandDeviceId` (10H–1FH ↔ 17–32), `RolandModelId` (variable length), `RolandSysExMessage` (factory-constructed, always encodes with a correct checksum), `RolandCodec` (decode with 13 distinguishable failure reasons), hex utilities. |
-| XP-60 facts (no Qt) | `xp60studio_xp60` | Model ID `00 6A`, factory device ID, six base addresses, three safe read presets, transfer defaults — every fact tagged with a `VerificationStatus`. |
+| XP-60 facts (no Qt) | `xp60studio_xp60` | Model ID `6A`, factory device ID, eight base addresses (incl. Temporary and User Rhythm Setup), four safe read presets (incl. Roland's published Temporary Performance RQ1 example), transfer defaults (128-byte packets, 20 ms gap) — every fact tagged with a `VerificationStatus`. |
 | MIDI transport (no Qt) | `xp60studio_midi` | `IMidiTransport` (separate IN/OUT endpoints, enumerate/open/close/send, receive/error/hot-plug handlers), `SysExAssembler` (fragment reassembly, realtime interleaving, abort/overflow/stray accounting), `LoopbackMidiTransport` test double. |
 | libremidi backend (no Qt) | `xp60studio_midi_libremidi` | `LibremidiTransport` on libremidi 5.4.3: observer-based enumeration and hot-plug, MIDI 1 input/output on the platform default API (ALSA / CoreMIDI / WinMM), SysEx enabled, only file that includes libremidi headers. |
 | Protocol operations (no Qt) | `xp60studio_protocol` | `RolandRequestTracker` — request states `RequestSent → AwaitingData → Receiving → Completed / TimedOut / Cancelled / FailedValidation`; DT1↔RQ1 correlation by device, model and address range with a per-byte coverage map (no chunking assumptions); first-response and between-chunk timeouts driven by an injected clock; `TransferPacing` + `chunkDataSet`. |
@@ -48,10 +48,10 @@ Screenshot (headless software render, Qt 6.4.2):
 
 | Test | Covers |
 |---|---|
-| `tst_roland_checksum` | known values (incl. the 0x63 / 0x71 examples), split address+body, 500 generated bodies satisfying `(sum + checksum) mod 128 == 0`, rejection of every other checksum value and of single-bit corruption |
+| `tst_roland_checksum` | known values incl. Roland's published RQ1 (`0x47`) and DT1 (`0x51`) examples, split address+body, 500 generated bodies satisfying `(sum + checksum) mod 128 == 0`, rejection of every other checksum value and of single-bit corruption |
 | `tst_roland_address_size` | byte serialisation, 7-bit carry (`03 00 00 7F + 1 = 03 00 01 00`, `+256 = 03 00 02 00`, user-patch stride), overflow/underflow, distance, hex parsing forms, size semantics (`00 00 01 00 = 128`), device-ID mapping, model-ID length identity |
-| `tst_roland_codec` | RQ1/DT1 encode, decode, 256-byte DT1, `decode(encode(m)) == m`, `encode(decode(b)) == b`, 19 distinguishable failure fixtures (truncated, non-Roland, wrong model, unsupported command, bad address/size/data bytes, empty data, corrupted checksum), multi-model acceptance |
-| `tst_xp60_device` | facts are ordered, sourced, and none claims hardware verification; presets are small and read-only |
+| `tst_roland_codec` | Roland-published golden RQ1 and DT1 packets decode to the expected fields and re-encode byte-for-byte; RQ1/DT1 encode, decode, long DT1, `decode(encode(m)) == m`, `encode(decode(b)) == b`, 19 distinguishable failure fixtures (truncated, non-Roland, wrong/two-byte model, unsupported command, bad address/size/data bytes, empty data, corrupted checksum), multi-model acceptance |
+| `tst_xp60_device` | model ID is the single byte `6A`; regions are ordered and sourced, Rhythm Setup entries present; none claims hardware verification; presets are read-only, the name presets are 12 bytes, the Roland example is `01 00 00 00` / `00 00 1F 19`, the partial System read is project-defined; 128-byte / 20 ms transfer defaults |
 | `tst_sysex_assembler` | complete, fragmented, byte-at-a-time and 20 kB SysEx, realtime interleaving, channel messages split across chunks, abort/overflow/stray handling |
 | `tst_request_tracker` | full lifecycle, multi-chunk in order, out of order, overlap, out-of-range rejection, unsolicited data, unsent requests never match or time out, both timeouts, cancel/fail, earliest-request-wins, history bound, `chunkDataSet` |
 | `tst_protocol_log` | log line shape from the phase brief, DT1/invalid-checksum/unsupported-model/non-Roland/raw MIDI/system entries |
@@ -71,12 +71,13 @@ may be described as hardware-verified.
 
 Run `docs/HARDWARE_VALIDATION_XP60.md` steps 1–8. In particular:
 
-1. The XP-60 replies to RQ1 with model ID `00 6A` (two bytes) — if it uses
-   `6A`, `xp60::modelId()` changes.
+1. The XP-60 replies to RQ1 with the single-byte model ID `6A` — if it uses
+   `00 6A`, the manual cross-check was wrong and `xp60::modelId()` changes.
 2. Device ID byte ↔ display number (17 ↔ 10H).
 3. The `03 00 00 00` temporary-patch name read returns the name on the display.
 4. `11 00 00 00` is USER:001.
-5. DT1 chunking (≤ 256 bytes, ~20 ms gaps, ascending order) and the resulting
+5. DT1 packet behaviour (≤ 128 bytes, ≥ 20 ms gaps, ascending order) using
+   Roland's published Temporary Performance request, and the resulting
    timeout defaults.
 6. Round-trip latency on the user's interface to tune `TransferPacing`.
 7. Whether the XP-60 answers a Universal Identity Request (optional).
@@ -88,9 +89,12 @@ Run `docs/HARDWARE_VALIDATION_XP60.md` steps 1–8. In particular:
 Recorded in `docs/protocol/ROLAND_XP60_PROTOCOL_FACTS.md`: region sizes, Patch
 Common / Tone layout for the XP-60, User Rhythm addresses, behaviour for
 requests spanning regions or exceeding a region, response ordering guarantees.
-The Phase 1 environment had no access to Roland's document library, so all
-address-map rows are recalled from the XP-80/XP-60 MIDI Implementation and must
-be cross-checked against the printed chart before the hardware session.
+The Phase 1 environment had no access to Roland's document library. The
+address map and transfer rules were cross-checked against the XP-60/XP-80 MIDI
+Implementation during the PR #5 review, which corrected two recalled facts
+(model ID `00 6A` → `6A`; DT1 packet limit 256 → 128 bytes) and added the
+Rhythm Setup addresses and Roland's published RQ1/DT1 packets as golden
+fixtures.
 
 ## UI foundation status
 

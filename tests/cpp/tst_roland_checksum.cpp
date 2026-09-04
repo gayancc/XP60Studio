@@ -31,6 +31,11 @@ private slots:
         QTest::newRow("DT1 single byte") << QByteArray::fromHex("03000000" "41") << 0x3C;
         // sum wraps past 256: 7F 7F 7F 7F = 508 -> 508 mod 128 = 124 -> 4
         QTest::newRow("wraps past 256") << QByteArray::fromHex("7F7F7F7F") << 0x04;
+        // Roland-published RQ1 example (XP-60/XP-80 MIDI Implementation):
+        // F0 41 10 6A 11 01 00 00 00 00 00 1F 19 47 F7
+        QTest::newRow("Roland RQ1 example") << QByteArray::fromHex("01000000" "00001F19") << 0x47;
+        // Roland-published DT1 example: F0 41 10 6A 12 01 00 00 28 06 51 F7
+        QTest::newRow("Roland DT1 example") << QByteArray::fromHex("01000028" "06") << 0x51;
     }
 
     void knownValues()

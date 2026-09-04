@@ -8,7 +8,7 @@
 
 namespace xp60studio::roland {
 
-// "F0 41 10 00 6A 12 ..." style formatting used by diagnostics and tests.
+// "F0 41 10 6A 12 ..." style formatting used by diagnostics and tests.
 [[nodiscard]] std::string toHex(ByteSpan bytes, std::string_view separator = " ");
 [[nodiscard]] std::string toHex(Byte value);
 

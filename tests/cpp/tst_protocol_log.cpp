@@ -38,7 +38,7 @@ private slots:
         QCOMPARE(entry.requestId.value(), std::uint64_t(7));
         QCOMPARE(QString::fromStdString(entry.summary),
                  QStringLiteral("Roland RQ1 device=17 address=11 00 00 00 size=00 00 0C 00 req=#7"));
-        QCOMPARE(QString::fromStdString(entry.rawHex), QStringLiteral("F0 41 10 00 6A 11 11 00 00 00 00 00 0C 00 63 F7"));
+        QCOMPARE(QString::fromStdString(entry.rawHex), QStringLiteral("F0 41 10 6A 11 11 00 00 00 00 00 0C 00 63 F7"));
 
         const QString line = QString::fromStdString(formatLogLine(entry));
         // "HH:MM:SS.mmm OUT Roland RQ1 ..." — the time-of-day depends on the
@@ -50,18 +50,18 @@ private slots:
     void dataSetEntry()
     {
         const auto dt1 = RolandSysExMessage::dataSet(RolandDeviceId::factoryDefault(), xp60::modelId(),
-                                                     RolandAddress(0x11, 0, 0, 0), ByteVector(256, 0x40)).value();
+                                                     RolandAddress(0x11, 0, 0, 0), ByteVector(128, 0x40)).value();
         const auto entry = logRolandMessage(LogDirection::In, dt1, "WIDI Master", std::nullopt, fixedTime());
         QCOMPARE(entry.kind, LogKind::RolandDataSet);
-        QCOMPARE(entry.payloadLength, std::size_t(256));
+        QCOMPARE(entry.payloadLength, std::size_t(128));
         QCOMPARE(QString::fromStdString(entry.summary),
-                 QStringLiteral("Roland DT1 device=17 address=11 00 00 00 bytes=256 checksum=OK"));
+                 QStringLiteral("Roland DT1 device=17 address=11 00 00 00 bytes=128 checksum=OK"));
         QVERIFY(formatLogLine(entry).find(" IN  Roland DT1") != std::string::npos);
     }
 
     void checksumFailureEntry()
     {
-        const auto raw = parseHexBytes("F0 41 10 00 6A 12 03 00 00 00 57 61 72 6D 37 F7").value();
+        const auto raw = parseHexBytes("F0 41 10 6A 12 03 00 00 00 57 61 72 6D 37 F7").value();
         const auto decoded = decodeRolandSysEx(raw, xp60::modelId());
         QVERIFY(!decoded.ok());
         const auto entry = logParseFailure(LogDirection::In, midi::MidiByteSpan(raw.data(), raw.size()), *decoded.failure,
@@ -73,7 +73,7 @@ private slots:
         QVERIFY(entry.summary.find("InvalidChecksum") != std::string::npos);
         QVERIFY(entry.summary.find("checksum=INVALID") != std::string::npos);
         QVERIFY(entry.detail.find("expected 66") != std::string::npos);
-        QCOMPARE(QString::fromStdString(entry.rawHex), QStringLiteral("F0 41 10 00 6A 12 03 00 00 00 57 61 72 6D 37 F7"));
+        QCOMPARE(QString::fromStdString(entry.rawHex), QStringLiteral("F0 41 10 6A 12 03 00 00 00 57 61 72 6D 37 F7"));
     }
 
     void unsupportedModelIsAWarningNotAnError()

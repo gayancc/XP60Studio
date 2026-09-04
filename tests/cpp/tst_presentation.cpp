@@ -150,7 +150,7 @@ private slots:
         f.devices->setDeviceId(99); // rejected, value unchanged, change re-announced
         QCOMPARE(f.devices->deviceId(), 20);
         QCOMPARE(spy.count(), 2);
-        QCOMPARE(f.devices->modelIdText(), QStringLiteral("00 6A"));
+        QCOMPARE(f.devices->modelIdText(), QStringLiteral("6A"));
         QVERIFY(!f.devices->modelIdStatusText().isEmpty());
     }
 

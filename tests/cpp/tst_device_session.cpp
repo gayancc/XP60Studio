@@ -121,7 +121,7 @@ private slots:
         QVERIFY(id.isValid());
         QCOMPARE(f.transport->sentMessages().size(), std::size_t(1));
         QCOMPARE(QString::fromStdString(toHex(f.transport->sentMessages()[0])),
-                 QStringLiteral("F0 41 10 00 6A 11 03 00 00 00 00 00 00 0C 71 F7"));
+                 QStringLiteral("F0 41 10 6A 11 03 00 00 00 00 00 00 0C 71 F7"));
         QCOMPARE(f.session->tracker().find(id)->state, protocol::RequestState::AwaitingData);
         QCOMPARE(f.session->statistics().requestsSent, std::uint64_t(1));
         QCOMPARE(f.session->statistics().sysExOut, std::uint64_t(1));
@@ -163,16 +163,20 @@ private slots:
         const RolandAddress user(0x11, 0, 0, 0);
         const auto id = f.session->sendDataRequest(user, RolandSize::fromValue(300).value());
 
-        const auto chunk1 = RolandSysExMessage::dataSet(RolandDeviceId::factoryDefault(), xp60::modelId(), user, ByteVector(256, 0x11)).value().encode();
-        const auto chunk2 = RolandSysExMessage::dataSet(RolandDeviceId::factoryDefault(), xp60::modelId(), *user.plus(256), ByteVector(44, 0x22)).value().encode();
+        // The XP-60 splits data into packets of at most 128 bytes: 300 = 128 + 128 + 44.
+        const auto chunk1 = RolandSysExMessage::dataSet(RolandDeviceId::factoryDefault(), xp60::modelId(), user, ByteVector(128, 0x11)).value().encode();
+        const auto chunk2 = RolandSysExMessage::dataSet(RolandDeviceId::factoryDefault(), xp60::modelId(), *user.plus(128), ByteVector(128, 0x11)).value().encode();
+        const auto chunk3 = RolandSysExMessage::dataSet(RolandDeviceId::factoryDefault(), xp60::modelId(), *user.plus(256), ByteVector(44, 0x22)).value().encode();
         // Deliver the first chunk in three fragments, as a backend might.
         f.deviceSendsRaw(ByteVector(chunk1.begin(), chunk1.begin() + 10));
         QCOMPARE(f.session->tracker().find(id)->state, protocol::RequestState::AwaitingData);
-        f.deviceSendsRaw(ByteVector(chunk1.begin() + 10, chunk1.begin() + 200));
-        f.deviceSendsRaw(ByteVector(chunk1.begin() + 200, chunk1.end()));
+        f.deviceSendsRaw(ByteVector(chunk1.begin() + 10, chunk1.begin() + 100));
+        f.deviceSendsRaw(ByteVector(chunk1.begin() + 100, chunk1.end()));
         QCOMPARE(f.session->tracker().find(id)->state, protocol::RequestState::Receiving);
-        QCOMPARE(f.session->tracker().find(id)->receivedBytes, 256u);
+        QCOMPARE(f.session->tracker().find(id)->receivedBytes, 128u);
         f.deviceSendsRaw(chunk2);
+        QCOMPARE(f.session->tracker().find(id)->receivedBytes, 256u);
+        f.deviceSendsRaw(chunk3);
         QCOMPARE(f.session->tracker().find(id)->state, protocol::RequestState::Completed);
         QCOMPARE(f.session->tracker().find(id)->data[299], Byte(0x22));
     }
