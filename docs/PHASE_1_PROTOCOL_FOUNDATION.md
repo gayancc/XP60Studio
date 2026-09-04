@@ -4,9 +4,11 @@
 
 Build the smallest trustworthy foundation that can communicate with a Roland XP-60 over MIDI/SysEx and provide enough diagnostics to investigate problems.
 
-Phase 1 is not a UI-design phase.
+Phase 1 also establishes the final application shell technology so later UI work does not require a framework rewrite.
 
-Do not begin Patch DNA, smart-bank generation, patch morphing, setlists, audio preview, or elaborate visual editor work here.
+Phase 1 is **not** the polished product UI phase.
+
+Do not begin Patch DNA, smart-bank generation, patch morphing, setlists, audio preview, or the full Dashboard/Patch Editor/Bank Builder here.
 
 ---
 
@@ -16,16 +18,27 @@ Before implementation:
 
 1. Inspect the entire repository.
 2. Read `AGENTS.md` and all Phase 1-relevant documents.
-3. Confirm the current build state.
-4. Establish the JUCE/CMake project foundation if it does not exist.
-5. Research only the Roland protocol facts necessary for the immediate implementation.
-6. Record uncertain facts explicitly rather than guessing.
-7. Implement deterministic protocol code first.
-8. Add tests.
-9. Build.
-10. Run tests.
-11. Correct failures based on actual logic rather than blindly adapting implementation to assertions.
-12. Document what is verified, what is inferred, and what still requires physical XP-60 testing.
+3. Read the design implementation docs so the shell does not conflict with later UI work.
+4. Confirm the current build state.
+5. Establish the C++20 + Qt 6.11.x + QML + CMake project foundation if it does not exist.
+6. Establish `IMidiTransport` and integrate libremidi behind it; pin an exact compatible libremidi 5.x release/commit.
+7. Research only the Roland protocol facts necessary for the immediate implementation.
+8. Record uncertain facts explicitly rather than guessing.
+9. Implement deterministic protocol code first.
+10. Add tests.
+11. Build.
+12. Run tests.
+13. Correct failures based on actual logic rather than blindly adapting implementation to assertions.
+14. Document what is verified, inferred, and still requires physical XP-60 testing.
+
+Relevant UI docs:
+
+- `design/UI_IMPLEMENTATION_ARCHITECTURE.md`
+- `design/COMPONENT_CATALOG.md`
+- `design/SCREEN_AND_FEATURE_MAP.md`
+- `design/UI_ACCEPTANCE_CRITERIA.md`
+
+The master mockup is `design/xp60studio-ui-master-mockup.jpg`, but Phase 1 should implement only the shell/design-system foundations and Devices/Diagnostics surface needed for protocol work.
 
 ---
 
@@ -33,42 +46,66 @@ Before implementation:
 
 ## A. Project Foundation
 
-Create a clean C++/JUCE project suitable for Windows and macOS development.
+Create a clean C++20 / Qt 6.11.x / Qt Quick application suitable for Windows and macOS development.
 
-Prefer CMake-based configuration unless a repository requirement or verified JUCE constraint indicates otherwise.
+Use CMake.
 
-Keep the application target minimal during Phase 1.
+Phase 1 foundation should include:
 
-Suggested high-level source boundaries (names may evolve):
+- Qt Quick application entry point
+- QML module structure
+- XP60Studio theme/token foundation
+- application navigation/shell skeleton
+- C++ presentation-layer pattern (`QObject`/Qt models)
+- unit-test targets
+- no protocol logic in QML
+
+Suggested high-level source boundaries:
 
 ```text
 src/
   app/
+  presentation/
   midi/
   roland/
   xp60/
   diagnostics/
 
+qml/
+  XP60Studio/
+    Theme/
+    Controls/
+    Shell/
+    Screens/
+
 tests/
-  roland/
-  xp60/
+  cpp/
+  qml/
 ```
 
 Do not create deep speculative folder hierarchies before real code requires them.
 
 ---
 
-## B. MIDI Endpoint Discovery
+## B. MIDI Transport Abstraction
 
-Implement:
+Define an internal `IMidiTransport`-style abstraction before allowing libremidi types to spread through application code.
+
+The transport must support:
 
 - enumerate available MIDI inputs
 - enumerate available MIDI outputs
-- stable endpoint presentation
+- stable endpoint presentation/identity as far as the backend permits
 - open selected input
 - open selected output
 - safely close/reconnect endpoints
-- report device-open failures clearly
+- send ordinary MIDI
+- send SysEx
+- receive ordinary MIDI
+- receive SysEx
+- transport-level diagnostics/errors
+
+Use libremidi as the default backend implementation.
 
 The connection model must support separate input/output endpoints because many MIDI interfaces expose them separately.
 
@@ -81,11 +118,11 @@ Implement a safe receive path for:
 - normal MIDI messages
 - SysEx messages
 - long SysEx data
-- partial/fragmented SysEx if JUCE/platform behavior requires explicit reconstruction
+- partial/fragmented SysEx if backend/platform behavior requires explicit reconstruction
 
 Incoming processing must not perform heavy UI work on the MIDI callback thread.
 
-Provide a controlled handoff from real-time/input callbacks to application processing.
+Provide a controlled handoff from real-time/input callbacks to application processing and, separately, to Qt presentation state.
 
 ---
 
@@ -95,7 +132,7 @@ Implement:
 
 - ordinary MIDI send foundation
 - SysEx send
-- cancellation-aware transfer operation abstraction
+- cancellation-aware transfer-operation abstraction
 - configurable inter-message pacing foundation
 
 Do not hardcode wireless-specific behavior.
@@ -106,7 +143,7 @@ Pacing should be configurable later because USB/DIN/WIDI interfaces may have dif
 
 # Roland Protocol Types
 
-Create explicit representations for the fundamental protocol concepts.
+Create explicit C++ representations for the fundamental protocol concepts.
 
 At minimum investigate and implement appropriate equivalents for:
 
@@ -149,8 +186,6 @@ Examples of distinguishable failures:
 - invalid address length
 - invalid size
 
-Exact categories may evolve during implementation.
-
 ---
 
 # Roland Checksum
@@ -164,15 +199,13 @@ Required tests should include:
 - checksum validation
 - intentional corruption rejection
 
-This code must not depend on JUCE UI or MIDI devices.
+This code must not depend on QML, Qt Quick controls, or MIDI devices.
 
 ---
 
 # Address and Size Arithmetic
 
-Roland addresses/sizes use Roland-specific byte representation rather than ordinary arbitrary integer assumptions.
-
-Implement address and size handling explicitly and test:
+Implement Roland address and size handling explicitly and test:
 
 - construction from bytes
 - serialization to bytes
@@ -221,8 +254,6 @@ Request handling should be designed so incoming DT1 data can later be correlated
 
 # Request / Response Correlation Foundation
 
-A robust editor needs more than callback-based byte reception.
-
 Create an operation model capable of representing:
 
 ```text
@@ -243,9 +274,7 @@ The exact chunking behavior should be verified against the XP-60 before overly s
 
 # Diagnostics
 
-Phase 1 should already make communication inspectable.
-
-For each relevant message/operation retain useful diagnostic metadata such as:
+For each relevant message/operation retain useful metadata such as:
 
 - timestamp
 - direction (IN/OUT)
@@ -264,9 +293,11 @@ Normal status messages should remain human-readable.
 
 # Minimal Phase 1 UI
 
-Only build enough UI to exercise and debug the protocol.
+Only build enough Qt Quick UI to exercise and debug the protocol while establishing the permanent XP60Studio shell/design system correctly.
 
-A minimal diagnostic screen may contain:
+Use the same global navigation/header/component language defined in the design docs, but do not attempt to reproduce all four polished anchor screens yet.
+
+The Devices/Diagnostics screen may contain:
 
 - MIDI Input selector
 - MIDI Output selector
@@ -278,9 +309,9 @@ A minimal diagnostic screen may contain:
 - manual DT1 test area only where safe
 - diagnostics/errors
 
-Do not spend this phase producing premium final visual design.
+Use reusable XP60Studio controls rather than default unstyled Qt controls, but keep the visual scope proportional to Phase 1.
 
-The diagnostic interface can later remain as an Expert/Developer tool.
+The diagnostic interface can remain as an Expert/Developer tool later.
 
 ---
 
@@ -296,8 +327,6 @@ Example conceptual log:
 20:14:03.115 OUT Roland RQ1 device=17 address=11 00 00 00 size=00 00 0C 00
 20:14:03.143 IN  Roland DT1 device=17 address=11 00 00 00 bytes=256 checksum=OK
 ```
-
-Exact formatting is implementation-defined.
 
 ---
 
@@ -337,7 +366,13 @@ decode(encode(model)) == model
 encode(decode(bytes)) == bytes
 ```
 
-Use known-good fixtures when available.
+## Presentation / QML foundation
+
+- application shell loads
+- Devices/Diagnostics presentation model state transitions
+- endpoint models update correctly
+- Connect/Disconnect command enablement
+- QML smoke tests for critical reusable foundation controls
 
 ---
 
@@ -352,11 +387,11 @@ The procedure should establish, at minimum:
 3. Returned DT1 is parsed successfully.
 4. Checksum validates.
 5. Device/model IDs match expectations.
-6. Address and payload size match the requested data or documented chunking behavior.
+6. Address and payload size match requested data or documented chunking behavior.
 7. Repeated reads are stable.
-8. A safe temporary-area write can be performed and read back without touching permanent user memory, only after the target memory semantics are verified.
+8. A safe temporary-area write can be performed and read back without touching permanent User memory, only after target-memory semantics are verified.
 
-Do not invent a temporary-memory address in this document; determine it from reliable XP-60 documentation during implementation.
+Do not invent a temporary-memory address; determine it from reliable XP-60 documentation during implementation.
 
 ---
 
@@ -366,14 +401,15 @@ Phase 1 does not require:
 
 - complete Patch decoding
 - full parameter map
-- polished four-Tone editor
-- bank librarian
-- database
+- polished Dashboard
+- polished four-Tone Patch Editor
+- Wave Browser
+- Bank Builder
+- librarian/database
 - expansion-board database
 - duplicate analysis
 - Patch DNA
 - sound classification
-- bank recommendation
 - Performance editor
 - Rhythm editor
 - stage mode
@@ -385,9 +421,10 @@ Phase 1 does not require:
 
 Phase 1 is complete when:
 
-- the project builds on the currently supported development environment;
+- C++20/Qt/QML/CMake project builds on the supported development environment;
+- application shell and minimal Devices/Diagnostics UI load;
 - protocol unit tests pass;
-- MIDI endpoints can be discovered and opened;
+- MIDI endpoints can be discovered and opened through `IMidiTransport`/libremidi;
 - SysEx can be sent and received;
 - Roland checksum logic is tested;
 - Roland address/size handling is tested;
@@ -398,7 +435,8 @@ Phase 1 is complete when:
 - diagnostic output is useful;
 - unknown XP-60-specific facts are documented rather than guessed;
 - a precise physical-hardware validation procedure is ready;
-- no advanced product features have been built on unverified assumptions.
+- no advanced product features have been built on unverified assumptions;
+- no JUCE application/UI dependency has been introduced.
 
 ---
 
@@ -425,6 +463,10 @@ Exact tests still needing the user's keyboard.
 ## Known unknowns
 
 Protocol or address details not yet established.
+
+## UI foundation status
+
+Which Qt/QML shell/design-system pieces exist and what remains intentionally deferred.
 
 ## Next step
 
