@@ -6,6 +6,7 @@
 
 #include <QObject>
 #include <QString>
+#include <QTimer>
 
 #include <optional>
 
@@ -75,6 +76,15 @@ public:
     bool restoreSafetySnapshot();
     void cancel();
 
+    // Explicit, session-scoped live preview. Start consumes arming and captures
+    // a safety snapshot. Keep only the latest edit while one verified transfer
+    // is in flight; never overlap or automatically retry a failed transfer.
+    [[nodiscard]] bool liveActive() const noexcept { return m_liveActive; }
+    [[nodiscard]] bool liveStopping() const noexcept { return m_liveStopping; }
+    bool startLivePreview(const xpmodel::Xp60Patch& patch);
+    void queueLivePreview(const xpmodel::Xp60Patch& patch);
+    void stopLivePreview(const xpmodel::Xp60Patch& finalPatch);
+
     // Results ------------------------------------------------------------------
     [[nodiscard]] const std::optional<xpmodel::Xp60Patch>& safetySnapshot() const noexcept { return m_safetySnapshot; }
     [[nodiscard]] const std::optional<xpmodel::Xp60Patch>& readBack() const noexcept { return m_readBack; }
@@ -92,10 +102,13 @@ private:
         ReadBack,
     };
 
-    bool begin(const xpmodel::Xp60Patch& patch, std::string what);
+    bool begin(const xpmodel::Xp60Patch& patch, std::string what, bool live = false);
     void onPatchFetchChanged();
     void onBatchFinished(quint64 batchId, bool ok, const QString& error);
     void sendIntendedPatch();
+    void beginReadBack();
+    void drainLivePreview();
+    void clearLivePreview();
     void compareReadBack();
     void setState(State state, std::string message);
     void fail(std::string message);
@@ -113,6 +126,11 @@ private:
     std::optional<xpmodel::Xp60PatchDiff> m_diff;
     DeviceSession::DataSetBatchId m_batch;
     std::size_t m_messagesSent = 0;
+    QTimer m_liveTimer;
+    bool m_liveActive = false;
+    bool m_liveStopping = false;
+    std::optional<xpmodel::Xp60Patch> m_livePending;
+    std::optional<xpmodel::Xp60Patch> m_livePrevious;
 };
 
 } // namespace xp60studio::services

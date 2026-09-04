@@ -1,6 +1,7 @@
 #pragma once
 
 #include "presentation/ToneViewModel.h"
+#include "presentation/EditorParameterModel.h"
 #include "services/DeviceSession.h"
 #include "services/PatchTransfer.h"
 #include "xpmodel/Xp60Patch.h"
@@ -39,6 +40,9 @@ class PatchEditorViewModel : public QObject
     // Sections
     Q_PROPERTY(QStringList sectionNames READ sectionNames CONSTANT)
     Q_PROPERTY(int section READ section WRITE setSection NOTIFY sectionChanged)
+    Q_PROPERTY(int disclosure READ disclosure WRITE setDisclosure NOTIFY disclosureChanged)
+    Q_PROPERTY(EditorParameterModel* sectionParameters READ sectionParameters CONSTANT)
+    Q_PROPERTY(EditorParameterModel* expertParameters READ expertParameters CONSTANT)
 
     // Tones
     Q_PROPERTY(QVariantList tones READ tones CONSTANT)
@@ -51,6 +55,7 @@ class PatchEditorViewModel : public QObject
     Q_PROPERTY(QString chorusText READ chorusText NOTIFY patchChanged)
     Q_PROPERTY(QString reverbText READ reverbText NOTIFY patchChanged)
     Q_PROPERTY(QString outputText READ outputText NOTIFY patchChanged)
+    Q_PROPERTY(QString routingSummary READ routingSummary NOTIFY patchChanged)
 
     // Envelope of the selected Tone, for the section in view
     Q_PROPERTY(bool envelopeAvailable READ envelopeAvailable NOTIFY envelopeChanged)
@@ -84,13 +89,21 @@ class PatchEditorViewModel : public QObject
 
     // Write
     Q_PROPERTY(bool canWrite READ canWrite NOTIFY writeChanged)
+    Q_PROPERTY(bool writeBusy READ writeBusy NOTIFY writeChanged)
     Q_PROPERTY(QString writeStateText READ writeStateText NOTIFY writeChanged)
     Q_PROPERTY(QString writeTone READ writeTone NOTIFY writeChanged)
     Q_PROPERTY(QString writeMessage READ writeMessage NOTIFY writeChanged)
     Q_PROPERTY(bool writeArmed READ writeArmed NOTIFY writeChanged)
     Q_PROPERTY(bool canArmWrite READ canArmWrite NOTIFY writeChanged)
+    Q_PROPERTY(bool liveAudition READ liveAudition NOTIFY writeChanged)
+    Q_PROPERTY(bool liveStopping READ liveStopping NOTIFY writeChanged)
+    Q_PROPERTY(bool canStartLiveAudition READ canStartLiveAudition NOTIFY writeChanged)
+    Q_PROPERTY(QString auditionMessage READ auditionMessage NOTIFY writeChanged)
 
 public:
+    [[nodiscard]] bool writeBusy() const { return m_transfer && m_transfer->isBusy(); }
+    Q_INVOKABLE void cancelWrite() { if (m_transfer) m_transfer->cancel(); }
+
     enum Section {
         Sound = 0,
         Filter,
@@ -100,12 +113,19 @@ public:
     };
     Q_ENUM(Section)
 
+    enum Disclosure { Play = 0, Design, Expert };
+    Q_ENUM(Disclosure)
+    int disclosure() const { return m_disclosure; }
+    void setDisclosure(int mode);
+    EditorParameterModel* sectionParameters() const { return m_sectionParameters; }
+    EditorParameterModel* expertParameters() const { return m_expertParameters; }
+
     explicit PatchEditorViewModel(services::DeviceSession& session, services::PatchTransfer* transfer = nullptr,
                                   QObject* parent = nullptr);
 
     // Model access used by ToneViewModel -------------------------------------
     [[nodiscard]] bool hasPatch() const noexcept { return m_current.has_value(); }
-    [[nodiscard]] const xpmodel::Xp60Patch& patch() const { return *m_current; }
+    [[nodiscard]] const xpmodel::Xp60Patch& patch() const { return m_comparing && m_original ? *m_original : *m_current; }
     void setToneRaw(xpmodel::ToneIndex tone, xpmodel::ToneParameter parameter, int raw);
     void setCommonRaw(xpmodel::CommonParameter parameter, int raw);
     [[nodiscard]] bool anyToneSoloed() const;
@@ -135,6 +155,7 @@ public:
     [[nodiscard]] QString chorusText() const;
     [[nodiscard]] QString reverbText() const;
     [[nodiscard]] QString outputText() const;
+    [[nodiscard]] QString routingSummary() const;
 
     [[nodiscard]] bool envelopeAvailable() const;
     [[nodiscard]] QString envelopeTitle() const;
@@ -165,8 +186,8 @@ public:
 
     [[nodiscard]] bool comparing() const noexcept { return m_comparing; }
     void setComparing(bool comparing);
-    [[nodiscard]] bool canUndo() const noexcept { return !m_undo.empty(); }
-    [[nodiscard]] bool canRedo() const noexcept { return !m_redo.empty(); }
+    [[nodiscard]] bool canUndo() const noexcept { return !m_comparing && !m_undo.empty(); }
+    [[nodiscard]] bool canRedo() const noexcept { return !m_comparing && !m_redo.empty(); }
     [[nodiscard]] QString differenceSummary() const;
     Q_INVOKABLE void undo();
     Q_INVOKABLE void redo();
@@ -181,10 +202,18 @@ public:
     Q_INVOKABLE void armWrite();
     Q_INVOKABLE void disarmWrite();
     Q_INVOKABLE void writeToDevice();
+    bool liveAudition() const { return m_transfer && m_transfer->liveActive(); }
+    bool liveStopping() const { return m_transfer && m_transfer->liveStopping(); }
+    bool canStartLiveAudition() const { return canWrite(); }
+    QString auditionMessage() const;
+    Q_INVOKABLE void startLiveAudition();
+    Q_INVOKABLE void stopLiveAudition();
+    Q_INVOKABLE void restoreBeforeAudition();
 
 signals:
     void patchChanged();
     void sectionChanged();
+    void disclosureChanged();
     void selectedToneChanged();
     void envelopeChanged();
     void rangeChanged();
@@ -194,6 +223,9 @@ private:
     void adoptFetchedPatch();
     void pushUndo();
     void emitAll();
+    xpmodel::Xp60Patch auditionPatch() const;
+    void queueAudition();
+    void resetAuditionFlags();
     [[nodiscard]] xpmodel::ToneIndex selectedToneIndex() const;
     [[nodiscard]] std::optional<xpmodel::Xp60Patch::Envelope> currentEnvelope() const;
     // The Tone parameters backing the envelope in view, so a drag can write them.
@@ -208,12 +240,17 @@ private:
 
     services::DeviceSession& m_session;
     services::PatchTransfer* m_transfer = nullptr;
+    services::PatchTransfer::State m_lastTransferState = services::PatchTransfer::State::Idle;
     std::optional<xpmodel::Xp60Patch> m_original;
     std::optional<xpmodel::Xp60Patch> m_current;
+    std::optional<xpmodel::Xp60Patch> m_hardware;
     std::vector<std::unique_ptr<ToneViewModel>> m_tones;
     std::deque<xpmodel::Xp60Patch> m_undo;
     std::deque<xpmodel::Xp60Patch> m_redo;
     int m_section = Sound;
+    int m_disclosure = Design;
+    EditorParameterModel* m_sectionParameters = nullptr;
+    EditorParameterModel* m_expertParameters = nullptr;
     int m_selectedTone = 1;
     bool m_comparing = false;
     QString m_sourceText;

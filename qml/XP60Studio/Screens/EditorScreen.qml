@@ -29,6 +29,7 @@ Item {
 
     QQC.ScrollView {
         id: scroller
+        objectName: "editorScroll"
         anchors.fill: parent
         visible: root.editor.hasPatch
         contentWidth: availableWidth
@@ -47,10 +48,16 @@ Item {
                 Layout.topMargin: Metrics.screenPadding
                 implicitHeight: headerRow.implicitHeight + 2 * Metrics.cardPadding
 
-                RowLayout {
+                GridLayout {
                     id: headerRow
                     anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter }
-                    spacing: Metrics.spacingMd
+                    columns: root.wideTones ? 2 : 1
+                    columnSpacing: Metrics.spacingMd
+                    rowSpacing: Metrics.spacingMd
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: Metrics.spacingMd
 
                     Rectangle {
                         implicitWidth: badge.implicitWidth + 2 * Metrics.spacingMd
@@ -90,6 +97,11 @@ Item {
                         }
                     }
 
+                    }
+                    RowLayout {
+                        Layout.alignment: Qt.AlignRight
+                        spacing: Metrics.spacingSm
+
                     // A/B original vs current
                     XpButton {
                         objectName: "compareButton"
@@ -116,7 +128,7 @@ Item {
                     XpButton {
                         objectName: "revertButton"
                         text: qsTr("Revert"); compact: true
-                        enabled: root.editor.modified
+                        enabled: root.editor.modified && !root.editor.comparing
                         onClicked: root.editor.revertToOriginal()
                     }
                     XpButton {
@@ -134,10 +146,65 @@ Item {
                         enabled: root.editor.canWrite
                         onClicked: root.editor.writeToDevice()
                     }
+                    XpButton {
+                        objectName: "cancelWriteButton"
+                        text: qsTr("Cancel write")
+                        visible: root.editor.writeBusy && !root.editor.liveAudition
+                        variant: "danger"
+                        onClicked: root.editor.cancelWrite()
+                    }
+                    }
                 }
             }
 
             // Write outcome, only once something has happened.
+            ColumnLayout {
+                Layout.fillWidth: true
+                Layout.leftMargin: Metrics.screenPadding
+                Layout.rightMargin: Metrics.screenPadding
+                spacing: Metrics.spacingSm
+                Flow {
+                    Layout.fillWidth: true
+                    spacing: Metrics.spacingSm
+                    XpButton {
+                        objectName: "startLiveButton"
+                        text: qsTr("Start live audition")
+                        visible: !root.editor.liveAudition
+                        enabled: root.editor.canStartLiveAudition
+                        onClicked: root.editor.startLiveAudition()
+                    }
+                    XpButton {
+                        objectName: "stopLiveButton"
+                        text: root.editor.liveStopping ? qsTr("Finishing audition…") : qsTr("Stop & keep B")
+                        visible: root.editor.liveAudition
+                        enabled: !root.editor.liveStopping
+                        onClicked: root.editor.stopLiveAudition()
+                    }
+                    XpButton {
+                        objectName: "restoreAuditionButton"
+                        text: qsTr("Restore before audition")
+                        visible: root.editor.liveAudition
+                        enabled: !root.editor.liveStopping
+                        onClicked: root.editor.restoreBeforeAudition()
+                    }
+                    XpButton {
+                        objectName: "cancelAuditionButton"
+                        text: qsTr("Stop now")
+                        variant: "danger"
+                        visible: root.editor.liveAudition
+                        onClicked: root.editor.cancelWrite()
+                    }
+                }
+                XpLabel {
+                    objectName: "auditionMessage"
+                    Layout.fillWidth: true
+                    text: root.editor.auditionMessage
+                    role: "caption"
+                    wrapMode: Text.WordWrap
+                    color: root.editor.liveAudition ? Theme.warning : Theme.textSecondary
+                }
+            }
+
             XpLabel {
                 objectName: "writeMessage"
                 visible: root.editor.writeStateText.length > 0 && root.editor.writeStateText !== "Idle"
@@ -152,8 +219,30 @@ Item {
             }
 
             // ── Section tabs ────────────────────────────────────────────────
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.leftMargin: Metrics.screenPadding
+                Layout.rightMargin: Metrics.screenPadding
+                XpSegmentedControl {
+                    objectName: "disclosureTabs"
+                    model: [qsTr("Play"), qsTr("Design"), qsTr("Expert")]
+                    currentIndex: root.editor.disclosure
+                    onActivated: function(index) { root.editor.disclosure = index }
+                }
+                XpLabel {
+                    Layout.fillWidth: true
+                    text: root.editor.liveAudition ? qsTr("Live audition · updates are paced and verified")
+                         : root.editor.comparing ? qsTr("Viewing original · editing paused")
+                                                : qsTr("Local editing · Write sends to XP-60")
+                    role: "caption"
+                    secondary: true
+                    wrapMode: Text.WordWrap
+                    horizontalAlignment: Text.AlignRight
+                }
+            }
             XpSegmentedControl {
                 objectName: "sectionTabs"
+                visible: root.editor.disclosure === 1
                 Layout.fillWidth: true
                 Layout.leftMargin: Metrics.screenPadding
                 Layout.rightMargin: Metrics.screenPadding
@@ -164,6 +253,7 @@ Item {
 
             // ── Four Tone cards ─────────────────────────────────────────────
             GridLayout {
+                id: toneGrid
                 objectName: "toneGrid"
                 Layout.fillWidth: true
                 Layout.leftMargin: Metrics.screenPadding
@@ -173,6 +263,7 @@ Item {
                 rowSpacing: Metrics.spacingMd
 
                 Repeater {
+                    id: toneCards
                     model: root.editor.tones
                     delegate: ToneCard {
                         required property var modelData
@@ -193,12 +284,52 @@ Item {
                 Layout.rightMargin: Metrics.screenPadding
                 implicitHeight: flowRow.implicitHeight + 2 * Metrics.cardPadding
 
+                // The approved composition connects each coloured Tone to
+                // Structure. This is an overview, not a fabricated diagram
+                // of an individual Structure algorithm. At two-column widths
+                // the cards wrap and these overview lines are omitted.
+                Canvas {
+                    id: toneConnections
+                    objectName: "toneConnections"
+                    visible: root.wideTones
+                    anchors { left: parent.left; right: parent.right }
+                    y: -Metrics.cardPadding - Metrics.spacingLg
+                    height: Metrics.cardPadding + Metrics.spacingLg
+                    onWidthChanged: requestPaint()
+                    onVisibleChanged: requestPaint()
+                    onPaint: {
+                        var ctx = getContext("2d")
+                        ctx.reset()
+                        for (var i = 0; i < 4; ++i) {
+                            var card = toneCards.itemAt(i)
+                            if (!card) continue
+                            var start = card.mapToItem(toneConnections, card.width / 2, card.height)
+                            var end = structureNode.mapToItem(toneConnections, structureNode.width / 2 + (i - 1.5) * 6, 0)
+                            var channel = 5 + i * 5
+                            ctx.beginPath()
+                            ctx.moveTo(start.x, 0)
+                            ctx.bezierCurveTo(start.x, channel, start.x, channel, start.x - 6, channel)
+                            ctx.lineTo(end.x + 6, channel)
+                            ctx.quadraticCurveTo(end.x, channel, end.x, channel + 6)
+                            ctx.lineTo(end.x, height)
+                            ctx.strokeStyle = Theme.toneColor(i + 1)
+                            ctx.globalAlpha = card.tone.enabled ? 0.65 : 0.2
+                            ctx.lineWidth = 1.5
+                            ctx.stroke()
+                        }
+                    }
+                    Connections { target: root.editor; function onPatchChanged() { toneConnections.requestPaint() } }
+                    Connections { target: toneGrid; function onWidthChanged() { toneConnections.requestPaint() } }
+                    Component.onCompleted: Qt.callLater(requestPaint)
+                }
+
                 Flow {
                     id: flowRow
                     anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter }
                     spacing: Metrics.spacingSm
 
                     SignalFlowNode {
+                        id: structureNode
                         objectName: "structureNode"
                         title: qsTr("STRUCTURE"); detail: root.editor.structureText
                     }
@@ -214,7 +345,20 @@ Item {
             }
 
             // ── Envelope · ranges · Tone settings ───────────────────────────
+            XpLabel {
+                objectName: "routingSummary"
+                Layout.fillWidth: true
+                Layout.leftMargin: Metrics.screenPadding
+                Layout.rightMargin: Metrics.screenPadding
+                text: root.editor.routingSummary
+                role: "caption"
+                secondary: true
+                wrapMode: Text.WordWrap
+            }
+
             GridLayout {
+                objectName: "designDetails"
+                visible: root.editor.disclosure === 1 && root.editor.section < 3
                 Layout.fillWidth: true
                 Layout.leftMargin: Metrics.screenPadding
                 Layout.rightMargin: Metrics.screenPadding
@@ -246,21 +390,9 @@ Item {
                             visible: root.editor.envelopeAvailable
                             Layout.fillWidth: true
                             points: root.editor.envelopePoints
-                            bipolar: root.editor.section !== 2 // Amp is unipolar
+                            bipolar: root.editor.section === 0 // only Pitch is bipolar
                             accentColor: Theme.toneColor(root.editor.selectedTone)
                             onPointMoved: function(index, x, y) { root.editor.moveEnvelopePoint(index, x, y) }
-                        }
-
-                        XpEmptyState {
-                            visible: !root.editor.envelopeAvailable
-                            Layout.fillWidth: true
-                            implicitHeight: 120
-                            glyph: "∿"
-                            title: root.editor.section === 3 ? qsTr("Motion — not built yet")
-                                                             : qsTr("Effects — not built yet")
-                            message: root.editor.section === 3
-                                     ? qsTr("The LFO editor arrives later in Phase 4. Sound, Filter and Amp are complete.")
-                                     : qsTr("The effects editor arrives later in Phase 4. Sound, Filter and Amp are complete.")
                         }
 
                         // Exact stage values, so nothing is drag-only.
@@ -285,6 +417,7 @@ Item {
                                         value: modelData.timeRaw
                                         minimumValue: 0
                                         maximumValue: 127
+                                        editable: !root.editor.comparing
                                         onEdited: function(v) { root.editor.setEnvelopeStageRaw(modelData.index, false, v) }
                                     }
                                     ParameterValueEditor {
@@ -294,6 +427,7 @@ Item {
                                         displayText: modelData.hasLevel ? modelData.levelText : ""
                                         minimumValue: 0
                                         maximumValue: 127
+                                        editable: !root.editor.comparing
                                         onEdited: function(v) { root.editor.setEnvelopeStageRaw(modelData.index, true, v) }
                                     }
                                 }
@@ -312,6 +446,7 @@ Item {
 
                 // Key range and velocity
                 XpCard {
+                    objectName: "keyRangePanel"
                     Layout.fillWidth: true
                     Layout.preferredWidth: 4
                     Layout.alignment: Qt.AlignTop
@@ -347,6 +482,29 @@ Item {
                             Item { Layout.fillWidth: true }
                             XpLabel { text: root.editor.keyRangeUpperText; role: "mono" }
                         }
+                        RowLayout {
+                            Layout.fillWidth: true
+                            ParameterValueEditor {
+                                objectName: "keyLowerEntry"
+                                Layout.fillWidth: true
+                                label: qsTr("Low note")
+                                value: root.editor.keyRangeLower
+                                minimumValue: 0
+                                maximumValue: root.editor.keyRangeUpper
+                                editable: !root.editor.comparing
+                                onEdited: function(v) { root.editor.keyRangeLower = v }
+                            }
+                            ParameterValueEditor {
+                                objectName: "keyUpperEntry"
+                                Layout.fillWidth: true
+                                label: qsTr("High note")
+                                value: root.editor.keyRangeUpper
+                                minimumValue: root.editor.keyRangeLower
+                                maximumValue: 127
+                                editable: !root.editor.comparing
+                                onEdited: function(v) { root.editor.keyRangeUpper = v }
+                            }
+                        }
                         XpLabel {
                             objectName: "keyRangeNote"
                             Layout.fillWidth: true
@@ -373,37 +531,97 @@ Item {
                         }
                         RowLayout {
                             Layout.fillWidth: true
-                            XpLabel { text: root.editor.velocityLower; role: "mono" }
-                            Item { Layout.fillWidth: true }
-                            XpLabel { text: root.editor.velocityUpper; role: "mono" }
+                            ParameterValueEditor {
+                                objectName: "velocityLowerEntry"
+                                Layout.fillWidth: true
+                                label: qsTr("Softest")
+                                value: root.editor.velocityLower
+                                minimumValue: 1
+                                maximumValue: root.editor.velocityUpper
+                                editable: !root.editor.comparing
+                                onEdited: function(v) { root.editor.velocityLower = v }
+                            }
+                            ParameterValueEditor {
+                                objectName: "velocityUpperEntry"
+                                Layout.fillWidth: true
+                                label: qsTr("Hardest")
+                                value: root.editor.velocityUpper
+                                minimumValue: root.editor.velocityLower
+                                maximumValue: 127
+                                editable: !root.editor.comparing
+                                onEdited: function(v) { root.editor.velocityUpper = v }
+                            }
                         }
                     }
                 }
 
-                // Contextual Tone settings
-                XpCard {
+                // Section-specific synthesis controls for the selected Tone.
+                EditorParameterPanel {
+                    objectName: "sectionParameterPanel"
                     Layout.fillWidth: true
                     Layout.preferredWidth: 3
                     Layout.alignment: Qt.AlignTop
-                    implicitHeight: settingsColumn.implicitHeight + 2 * Metrics.cardPadding
+                    editor: root.editor
+                    parameters: root.editor.sectionParameters
+                    title: qsTr("TONE %1 · %2").arg(root.editor.selectedTone).arg(root.editor.sectionNames[root.editor.section].toUpperCase())
+                }
+            }
 
-                    ColumnLayout {
-                        id: settingsColumn
-                        anchors { left: parent.left; right: parent.right; top: parent.top }
-                        spacing: Metrics.spacingSm
+            EditorParameterPanel {
+                objectName: "motionEffectsPanel"
+                visible: root.editor.disclosure === 1 && root.editor.section >= 3
+                Layout.fillWidth: true
+                Layout.leftMargin: Metrics.screenPadding
+                Layout.rightMargin: Metrics.screenPadding
+                editor: root.editor
+                parameters: root.editor.sectionParameters
+                title: root.editor.section === 3 ? qsTr("MOTION · LFO & CONTROLLERS") : qsTr("EFFECTS & ROUTING")
+                note: root.editor.section === 4
+                      ? qsTr("EFX types follow Roland's 40-effect list. The 12 effect-specific slots remain raw until their byte mappings and units are verified. Chorus and Reverb follow the parameter map.")
+                      : qsTr("Both LFOs include shape, rate, delay, fade and Pitch/Filter/Level/Pan depths. Rates and times use XP values; no Hz or seconds conversion is assumed.")
+            }
 
-                        XpPanelHeader { title: qsTr("TONE SETTINGS"); glyph: "⚙" }
+            EditorParameterPanel {
+                objectName: "expertParameterPanel"
+                visible: root.editor.disclosure === 2
+                Layout.fillWidth: true
+                Layout.leftMargin: Metrics.screenPadding
+                Layout.rightMargin: Metrics.screenPadding
+                Layout.bottomMargin: Metrics.screenPadding
+                editor: root.editor
+                parameters: root.editor.expertParameters
+                expert: true
+                title: qsTr("EXPERT · PATCH PARAMETERS")
+                note: qsTr("Numeric fields edit raw XP values; menu labels are from the parameter map. EFX type-specific meanings and physical timing units remain unverified.")
+            }
+
+            XpCard {
+                visible: root.editor.disclosure !== 2
+                Layout.fillWidth: true
+                Layout.leftMargin: Metrics.screenPadding
+                Layout.rightMargin: Metrics.screenPadding
+                Layout.bottomMargin: Metrics.screenPadding
+                implicitHeight: playColumn.implicitHeight + 2 * Metrics.cardPadding
+                ColumnLayout {
+                    id: playColumn
+                    anchors { left: parent.left; right: parent.right; top: parent.top }
+                    XpPanelHeader { title: qsTr("PATCH PLAY SETTINGS") }
+                    GridLayout {
+                        Layout.fillWidth: true
+                        columns: width >= 900 ? 5 : 2
+                        columnSpacing: Metrics.spacingLg
                         Repeater {
                             model: root.editor.toneSettings
                             delegate: ParameterValueEditor {
                                 required property var modelData
                                 Layout.fillWidth: true
                                 label: modelData.name
-                                labelWidth: 96
+                                labelWidth: 90
                                 value: modelData.raw
                                 displayText: modelData.valueText
                                 minimumValue: modelData.minimum
                                 maximumValue: modelData.maximum
+                                editable: !root.editor.comparing
                                 onEdited: function(v) { root.editor.setToneSetting(modelData.parameterId, v) }
                             }
                         }

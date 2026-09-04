@@ -94,7 +94,8 @@ Rectangle {
                 Accessible.checked: root.tone.enabled
                 XpLabel {
                     anchors.centerIn: parent
-                    text: "✳"
+                    text: "*"
+                    role: "title"
                     color: root.tone.enabled ? root.toneColor : Theme.textDisabled
                 }
                 HoverHandler { id: enableHover }

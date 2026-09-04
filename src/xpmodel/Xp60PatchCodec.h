@@ -61,6 +61,13 @@ struct Xp60PatchCodec
 
     // Raw block bytes of a Patch in layout order (Common, Tone 1..4).
     [[nodiscard]] static std::array<roland::ByteVector, 5> blockBytes(const Xp60Patch& patch);
+
+    // Sends changed spans within each documented block. Preserves whole encoded
+    // parameters at span/chunk boundaries (including multi-byte nibble values).
+    [[nodiscard]] static std::vector<roland::RolandSysExMessage> encodeChangesToDataSets(
+        const Xp60Patch& before, const Xp60Patch& after, roland::RolandDeviceId deviceId,
+        const roland::RolandModelId& modelId, const roland::RolandAddress& patchBase,
+        std::size_t maxPayloadBytes = 128);
 };
 
 } // namespace xp60studio::xpmodel

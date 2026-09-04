@@ -9,6 +9,7 @@ target_include_directories(xp60studio_services PUBLIC ${CMAKE_CURRENT_SOURCE_DIR
 target_link_libraries(xp60studio_services
   PUBLIC
     Qt6::Core
+    Qt6::Concurrent
     xp60studio::roland
     xp60studio::xp60
     xp60studio::midi

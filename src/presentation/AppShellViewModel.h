@@ -21,6 +21,7 @@ class AppShellViewModel : public QObject
     Q_PROPERTY(QString currentScreenTitle READ currentScreenTitle NOTIFY currentScreenChanged)
     Q_PROPERTY(xp60studio::presentation::ConnectionState connectionState READ connectionState NOTIFY connectionChanged)
     Q_PROPERTY(QString connectionLabel READ connectionLabel NOTIFY connectionChanged)
+    Q_PROPERTY(bool connectionVerified READ connectionVerified NOTIFY connectionChanged)
     Q_PROPERTY(QString connectionDetail READ connectionDetail NOTIFY connectionChanged)
     Q_PROPERTY(QString deviceName READ deviceName CONSTANT)
 
@@ -50,6 +51,7 @@ public:
 
     [[nodiscard]] ConnectionState connectionState() const;
     [[nodiscard]] QString connectionLabel() const;
+    bool connectionVerified() const { return m_devices && m_devices->connectionVerified(); }
     [[nodiscard]] QString connectionDetail() const;
     [[nodiscard]] QString deviceName() const;
 

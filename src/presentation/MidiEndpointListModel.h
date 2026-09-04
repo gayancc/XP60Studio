@@ -21,6 +21,7 @@ public:
         DisplayNameRole,
         BackendNameRole,
         IsVirtualRole,
+        SelectionLabelRole,
     };
 
     explicit MidiEndpointListModel(QObject* parent = nullptr);

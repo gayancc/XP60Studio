@@ -119,7 +119,7 @@ QString AppShellViewModel::connectionLabel() const
 {
     switch (connectionState()) {
     case ConnectionState::Connected:
-        return QStringLiteral("XP-60 LIVE");
+        return connectionVerified() ? QStringLiteral("XP-60 RESPONDED") : QStringLiteral("MIDI OPEN");
     case ConnectionState::Connecting:
         return QStringLiteral("XP-60 CONNECTING");
     case ConnectionState::Error:

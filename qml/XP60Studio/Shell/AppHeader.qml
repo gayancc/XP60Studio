@@ -32,6 +32,7 @@ Rectangle {
 
         ConnectionStatusIndicator {
             connectionState: root.shell.connectionState
+            verified: root.shell.connectionVerified
             label: root.shell.connectionLabel
             detail: root.shell.connectionDetail
             Layout.alignment: Qt.AlignVCenter

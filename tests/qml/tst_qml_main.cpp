@@ -58,9 +58,11 @@ public:
     // Re-reads the Patch, which clears the editor's history and A/B state.
     Q_INVOKABLE void reloadPatch()
     {
+        if (m_editorStack->transfer->liveActive()) m_editorStack->transfer->cancel();
         m_editorStack->session->fetchTemporaryPatch();
         pump(*m_editorStack);
     }
+    Q_INVOKABLE void pumpEditor() { pump(*m_editorStack); }
 
 public slots:
     void applicationAvailable()

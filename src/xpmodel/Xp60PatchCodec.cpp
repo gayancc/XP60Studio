@@ -124,4 +124,42 @@ std::vector<roland::RolandSysExMessage> Xp60PatchCodec::encodeToDataSets(const X
     return messages;
 }
 
+std::vector<roland::RolandSysExMessage> Xp60PatchCodec::encodeChangesToDataSets(
+    const Xp60Patch& before, const Xp60Patch& after, roland::RolandDeviceId deviceId,
+    const roland::RolandModelId& modelId, const roland::RolandAddress& patchBase,
+    std::size_t maxPayloadBytes)
+{
+    if (maxPayloadBytes == 0 || maxPayloadBytes > 128) return {};
+    const auto oldBytes = blockBytes(before);
+    const auto newBytes = blockBytes(after);
+    const auto blocks = Xp60PatchLayout::blocks();
+    std::vector<roland::RolandSysExMessage> messages;
+    for (std::size_t i = 0; i < blocks.size(); ++i) {
+        const auto& bytes = newBytes[i];
+        std::size_t first = 0, last = bytes.size();
+        while (first < last && bytes[first] == oldBytes[i][first]) ++first;
+        if (first == last) continue;
+        while (bytes[last - 1] == oldBytes[i][last - 1]) --last;
+        for (const auto& parameter : blocks[i].table->parameters()) {
+            if (parameter.offset < first && parameter.endOffset() > first) first = parameter.offset;
+            if (parameter.offset < last && parameter.endOffset() > last) last = parameter.endOffset();
+        }
+        while (first < last) {
+            auto end = std::min(last, first + maxPayloadBytes);
+            for (const auto& parameter : blocks[i].table->parameters()) {
+                if (parameter.offset < end && parameter.endOffset() > end) end = parameter.offset;
+            }
+            if (end <= first) return {}; // payload cap cannot hold one parameter
+            const auto address = patchBase.plus(blocks[i].offset + static_cast<std::uint32_t>(first));
+            if (!address) return {};
+            const auto message = roland::RolandSysExMessage::dataSet(deviceId, modelId, *address,
+                roland::ByteVector(bytes.data() + first, bytes.data() + end));
+            if (!message) return {};
+            messages.push_back(*message);
+            first = end;
+        }
+    }
+    return messages;
+}
+
 } // namespace xp60studio::xpmodel

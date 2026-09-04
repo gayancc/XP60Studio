@@ -73,6 +73,100 @@ class DeviceSessionTest : public QObject
     Q_OBJECT
 
 private slots:
+    void cancellingAnAsyncOpenClosesBothPortsWithoutSending()
+    {
+        Fixture f;
+        f.session->connectEndpointsAsync("in-1", "out-1");
+        QCOMPARE(f.session->connectionState(), services::DeviceSession::ConnectionState::Connecting);
+        f.session->disconnectEndpoints();
+        QTRY_COMPARE(f.session->connectionState(), services::DeviceSession::ConnectionState::Disconnected);
+        QVERIFY(!f.transport->isInputOpen());
+        QVERIFY(!f.transport->isOutputOpen());
+        QVERIFY(f.transport->sentMessages().empty());
+    }
+
+    void failureOfOutputOpenClosesTheInput()
+    {
+        Fixture f;
+        f.session->connectEndpointsAsync("in-1", "missing");
+        QTRY_COMPARE(f.session->connectionState(), services::DeviceSession::ConnectionState::Error);
+        QVERIFY(!f.transport->isInputOpen());
+        QVERIFY(!f.transport->isOutputOpen());
+    }
+
+    void staleQueuedReplyCannotValidateAReconnectedSession()
+    {
+        Fixture f;
+        QVERIFY(f.connectDefault());
+        QVERIFY(f.session->testConnection());
+        const auto bytes = RolandSysExMessage::dataSet(RolandDeviceId::factoryDefault(), xp60::modelId(),
+            kTempPatch, ByteVector(12, 'A'))->encode();
+        f.transport->injectIncoming(bytes); // delivery queued for the old connection
+        f.session->disconnectEndpoints();
+        QVERIFY(f.connectDefault());
+        QVERIFY(f.session->testConnection());
+        QCoreApplication::processEvents();
+        QCOMPARE(f.session->linkState(), services::DeviceSession::LinkState::Checking);
+        QVERIFY(f.session->tracker().hasOutstanding());
+        f.deviceSendsRaw(bytes);
+        QCOMPARE(f.session->linkState(), services::DeviceSession::LinkState::Responding);
+    }
+
+    void wrongDeviceCannotPassConnectionTestAndTimeoutIsActionable()
+    {
+        Fixture f;
+        QVERIFY(f.connectDefault());
+        QVERIFY(f.session->testConnection());
+        f.deviceReplies(RolandSysExMessage::dataSet(*RolandDeviceId::fromDisplayNumber(18), xp60::modelId(),
+            kTempPatch, ByteVector(12, 'A')).value());
+        QCOMPARE(f.session->linkState(), services::DeviceSession::LinkState::Checking);
+        f.clock.advance(2000ms);
+        f.session->pollTimeouts();
+        QCOMPARE(f.session->linkState(), services::DeviceSession::LinkState::Failed);
+        QVERIFY(f.session->linkMessage().find("Device ID") != std::string::npos);
+    }
+
+    void refreshLossCancelsQueuedWritesAndReconnectDoesNotReplay()
+    {
+        Fixture f;
+        QVERIFY(f.connectDefault());
+        auto pacing = f.session->pacing();
+        pacing.interMessageDelay = 100ms;
+        f.session->setPacing(pacing);
+        const auto dt1 = RolandSysExMessage::dataSet(RolandDeviceId::factoryDefault(), xp60::modelId(),
+            kTempPatch, ByteVector(12, 'A')).value();
+        QSignalSpy batches(f.session.get(), &services::DeviceSession::dataSetBatchFinished);
+        f.session->sendDataSets({dt1, dt1, dt1});
+        QCoreApplication::processEvents();
+        QCOMPARE(f.transport->sentMessages().size(), std::size_t(1));
+        f.transport->setOutputs({});
+        f.session->refreshEndpoints(); // manual discovery also detects removal
+        QCOMPARE(f.session->connectionState(), services::DeviceSession::ConnectionState::Error);
+        QCOMPARE(batches.count(), 1);
+        QCOMPARE(batches.front()[1].toBool(), false);
+        QVERIFY(!f.transport->isInputOpen());
+        f.transport->addOutput("out-1", "XP-60 OUT");
+        f.session->refreshEndpoints();
+        QVERIFY(f.connectDefault());
+        f.clock.advance(1000ms);
+        QTest::qWait(150);
+        QCOMPARE(f.transport->sentMessages().size(), std::size_t(1));
+    }
+
+    void backendErrorEndsConnectionAndCancelsRequests()
+    {
+        Fixture f;
+        QVERIFY(f.connectDefault());
+        QVERIFY(f.session->testConnection());
+        f.transport->simulateError(midi::TransportError::make(midi::TransportErrorCode::Internal, "Wireless link lost"));
+        QCoreApplication::processEvents();
+        QCOMPARE(f.session->connectionState(), services::DeviceSession::ConnectionState::Error);
+        QVERIFY(!f.session->tracker().hasOutstanding());
+        QVERIFY(!f.transport->isInputOpen());
+        QVERIFY(!f.transport->isOutputOpen());
+        QCOMPARE(f.session->linkState(), services::DeviceSession::LinkState::Unchecked);
+    }
+
     void enumeratesEndpointsFromTransport()
     {
         Fixture f;
@@ -389,14 +483,13 @@ private slots:
     {
         Fixture f;
         QVERIFY(f.connectDefault());
-        // The third block read fails at the transport.
+        // The first block read fails at the transport, closing the connection.
         f.session->sendDataRequest(kTempPatch, RolandSize(0, 0, 0, 1));
         f.transport->clearSentMessages();
         f.session->cancelAllRequests();
         f.transport->failNextSend(midi::TransportError::make(midi::TransportErrorCode::SendFailed, "cable"));
-        QVERIFY(f.session->fetchTemporaryPatch());
-        // fetchPatch() returns true (all five were queued) but the fetch is
-        // already failed rather than waiting for timeouts.
+        QVERIFY(!f.session->fetchTemporaryPatch());
+        // The remaining blocks cannot be queued after a transport failure.
         QCOMPARE(f.session->patchFetch().state, services::DeviceSession::PatchFetchState::Failed);
         QVERIFY(f.session->patchFetch().message.find("cable") != std::string::npos);
         QVERIFY(!f.session->tracker().hasOutstanding()); // the other blocks were cancelled

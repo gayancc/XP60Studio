@@ -67,6 +67,108 @@ class PresentationTest : public QObject
     Q_OBJECT
 
 private slots:
+    void portSelectionSurvivesReorderAndRefusesMissingOrAmbiguousPorts()
+    {
+        Fixture f;
+        const auto input = f.session->inputs().front();
+        const auto output = f.session->outputs().front();
+        auto otherInput = input; otherInput.id = "other-in"; otherInput.displayName = "Other";
+        auto otherOutput = output; otherOutput.id = "other-out"; otherOutput.displayName = "Other";
+        f.transport->setInputs({otherInput, input});
+        f.transport->setOutputs({otherOutput, output});
+        f.devices->refreshEndpoints();
+        QCOMPARE(f.devices->selectedInputIndex(), 1);
+        QCOMPARE(f.devices->selectedOutputIndex(), 1);
+
+        f.transport->setInputs({otherInput});
+        f.devices->refreshEndpoints();
+        QCOMPARE(f.devices->selectedInputIndex(), -1);
+        QVERIFY(!f.devices->canConnect());
+        QVERIFY(f.devices->selectionMessage().contains("unavailable"));
+
+        auto replug = input; replug.id = "new-handle";
+        f.transport->setInputs({otherInput, replug});
+        f.devices->refreshEndpoints();
+        QCOMPARE(f.devices->selectedInputIndex(), 1);
+        auto duplicate = replug; duplicate.id = "duplicate";
+        f.transport->setInputs({replug, duplicate});
+        f.devices->refreshEndpoints();
+        QCOMPARE(f.devices->selectedInputIndex(), -1);
+        QVERIFY(!f.devices->canConnect());
+        QVERIFY(f.transport->sentMessages().empty());
+    }
+
+    void multiplePortsRequireAnExplicitSelection()
+    {
+        Fixture f(false);
+        f.transport->addInput("a", "A");
+        f.transport->addInput("b", "B");
+        f.transport->addOutput("c", "C");
+        f.transport->addOutput("d", "D");
+        f.devices->refreshEndpoints();
+        QCOMPARE(f.devices->selectedInputIndex(), -1);
+        QCOMPARE(f.devices->selectedOutputIndex(), -1);
+        QVERIFY(!f.devices->canConnect());
+        f.devices->setSelectedInputIndex(1);
+        f.devices->setSelectedOutputIndex(0);
+        QVERIFY(f.devices->canConnect());
+    }
+
+    void connectionPreferencesPersistWithoutOpeningPorts()
+    {
+        QTemporaryDir directory;
+        QVERIFY(directory.isValid());
+        const auto path = directory.filePath("connections.ini");
+        {
+            QSettings settings(path, QSettings::IniFormat);
+            Fixture f;
+            f.devices->useConnectionSettings(&settings);
+            f.transport->addInput("saved-in", "Wireless input");
+            f.transport->addOutput("saved-out", "Wireless output");
+            f.devices->refreshEndpoints();
+            f.devices->setSelectedInputIndex(1);
+            f.devices->setSelectedOutputIndex(1);
+            f.devices->setDeviceId(23);
+            f.devices->setPacingProfile(1);
+            settings.sync();
+        }
+        QSettings settings(path, QSettings::IniFormat);
+        Fixture f;
+        f.transport->addInput("saved-in", "Wireless input");
+        f.transport->addOutput("saved-out", "Wireless output");
+        f.devices->refreshEndpoints();
+        f.devices->useConnectionSettings(&settings);
+        QCOMPARE(f.devices->deviceId(), 23);
+        QCOMPARE(f.devices->pacingProfile(), 1);
+        QCOMPARE(f.session->pacing().maxDataSetPayloadBytes, std::size_t(64));
+        QCOMPARE(f.session->pacing().timeouts.firstResponse, 5000ms);
+        QCOMPARE(f.devices->selectedInputIndex(), 1);
+        QCOMPARE(f.devices->selectedOutputIndex(), 1);
+        QCOMPARE(f.devices->connectionState(), ConnectionState::Disconnected);
+        QVERIFY(!f.transport->isInputOpen());
+        QVERIFY(f.transport->sentMessages().empty());
+    }
+
+    void readOnlyConnectionTestUpdatesShellOnlyAfterValidReply()
+    {
+        Fixture f;
+        f.devices->connectDevice();
+        QTRY_COMPARE(f.devices->connectionState(), ConnectionState::Connected);
+        QVERIFY(!f.devices->connectionVerified());
+        QVERIFY(f.devices->canTestConnection());
+        f.devices->testConnection();
+        QVERIFY(!f.devices->canTestConnection());
+        QVERIFY(!f.devices->connectionVerified());
+        f.deviceReplies(roland::RolandSysExMessage::dataSet(roland::RolandDeviceId::factoryDefault(), xp60::modelId(),
+            roland::RolandAddress(3, 0, 0, 0), roland::ByteVector(12, 'A')).value());
+        QVERIFY(f.devices->connectionVerified());
+        QCOMPARE(f.shell->connectionLabel(), QStringLiteral("XP-60 RESPONDED"));
+        QCOMPARE(f.transport->sentMessages().size(), std::size_t(1));
+        QCOMPARE(f.transport->sentMessages().front()[4], std::uint8_t(0x11)); // RQ1 only
+        f.devices->setDeviceId(18);
+        QVERIFY(!f.devices->connectionVerified());
+    }
+
     void endpointModelsAreValidAndSelectionDefaults()
     {
         Fixture f;
@@ -98,14 +200,15 @@ private slots:
         QSignalSpy connectionSpy(f.devices.get(), &DevicesViewModel::connectionChanged);
         QSignalSpy shellSpy(f.shell.get(), &AppShellViewModel::connectionChanged);
         f.devices->connectDevice();
+        QTRY_COMPARE(f.devices->connectionState(), ConnectionState::Connected);
         QCOMPARE(f.devices->connectionState(), ConnectionState::Connected);
-        QCOMPARE(f.devices->connectionStateText(), QStringLiteral("Connected"));
+        QCOMPARE(f.devices->connectionStateText(), QStringLiteral("MIDI ports open"));
         QVERIFY(f.devices->connectionDetail().contains(QStringLiteral("XP-60 IN")));
         QVERIFY(!f.devices->canConnect());
         QVERIFY(f.devices->canDisconnect());
         QVERIFY(connectionSpy.count() >= 1);
         QVERIFY(shellSpy.count() >= 1);
-        QCOMPARE(f.shell->connectionLabel(), QStringLiteral("XP-60 LIVE"));
+        QCOMPARE(f.shell->connectionLabel(), QStringLiteral("MIDI OPEN"));
         QCOMPARE(f.shell->connectionState(), ConnectionState::Connected);
 
         f.devices->disconnectDevice();
@@ -136,7 +239,7 @@ private slots:
         Fixture f;
         f.transport->failNextOpen(midi::TransportError::make(midi::TransportErrorCode::OpenFailed, "port busy"));
         f.devices->connectDevice();
-        QCOMPARE(f.devices->connectionState(), ConnectionState::Error);
+        QTRY_COMPARE(f.devices->connectionState(), ConnectionState::Error);
         QCOMPARE(f.devices->lastError(), QStringLiteral("port busy"));
         QCOMPARE(f.devices->connectionDetail(), QStringLiteral("port busy"));
         QCOMPARE(f.shell->connectionLabel(), QStringLiteral("XP-60 ERROR"));
@@ -204,6 +307,7 @@ private slots:
         QAbstractItemModelTester logTester(f.devices->log(), QAbstractItemModelTester::FailureReportingMode::QtTest);
         QAbstractItemModelTester opsTester(f.devices->operations(), QAbstractItemModelTester::FailureReportingMode::QtTest);
         f.devices->connectDevice();
+        QTRY_COMPARE(f.devices->connectionState(), ConnectionState::Connected);
         QVERIFY(f.devices->canSendRequest());
         QSignalSpy canSend(f.devices.get(), &DevicesViewModel::canSendRequestChanged);
         QVERIFY(f.devices->sendRequest());
@@ -253,6 +357,7 @@ private slots:
     {
         Fixture f;
         f.devices->connectDevice();
+        QTRY_COMPARE(f.devices->connectionState(), ConnectionState::Connected);
         QVERIFY(f.devices->sendRequest());
         f.now += std::chrono::duration_cast<protocol::Clock::duration>(2000ms);
         f.session->pollTimeouts();
@@ -310,6 +415,7 @@ private slots:
         QVERIFY(!f.devices->canFetchPatch());
         QCOMPARE(f.devices->patchFetchStateText(), QStringLiteral("Not fetched"));
         f.devices->connectDevice();
+        QTRY_COMPARE(f.devices->connectionState(), ConnectionState::Connected);
         QVERIFY(f.devices->canFetchPatch());
         QSignalSpy spy(f.devices.get(), &DevicesViewModel::patchFetchChanged);
         f.devices->fetchCurrentPatch();
@@ -372,6 +478,7 @@ private slots:
         QVERIFY(f.devices->writePlanText().contains(QStringLiteral("permanent User patches are not touched")));
 
         f.devices->connectDevice();
+        QTRY_COMPARE(f.devices->connectionState(), ConnectionState::Connected);
         // Connected but nothing read yet: arming is still refused, and says why.
         QVERIFY(!f.devices->canArmWrite());
         QVERIFY(f.devices->armBlockedReason().contains(QStringLiteral("Fetch the temporary Patch first")));

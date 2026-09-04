@@ -19,6 +19,7 @@
 #include <QQmlContext>
 #include <QQuickStyle>
 #include <QQuickWindow>
+#include <QSettings>
 #include <QTimer>
 #include <QUrl>
 
@@ -59,7 +60,9 @@ int main(int argc, char* argv[])
 
     xp60studio::services::DeviceSession session(createTransport());
     xp60studio::services::PatchTransfer transfer(session);
+    QSettings connectionSettings;
     xp60studio::presentation::DevicesViewModel devices(session, &transfer);
+    devices.useConnectionSettings(&connectionSettings);
     xp60studio::presentation::PatchEditorViewModel editor(session, &transfer);
     xp60studio::presentation::AppShellViewModel shell(&devices);
 

@@ -12,8 +12,9 @@ namespace xp60studio::midi {
 
 // IMidiTransport implementation backed by libremidi 5.x.
 //
-// One observer is used for enumeration and hot-plug notification; one midi_in
-// and one midi_out are created lazily on the same backend API. libremidi
+// Observers enumerate native MIDI ports and, when built, Windows Runtime
+// ports (including OS-paired Bluetooth MIDI). Input and output use the API of
+// their selected endpoint; duplicate APIs remain explicitly labelled. libremidi
 // recombines SysEx internally for MIDI 1 backends, but the received bytes are
 // still passed through the caller's SysExAssembler so platform differences in
 // fragmentation never reach the protocol layer.

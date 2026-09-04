@@ -28,7 +28,7 @@ T.Dial {
     Accessible.role: Accessible.Dial
     Accessible.name: valueText.length > 0 ? valueText : String(value)
 
-    readonly property real startAngle: -140
+    readonly property real arcStartAngle: -140
     readonly property real sweep: 280
     readonly property real normalised: control.to > control.from
                                        ? (control.value - control.from) / (control.to - control.from) : 0
@@ -70,8 +70,8 @@ T.Dial {
                 var cx = width / 2
                 var cy = height / 2
                 var r = Math.min(width, height) / 2 - 4
-                var a0 = (control.startAngle - 90) * Math.PI / 180
-                var a1 = (control.startAngle + control.sweep - 90) * Math.PI / 180
+                var a0 = (control.arcStartAngle - 90) * Math.PI / 180
+                var a1 = (control.arcStartAngle + control.sweep - 90) * Math.PI / 180
 
                 ctx.lineCap = "round"
                 ctx.lineWidth = 3
@@ -111,7 +111,7 @@ T.Dial {
             transform: Rotation {
                 origin.x: 1
                 origin.y: Math.min(control.width, control.height) / 2 - 7
-                angle: control.startAngle + control.sweep * control.normalised
+                angle: control.arcStartAngle + control.sweep * control.normalised
             }
         }
     }

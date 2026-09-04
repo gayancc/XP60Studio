@@ -28,6 +28,7 @@ void registerQmlTypes()
     qmlRegisterUncreatableType<AppShellViewModel>(kPresentationModuleUri, 1, 0, "AppShellViewModel", QString::fromLatin1(reason));
     qmlRegisterUncreatableType<PatchEditorViewModel>(kPresentationModuleUri, 1, 0, "PatchEditorViewModel", QString::fromLatin1(reason));
     qmlRegisterUncreatableType<ToneViewModel>(kPresentationModuleUri, 1, 0, "ToneViewModel", QString::fromLatin1(reason));
+    qmlRegisterUncreatableType<EditorParameterModel>(kPresentationModuleUri, 1, 0, "EditorParameterModel", QString::fromLatin1(reason));
     qmlRegisterUncreatableType<MidiEndpointListModel>(kPresentationModuleUri, 1, 0, "MidiEndpointListModel", QString::fromLatin1(reason));
     qmlRegisterUncreatableType<ProtocolLogModel>(kPresentationModuleUri, 1, 0, "ProtocolLogModel", QString::fromLatin1(reason));
     qmlRegisterUncreatableType<RequestOperationModel>(kPresentationModuleUri, 1, 0, "RequestOperationModel", QString::fromLatin1(reason));

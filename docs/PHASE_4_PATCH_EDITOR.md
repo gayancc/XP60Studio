@@ -15,10 +15,16 @@ shipping QML against a real Patch out of the golden fixture.
 
 | Milestone | State |
 |---|---|
-| **M2** Patch Editor / Four-Tone Mixer | built, tested |
-| **M3** Wave Browser | **blocked** — needs the XP-60 Waveform List (wave number → name, category), a manual appendix that has not been supplied |
+| **M2** Patch Editor / Four-Tone Mixer | **partial — not complete**; see `PHASE_4_REVALIDATION.md` for acceptance gaps and current validation |
+| **M3** Wave Browser | **next** — the official manual is now located; its waveform appendix still needs transcription and validation |
 
 ### What M2 covers, and what it does not
+
+The 2026-09-04 revalidation supersedes historical completion claims below.
+The screen defaults to local editing. Explicitly armed live audition now applies
+Solo/Mute, A/B and coalesced parameter changes through verified transfers.
+See `PHASE_4_LIVE_AUDITION.md`. Physical audio/latency checks, EFX-specific byte
+interpretations and remaining routing/visual fidelity are still open.
 
 Built: the Current Patch header, the visual four-Tone architecture and mixer,
 Tone Solo/Mute, graphical envelope editors for the Sound (Pitch), Filter and
@@ -27,14 +33,30 @@ visualisation, exact numeric entry beside every continuous control, the A/B
 original/current foundation, and local / modified / on-instrument state
 distinctions.
 
-Not built yet, and honestly marked as such on the screen — the Motion and
-Effects tabs show a "not built yet" state rather than an empty panel:
+The 2026-09-04 continuation adds:
 
-- LFO editor (Motion section)
-- effects editor (Effects section)
-- Play / Design / Expert progressive-disclosure model
+- Sound: Pitch, Pitch Envelope, Wave/FXM, Tone Delay and Structure groups.
+- Filter: TVF type/cutoff/resonance and full TVF Envelope parameters.
+- Amp: TVA, TVA Envelope and Pan parameters.
+- Motion: both LFOs, including waveform, trigger, rate, delay, fade, sync and
+  Pitch/Filter/Level/Pan modulation depths; controller assignments and switches.
+- Effects: common EFX, Chorus and Reverb groups plus selected-Tone routing.
+  EFX type-specific parameter meanings are **not** implemented: the twelve
+  raw parameter slots remain explicitly labelled as such.
+- Play / Design / Expert disclosure over the same working Patch. Play retains
+  the mixer and common play settings; Design adds section controls and graphical
+  envelopes/ranges; Expert provides searchable, grouped, virtualized controls
+  for the selected Tone or Patch Common. All four Tone cards remain visible.
+- Exact numeric entry for both key and velocity bounds, with ordered limits.
+- Colored Tone-to-Structure overview connections at four-column widths.
+  Wrapped two-column layouts omit them to avoid crossing other Tone cards.
+
+Still not built:
+
+- semantic, per-effect controls based on the official effect algorithm tables
 - safe real-time parameter updates while dragging (throttling and coalescing);
   today edits are local and reach the instrument only on an explicit Write
+- audible Solo/Mute and A/B
 - Wave Browser (M3, blocked above)
 
 ## Architecture
@@ -52,6 +74,8 @@ QML control  →  ToneViewModel / PatchEditorViewModel  →  Xp60Patch (typed mo
 |---|---|---|
 | `PatchEditorViewModel` | `src/presentation/PatchEditorViewModel.*` | screen state: identity, sections, tones, signal flow, envelope, ranges, contextual settings, A/B, history, write |
 | `ToneViewModel` | `src/presentation/ToneViewModel.*` | one Tone of the mixer; holds no data of its own beyond audition state |
+| `EditorParameterModel` | `src/presentation/EditorParameterModel.*` | editable descriptor-backed section/Expert projections; no duplicated Patch state or protocol offsets in QML |
+| `EditorParameterPanel` | `qml/XP60Studio/Controls/EditorParameterPanel.qml` | reusable virtualized parameter groups, enum menus, exact values and Expert search/scope |
 | `EditorScreen.qml` | `qml/XP60Studio/Screens/` | the M2 composition |
 | Synth controls | `qml/XP60Studio/Controls/` | `XpKnob`, `XpSegmentedControl`, `ParameterValueEditor`, `ToneCard`, `ToneMiniEnvelope`, `EnvelopeEditor`, `KeyboardStrip`, `XpRangeBar`, `SignalFlowNode`, `SignalFlowConnector` |
 
@@ -73,17 +97,26 @@ and both range controls with their numeric ends.
 
 - **Local editing is non-destructive.** The fetched Patch is kept as the A
   side; every edit applies to a working copy. Nothing reaches the instrument
-  until the user arms and presses Write.
+  until the user arms and presses Write or explicitly starts live audition.
 - **A refused value costs nothing.** A write outside the documented range is
-  rejected by `Xp60Patch::setRaw` and the undo step is rolled back, so the
-  history never contains a state the model would not accept.
+  validated before history changes. Crossed key/velocity bounds are also
+  rejected by the editor boundary, including the Expert path.
 - **Undo is bounded** at 64 steps; a new edit clears the redo branch.
 - **A/B freezes editing.** While the original is on screen, edits and renames
   are refused rather than silently applied to the hidden working copy.
 - **Solo and mute are audition state**, never Patch data: toggling them leaves
   the Patch byte-identical and adds no undo step.
 - **Re-fetching replaces the A side** and clears the history, because the
-  instrument, not the editor, is then the source of truth.
+  instrument, not the editor, is then the source of truth. This applies only
+  to an editing fetch; transfer safety/read-back fetches preserve editor history.
+- **Parameter identity is independent of storage offsets.** Numeric and enum
+  edits resolve a documented parameter ID and Tone, then use the typed model.
+  Changing values sends `dataChanged`, preserving focused delegates. Section,
+  scope and search changes rebuild the bounded, virtualized projection.
+- **Unknown interpretation stays visible.** Numeric fields display formatted
+  values when idle and edit raw XP values on focus; enum menus use transcribed
+  labels. The Effects and Expert panels state missing semantic/unit information
+  before the controls. No effect names, physical units or wave names are invented.
 
 ### Writing
 
@@ -150,10 +183,10 @@ which `AGENTS.md` forbids.
 
 | # | Mockup shows | Built screen shows | Why |
 |---|---|---|---|
-| 1 | Wave names — "Warm Strings", "Choir Aahs", "Analog Bell", "Warm Pad" | The wave identifier, e.g. `INT 005`, with group and gain beneath | The XP-60 Waveform List (wave number → name) is a separate manual appendix that has not been transcribed. The Parameter Address Map gives only Wave Group Type, Group ID and Wave Number. Resolved by M3 once the list is supplied. |
+| 1 | Wave names — "Warm Strings", "Choir Aahs", "Analog Bell", "Warm Pad" | The wave identifier, e.g. `INT 005`, with group and gain beneath | The official Owner's Manual is now available locally, but its Waveform List (wave number → name) has not been transcribed. The Parameter Address Map gives only Wave Group Type, Group ID and Wave Number. Catalog transcription belongs to M3. |
 | 2 | Tone level as `-2.3 dB` | The Roland raw value, e.g. `117` | The Parameter Address Map defines Tone Level as raw 0..127 and gives no conversion to decibels. |
 | 3 | Envelope stage readouts as `0.40 s`, `2.20 s`, `-6.0 dB`, `3.20 s` | Raw times and levels 0..127, with a note on the card stating that the manual gives no conversion | Same reason. The note is shown rather than hidden so the screen never implies a precision it does not have. |
-| 4 | Effect names — MFX "St.Parametric", Chorus "Chorus 1", Structure "4-TONE" | `Type 11`, `Level 127`, `1 / 1` (the structure pair) | The EFX and Chorus type name lists are not transcribed; the map gives the raw index. Reverb *is* named (`STAGE2`) because its eight labels are in the map. |
+| 4 | Effect names — MFX "St.Parametric", Chorus "Chorus 1", Structure "4-TONE" | `HEXA-CHORUS`, `Level 127`, `1 / 1` (the structure pair) | All 40 EFX type names are now transcribed from the official Owner's Manual. Chorus has fixed controls and no documented type selector. Reverb is named (`STAGE2`) from the map. EFX-specific slot mappings/units remain open. |
 | 5 | Envelope stage boxes in one row of four | Two rows of two | Rule 6 — at the mockup's column proportions four label-plus-field pairs crush the numeric fields to a few pixels, and every value must stay typeable. |
 | 6 | Tone card octave box only | Octave box, plus the exact semitone count when the tuning is not a whole octave | Rule 1 — Coarse Tune is per-semitone on the XP-60, so an octave stepper alone cannot express every value a Patch may already hold. The line is blank when the tuning *is* a whole octave. |
 | 7 | Keybed labelled `C-2` … `G8`, drawn across the full note range | `C-1` … `G9`, drawn as the XP-60's 61 keys and widened only when the range needs it | Rule 1 and rule 6. Roland's Parameter Address Map names the Key Range bounds `C-1..Upper`, so C-1..G9 is the instrument's own convention and the mockup's octave numbering is one octave off it. Drawing all 128 notes at this panel width gives about four pixels a key; see **The keybed** above. |
@@ -165,8 +198,8 @@ model of the mockup; the four anchor screens are still the target.
 
 | Test | Covers |
 |---|---|
-| `tst_patch_editor` (31 cases) | empty state, adopting a fetched Patch, tone card binding, refused values, octave stepping, pan/level formatting, solo/mute leaving data untouched, sections and envelopes, the three-level Level envelope, envelope dragging and exact entry, key/velocity ordering, contextual settings, undo/redo/revert/bounded history, A/B freezing, patch-name validation, arming and writing, mismatch reporting, re-fetch, the keybed window and what it says when a range reaches past the instrument's keys |
-| `tst_qml` — `EditorScreen` (23 cases) | screen binds to a real fetched Patch, four colour-coded Tone cards, grid reflow, section tabs driving the envelope, a knob edit reaching the Patch, write gated behind arming, A/B, undo/redo/revert button state, raw-unit envelope readouts, key range and velocity following the selected Tone, the keybed's piano geometry, its behaviour under a resize, black-key hit testing, range animation and edge ordering, velocity emphasis, and the new controls' keyboard, range and signal behaviour |
+| `tst_patch_editor` | existing editor/transfer/history/range regressions, plus disclosure preserving data, selected-Tone edits, stable model notifications, both LFOs and modulation targets, effect routing, nibble parameter indexing, Expert search and crossed-range rejection |
+| `tst_qml` — `EditorScreen` | real fetched Patch and four Tone cards, grid/header reflow, envelopes and ranges, arming/A/B/history, plus disclosure, filter edits, Motion/Effects controls, Expert search/scope, exact bounds and real keyboard entry/enum activation |
 
 Both run against `tests/fixtures/xp60/user-bank-amal.syx`, a real XP-60 user
 bank, through a `FakeXp60` that answers RQ1 and applies DT1 — so the screen is
@@ -176,6 +209,11 @@ bytes. The shared harness lives in `tests/cpp/support/FakeXp60.h`.
 `tests/tools/screenshot_harness.cpp` renders any available screen headless
 against the same fixture; it is a documentation aid and is never registered as
 a test.
+
+Latest Windows validation: **22/22 CTest suites pass**; 45 editor, 20 transfer and
+55 total QML checks pass (including Qt setup/cleanup). Fresh Windows screen captures
+are listed in `PHASE_4_REVALIDATION.md`; these supersede the historical capture
+at the start of this document.
 
 ## Not verified on hardware
 
@@ -189,6 +227,7 @@ this phase promotes any parameter to `HardwareVerified`.
 1. **XP-60 Waveform List** — required for M3 (Wave Browser) and to resolve
    deviation 1. Needed as wave number → name, with category if the manual
    gives one.
-2. **EFX and Chorus type name lists** — would resolve deviation 4.
+2. **EFX parameter slot/unit mappings** — the 40 EFX type names are now transcribed.
+   The fixed Chorus has no documented type selector; its controls follow p.64.
 3. **Envelope time/level units** — if Roland documents a conversion anywhere,
    deviations 2 and 3 can be resolved; otherwise raw values stay.

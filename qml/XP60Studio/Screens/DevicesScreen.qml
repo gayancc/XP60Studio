@@ -18,6 +18,7 @@ Item {
 
     QQC.ScrollView {
         id: scroller
+        objectName: "devicesScroll"
         anchors.fill: parent
         contentWidth: availableWidth
         QQC.ScrollBar.vertical: XpScrollBar { parent: scroller; x: scroller.width - width; height: scroller.availableHeight }
@@ -72,7 +73,7 @@ Item {
                                 StatusPill {
                                     objectName: "connectionPill"
                                     text: root.devices.connectionStateText
-                                    tone: root.devices.connectionState === ConnectionState.Connected ? "live"
+                                    tone: root.devices.connectionState === ConnectionState.Connected ? (root.devices.connectionVerified ? "live" : "warning")
                                         : root.devices.connectionState === ConnectionState.Connecting ? "warning"
                                         : root.devices.connectionState === ConnectionState.Error ? "error" : "neutral"
                                     pulsing: root.devices.connectionState === ConnectionState.Connecting
@@ -91,9 +92,9 @@ Item {
                                     objectName: "inputPicker"
                                     Layout.fillWidth: true
                                     model: root.devices.inputs
-                                    textRole: "displayName"
-                                    enabled: root.devices.connectionState !== ConnectionState.Connected && count > 0
-                                    displayText: count === 0 ? "No MIDI inputs found" : currentText
+                                    textRole: "selectionLabel"
+                                    enabled: root.devices.connectionState !== ConnectionState.Connected && root.devices.connectionState !== ConnectionState.Connecting && count > 0
+                                    displayText: count === 0 ? "No MIDI inputs found" : currentIndex < 0 ? "Choose MIDI input" : currentText
                                     currentIndex: root.devices.selectedInputIndex
                                     onActivated: function(index) { root.devices.selectedInputIndex = index }
                                     Accessible.name: "MIDI input"
@@ -105,9 +106,9 @@ Item {
                                     objectName: "outputPicker"
                                     Layout.fillWidth: true
                                     model: root.devices.outputs
-                                    textRole: "displayName"
-                                    enabled: root.devices.connectionState !== ConnectionState.Connected && count > 0
-                                    displayText: count === 0 ? "No MIDI outputs found" : currentText
+                                    textRole: "selectionLabel"
+                                    enabled: root.devices.connectionState !== ConnectionState.Connected && root.devices.connectionState !== ConnectionState.Connecting && count > 0
+                                    displayText: count === 0 ? "No MIDI outputs found" : currentIndex < 0 ? "Choose MIDI output" : currentText
                                     currentIndex: root.devices.selectedOutputIndex
                                     onActivated: function(index) { root.devices.selectedOutputIndex = index }
                                     Accessible.name: "MIDI output"
@@ -119,6 +120,7 @@ Item {
                                     Layout.fillWidth: true
                                     XpSpinField {
                                         objectName: "deviceIdField"
+                                        enabled: root.devices.connectionState !== ConnectionState.Connecting && !root.devices.transferBusy
                                         from: root.devices.deviceIdMinimum
                                         to: root.devices.deviceIdMaximum
                                         value: root.devices.deviceId
@@ -134,6 +136,33 @@ Item {
                                 }
                             }
 
+                            XpLabel {
+                                text: root.devices.selectionMessage
+                                role: "caption"
+                                secondary: true
+                                wrapMode: Text.WordWrap
+                                Layout.fillWidth: true
+                            }
+                            XpLabel {
+                                text: "Computer MIDI IN receives from XP-60 OUT. Computer MIDI OUT sends to XP-60 IN."
+                                role: "caption"
+                                muted: true
+                                wrapMode: Text.WordWrap
+                                Layout.fillWidth: true
+                            }
+                            RowLayout {
+                                Layout.fillWidth: true
+                                XpLabel { text: "Transfer pacing"; role: "caption"; secondary: true }
+                                XpComboBox {
+                                    objectName: "pacingPicker"
+                                    Layout.fillWidth: true
+                                    model: ["Standard", "Conservative / wireless"]
+                                    currentIndex: root.devices.pacingProfile
+                                    enabled: !root.devices.hasOutstandingRequests && !root.devices.transferBusy
+                                    onActivated: function(index) { root.devices.pacingProfile = index }
+                                    Accessible.name: "Transfer pacing"
+                                }
+                            }
                             XpLabel {
                                 text: root.devices.connectionDetail
                                 role: "caption"
@@ -153,12 +182,43 @@ Item {
                                 }
                                 XpButton {
                                     objectName: "disconnectButton"
-                                    text: "Disconnect"
+                                    text: root.devices.connectionState === ConnectionState.Connecting ? "Cancel connection" : "Disconnect"
                                     enabled: root.devices.canDisconnect
                                     onClicked: root.devices.disconnectDevice()
                                 }
-                                Item { Layout.fillWidth: true }
-                                XpLabel { text: root.devices.backendName; role: "caption"; muted: true; elide: Text.ElideMiddle; Layout.maximumWidth: 240 }
+
+                            }
+                            RowLayout {
+                                Layout.fillWidth: true
+                                XpButton {
+                                    objectName: "testConnectionButton"
+                                    text: "Test connection"
+                                    enabled: root.devices.canTestConnection
+                                    onClicked: root.devices.testConnection()
+                                }
+                                StatusPill { text: "Read only"; tone: "info"; showDot: false }
+                            }
+                            XpLabel {
+                                objectName: "connectionTestMessage"
+                                text: root.devices.connectionTestMessage
+                                role: "caption"
+                                wrapMode: Text.WordWrap
+                                Layout.fillWidth: true
+                                color: root.devices.connectionVerified ? Theme.live : Theme.textSecondary
+                            }
+                            XpLabel {
+                                text: "Wireless MIDI: pair the adapter with the operating system, then refresh and choose its ports. Windows Bluetooth MIDI requires the Windows Runtime backend or a USB MIDI bridge."
+                                role: "caption"
+                                muted: true
+                                wrapMode: Text.WordWrap
+                                Layout.fillWidth: true
+                            }
+                            XpLabel {
+                                text: root.devices.backendName
+                                role: "caption"
+                                muted: true
+                                wrapMode: Text.WrapAnywhere
+                                Layout.fillWidth: true
                             }
                         }
                     }

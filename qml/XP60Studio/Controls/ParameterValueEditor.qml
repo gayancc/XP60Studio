@@ -8,6 +8,7 @@ RowLayout {
     id: root
 
     property string label: ""
+    property string accessibleName: label
     property int value: 0
     property int minimumValue: 0
     property int maximumValue: 127
@@ -52,6 +53,6 @@ RowLayout {
                 root.edited(v)
             focus = false
         }
-        Accessible.name: root.label
+        Accessible.name: root.accessibleName
     }
 }

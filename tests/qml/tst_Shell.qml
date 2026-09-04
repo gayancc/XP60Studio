@@ -55,6 +55,8 @@ TestCase {
         verify(indicator)
         compare(indicator.tone, "neutral")
         indicator.connectionState = ConnectionState.Connected
+        compare(indicator.tone, "warning")
+        indicator.verified = true
         compare(indicator.tone, "live")
         indicator.connectionState = ConnectionState.Error
         compare(indicator.tone, "error")
@@ -67,8 +69,9 @@ TestCase {
         verify(header)
         compare(testShell.connectionLabel, "XP-60 OFFLINE")
         testDevices.connectDevice()
+        tryCompare(testDevices, "connectionState", ConnectionState.Connected)
         compare(testShell.connectionState, ConnectionState.Connected)
-        compare(testShell.connectionLabel, "XP-60 LIVE")
+        compare(testShell.connectionLabel, "MIDI OPEN")
         testDevices.disconnectDevice()
         compare(testShell.connectionLabel, "XP-60 OFFLINE")
     }

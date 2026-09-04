@@ -23,6 +23,7 @@ set(XP60STUDIO_QML_FILES
   Controls/XpSegmentedControl.qml
   Controls/XpRangeBar.qml
   Controls/ParameterValueEditor.qml
+  Controls/EditorParameterPanel.qml
   Controls/ToneCard.qml
   Controls/ToneMiniEnvelope.qml
   Controls/EnvelopeEditor.qml

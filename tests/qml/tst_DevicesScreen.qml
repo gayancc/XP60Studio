@@ -23,6 +23,13 @@ TestCase {
         testDevices.clearLog()
     }
 
+    function reveal(screen, control) {
+        var flickable = findChild(screen, "devicesScroll").contentItem
+        var position = control.mapToItem(flickable.contentItem, 0, 0)
+        flickable.contentY = Math.max(0, Math.min(position.y - 20, flickable.contentHeight - flickable.height))
+        wait(30)
+    }
+
     function test_screen_loads_and_binds() {
         var screen = createTemporaryObject(screenComponent, testCase)
         verify(screen)
@@ -39,7 +46,7 @@ TestCase {
         var inputPicker = findChild(screen, "inputPicker")
         verify(inputPicker)
         compare(inputPicker.count, 1)
-        compare(inputPicker.displayText, "XP-60 IN")
+        compare(inputPicker.displayText, "XP-60 IN · Loopback")
         var addressField = findChild(screen, "addressField")
         compare(addressField.text, "03 00 00 00")
     }
@@ -53,9 +60,9 @@ TestCase {
         var pill = findChild(screen, "connectionPill")
         compare(pill.text, "Disconnected")
         mouseClick(connectButton)
-        compare(testDevices.connectionState, ConnectionState.Connected)
-        compare(pill.text, "Connected")
-        compare(pill.tone, "live")
+        tryCompare(testDevices, "connectionState", ConnectionState.Connected)
+        compare(pill.text, "MIDI ports open")
+        compare(pill.tone, "warning")
         compare(connectButton.enabled, false)
         compare(disconnectButton.enabled, true)
         compare(sendButton.enabled, true)
@@ -63,15 +70,18 @@ TestCase {
         compare(inputPicker.enabled, false) // pickers lock while connected
 
         var logBefore = testDevices.log.count
+        reveal(screen, sendButton)
         mouseClick(sendButton)
         verify(testDevices.hasOutstandingRequests)
         verify(testDevices.log.count > logBefore)
         var cancelButton = findChild(screen, "cancelRequestsButton")
         compare(cancelButton.enabled, true)
+        reveal(screen, cancelButton)
         mouseClick(cancelButton)
         compare(testDevices.hasOutstandingRequests, false)
         compare(testDevices.operations.count >= 1, true)
 
+        reveal(screen, disconnectButton)
         mouseClick(disconnectButton)
         compare(pill.text, "Disconnected")
         compare(sendButton.enabled, false)
@@ -81,6 +91,7 @@ TestCase {
         var screen = createTemporaryObject(screenComponent, testCase)
         verify(screen)
         testDevices.connectDevice()
+        tryCompare(testDevices, "connectionState", ConnectionState.Connected)
         var sendButton = findChild(screen, "sendRequestButton")
         var addressField = findChild(screen, "addressField")
         var validation = findChild(screen, "requestValidation")
@@ -96,6 +107,30 @@ TestCase {
         compare(validation.color, Theme.error)
     }
 
+    function test_connection_test_and_pacing_are_bound_to_the_session() {
+        var screen = createTemporaryObject(screenComponent, testCase)
+        var probe = findChild(screen, "testConnectionButton")
+        var pacing = findChild(screen, "pacingPicker")
+        verify(probe)
+        verify(pacing)
+        compare(probe.enabled, false)
+        testDevices.pacingProfile = 1
+        compare(pacing.currentIndex, 1)
+        testDevices.connectDevice()
+        tryCompare(testDevices, "connectionState", ConnectionState.Connected)
+        compare(probe.enabled, true)
+        reveal(screen, probe)
+        mouseClick(probe)
+        verify(testDevices.hasOutstandingRequests)
+        compare(probe.enabled, false)
+        compare(pacing.enabled, false)
+        compare(testDevices.connectionVerified, false)
+        verify(findChild(screen, "connectionTestMessage").text.indexOf("Reading") >= 0)
+        testDevices.cancelAllRequests()
+        compare(probe.enabled, true)
+        testDevices.pacingProfile = 0
+    }
+
     function test_patch_fetch_button_follows_connection() {
         var screen = createTemporaryObject(screenComponent, testCase)
         verify(screen)
@@ -106,6 +141,7 @@ TestCase {
         compare(fetchButton.enabled, false)
         compare(pill.text, "Not fetched")
         testDevices.connectDevice()
+        tryCompare(testDevices, "connectionState", ConnectionState.Connected)
         compare(fetchButton.enabled, true)
         mouseClick(fetchButton)
         compare(testDevices.patchFetchInProgress, true)
@@ -139,6 +175,7 @@ TestCase {
 
         // Connected but no Patch read yet: still refused, with a different reason.
         testDevices.connectDevice()
+        tryCompare(testDevices, "connectionState", ConnectionState.Connected)
         compare(armButton.enabled, false)
         compare(writeButton.enabled, false)
         verify(reason.text.indexOf("Fetch the temporary Patch") >= 0)

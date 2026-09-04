@@ -113,6 +113,7 @@ Rectangle {
                 spacing: Metrics.spacingSm
                 ConnectionStatusIndicator {
                     connectionState: root.shell.connectionState
+                    verified: root.shell.connectionVerified
                     label: root.shell.connectionLabel
                     compact: true
                 }

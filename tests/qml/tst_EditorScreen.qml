@@ -49,6 +49,10 @@ TestCase {
         testEditor.disarmWrite()
         testEditor.section = 0
         testEditor.selectedTone = 1
+        testEditor.disclosure = 1
+        testEditor.expertParameters.commonScope = false
+        testEditor.expertParameters.group = 0
+        testEditor.expertParameters.search = ""
     }
 
     function test_screen_loads_and_binds_to_the_fetched_patch() {
@@ -85,8 +89,167 @@ TestCase {
         var grid = findChild(screen, "toneGrid")
         verify(grid)
         compare(grid.columns, 4)
+        verify(findChild(screen, "toneConnections").visible)
         screen.width = 900
         compare(grid.columns, 2)
+        verify(!findChild(screen, "toneConnections").visible)
+    }
+
+    function test_write_actions_fit_at_minimum_shell_width() {
+        var screen = createTemporaryObject(screenComponent, testCase,
+                                           { width: Metrics.windowMinWidth - Metrics.railWidth })
+        verify(screen)
+        waitForRendering(screen)
+        var write = findChild(screen, "writeToDeviceButton")
+        var arm = findChild(screen, "armWriteButton")
+        verify(write)
+        verify(arm)
+        var position = write.mapToItem(screen, 0, 0)
+        verify(position.x >= 0)
+        verify(position.x + write.width <= screen.width)
+        verify(position.y + write.height <= screen.height)
+        mouseClick(arm)
+        verify(testEditor.writeArmed)
+        mouseClick(arm)
+    }
+
+    function test_live_audition_requires_arm_and_finishes_explicitly() {
+        var screen = createTemporaryObject(screenComponent, testCase)
+        screen.width = 764
+        var start = findChild(screen, "startLiveButton")
+        var stop = findChild(screen, "stopLiveButton")
+        var restore = findChild(screen, "restoreAuditionButton")
+        compare(start.enabled, false)
+        testEditor.armWrite()
+        compare(start.enabled, true)
+        mouseClick(start)
+        compare(testEditor.liveAudition, true)
+        testHarness.pumpEditor()
+        verify(findChild(screen, "auditionMessage").text.indexOf("LIVE") >= 0)
+        compare(stop.visible, true)
+        compare(restore.visible, true)
+        verify(restore.mapToItem(screen, restore.width, 0).x <= screen.width)
+        mouseClick(stop)
+        compare(testEditor.liveStopping, true)
+        wait(180)
+        testHarness.pumpEditor()
+        wait(180)
+        compare(testEditor.liveAudition, false)
+        compare(start.enabled, false)
+    }
+
+    Component {
+        id: parameterPanelComponent
+        EditorParameterPanel { editor: testEditor; parameters: testEditor.sectionParameters; width: 700; title: "Parameters" }
+    }
+
+    function test_disclosure_keeps_four_tones_and_reveals_the_right_controls() {
+        var screen = createTemporaryObject(screenComponent, testCase)
+        var tabs = findChild(screen, "disclosureTabs")
+        tabs.activated(0)
+        compare(testEditor.disclosure, 0)
+        verify(!findChild(screen, "designDetails").visible)
+        verify(!findChild(screen, "expertParameterPanel").visible)
+        verify(findChild(screen, "toneGrid").visible)
+        tabs.activated(2)
+        verify(findChild(screen, "expertParameterPanel").visible)
+        verify(findChild(screen, "toneGrid").visible)
+        verify(!testEditor.modified)
+    }
+
+    function test_filter_parameter_edit_flows_through_undo_and_comparison() {
+        var screen = createTemporaryObject(screenComponent, testCase)
+        testEditor.section = 1
+        var panel = findChild(screen, "sectionParameterPanel")
+        tryVerify(function() { return findChild(panel, "parameter-tone.cutoff_frequency") !== null })
+        var cell = findChild(panel, "parameter-tone.cutoff_frequency")
+        var control = findChild(cell, "parameterValue")
+        var original = control.value
+        var edited = original === 20 ? 30 : 20
+        control.edited(edited)
+        compare(control.value, edited)
+        testEditor.comparing = true
+        compare(control.value, original)
+        verify(!control.editable)
+        testEditor.comparing = false
+        testEditor.undo()
+        compare(control.value, original)
+    }
+
+    function test_parameter_controls_accept_keyboard_input() {
+        testEditor.section = 1
+        var panel = createTemporaryObject(parameterPanelComponent, testCase)
+        tryVerify(function() { return findChild(panel, "parameter-tone.cutoff_frequency") !== null })
+        var cutoff = findChild(panel, "parameter-tone.cutoff_frequency")
+        var field = findChild(cutoff, "valueField")
+        field.forceActiveFocus()
+        keyClick(Qt.Key_A, Qt.ControlModifier)
+        keyClick(Qt.Key_4)
+        keyClick(Qt.Key_2)
+        keyClick(Qt.Key_Return)
+        compare(findChild(cutoff, "parameterValue").value, 42)
+        testEditor.section = 3
+        tryVerify(function() { return findChild(panel, "parameter-tone.lfo1_waveform") !== null })
+        var shape = findChild(findChild(panel, "parameter-tone.lfo1_waveform"), "parameterChoice")
+        var original = shape.currentIndex
+        shape.forceActiveFocus()
+        keyClick(original < shape.count - 1 ? Qt.Key_Down : Qt.Key_Up)
+        compare(shape.currentIndex, original < shape.count - 1 ? original + 1 : original - 1)
+        testEditor.undo()
+        compare(shape.currentIndex, original)
+    }
+
+    function test_motion_lfo_choice_and_effects_controls_are_available() {
+        var screen = createTemporaryObject(screenComponent, testCase)
+        testEditor.section = 3
+        var panel = findChild(screen, "motionEffectsPanel")
+        verify(panel.visible)
+        tryVerify(function() { return findChild(panel, "parameter-tone.lfo1_waveform") !== null })
+        var shape = findChild(findChild(panel, "parameter-tone.lfo1_waveform"), "parameterChoice")
+        compare(shape.count, 8)
+        shape.activated(3)
+        compare(shape.currentIndex, 3)
+        testEditor.section = 4
+        tryVerify(function() { return findChild(panel, "parameter-common.efx_type") !== null })
+        verify(panel.note.indexOf("slots remain raw") >= 0)
+        var effect = findChild(findChild(panel, "parameter-common.efx_type"), "parameterChoice")
+        compare(effect.count, 40)
+        effect.activated(39)
+        compare(testEditor.mfxText, "CHORUS/FLANGER")
+    }
+
+    function test_expert_search_and_scope_show_documented_parameters() {
+        var screen = createTemporaryObject(screenComponent, testCase)
+        testEditor.disclosure = 2
+        var panel = findChild(screen, "expertParameterPanel")
+        findChild(panel, "expertScope").activated(1)
+        testEditor.expertParameters.search = "reverb type"
+        tryCompare(findChild(panel, "parameterGrid"), "count", 1)
+        tryVerify(function() { return findChild(panel, "parameter-common.reverb_type") !== null })
+        var choice = findChild(findChild(panel, "parameter-common.reverb_type"), "parameterChoice")
+        choice.activated(6)
+        compare(choice.currentText, "DELAY")
+        verify(testEditor.modified)
+    }
+
+    function test_exact_range_fields_edit_and_follow_the_selected_tone() {
+        var screen = createTemporaryObject(screenComponent, testCase)
+        var lower = findChild(screen, "keyLowerEntry")
+        var upper = findChild(screen, "keyUpperEntry")
+        lower.edited(36)
+        upper.edited(72)
+        compare(testEditor.keyRangeLower, 36)
+        compare(testEditor.keyRangeUpper, 72)
+        compare(lower.maximumValue, 72)
+        compare(upper.minimumValue, 36)
+        findChild(screen, "velocityLowerEntry").edited(30)
+        findChild(screen, "velocityUpperEntry").edited(90)
+        compare(testEditor.velocityLower, 30)
+        compare(testEditor.velocityUpper, 90)
+        testEditor.selectedTone = 2
+        compare(lower.value, testEditor.keyRangeLower)
+        testEditor.comparing = true
+        verify(!lower.editable)
     }
 
     function test_section_tabs_drive_the_envelope() {

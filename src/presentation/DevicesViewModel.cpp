@@ -42,7 +42,11 @@ DevicesViewModel::DevicesViewModel(services::DeviceSession& session, services::P
 {
     if (m_transfer) {
         connect(m_transfer, &services::PatchTransfer::changed, this, &DevicesViewModel::transferChanged);
+        connect(m_transfer, &services::PatchTransfer::changed, this, &DevicesViewModel::connectionChanged);
+        connect(m_transfer, &services::PatchTransfer::changed, this, &DevicesViewModel::canSendRequestChanged);
+        connect(m_transfer, &services::PatchTransfer::changed, this, &DevicesViewModel::patchFetchChanged);
     }
+    connect(&m_session, &services::DeviceSession::linkStateChanged, this, &DevicesViewModel::connectionChanged);
     connect(&m_session, &services::DeviceSession::endpointsChanged, this, &DevicesViewModel::syncEndpoints);
     connect(&m_session, &services::DeviceSession::connectionStateChanged, this, [this] {
         emit connectionChanged();
@@ -57,6 +61,7 @@ DevicesViewModel::DevicesViewModel(services::DeviceSession& session, services::P
     connect(&m_session, &services::DeviceSession::operationChanged, this, [this](quint64) {
         m_operations.refresh(m_session.tracker());
         emit operationsChanged();
+        emit connectionChanged();
     });
     connect(&m_session, &services::DeviceSession::statisticsChanged, this, &DevicesViewModel::statisticsChanged);
     connect(&m_session, &services::DeviceSession::patchFetchChanged, this, [this] {
@@ -85,54 +90,130 @@ void DevicesViewModel::syncEndpoints()
 {
     m_inputs.setEndpoints(m_session.inputs());
     m_outputs.setEndpoints(m_session.outputs());
-    clampSelection();
+    restoreSelection();
     emit endpointsChanged();
     emit connectionChanged();
 }
 
-void DevicesViewModel::clampSelection()
+void DevicesViewModel::restoreSelection()
 {
-    const int inputs = m_inputs.count();
-    const int outputs = m_outputs.count();
-    int input = m_selectedInput;
-    int output = m_selectedOutput;
-    if (input >= inputs) {
-        input = inputs - 1;
-    }
-    if (input < 0 && inputs > 0) {
-        input = 0;
-    }
-    if (output >= outputs) {
-        output = outputs - 1;
-    }
-    if (output < 0 && outputs > 0) {
-        output = 0;
-    }
-    if (input != m_selectedInput || output != m_selectedOutput) {
-        m_selectedInput = input;
-        m_selectedOutput = output;
-        emit selectionChanged();
-    }
+    const auto restore = [](const MidiEndpointListModel& model, std::optional<midi::MidiEndpointInfo>& preferred) {
+        if (preferred) {
+            const auto exact = model.indexOfId(QString::fromStdString(preferred->id));
+            if (exact >= 0) return exact;
+            // Replug may change an OS handle. Resolve a unique name/backend,
+            // never a row number or an ambiguous pair of identically named ports.
+            int found = -1;
+            for (int i = 0; i < model.count(); ++i) {
+                const auto& e = model.endpoints()[static_cast<std::size_t>(i)];
+                if (e.displayName == preferred->displayName && e.backendName == preferred->backendName) {
+                    if (found >= 0) return -1;
+                    found = i;
+                }
+            }
+            return found;
+        }
+        // A lone port is an unambiguous convenience; multiple choices require
+        // the musician to explicitly choose which interface reaches the XP-60.
+        if (model.count() == 1) { preferred = model.endpoints().front(); return 0; }
+        return -1;
+    };
+    m_selectedInput = restore(m_inputs, m_preferredInput);
+    m_selectedOutput = restore(m_outputs, m_preferredOutput);
+    emit selectionChanged();
+}
+
+void DevicesViewModel::useConnectionSettings(QSettings* settings)
+{
+    m_settings = settings;
+    if (!settings) return;
+    const auto load = [&](const QString& direction) -> std::optional<midi::MidiEndpointInfo> {
+        const auto prefix = QStringLiteral("midi/") + direction + QLatin1Char('/');
+        const auto id = settings->value(prefix + QStringLiteral("id")).toString();
+        if (id.isEmpty()) return {};
+        return midi::MidiEndpointInfo{id.toStdString(), settings->value(prefix + QStringLiteral("name")).toString().toStdString(),
+            settings->value(prefix + QStringLiteral("backend")).toString().toStdString(),
+            direction == QStringLiteral("input") ? midi::EndpointDirection::Input : midi::EndpointDirection::Output, false};
+    };
+    m_preferredInput = load(QStringLiteral("input"));
+    m_preferredOutput = load(QStringLiteral("output"));
+    const int profile = settings->value(QStringLiteral("midi/pacingProfile"), 0).toInt();
+    const int id = settings->value(QStringLiteral("midi/deviceId"), deviceId()).toInt();
+    setPacingProfile(profile);
+    setDeviceId(id);
+    restoreSelection();
+    emit connectionChanged();
+}
+
+void DevicesViewModel::saveConnectionSettings()
+{
+    if (!m_settings) return;
+    const auto save = [&](const QString& direction, const std::optional<midi::MidiEndpointInfo>& port) {
+        if (!port) { m_settings->remove(QStringLiteral("midi/") + direction); return; }
+        const auto prefix = QStringLiteral("midi/") + direction + QLatin1Char('/');
+        m_settings->setValue(prefix + QStringLiteral("id"), QString::fromStdString(port->id));
+        m_settings->setValue(prefix + QStringLiteral("name"), QString::fromStdString(port->displayName));
+        m_settings->setValue(prefix + QStringLiteral("backend"), QString::fromStdString(port->backendName));
+    };
+    save(QStringLiteral("input"), m_preferredInput);
+    save(QStringLiteral("output"), m_preferredOutput);
+    m_settings->setValue(QStringLiteral("midi/deviceId"), deviceId());
+    m_settings->setValue(QStringLiteral("midi/pacingProfile"), m_pacingProfile);
+}
+
+QString DevicesViewModel::selectionMessage() const
+{
+    if (m_selectedInput < 0 && m_preferredInput) return tr("Preferred MIDI IN unavailable or ambiguous: %1. Reconnect it or choose another input.").arg(QString::fromStdString(m_preferredInput->displayName));
+    if (m_selectedOutput < 0 && m_preferredOutput) return tr("Preferred MIDI OUT unavailable or ambiguous: %1. Reconnect it or choose another output.").arg(QString::fromStdString(m_preferredOutput->displayName));
+    if (m_selectedInput < 0 || m_selectedOutput < 0) return tr("Choose both ports. MIDI OUT sends to the XP-60; MIDI IN receives its replies.");
+    return tr("Both ports selected. Connect opens them; Test connection checks a read-only reply.");
+}
+
+bool DevicesViewModel::canTestConnection() const
+{
+    return m_session.connectionState() == services::DeviceSession::ConnectionState::Connected
+        && !m_session.tracker().hasOutstanding() && !(m_transfer && (m_transfer->isBusy() || m_transfer->liveActive()));
+}
+
+void DevicesViewModel::setPacingProfile(int profile)
+{
+    if (profile < 0 || profile > 1 || m_session.tracker().hasOutstanding() || (m_transfer && (m_transfer->isBusy() || m_transfer->liveActive()))) return;
+    auto pacing = m_session.pacing();
+    const auto defaults = xp60::transferDefaults();
+    pacing.interMessageDelay = profile == 1 ? std::chrono::milliseconds(60) : defaults.interMessageDelay;
+    pacing.maxDataSetPayloadBytes = profile == 1 ? 64 : defaults.maxDataSetPayloadBytes;
+    pacing.timeouts.firstResponse = profile == 1 ? std::chrono::milliseconds(5000) : defaults.firstResponseTimeout;
+    pacing.timeouts.betweenChunks = profile == 1 ? std::chrono::milliseconds(3000) : defaults.betweenChunkTimeout;
+    m_session.setPacing(pacing);
+    m_pacingProfile = profile;
+    saveConnectionSettings();
+    emit connectionChanged();
 }
 
 void DevicesViewModel::setSelectedInputIndex(int index)
 {
+    if (canDisconnect() || connectionState() == ConnectionState::Connecting) return;
     const int clamped = std::clamp(index, -1, m_inputs.count() - 1);
     if (clamped == m_selectedInput) {
         return;
     }
     m_selectedInput = clamped;
+    m_preferredInput = clamped >= 0 ? std::optional(m_inputs.endpoints()[static_cast<std::size_t>(clamped)]) : std::nullopt;
+    saveConnectionSettings();
     emit selectionChanged();
     emit connectionChanged();
 }
 
 void DevicesViewModel::setSelectedOutputIndex(int index)
 {
+    if (canDisconnect() || connectionState() == ConnectionState::Connecting) return;
     const int clamped = std::clamp(index, -1, m_outputs.count() - 1);
     if (clamped == m_selectedOutput) {
         return;
     }
     m_selectedOutput = clamped;
+    m_preferredOutput = clamped >= 0 ? std::optional(m_outputs.endpoints()[static_cast<std::size_t>(clamped)]) : std::nullopt;
+    saveConnectionSettings();
     emit selectionChanged();
     emit connectionChanged();
 }
@@ -169,7 +250,7 @@ QString DevicesViewModel::connectionStateText() const
     case ConnectionState::Connecting:
         return QStringLiteral("Connecting");
     case ConnectionState::Connected:
-        return QStringLiteral("Connected");
+        return connectionVerified() ? tr("XP-60 responded") : tr("MIDI ports open");
     case ConnectionState::Error:
         return QStringLiteral("Connection error");
     }
@@ -184,7 +265,7 @@ QString DevicesViewModel::connectionDetail() const
     case ConnectionState::Error:
         return lastError();
     case ConnectionState::Connecting:
-        return QStringLiteral("Opening MIDI endpoints");
+        return lastError().isEmpty() ? tr("Opening MIDI ports… You can cancel while the driver is connecting.") : lastError();
     case ConnectionState::Disconnected:
         return hasEndpoints() ? QStringLiteral("Select MIDI IN and MIDI OUT, then connect")
                               : QStringLiteral("No MIDI endpoints found. Connect an interface and refresh.");
@@ -213,7 +294,7 @@ bool DevicesViewModel::canConnect() const
 
 bool DevicesViewModel::canDisconnect() const
 {
-    return connectionState() == ConnectionState::Connected;
+    return connectionState() == ConnectionState::Connected || connectionState() == ConnectionState::Connecting;
 }
 
 QString DevicesViewModel::lastError() const
@@ -226,8 +307,10 @@ void DevicesViewModel::connectDevice()
     if (!canConnect()) {
         return;
     }
-    m_session.connectEndpoints(m_inputs.endpointIdAt(m_selectedInput).toStdString(),
-                               m_outputs.endpointIdAt(m_selectedOutput).toStdString());
+    m_preferredInput = m_inputs.endpoints()[static_cast<std::size_t>(m_selectedInput)];
+    m_preferredOutput = m_outputs.endpoints()[static_cast<std::size_t>(m_selectedOutput)];
+    saveConnectionSettings();
+    m_session.connectEndpointsAsync(m_preferredInput->id, m_preferredOutput->id);
 }
 
 void DevicesViewModel::disconnectDevice()
@@ -248,6 +331,7 @@ void DevicesViewModel::setDeviceId(int displayNumber)
 {
     if (const auto id = roland::RolandDeviceId::fromDisplayNumber(displayNumber)) {
         m_session.setDeviceId(*id);
+        saveConnectionSettings();
     } else {
         // Reject silently but re-announce the current value so a bound control snaps back.
         emit deviceIdChanged();
@@ -388,7 +472,8 @@ QString DevicesViewModel::requestValidationMessage() const
 
 bool DevicesViewModel::canSendRequest() const
 {
-    return connectionState() == ConnectionState::Connected && requestAddressValid() && requestSizeValid();
+    return connectionState() == ConnectionState::Connected && requestAddressValid() && requestSizeValid()
+        && !transferBusy();
 }
 
 bool DevicesViewModel::hasOutstandingRequests() const
@@ -423,7 +508,7 @@ void DevicesViewModel::clearLog()
 
 bool DevicesViewModel::canFetchPatch() const
 {
-    return connectionState() == ConnectionState::Connected && !patchFetchInProgress();
+    return connectionState() == ConnectionState::Connected && !patchFetchInProgress() && !transferBusy();
 }
 
 bool DevicesViewModel::patchFetchInProgress() const
@@ -545,7 +630,7 @@ bool DevicesViewModel::canRestoreSnapshot() const
 
 bool DevicesViewModel::transferBusy() const
 {
-    return m_transfer && m_transfer->isBusy();
+    return m_transfer && (m_transfer->isBusy() || m_transfer->liveActive());
 }
 
 QString DevicesViewModel::transferStateText() const
@@ -592,7 +677,7 @@ QString DevicesViewModel::writePlanText() const
 
 QString DevicesViewModel::armBlockedReason() const
 {
-    if (!m_transfer || m_transfer->isArmed() || m_transfer->isBusy()) {
+    if (!m_transfer || m_transfer->isArmed() || (m_transfer->isBusy() || m_transfer->liveActive())) {
         return {};
     }
     if (connectionState() != ConnectionState::Connected) {

@@ -93,6 +93,114 @@ class PatchTransferTest : public QObject
     Q_OBJECT
 
 private slots:
+    void changedSpanCodecPreservesMultiByteParametersAndAllPatchBytes()
+    {
+        const auto before = patchFrom(temporaryAreaWith(4), kTemp);
+        auto after = before;
+        QVERIFY(after.setRaw(CommonParameter::PatchTempo, after.raw(CommonParameter::PatchTempo) == 120 ? 121 : 120));
+        auto messages = Xp60PatchCodec::encodeChangesToDataSets(before, after, xp60::factoryDefaultDeviceId(), xp60::modelId(), kTemp);
+        QCOMPARE(messages.size(), std::size_t(1));
+        const auto& tempo = xp60tables::descriptor(CommonParameter::PatchTempo);
+        QCOMPARE(messages.front().address(), *kTemp.plus(tempo.offset));
+        QCOMPARE(messages.front().data().size(), std::size_t(tempo.byteCount));
+        const auto target = patchFrom(temporaryAreaWith(7), kTemp);
+        messages = Xp60PatchCodec::encodeChangesToDataSets(before, target, xp60::factoryDefaultDeviceId(), xp60::modelId(), kTemp, 64);
+        QVERIFY(!messages.empty());
+        auto image = Xp60PatchCodec::encodeToImage(before, kTemp);
+        for (const auto& message : messages) {
+            QVERIFY(message.data().size() <= 64);
+            image.addDataSet(message);
+        }
+        QVERIFY(patchFrom(image, kTemp) == target);
+        QVERIFY(Xp60PatchCodec::encodeChangesToDataSets(before, before, xp60::factoryDefaultDeviceId(), xp60::modelId(), kTemp).empty());
+    }
+
+    void livePreviewRequiresArmingCoalescesAndKeepsItsOriginalSnapshot()
+    {
+        Fixture f;
+        f.establishReadVerified();
+        const auto before = *f.session->patchFetch().patch;
+        QVERIFY(!f.transfer->startLivePreview(before));
+        QVERIFY(f.transfer->arm());
+        QVERIFY(f.transfer->startLivePreview(before));
+        f.pump();
+        QCOMPARE(f.transfer->state(), State::Verified);
+        QVERIFY(f.transfer->liveActive());
+        QVERIFY(!f.transfer->canArm());
+        QVERIFY(!f.transfer->writeAndVerifyTemporaryPatch(before));
+        const auto sent = f.device->dataSetsReceived();
+        auto desired = before;
+        for (int i = 0; i < 90; ++i) {
+            desired.setRaw(ToneIndex::tone1(), ToneParameter::ToneLevel, i);
+            f.transfer->queueLivePreview(desired);
+        }
+        QCOMPARE(f.device->dataSetsReceived(), sent);
+        QTest::qWait(150);
+        f.pump();
+        QCOMPARE(f.transfer->state(), State::Verified);
+        QCOMPARE(f.device->dataSetsReceived(), sent + 1);
+        QVERIFY(*f.transfer->readBack() == desired);
+        QVERIFY(*f.transfer->safetySnapshot() == before);
+        f.transfer->stopLivePreview(before);
+        QTest::qWait(150);
+        f.pump();
+        QTest::qWait(150);
+        QVERIFY(!f.transfer->liveActive());
+        QVERIFY(patchFrom(f.device->memory(), kTemp) == before);
+        QCOMPARE(f.transfer->state(), State::Verified);
+    }
+
+    void livePreviewRetainsLatestEditDuringReadBackAndStopsOnMismatch()
+    {
+        Fixture f;
+        f.establishReadVerified();
+        auto desired = *f.session->patchFetch().patch;
+        QVERIFY(f.transfer->arm());
+        QVERIFY(f.transfer->startLivePreview(desired));
+        desired.setRaw(ToneIndex::tone1(), ToneParameter::ToneLevel, 17);
+        f.transfer->queueLivePreview(desired);
+        desired.setRaw(ToneIndex::tone1(), ToneParameter::ToneLevel, 19);
+        f.transfer->queueLivePreview(desired);
+        f.pump();
+        QTest::qWait(150);
+        f.pump();
+        QVERIFY(*f.transfer->readBack() == desired);
+        f.device->setAcceptWrites(false);
+        desired.setRaw(ToneIndex::tone1(), ToneParameter::ToneLevel, 23);
+        f.transfer->queueLivePreview(desired);
+        QTest::qWait(150);
+        f.pump();
+        QCOMPARE(f.transfer->state(), State::Mismatch);
+        QVERIFY(!f.transfer->liveActive());
+        const auto sent = f.device->dataSetsReceived();
+        f.transfer->queueLivePreview(desired);
+        QTest::qWait(150);
+        f.pump();
+        QCOMPARE(f.device->dataSetsReceived(), sent);
+    }
+
+    void livePreviewCancellationAndDisconnectDiscardPendingChanges()
+    {
+        for (bool disconnect : {false, true}) {
+            Fixture f;
+            f.establishReadVerified();
+            auto desired = *f.session->patchFetch().patch;
+            QVERIFY(f.transfer->arm());
+            QVERIFY(f.transfer->startLivePreview(desired));
+            f.pump();
+            const auto sent = f.device->dataSetsReceived();
+            desired.setRaw(ToneIndex::tone1(), ToneParameter::ToneLevel, 8);
+            f.transfer->queueLivePreview(desired);
+            if (disconnect) f.session->disconnectEndpoints();
+            else f.transfer->cancel();
+            QVERIFY(!f.transfer->liveActive());
+            QTest::qWait(150);
+            f.pump();
+            QCOMPARE(f.device->dataSetsReceived(), sent);
+            QVERIFY(!f.transfer->isArmed());
+        }
+    }
+
     void armingIsRefusedUntilAReadHasSucceeded()
     {
         Fixture f;
@@ -273,6 +381,9 @@ private slots:
         f.session->disconnectEndpoints();
         QVERIFY(!f.transfer->isArmed());
         QVERIFY(!f.transfer->canArm());
+        QVERIFY(!f.transfer->readVerified());
+        QVERIFY(f.session->connectEndpoints("in-1", "out-1"));
+        QVERIFY(!f.transfer->canArm());
 
         Fixture g;
         g.establishReadVerified();
@@ -280,6 +391,37 @@ private slots:
         QVERIFY(g.transfer->writeAndVerifyTemporaryPatch(patchFrom(fixtureImage(), *Xp60PatchLayout::userPatchAddress(34))));
         g.session->disconnectEndpoints();
         QCOMPARE(g.transfer->state(), State::Failed);
+    }
+
+    void cancellationStopsQueuedDataSets()
+    {
+        Fixture f;
+        f.establishReadVerified();
+        QVERIFY(f.transfer->arm());
+        // Queue cancellation before sendDataSets queues its send callback.
+        // No packet may leave after cancellation, even on zero-delay pacing.
+        QObject::connect(f.transfer.get(), &services::PatchTransfer::changed, f.transfer.get(), [&] {
+            if (f.transfer->state() == State::Sending) {
+                QMetaObject::invokeMethod(f.transfer.get(), [&] { f.transfer->cancel(); }, Qt::QueuedConnection);
+            }
+        });
+        QVERIFY(f.transfer->writeAndVerifyTemporaryPatch(patchFrom(fixtureImage(), *Xp60PatchLayout::userPatchAddress(34))));
+        f.pump();
+        QCOMPARE(f.transfer->state(), State::Cancelled);
+        QCOMPARE(f.session->pendingDataSetBatches(), std::size_t{0});
+        QCOMPARE(f.session->pendingSendCount(), std::size_t{0});
+        QCOMPARE(f.device->dataSetsReceived(), std::size_t{0});
+    }
+
+    void changingDeviceIdRequiresAnotherSuccessfulRead()
+    {
+        Fixture f;
+        f.establishReadVerified();
+        QVERIFY(f.transfer->arm());
+        f.session->setDeviceId(*RolandDeviceId::fromDisplayNumber(18));
+        QVERIFY(!f.transfer->isArmed());
+        QVERIFY(!f.transfer->readVerified());
+        QVERIFY(!f.transfer->canArm());
     }
 
     void everyMessageStaysWithinThePacketLimitAndIsPaced()

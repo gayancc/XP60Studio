@@ -11,6 +11,7 @@
 #include <QObject>
 #include <QString>
 #include <QStringList>
+#include <QSettings>
 
 namespace xp60studio::presentation {
 
@@ -40,6 +41,11 @@ class DevicesViewModel : public QObject
     Q_PROPERTY(bool canConnect READ canConnect NOTIFY connectionChanged)
     Q_PROPERTY(bool canDisconnect READ canDisconnect NOTIFY connectionChanged)
     Q_PROPERTY(QString lastError READ lastError NOTIFY connectionChanged)
+    Q_PROPERTY(bool connectionVerified READ connectionVerified NOTIFY connectionChanged)
+    Q_PROPERTY(bool canTestConnection READ canTestConnection NOTIFY connectionChanged)
+    Q_PROPERTY(QString connectionTestMessage READ connectionTestMessage NOTIFY connectionChanged)
+    Q_PROPERTY(QString selectionMessage READ selectionMessage NOTIFY selectionChanged)
+    Q_PROPERTY(int pacingProfile READ pacingProfile WRITE setPacingProfile NOTIFY connectionChanged)
 
     // Device configuration
     Q_PROPERTY(int deviceId READ deviceId WRITE setDeviceId NOTIFY deviceIdChanged)
@@ -107,6 +113,15 @@ class DevicesViewModel : public QObject
     Q_PROPERTY(QString safetySnapshotName READ safetySnapshotName NOTIFY transferChanged)
 
 public:
+    bool connectionVerified() const { return m_session.linkState() == services::DeviceSession::LinkState::Responding; }
+    bool canTestConnection() const;
+    QString connectionTestMessage() const { return QString::fromStdString(m_session.linkMessage()); }
+    QString selectionMessage() const;
+    int pacingProfile() const { return m_pacingProfile; }
+    void setPacingProfile(int profile);
+    Q_INVOKABLE void testConnection() { if (canTestConnection()) m_session.testConnection(); }
+    // Settings are injected by the application; unit tests never use a user's preferences.
+    void useConnectionSettings(QSettings* settings);
     // `transfer` is optional: without it the write-and-verify surface reports
     // itself unsupported and the UI hides it.
     explicit DevicesViewModel(services::DeviceSession& session, services::PatchTransfer* transfer = nullptr,
@@ -229,7 +244,8 @@ signals:
 
 private:
     void syncEndpoints();
-    void clampSelection();
+    void restoreSelection();
+    void saveConnectionSettings();
 
     services::DeviceSession& m_session;
     services::PatchTransfer* m_transfer = nullptr;
@@ -240,6 +256,10 @@ private:
     PatchParameterModel m_patchParameters;
     int m_selectedInput = -1;
     int m_selectedOutput = -1;
+    std::optional<midi::MidiEndpointInfo> m_preferredInput;
+    std::optional<midi::MidiEndpointInfo> m_preferredOutput;
+    QSettings* m_settings = nullptr;
+    int m_pacingProfile = 0;
     int m_selectedPreset = 0;
     QString m_requestAddress;
     QString m_requestSize;

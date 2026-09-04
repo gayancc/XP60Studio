@@ -120,6 +120,43 @@ tools/            research utilities (Python; not part of the runtime)
 
 ## Current status
 
+### Windows setup and revalidation
+
+The local setup uses Qt 6.11.2 and MinGW 13.1, a pairing supported by
+[Qt's Windows baseline](https://doc.qt.io/qt-6/windows.html). Dependencies
+are isolated under `.qt/` and `.venv-build/`, excluded from Git.
+
+From the repository root in PowerShell, with Python 3 available:
+
+```powershell
+python -m venv .venv-build
+./.venv-build/Scripts/python.exe -m pip install aqtinstall==3.3.0 cmake==4.4.3 ninja==1.13.2
+./.venv-build/Scripts/python.exe -m aqt install-tool windows desktop tools_mingw1310 qt.tools.win64_mingw1310 -O .qt
+./.venv-build/Scripts/python.exe tools/install_windows_qt.py
+./tools/build_windows.ps1
+```
+
+For native Windows Bluetooth MIDI, also run
+`./tools/install_windows_winrt.ps1` before building. It installs checksum-verified
+C++/WinRT headers locally. See [MIDI connections](docs/MIDI_CONNECTIONS.md) for
+MIDI IN/OUT selection, connection testing, CME WIDI Master routes and the
+remaining physical validation procedure.
+
+The Qt installer adapter handles the published split MinGW repository while
+retaining aqt's archive checksum validation. The build script configures,
+builds and runs all tests; `-Run` also launches the app, `-SkipTests` skips
+CTest, and `-Jobs 6` controls build parallelism. It sets PATH only for its
+own execution and restores it afterward.
+
+See [Phase 4 revalidation](docs/PHASE_4_REVALIDATION.md) for the current
+acceptance checklist and open hardware gate. M2 is not yet complete.
+
+[Live audition](docs/PHASE_4_LIVE_AUDITION.md) documents explicitly armed,
+paced temporary-Patch updates, Solo/Mute and A/B, stop/restore behavior, and
+the current effects metadata. Physical XP-60/WIDI acceptance remains separate.
+
+### Implementation history
+
 **Phase 1 — Protocol Foundation + Application Shell** is implemented and
 covered by deterministic tests; it awaits validation against a physical XP-60.
 See [`docs/PHASE_1_EXIT_REPORT.md`](docs/PHASE_1_EXIT_REPORT.md) for what

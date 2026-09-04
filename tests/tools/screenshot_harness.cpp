@@ -23,10 +23,12 @@
 #include <QImage>
 #include <QQmlApplicationEngine>
 #include <QQuickStyle>
+#include <QQuickItem>
 #include <QQuickWindow>
 #include <QTimer>
 
 #include <chrono>
+#include <algorithm>
 #include <memory>
 
 int main(int argc, char* argv[])
@@ -110,12 +112,49 @@ int main(int argc, char* argv[])
     }
 
     window->resize(width, height);
+    if (qEnvironmentVariableIsSet("XP60STUDIO_SHOT_LIVE")) {
+        editor.armWrite();
+        editor.startLiveAudition();
+        for (int i = 0; i < 40; ++i) {
+            QCoreApplication::processEvents();
+            const auto replies = fake.exchange(*transport);
+            for (const auto& reply : replies) {
+                const auto bytes = reply.encode();
+                transport->injectIncoming(xp60studio::midi::MidiByteSpan(bytes.data(), bytes.size()));
+            }
+            QCoreApplication::processEvents();
+            if (!transfer.isBusy()) break;
+        }
+    }
+    if (qEnvironmentVariableIsSet("XP60STUDIO_SHOT_SECTION")) {
+        editor.setSection(qEnvironmentVariableIntValue("XP60STUDIO_SHOT_SECTION"));
+    }
+    if (qEnvironmentVariableIsSet("XP60STUDIO_SHOT_DISCLOSURE")) {
+        editor.setDisclosure(qEnvironmentVariableIntValue("XP60STUDIO_SHOT_DISCLOSURE"));
+    }
     if (!shell.navigate(screenId)) {
         qWarning("Screen '%s' is not available", qPrintable(screenId));
         return 3;
     }
 
     int exitCode = 0;
+    // Capture lower panels at the real supported viewport size, rather than
+    // pretending a very tall window proves that scrolling controls fit.
+    if (qEnvironmentVariableIsSet("XP60STUDIO_SHOT_FOCUS")) {
+        QTimer::singleShot(500, &app, [&] {
+            auto* scroller = window->findChild<QObject*>(QStringLiteral("editorScroll"));
+            auto* target = window->findChild<QQuickItem*>(qEnvironmentVariable("XP60STUDIO_SHOT_FOCUS"));
+            auto* flickable = scroller ? scroller->property("contentItem").value<QQuickItem*>() : nullptr;
+            if (target && flickable) {
+                const auto y = target->mapToItem(flickable, QPointF(0, 0)).y();
+                const auto maximum = std::max(qreal(0), flickable->property("contentHeight").toReal() - flickable->height());
+                flickable->setProperty("contentY", std::clamp(flickable->property("contentY").toReal() + y, qreal(0), maximum));
+            } else {
+                qWarning("Could not locate the requested capture panel");
+                exitCode = 5;
+            }
+        });
+    }
     QTimer::singleShot(1500, &app, [&] {
         const QImage image = window->grabWindow();
         if (image.isNull() || !image.save(outPath)) {
