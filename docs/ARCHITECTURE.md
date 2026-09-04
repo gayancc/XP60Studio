@@ -2,19 +2,27 @@
 
 ## Architecture goal
 
-Keep hardware/protocol correctness independent from UI design so the XP-60 engine can be tested rigorously and later reused for related Roland XP/JV models.
+Keep hardware/protocol correctness independent from UI design while providing a premium Qt Quick/QML product surface. The XP-60 engine must be rigorously testable without the GUI and later reusable for related Roland XP/JV models.
+
+Authoritative UI implementation details live in [`design/UI_IMPLEMENTATION_ARCHITECTURE.md`](design/UI_IMPLEMENTATION_ARCHITECTURE.md).
+
+Visual reference: [`design/xp60studio-ui-master-mockup.jpg`](design/xp60studio-ui-master-mockup.jpg).
 
 Conceptual layers:
 
 ```text
 XP60Studio
 │
-├── UI
-├── Application Services
-├── Library Intelligence
-├── XP Domain Model
+├── Qt Quick / QML Screens
+├── XP60Studio QML Component Library
+├── C++ Presentation Models
+├── Application Services / Commands
+├── Library Intelligence & Persistence
+├── XP Domain Model & Codecs
+├── XP-60 Device Protocol
 ├── Roland SysEx Protocol
-└── MIDI Transport
+├── IMidiTransport
+└── libremidi / platform MIDI backend
        │
        └── XP-60
 ```
@@ -25,35 +33,66 @@ The SysEx layer must never depend on visual components.
 
 ---
 
-# 1. MIDI Transport
+# 1. Technology baseline
+
+Production application:
+
+- C++20
+- Qt 6.11.x current project baseline
+- Qt Quick / QML
+- Qt Quick Controls
+- Qt Quick Layouts
+- Qt Quick Shapes/custom `QQuickItem` where required for specialized musical graphics
+- Qt Graphs only where chart semantics are appropriate
+- CMake
+- libremidi 5.x behind `IMidiTransport`; pin an exact compatible release/commit when integrated
+
+Do not introduce JUCE as the application/UI framework.
+
+Python remains allowed only for research/analysis/fixture utilities.
+
+---
+
+# 2. MIDI Transport
+
+Define an internal transport interface independent from libremidi and Qt Quick.
+
+Conceptual responsibilities:
+
+```text
+IMidiTransport
+├── enumerateInputs()
+├── enumerateOutputs()
+├── openInput()
+├── openOutput()
+├── close()
+├── sendMessage()
+├── sendSysEx()
+├── receive callback/event
+└── transport diagnostics
+```
 
 Responsibilities:
 
 - enumerate MIDI inputs/outputs
 - open/close devices
+- hot-plug/reconnect awareness where supported
 - send ordinary MIDI
 - receive ordinary MIDI
 - send SysEx
 - receive SysEx
 - handle long SysEx messages
-- reassemble fragmented input where needed
-- cancellation
-- timeout handling
-- pacing/throttling
-- diagnostics
-- connection state
-- transfer progress
-- retry orchestration hooks
+- cancellation hooks
+- timeout/pacing support at higher transfer layer
+- connection/transport diagnostics
 
-JUCE should be the production MIDI abstraction unless evidence shows a specific limitation requiring another approach.
+libremidi is the default implementation because it is a dedicated modern cross-platform C++ MIDI library. Keep it replaceable behind `IMidiTransport`.
 
 Do not mix Roland protocol knowledge into the transport layer.
 
-The transport should move bytes/messages and report communication state.
-
 ---
 
-# 2. Roland SysEx Protocol Layer
+# 3. Roland SysEx Protocol Layer
 
 Responsibilities:
 
@@ -74,7 +113,7 @@ Responsibilities:
 
 Avoid magic byte arrays spread across the application.
 
-Represent addresses, commands, and payload boundaries through explicit types.
+Represent addresses, commands, and payload boundaries through explicit C++ types.
 
 Potential concepts:
 
@@ -88,11 +127,9 @@ RolandRequest
 RolandResponse
 ```
 
-Names can evolve, but the type boundaries should remain clear.
-
 ---
 
-# 3. XP-60 Device Protocol
+# 4. XP-60 Device Protocol
 
 This layer applies XP-60-specific model IDs, address maps, memory regions, and supported requests on top of generic Roland SysEx behavior.
 
@@ -106,19 +143,15 @@ Potential responsibilities:
 - System memory
 - request chunk sizing
 - safe transfer pacing defaults
-- known writable/readable ranges
+- known readable/writable ranges
 
-Do not generalize prematurely for every JV/XP synth.
-
-Correct XP-60 behavior comes first.
+Do not generalize prematurely for every JV/XP synth. Correct XP-60 behavior comes first.
 
 ---
 
-# 4. XP Domain Model
+# 5. XP Domain Model
 
 The core model should be strongly structured and understandable.
-
-Conceptually:
 
 ```text
 XP60
@@ -157,11 +190,9 @@ XP60
 
 Do not flatten all behavior into an untyped key/value dictionary.
 
-A metadata system may exist alongside the domain model, but the domain should remain readable in C++.
-
 ---
 
-# 5. Parameter Metadata
+# 6. Parameter Metadata
 
 Maintain metadata describing the relationship between a domain parameter and Roland data.
 
@@ -180,34 +211,13 @@ Where applicable, capture:
 - parameter category
 - compatibility constraints
 
-Example concept:
-
-```text
-ToneCoarseTune
-Raw      16..112
-Display  -48..+48 semitones
-Owner    Tone
-Category Pitch
-```
-
-Metadata should support:
-
-- decoding/encoding validation
-- UI value presentation
-- patch diff
-- canonical fingerprints
-- search filters
-- developer inspection
-
-Do not use metadata as an excuse to erase strong domain types.
+Metadata should support decoding/encoding validation, UI display, patch diff, fingerprints, search, and developer inspection without replacing strong domain types.
 
 ---
 
-# 6. Codec Layer
+# 7. Codec Layer
 
 Use explicit codecs between raw XP memory bytes and domain objects.
-
-Conceptually:
 
 ```text
 Raw XP bytes
@@ -223,21 +233,17 @@ Raw XP bytes
 
 Round-trip properties are critical:
 
-```text
-encode(decode(bytes)) == bytes
-```
+`encode(decode(bytes)) == bytes`
 
 unless a documented reason explains normalization.
 
-When normalization exists, tests must document it clearly.
-
 ---
 
-# 7. Application Services
+# 8. Application Services
 
-Orchestrate user-level operations without placing business logic into UI controls.
+Orchestrate user-level operations without placing business logic into QML or visual controls.
 
-Potential services:
+Representative services:
 
 - DeviceConnectionService
 - PatchTransferService
@@ -247,14 +253,92 @@ Potential services:
 - PatchComparisonService
 - ExpansionCompatibilityService
 - PatchVersionService
+- SearchService
+- AnalysisService
 
-Names are illustrative, not mandatory.
-
-These services should coordinate lower-level components and expose cancellation/progress to the UI.
+Services own cancellation, progress, retries, validation, and hardware side effects.
 
 ---
 
-# 8. Library Persistence
+# 9. Presentation Layer
+
+This layer is the intentional boundary between C++ application logic and QML.
+
+Use:
+
+- `QObject` + `Q_PROPERTY` for UI-facing state
+- signals/slots for change notification
+- `Q_INVOKABLE` or explicit command objects for user intents
+- `QAbstractListModel` / `QAbstractTableModel` for large collections
+- Qt enums/meta-types for semantic states
+
+Representative presentation models:
+
+```text
+AppShellViewModel
+DeviceStatusViewModel
+CurrentPatchViewModel
+PatchEditorViewModel
+ToneViewModel
+WaveBrowserViewModel
+LibraryViewModel
+BankBuilderViewModel
+CompareViewModel
+ExpansionManagerViewModel
+PerformanceViewModel
+RhythmViewModel
+SnapshotViewModel
+LiveModeViewModel
+DiagnosticsViewModel
+```
+
+QML must not receive protocol addresses, checksum responsibilities, raw service locators, or libremidi objects.
+
+---
+
+# 10. QML UI and Design System
+
+The UI is implemented with Qt Quick/QML and the reusable XP60Studio component system described in:
+
+- [`design/UI_IMPLEMENTATION_ARCHITECTURE.md`](design/UI_IMPLEMENTATION_ARCHITECTURE.md)
+- [`design/COMPONENT_CATALOG.md`](design/COMPONENT_CATALOG.md)
+- [`design/SCREEN_AND_FEATURE_MAP.md`](design/SCREEN_AND_FEATURE_MAP.md)
+
+Major destinations:
+
+- Dashboard
+- Library
+- Editor
+- Banks
+- Performance
+- Compare
+- Devices
+- Settings
+
+Additional workflows such as Expansion Manager, Snapshot/Restore, Rhythm, and Live Mode may be nested/contextual based on the screen map rather than each becoming permanent top-level navigation.
+
+The approved visual anchor is [`design/xp60studio-ui-master-mockup.jpg`](design/xp60studio-ui-master-mockup.jpg).
+
+---
+
+# 11. UI state model
+
+The product must distinguish canonical state dimensions rather than collapsing them into one generic loading/dirty flag.
+
+Examples:
+
+- connection: disconnected / connecting / connected / reconnecting / error
+- data origin: local library / fetched from XP-60 / imported file
+- edit state: clean / modified / unsaved
+- hardware state: not written / writing / written / read-back verified / mismatch / failed
+- compatibility: compatible / missing expansion / unknown / unsupported
+- async operation: idle / queued / running / cancelling / completed / failed
+
+Presentation models translate these into screen-ready states. QML renders them consistently through shared components.
+
+---
+
+# 12. Library Persistence
 
 `.syx` files are import/export formats, not the application's database.
 
@@ -272,15 +356,11 @@ The persistent local library should support:
 - version history
 - optional later audio-preview references
 
-Choose the persistence technology after the data model and query patterns are understood.
-
-Do not add cloud/distributed architecture prematurely.
-
-The initial product is a local professional desktop application.
+Choose the persistence technology after query patterns are understood. Do not add cloud/distributed architecture prematurely.
 
 ---
 
-# 9. Library Intelligence
+# 13. Library Intelligence
 
 Keep derived intelligence separate from canonical Roland data.
 
@@ -293,58 +373,31 @@ Examples:
 - compatibility analysis
 - smart bank selection
 
-Every derived value must be distinguishable from actual hardware parameters.
-
-Prefer deterministic, explainable algorithms first.
+Every derived value must be distinguishable from actual hardware parameters. Prefer deterministic, explainable algorithms first.
 
 ---
 
-# 10. UI Architecture
+# 14. Real-Time Editing
 
-The UI should consume domain/application-service state rather than protocol bytes.
+Parameter changes should update local state immediately and hardware promptly where safe.
 
-Major conceptual areas:
+Do not bind pointer-motion frequency directly to MIDI send frequency.
 
-- Home / Current Sound
-- Connection / Diagnostics
-- Patch Designer
-- Four-Tone Mixer
-- Wave Browser
-- Envelope Editors
-- Effects
-- Library
-- Compare
-- Bank Builder
-- Expansion Manager
-- Performance Editor
-- Rhythm Editor
-- Snapshot/Restore
-- Live Mode
-
-Use progressive disclosure: Play, Design, Expert.
-
----
-
-# 11. Real-Time Editing
-
-Parameter changes should update hardware promptly where safe.
-
-However, UI interaction must not flood MIDI.
-
-Controls such as envelope dragging or slider movement may require:
+Use:
 
 - throttling
 - coalescing
-- latest-value wins
+- latest-value wins where semantically safe
 - transaction grouping for multi-parameter operations
+- separate UI-local state and hardware-confirmation state
 
-The UI should remain responsive even with slower MIDI interfaces.
+QML remains visually responsive while C++ services schedule hardware writes.
 
 ---
 
-# 12. Transfer Engine
+# 15. Transfer Engine
 
-Transfers should be modeled as observable operations, not fire-and-forget writes.
+Transfers are observable operations, not fire-and-forget writes.
 
 Potential state machine:
 
@@ -353,7 +406,7 @@ Queued
   ↓
 Sending
   ↓
-AwaitingResponse / Delay
+Awaiting / Receiving
   ↓
 ReadBack
   ↓
@@ -362,20 +415,26 @@ Comparing
 Verified
 ```
 
-Failure states may include:
+Failure states include timeout, invalid response, checksum mismatch, device mismatch, cancelled, and read-back mismatch.
 
-- timeout
-- invalid response
-- checksum mismatch
-- device mismatch
-- cancelled
-- read-back mismatch
-
-The exact protocol will depend on verified XP-60 behavior.
+One shared transfer model should drive Editor, Bank, Snapshot, Performance, and Rhythm transfer UI.
 
 ---
 
-# 13. Diagnostics and Raw Inspector
+# 16. Threading and responsiveness
+
+Rules:
+
+- MIDI callbacks do minimal work and hand data to controlled processing
+- protocol parsing can run off the UI thread where appropriate
+- library import/analysis/search indexing never blocks the QML scene/UI thread
+- long operations expose progress and cancellation
+- QML-visible model updates are marshalled safely to the Qt/UI thread
+- avoid creating thousands of QML delegates; use virtualized model/view controls
+
+---
+
+# 17. Diagnostics and Raw Inspector
 
 Maintain expert/developer visibility into protocol activity.
 
@@ -391,13 +450,11 @@ Useful diagnostic data:
 - raw hex
 - correlated operation
 
-Eventually provide a Hex Inspector capable of relating raw SysEx to decoded fields.
-
-This is an expert feature; normal musician workflows should not require hex knowledge.
+Eventually provide a Hex Inspector capable of relating raw SysEx to decoded fields. This is an expert feature; normal musician workflows should not require hex knowledge.
 
 ---
 
-# 14. Snapshot Model
+# 18. Snapshot Model
 
 A snapshot should preserve enough information to restore known XP-60 state safely.
 
@@ -414,11 +471,9 @@ Do not assume every system state is writable until verified.
 
 ---
 
-# 15. Future Multi-Device Support
+# 19. Future Multi-Device Support
 
 Only extract shared XP/JV abstractions when common behavior is demonstrated by documentation or fixtures.
-
-Possible future structure:
 
 ```text
 Roland Core
@@ -431,4 +486,4 @@ Roland Core
    └── JV2080 Device Definition
 ```
 
-Do not compromise the XP-60 model merely to achieve a generic abstraction early.
+Do not compromise the XP-60 model merely to achieve generic abstraction early.
