@@ -4,6 +4,12 @@ XP60Studio is an XP-60-first sound workstation for the Roland XP/JV family.
 
 The goal is not merely to expose Roland parameters. The application should make the XP-60 substantially easier to understand, edit, organize, preserve, transfer, compare, and perform with while retaining access to the full depth of the synthesizer.
 
+## Approved UI direction
+
+![XP60Studio approved UI master mockup](docs/design/xp60studio-ui-master-mockup.jpg)
+
+The approved visual direction and implementation guidance are documented in [`docs/design/UI_DESIGN_REFERENCE.md`](docs/design/UI_DESIGN_REFERENCE.md). The mockup establishes the product character for the Dashboard, Patch Editor / four-Tone mixer, Wave Browser, and Bank Builder while remaining subordinate to verified XP-60 behavior and usability.
+
 ## Product direction
 
 XP60Studio starts from the functional baseline expected from a mature XP-60 editor/librarian and goes further with:
@@ -50,6 +56,7 @@ Detailed project documentation lives in [`docs/`](docs/):
 - `ENGINEERING_PRINCIPLES.md` — correctness, testing, safety, and workflow rules
 - `ROADMAP.md` — phased development plan
 - `PHASE_1_PROTOCOL_FOUNDATION.md` — first implementation milestone and execution brief
+- `design/UI_DESIGN_REFERENCE.md` — approved visual direction and master mockup
 
 ## Current status
 
