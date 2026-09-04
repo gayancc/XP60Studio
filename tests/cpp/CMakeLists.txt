@@ -46,3 +46,24 @@ xp60studio_add_test(tst_device_session
 xp60studio_add_test(tst_presentation
   SOURCES tst_presentation.cpp
   LIBS xp60studio::presentation)
+
+# Phase 2 — XP domain model & codecs
+xp60studio_add_test(tst_parameter_table
+  SOURCES tst_parameter_table.cpp
+  LIBS xp60studio::xpmodel)
+
+xp60studio_add_test(tst_block_codec
+  SOURCES tst_block_codec.cpp
+  LIBS xp60studio::xpmodel)
+
+xp60studio_add_test(tst_memory_image
+  SOURCES tst_memory_image.cpp
+  LIBS xp60studio::xpmodel)
+
+xp60studio_add_test(tst_sysex_stream
+  SOURCES tst_sysex_stream.cpp
+  LIBS xp60studio::xpmodel)
+
+xp60studio_add_test(tst_patch_layout
+  SOURCES tst_patch_layout.cpp
+  LIBS xp60studio::xpmodel)
