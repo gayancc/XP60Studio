@@ -118,6 +118,105 @@ Before creating a major new screen, consult `docs/design/SCREEN_AND_FEATURE_MAP.
 
 The application must not degrade into a generic CRUD/admin UI merely because stock controls are easier to implement.
 
+## Interaction-first and infographic-first UI rule
+
+Visual fidelity to the master mockup is necessary but **not sufficient**. User-facing UI must also be designed as an interactive musical workspace that explains state visually and makes the next useful action obvious.
+
+The primary surface must be designed from the musician's task and mental model, not from the underlying parameter schema, C++ object structure, MIDI protocol, or database-style field list.
+
+### Required interaction hierarchy
+
+For musical and device concepts that have a meaningful visual representation, prefer direct manipulation and information visualization before plain data-entry controls.
+
+Examples include:
+
+- four-Tone contribution, enable/mute/solo, level, pan and routing
+- envelopes and envelope stages
+- key and velocity ranges
+- LFO shape and modulation behavior
+- signal flow and effects routing
+- waveform source/category/availability
+- bank occupancy, slot state, duplicates and compatibility
+- transfer progress, verification and mismatch state
+- device connection and communication health
+
+Use interactive controls such as Tone cards, knobs, faders, meters, draggable range handles, envelope points, keyboard strips, signal-flow nodes, filter chips, visual bank slots, timelines, progress states and contextual inspectors where they communicate the concept better than a form field.
+
+### Plain fields are secondary tools
+
+`TextField`, `ComboBox`, `SpinBox`, raw numeric entry and raw technical text must **not** become the default UX merely because they are easy to bind.
+
+When a parameter can be understood and manipulated musically or visually:
+
+1. provide the visual/direct-manipulation control first;
+2. show the current value clearly in context;
+3. preserve exact numeric/text entry as a secondary precision mechanism;
+4. keep raw protocol/address/SysEx details inside Expert or Diagnostics surfaces unless the workflow itself is explicitly diagnostic.
+
+A screen dominated by labels plus text fields, combo boxes, spin boxes or raw hexadecimal values is not considered complete for a polished user-facing phase unless the task is inherently textual/diagnostic and the design justifies it.
+
+### Progressive disclosure is mandatory
+
+Preserve expert depth without forcing every user to see it at once.
+
+Use the product's Play / Design / Expert model where applicable:
+
+- **Play** — immediate musical state, audition-oriented controls and safe high-value actions
+- **Design** — visual sound-shaping controls, routing, envelopes, ranges and tone relationships
+- **Expert** — exact values, uncommon parameters, raw/technical diagnostics and low-level detail
+
+Do not expose low-level implementation concepts on the default musician-facing surface when a clearer semantic representation exists.
+
+### Infographic-first communication
+
+Do not use decorative charts or meaningless dashboard graphics. Visualization must answer a real question faster than text alone.
+
+Prefer compact visual summaries for questions such as:
+
+- which Tone is contributing most?
+- where is the sound flowing?
+- what part of the keyboard/velocity range is active?
+- which wave is selected and is it available?
+- what is modified locally versus verified on hardware?
+- how far has a transfer progressed and where did it fail?
+- which bank slots are empty, duplicated, incompatible or selected?
+
+Use text to support the visualization, not to replace a visualization that would communicate the state more naturally.
+
+### Interaction quality
+
+Interactive surfaces must provide meaningful feedback for hover, focus, press, selection, drag/drop, disabled, warning, error, busy and completed states where applicable.
+
+Use motion only when it helps explain change, focus, continuity, progress or state transitions. Do not add animation merely for decoration or allow animation to reduce responsiveness.
+
+Visible objects that look interactive should behave interactively when the phase supports that behavior. Do not create decorative fake controls.
+
+### Phase 4 quality gate
+
+For the Visual Patch Editor and Wave Browser phase, a technically wired screen is **not acceptable** if its main interaction model is mostly forms, tables, labels and stock input controls.
+
+Before Phase 4 UI is considered complete, the implementation must visibly use the intended musical interaction components such as:
+
+- FourToneMixer / ToneCard
+- XpKnob / XpFader or equivalent continuous musical controls
+- EnvelopeEditor
+- KeyRangeSelector / VelocityRangeSelector / KeyboardStrip
+- signal-flow and effects-routing visualization
+- visual LFO shape/preview controls
+- WaveSearchBar, filter chips and virtualized WaveResultList
+- WaveAvailabilityBadge / ExpansionRequirementBadge
+- contextual wave/details/compatibility inspector
+
+Exact entry remains available, but it must not replace the visual interaction model.
+
+### UI review question
+
+For every material user-facing UI change, review the result from the perspective of a musician who does not know the XP-60 MIDI implementation.
+
+The screen should make it possible to understand the important state and the next useful action primarily by scanning the visual hierarchy and interacting with the controls, without having to read paragraphs of explanation, raw addresses, protocol codes or a long property list.
+
+If that standard is not met, the UI requires another design pass even if the underlying functionality works.
+
 ## Protocol-first rule
 
 Do not build elaborate editor UI before the Roland SysEx foundation and XP-60 data model are trustworthy.
