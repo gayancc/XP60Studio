@@ -20,6 +20,13 @@ Read the documents relevant to the task before changing code:
 - `docs/ENGINEERING_PRINCIPLES.md` — correctness, testing, data safety, and implementation rules
 - `docs/ROADMAP.md` — ordered development phases
 - `docs/PHASE_1_PROTOCOL_FOUNDATION.md` — current first milestone
+- `docs/design/UI_DESIGN_REFERENCE.md` — approved UI direction and master mockup for later UI phases
+
+## Approved visual direction
+
+The master visual reference is `docs/design/xp60studio-ui-master-mockup.jpg`. When implementing Dashboard, Patch Editor, Wave Browser, Bank Builder, or related design-system work, read `docs/design/UI_DESIGN_REFERENCE.md` and use the mockup as the primary visual direction together with the product and architecture docs.
+
+The mockup is a design direction, not a command to copy pixels blindly. Real XP-60 behavior, accessibility, platform constraints, and validated usability take precedence while preserving the approved visual principles.
 
 ## Technology direction
 
