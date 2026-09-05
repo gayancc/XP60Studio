@@ -14,3 +14,12 @@ target_compile_definitions(xp60studio_screenshot PRIVATE
 
 add_executable(xp60studio_midi_probe midi_probe.cpp)
 target_link_libraries(xp60studio_midi_probe PRIVATE xp60studio::midi_libremidi)
+
+# Read-only physical XP-60 acceptance probe. Sends RQ1 only; never a DT1.
+add_executable(xp60studio_hardware_probe hardware_probe.cpp)
+target_link_libraries(xp60studio_hardware_probe PRIVATE
+  xp60studio::midi_libremidi
+  xp60studio::protocol
+  xp60studio::roland
+  xp60studio::xp60
+  xp60studio::xpmodel)
