@@ -130,6 +130,44 @@ space over padded blocks. Recorded in the hardware log; not yet fixed.
 | Whether an RQ1 with size larger than the region is clipped or ignored | answered, covering the span exactly, without padding the gaps | **Hardware-verified 2026-09-04** | Roland's own 3993 example returns 466 payload bytes. |
 | Device behaviour on a wrong device ID | Message ignored | Documentation-derived (Roland-wide) | Diagnostics will show a timeout. |
 
+## 2.4 Memory architecture — what a write to each region actually does
+
+Transcribed from the Roland XP-60/XP-80 Owner's Manual for the patch
+synchronization work; see [`../PATCH_SYNCHRONIZATION.md`](../PATCH_SYNCHRONIZATION.md)
+§1 for the quoted text and the OCR method. The manual pages are scanned images,
+so the address column was cross-checked against §3 below and the golden fixture.
+
+| Fact | Value | Status | Source |
+|---|---|---|---|
+| Memory types | temporary, rewritable (System + User), non-rewritable (Preset, Wave Expansion) | Documentation-derived | OM p.45 |
+| What the instrument sounds | the **temporary area**, not USER memory | Documentation-derived | OM p.45 |
+| What editing on the instrument changes | the temporary area only | Documentation-derived | OM p.45 |
+| What destroys the temporary area | power-off **and selecting another Patch/Performance/Rhythm Set** | Documentation-derived | OM p.45 |
+| Keeping an edit | requires an explicit Write into rewritable memory | Documentation-derived | OM p.45, p.46 |
+| Write procedure on the instrument | `[UTILITY]` → `1 Write` → choose destination number → `[F6] Execute` | Documentation-derived | OM p.46 |
+| User Memory Protect | an instrument-side setting that refuses writes while ON | Documentation-derived | OM p.46 |
+| USER memory capacity | 32 Performances, 128 Patches, 2 Rhythm Sets | Documentation-derived | OM p.45 |
+| Panel Patch selection transmits | Bank Select + Program Change, unless the Tx switches are OFF | Documentation-derived | OM p.218-219 |
+
+**Consequence, and the safety rule the application is built on.** A DT1 to
+`03 00 00 00` reaches temporary memory: it cannot damage a stored sound, and the
+instrument discards it on the next patch change. A DT1 to `11 nn 00 00` reaches
+permanent USER Patch memory and is destructive. The destructive/non-destructive
+boundary is therefore **one address byte**, which is why `PatchTransfer`
+hard-codes the temporary address rather than gating a button.
+
+Because selecting a Patch on the panel both destroys the temporary area and is
+announced on MIDI OUT, `DeviceSession::patchSelectionObserved` watches for those
+two messages: it is a documented, passive, zero-traffic way to learn that the
+application's copy of the temporary area has become worthless.
+
+### Unknown, and gating the persistent-write path
+
+Whether the XP-60 **honours** a DT1 addressed to `11 nn 00 00`, and how User
+Memory Protect interacts with it, is **Unknown**. The address map lists the
+region; it does not say the region is writable over SysEx. No code writes there,
+and none may until the check in `DEVICE_ACCEPTANCE.md` closes it.
+
 ## 3. Address map (base addresses only)
 
 Sizes of whole regions are deliberately **not** encoded until a captured DT1

@@ -59,6 +59,13 @@ PatchEditorViewModel::PatchEditorViewModel(services::DeviceSession& session, ser
                         m_workspace.noteVerified(*readBack);
                     }
                     break;
+                case services::PatchTransfer::State::Sent:
+                    // Transmitted, not proved. The workspace records exactly
+                    // that; verification follows when the gesture settles.
+                    if (const auto& sent = m_transfer->readBack()) {
+                        m_workspace.noteSent(*sent);
+                    }
+                    break;
                 case services::PatchTransfer::State::Sending:
                 case services::PatchTransfer::State::ReadingBack:
                 case services::PatchTransfer::State::Comparing:
@@ -287,7 +294,15 @@ QString PatchEditorViewModel::auditionMessage() const
 
 void PatchEditorViewModel::startLiveAudition()
 {
-    if (canStartLiveAudition()) m_transfer->startLivePreview(auditionPatch());
+    if (!canStartLiveAudition()) {
+        return;
+    }
+    // While the musician is moving a control, prove the update after they stop
+    // rather than between every two values: a full read-back costs about
+    // 265 ms on the XP-60, which is what made live editing feel disconnected.
+    // Stopping the audition still verifies, so it never ends unproved.
+    m_transfer->setVerification(services::PatchTransfer::Verification::WhenSettled);
+    m_transfer->startLivePreview(auditionPatch());
 }
 
 void PatchEditorViewModel::resetAuditionFlags()

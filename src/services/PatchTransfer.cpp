@@ -17,6 +17,11 @@ PatchTransfer::PatchTransfer(DeviceSession& session, QObject* parent)
     m_liveTimer.setSingleShot(true);
     m_liveTimer.setInterval(120);
     connect(&m_liveTimer, &QTimer::timeout, this, &PatchTransfer::drainLivePreview);
+    // The gesture has stopped: prove what was sent, now that the cost of a full
+    // read-back no longer lands in the middle of a knob drag.
+    m_settleTimer.setSingleShot(true);
+    m_settleTimer.setInterval(static_cast<int>(m_settleDelay.count()));
+    connect(&m_settleTimer, &QTimer::timeout, this, [this] { verifyNow(); });
     connect(&m_session, &DeviceSession::patchFetchChanged, this, &PatchTransfer::onPatchFetchChanged);
     connect(&m_session, &DeviceSession::dataSetBatchFinished, this, &PatchTransfer::onBatchFinished);
     connect(&m_session, &DeviceSession::connectionStateChanged, this, [this] {
@@ -74,6 +79,8 @@ std::string_view PatchTransfer::stateName() const noexcept
         return "ReadingBack";
     case State::Comparing:
         return "Comparing";
+    case State::Sent:
+        return "Sent";
     case State::Verified:
         return "Verified";
     case State::Mismatch:
@@ -99,6 +106,8 @@ std::string PatchTransfer::stateLabel() const
         return "Reading back";
     case State::Comparing:
         return "Comparing";
+    case State::Sent:
+        return "Sent, not yet verified";
     case State::Verified:
         return "Verified";
     case State::Mismatch:
@@ -320,6 +329,12 @@ void PatchTransfer::stopLivePreview(const xpmodel::Xp60Patch& finalPatch)
 
 void PatchTransfer::clearLivePreview()
 {
+    // Deferred verification is a concession to a gesture in progress. A one-shot
+    // armed write is a deliberate act with nothing to interrupt, so leaving live
+    // mode restores immediate verification rather than letting the relaxed
+    // policy leak into it.
+    m_settleTimer.stop();
+    m_verification = Verification::EveryUpdate;
     m_liveTimer.stop();
     m_liveActive = false;
     m_liveStopping = false;
@@ -399,7 +414,62 @@ void PatchTransfer::onBatchFinished(quint64 batchId, bool ok, const QString& err
         fail("Sending failed after " + std::to_string(m_messagesSent) + " queued message(s): " + error.toStdString());
         return;
     }
+    if (m_liveActive && !m_liveStopping && m_verification == Verification::WhenSettled) {
+        // Deliberately not read back. The next update may go out immediately,
+        // and the state says exactly what is true: transmitted, unproved. The
+        // next diff is computed against what was sent, which is sound because
+        // the transport reported the batch delivered -- and is precisely why
+        // this is not called Verified.
+        m_awaiting = Awaiting::Nothing;
+        m_readBack = m_intended;
+        m_diff.reset();
+        setState(State::Sent, "Sent " + std::to_string(m_messagesSent)
+            + " DT1 message(s). Not read back yet; verification follows when editing stops.");
+        m_settleTimer.start();
+        if (m_livePending) {
+            m_liveTimer.start();
+        }
+        return;
+    }
     beginReadBack();
+}
+
+void PatchTransfer::setVerification(Verification verification)
+{
+    if (m_verification == verification) {
+        return;
+    }
+    m_verification = verification;
+    if (m_verification == Verification::EveryUpdate) {
+        m_settleTimer.stop();
+    }
+    emit changed();
+}
+
+void PatchTransfer::setSettleDelay(std::chrono::milliseconds delay)
+{
+    m_settleDelay = delay < std::chrono::milliseconds{0} ? std::chrono::milliseconds{0} : delay;
+    m_settleTimer.setInterval(static_cast<int>(m_settleDelay.count()));
+}
+
+bool PatchTransfer::verifyNow()
+{
+    m_settleTimer.stop();
+    // Only meaningful when something was sent and not proved. Reading while a
+    // transfer is in flight would collide with it, and the XP-60 drops requests
+    // that arrive while it is transmitting.
+    if (m_state != State::Sent || isBusy() || !m_liveActive) {
+        return false;
+    }
+    if (m_livePending) {
+        // A newer edit is already queued. Verifying the superseded one would
+        // prove something nobody is listening to; let the update go out and the
+        // settle timer come round again.
+        return false;
+    }
+    m_readBack.reset();
+    beginReadBack();
+    return true;
 }
 
 void PatchTransfer::beginReadBack()

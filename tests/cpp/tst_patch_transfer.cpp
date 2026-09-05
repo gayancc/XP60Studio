@@ -150,6 +150,93 @@ private slots:
         QCOMPARE(f.transfer->state(), State::Verified);
     }
 
+    // Deferred verification: the latency fix, and the promise that goes with it.
+    //
+    // A full read-back costs about 265 ms on the instrument, so paying it
+    // between every two values of a knob drag is what made live editing feel
+    // disconnected. WhenSettled sends without reading back while the musician is
+    // still moving. What must never slip is the honesty of the state: an
+    // unverified update reports Sent, never Verified.
+    void deferredVerificationSendsWithoutReadingBackUntilEditingStops()
+    {
+        Fixture f;
+        f.establishReadVerified();
+        const auto before = *f.session->patchFetch().patch;
+        QVERIFY(f.transfer->arm());
+        f.transfer->setVerification(services::PatchTransfer::Verification::WhenSettled);
+        f.transfer->setSettleDelay(400ms);
+        QVERIFY(f.transfer->startLivePreview(before));
+        f.pump();
+
+        auto desired = before;
+        desired.setRaw(ToneIndex::tone1(), ToneParameter::ToneLevel, 40);
+        f.transfer->queueLivePreview(desired);
+        QTest::qWait(150);
+        f.pump();
+
+        // The bytes are on the instrument, and the transfer says so without
+        // claiming to have proved it.
+        QCOMPARE(f.transfer->state(), State::Sent);
+        QVERIFY(patchFrom(f.device->memory(), kTemp) == desired);
+
+        // A second update goes out immediately: nothing is waiting on a
+        // read-back, which is the entire point.
+        const auto afterFirst = f.device->dataSetsReceived();
+        desired.setRaw(ToneIndex::tone1(), ToneParameter::ToneLevel, 41);
+        f.transfer->queueLivePreview(desired);
+        QTest::qWait(150);
+        f.pump();
+        QVERIFY(f.device->dataSetsReceived() > afterFirst);
+        QCOMPARE(f.transfer->state(), State::Sent);
+
+        // The gesture stops. The settle timer comes round and proves it.
+        QTest::qWait(500);
+        f.pump();
+        QCOMPARE(f.transfer->state(), State::Verified);
+        QVERIFY(*f.transfer->readBack() == desired);
+        QVERIFY(patchFrom(f.device->memory(), kTemp) == desired);
+
+        // Leaving live mode restores immediate verification, so a one-shot
+        // armed write is never governed by a policy meant for a knob drag.
+        f.transfer->stopLivePreview(desired);
+        QTest::qWait(150);
+        f.pump();
+        QTest::qWait(150);
+        f.pump();
+        QVERIFY(!f.transfer->liveActive());
+        QCOMPARE(f.transfer->verification(), services::PatchTransfer::Verification::EveryUpdate);
+        QCOMPARE(f.transfer->state(), State::Verified);
+    }
+
+    // Stopping is the moment the promise is kept: audition never ends on an
+    // unverified state, whatever the policy was during it.
+    void stoppingAnAuditionAlwaysVerifiesEvenWhenDeferring()
+    {
+        Fixture f;
+        f.establishReadVerified();
+        const auto before = *f.session->patchFetch().patch;
+        QVERIFY(f.transfer->arm());
+        f.transfer->setVerification(services::PatchTransfer::Verification::WhenSettled);
+        QVERIFY(f.transfer->startLivePreview(before));
+        f.pump();
+
+        auto desired = before;
+        desired.setRaw(ToneIndex::tone1(), ToneParameter::ToneLevel, 55);
+        f.transfer->queueLivePreview(desired);
+        QTest::qWait(150);
+        f.pump();
+        QCOMPARE(f.transfer->state(), State::Sent);
+
+        // Stop before the settle timer would have fired.
+        f.transfer->stopLivePreview(desired);
+        QTest::qWait(150);
+        f.pump();
+        QTest::qWait(150);
+        f.pump();
+        QCOMPARE(f.transfer->state(), State::Verified);
+        QVERIFY(*f.transfer->readBack() == desired);
+    }
+
     void livePreviewRetainsLatestEditDuringReadBackAndStopsOnMismatch()
     {
         Fixture f;

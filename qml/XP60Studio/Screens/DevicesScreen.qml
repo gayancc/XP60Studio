@@ -472,7 +472,7 @@ Item {
             spacing: Metrics.spacingMd
 
             XpPanelHeader {
-                title: qsTr("Send to XP-60")
+                title: qsTr("Send to XP temp")
                 iconName: "midi-out"
                 StatusPill {
                     objectName: "transferPill"
@@ -522,7 +522,7 @@ Item {
                 Layout.fillWidth: true
                 XpButton {
                     objectName: "writeVerifyButton"
-                    text: qsTr("Send to XP-60")
+                    text: qsTr("Send to XP temp")
                     variant: "primary"
                     enabled: sendPanel.devices.canWrite
                     onClicked: sendPanel.devices.writeBackAndVerify()

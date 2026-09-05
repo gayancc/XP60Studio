@@ -8,6 +8,8 @@
 #include <QString>
 #include <QTimer>
 
+#include <chrono>
+
 #include <optional>
 
 namespace xp60studio::services {
@@ -42,10 +44,35 @@ public:
         Sending,
         ReadingBack,
         Comparing,
+        // The bytes were transmitted and the transport accepted them, but
+        // nothing has been read back yet. Only reachable during live audition
+        // under Verification::WhenSettled, and deliberately *not* a claim of
+        // synchronization -- see the note on Verification below.
+        Sent,
         Verified,
         Mismatch,
         Failed,
         Cancelled,
+    };
+
+    // When a live-audition update is proved against the instrument.
+    //
+    // Verifying means reading all five Patch blocks back and comparing them.
+    // The XP-60 answers a block read in about 53 ms and cannot be pipelined
+    // (ROLAND_XP60_PROTOCOL_FACTS.md §2.3), so a full read-back costs roughly
+    // 265 ms. Paying that on every parameter move makes a knob drag feel
+    // disconnected, which is the one thing real-time sound editing cannot
+    // afford.
+    //
+    // WhenSettled sends without reading back while the musician is still
+    // moving, and verifies once the gesture stops. The states are honest
+    // throughout: an unverified update reports `Sent`, never `Verified`.
+    enum class Verification {
+        // Read back and compare after every update. Highest integrity, ~265 ms
+        // of dead time per parameter move.
+        EveryUpdate,
+        // Read back and compare once updates stop arriving for `settleDelay`.
+        WhenSettled,
     };
 
     explicit PatchTransfer(DeviceSession& session, QObject* parent = nullptr);
@@ -79,6 +106,15 @@ public:
     // Explicit, session-scoped live preview. Start consumes arming and captures
     // a safety snapshot. Keep only the latest edit while one verified transfer
     // is in flight; never overlap or automatically retry a failed transfer.
+    [[nodiscard]] Verification verification() const noexcept { return m_verification; }
+    void setVerification(Verification verification);
+    [[nodiscard]] std::chrono::milliseconds settleDelay() const noexcept { return m_settleDelay; }
+    // Both are project choices, not Roland figures, and both are adjustable.
+    void setSettleDelay(std::chrono::milliseconds delay);
+    // Verifies now rather than waiting for the settle timer. Used when the user
+    // asks, and by stopLivePreview so audition never ends unproved.
+    bool verifyNow();
+
     [[nodiscard]] bool liveActive() const noexcept { return m_liveActive; }
     [[nodiscard]] bool liveStopping() const noexcept { return m_liveStopping; }
     bool startLivePreview(const xpmodel::Xp60Patch& patch);
@@ -127,6 +163,9 @@ private:
     DeviceSession::DataSetBatchId m_batch;
     std::size_t m_messagesSent = 0;
     QTimer m_liveTimer;
+    QTimer m_settleTimer;
+    Verification m_verification = Verification::EveryUpdate;
+    std::chrono::milliseconds m_settleDelay{400};
     bool m_liveActive = false;
     bool m_liveStopping = false;
     std::optional<xpmodel::Xp60Patch> m_livePending;

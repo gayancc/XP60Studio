@@ -6,7 +6,7 @@ import XP60Studio.Presentation
 
 // Patch Editor / Four-Tone Mixer — mockup panel M2.
 //
-// Composition follows the master mockup: patch header with Write to XP-60,
+// Composition follows the master mockup: patch header with Send to XP temp,
 // section tabs, four Tone cards, the signal path, and a bottom row of
 // envelope editor, key/velocity ranges and contextual Tone settings.
 Item {
@@ -184,16 +184,27 @@ Item {
                         enabled: root.editor.writeArmed || root.editor.canArmWrite
                         onClicked: root.editor.writeArmed ? root.editor.disarmWrite() : root.editor.armWrite()
                     }
+                    // "Write" is the word the Owner's Manual reserves for the
+                    // operation that overwrites a stored USER Patch (p.46).
+                    // This button sends to the temporary area instead, which is
+                    // what the instrument plays from and what it discards on the
+                    // next Patch change (p.45) -- so calling it "Write to XP-60"
+                    // told a musician who had read the manual that their stored
+                    // sound had just been overwritten. It had not. The name now
+                    // says which memory it reaches.
                     XpButton {
                         objectName: "writeToDeviceButton"
-                        text: qsTr("Write to XP-60")
+                        text: qsTr("Send to XP temp")
                         variant: "primary"
                         enabled: root.editor.canWrite
+                        QQC.ToolTip.visible: hovered
+                        QQC.ToolTip.delay: 400
+                        QQC.ToolTip.text: qsTr("Sends this Patch to the XP-60's temporary area and reads it back to verify it. You will hear it immediately. Nothing in the XP-60's USER memory is changed, and the temporary Patch is lost when the instrument selects another Patch or is powered off.")
                         onClicked: root.editor.writeToDevice()
                     }
                     XpButton {
                         objectName: "cancelWriteButton"
-                        text: qsTr("Cancel write")
+                        text: qsTr("Cancel send")
                         visible: root.editor.writeBusy && !root.editor.liveAudition
                         variant: "danger"
                         onClicked: root.editor.cancelWrite()

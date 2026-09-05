@@ -524,15 +524,29 @@ what the instrument itself does.
 
 ## 10. Implementation stages
 
-| Stage | Content |
-|---|---|
-| **1** | `PatchSyncState` + `PatchWorkspace`: the working Patch, origin, baselines, undo/redo, the §4 state machine. C++ tests over the golden fixture. |
-| **2** | `PatchEditorViewModel` backed by the workspace instead of `m_original`/`m_current`/`m_hardware`. Library and Bank Builder overlays. Open-in-Editor from both. |
-| **3** | Staleness from C1: watch MIDI IN for Bank Select / Program Change. Deferred verification (§6). |
-| **4** | `UserMemoryWrite` service and its UI, gated on U1. |
+| Stage | Content | State |
+|---|---|---|
+| **1** | `PatchSyncState` + `PatchWorkspace`: the working Patch, origin, baselines, undo/redo, the §4 state machine. | **Done** — `tst_patch_workspace` |
+| **2** | `PatchEditorViewModel` backed by the workspace instead of `m_original`/`m_current`/`m_hardware`. Library and Bank Builder overlays. Open-in-Editor from both. | **Done** — `tst_patch_sync`, `tst_patch_editor` |
+| **3** | Staleness from C1: watch MIDI IN for Bank Select / Program Change. Deferred verification (§6). "Write to XP-60" renamed. | **Done** — `tst_patch_workspace`, `tst_patch_transfer` |
+| **4** | Persistent write to `11 nn 00 00` and its UI. | **Not started, gated on U1** |
 
-Stages 1–2 deliver the cross-screen synchronization the task asks for; stage 3
-delivers honest device state; stage 4 completes the persistent boundary.
+Stages 1–3 are implemented. Stage 4 stays closed until the hardware session
+settles U1: the address map lists the USER Patch region but does not say it is
+writable over SysEx, and building a destructive path on that inference is
+exactly what `AGENTS.md` forbids. Until then XP60Studio's persistent storage is
+its own library and its `.syx` export, and the instrument's own
+`[UTILITY]` → `1 Write` remains the way a sound reaches USER memory — which is
+also what the Owner's Manual describes.
+
+### What stage 3 changed about latency
+
+`PatchTransfer::Verification::WhenSettled` is what the Editor selects when live
+audition starts. During a gesture an update is sent and the transfer reports
+`Sent`; the read-back happens once updates stop arriving for the settle delay,
+or immediately when the audition is stopped. `EveryUpdate` — the old behaviour —
+is restored the moment live mode ends, so a one-shot armed write is never
+governed by a policy meant for a knob drag.
 
 ---
 
