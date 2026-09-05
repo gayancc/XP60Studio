@@ -77,6 +77,7 @@ void PatchEditorViewModel::adoptFetchedPatch()
     }
     // A freshly read Patch becomes the new A side; local edits start over.
     m_original = fetch.patch;
+    endEffectGesture();
     m_current = fetch.patch;
     m_hardware = fetch.patch;
     m_undo.clear();
@@ -90,6 +91,9 @@ void PatchEditorViewModel::adoptFetchedPatch()
 
 void PatchEditorViewModel::pushUndo()
 {
+    if (!m_applyingEffectGesture) endEffectGesture();
+    if (m_applyingEffectGesture && m_effectGestureHasUndo) return;
+    if (m_applyingEffectGesture) m_effectGestureHasUndo = true;
     if (!m_current) {
         return;
     }
@@ -161,6 +165,7 @@ bool PatchEditorViewModel::anyToneSoloed() const
 
 void PatchEditorViewModel::setDisclosure(int mode)
 {
+    endEffectGesture();
     if (mode < Play || mode > Expert || mode == m_disclosure) return;
     m_disclosure = mode;
     emit disclosureChanged();
@@ -318,6 +323,7 @@ QStringList PatchEditorViewModel::sectionNames() const
 
 void PatchEditorViewModel::setSection(int section)
 {
+    endEffectGesture();
     if (section < 0 || section > Effects || section == m_section) {
         return;
     }
@@ -338,6 +344,7 @@ QVariantList PatchEditorViewModel::tones() const
 
 void PatchEditorViewModel::setSelectedTone(int toneNumber)
 {
+    endEffectGesture();
     if (!ToneIndex::fromNumber(toneNumber) || toneNumber == m_selectedTone) {
         return;
     }
@@ -444,8 +451,18 @@ QVariantMap PatchEditorViewModel::routing() const
         const auto from = nodeName(edge.from);
         const auto to = nodeName(edge.to);
         const auto level = edge.level < 0 ? tr("Unknown") : QString::number(edge.level);
+        QString parameter;
+        using xpmodel::RoutingNode;
+        if (edge.from == RoutingNode::Source) parameter = edge.to == RoutingNode::Chorus ? "tone.chorus_send_level"
+            : edge.to == RoutingNode::Reverb ? "tone.reverb_send_level" : "tone.mix_efx_send_level";
+        else if (edge.from == RoutingNode::Efx) parameter = edge.to == RoutingNode::Chorus ? "common.efx_chorus_send_level"
+            : edge.to == RoutingNode::Reverb ? "common.efx_reverb_send_level" : "common.efx_mix_out_send_level";
+        else if (edge.from == RoutingNode::Chorus) parameter = "common.chorus_level";
+        else if (edge.from == RoutingNode::Reverb) parameter = "common.reverb_level";
+        if (edge.level < 0) parameter.clear();
         edges.append(QVariantMap{{QStringLiteral("from"), from}, {QStringLiteral("to"), to},
-                                 {QStringLiteral("level"), level}, {QStringLiteral("open"), edge.open}});
+                                 {QStringLiteral("level"), level}, {QStringLiteral("open"), edge.open},
+                                 {QStringLiteral("parameterId"), parameter}});
         descriptions.append(tr("%1 to %2: %3%4").arg(from, to, level,
                             edge.level < 0 ? QString() : edge.open ? QString() : tr(" (zero path)")));
     }
@@ -854,6 +871,7 @@ void PatchEditorViewModel::setToneSetting(const QString& parameterId, int raw)
 
 void PatchEditorViewModel::setComparing(bool comparing)
 {
+    endEffectGesture();
     if (m_comparing == comparing || !m_original) {
         return;
     }
@@ -872,6 +890,7 @@ QString PatchEditorViewModel::differenceSummary() const
 
 void PatchEditorViewModel::undo()
 {
+    endEffectGesture();
     if (!canUndo() || !m_current) {
         return;
     }
@@ -883,6 +902,7 @@ void PatchEditorViewModel::undo()
 
 void PatchEditorViewModel::redo()
 {
+    endEffectGesture();
     if (!canRedo() || !m_current) {
         return;
     }
