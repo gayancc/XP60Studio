@@ -321,110 +321,22 @@ FocusScope {
         spacing: Metrics.spacingMd
 
         // Identity and bank-level actions ---------------------------------
-        RowLayout {
+        BankBuilderHeader {
+            objectName: "bankBuilderHeader"
             Layout.fillWidth: true
-            spacing: Metrics.spacingSm
-
-            ColumnLayout {
-                spacing: 2
-                XpLabel { text: qsTr("BANK BUILDER"); role: "overline"; color: Theme.accentText }
-                RowLayout {
-                    spacing: Metrics.spacingSm
-                    XpTextField {
-                        objectName: "bankName"
-                        Layout.preferredWidth: 240
-                        text: root.builder.bankName
-                        placeholderText: qsTr("Name this bank")
-                        onEditingFinished: root.builder.bankName = text
-                    }
-                    StatusPill {
-                        objectName: "bankModified"
-                        visible: root.builder.modified
-                        text: qsTr("MODIFIED")
-                        tone: "warning"
-                    }
-                    StatusPill {
-                        objectName: "bankSaved"
-                        visible: !root.builder.modified && root.builder.savedBefore
-                        text: qsTr("SAVED")
-                        tone: "success"
-                    }
-                    StatusPill {
-                        objectName: "bankMissing"
-                        visible: root.builder.missingCount > 0
-                        text: qsTr("%n missing patch(es)", "", root.builder.missingCount)
-                        tone: "error"
-                    }
-                }
-            }
-
-            Item { Layout.fillWidth: true }
-
-            XpButton {
-                objectName: "bankUndo"
-                iconName: "undo"
-                iconOnly: true
-                compact: true
-                variant: "ghost"
-                enabled: root.builder.canUndo
-                QQC.ToolTip.visible: hovered && root.builder.canUndo
-                QQC.ToolTip.delay: 400
-                QQC.ToolTip.text: qsTr("Undo %1").arg(root.builder.undoLabel)
-                onClicked: root.builder.undo()
-            }
-            XpButton {
-                objectName: "bankRedo"
-                iconName: "redo"
-                iconOnly: true
-                compact: true
-                variant: "ghost"
-                enabled: root.builder.canRedo
-                QQC.ToolTip.visible: hovered && root.builder.canRedo
-                QQC.ToolTip.delay: 400
-                QQC.ToolTip.text: qsTr("Redo %1").arg(root.builder.redoLabel)
-                onClicked: root.builder.redo()
-            }
-
-            XpButton {
-                objectName: "bankOpen"
-                text: qsTr("Saved banks")
-                iconName: "library"
-                compact: true
-                variant: banksDrawer.visible ? "primary" : "ghost"
-                onClicked: banksDrawer.visible = !banksDrawer.visible
-            }
-            XpButton {
-                objectName: "bankNew"
-                text: qsTr("New empty bank")
-                iconName: "plus"
-                compact: true
-                variant: "ghost"
-                onClicked: root.builder.occupiedCount > 0 || root.builder.modified
-                           ? discardConfirm.open()
-                           : root.builder.newEmptyBank()
-            }
-            XpButton {
-                objectName: "bankSave"
-                text: qsTr("Save")
-                compact: true
-                variant: "ghost"
-                visible: root.builder.savedBefore
-                enabled: root.builder.modified
-                onClicked: root.builder.saveBank()
-            }
-            XpButton {
-                objectName: "bankSaveAs"
-                text: qsTr("Save as new bank")
-                iconName: "export"
-                compact: true
-                variant: "primary"
-                onClicked: {
-                    saveName.text = root.builder.bankName
-                    saveDialog.open()
-                    saveName.forceActiveFocus()
-                }
+            builder: root.builder
+            savedBanksOpen: banksDrawer.visible
+            onSavedBanksToggled: banksDrawer.visible = !banksDrawer.visible
+            onNewBankRequested: root.builder.occupiedCount > 0 || root.builder.modified
+                                ? discardConfirm.open()
+                                : root.builder.newEmptyBank()
+            onSaveAsRequested: {
+                saveName.text = root.builder.bankName
+                saveDialog.open()
+                saveName.forceActiveFocus()
             }
         }
+
 
         // Source | Panel ---------------------------------------------------
         RowLayout {
@@ -522,15 +434,18 @@ FocusScope {
                     ColumnLayout {
                         anchors.fill: parent
                         anchors.margins: Metrics.spacingMd
-                        spacing: Metrics.spacingSm
+                        spacing: Metrics.spacingXs
 
                         // SUBGROUP -------------------------------------------
                         RowLayout {
                             Layout.fillWidth: true
+                            Layout.minimumHeight: 34
+                            Layout.preferredHeight: 34
+                            Layout.maximumHeight: 34
                             spacing: Metrics.spacingSm
 
                             XpLabel {
-                                Layout.preferredWidth: 76
+                                Layout.preferredWidth: 68
                                 text: qsTr("SUBGROUP")
                                 role: "overline"
                                 secondary: true
@@ -563,15 +478,16 @@ FocusScope {
                             }
                         }
 
-                        XpDivider { Layout.fillWidth: true }
-
                         // BANK -----------------------------------------------
                         RowLayout {
                             Layout.fillWidth: true
+                            Layout.minimumHeight: 34
+                            Layout.preferredHeight: 34
+                            Layout.maximumHeight: 34
                             spacing: Metrics.spacingSm
 
                             XpLabel {
-                                Layout.preferredWidth: 76
+                                Layout.preferredWidth: 68
                                 text: qsTr("BANK")
                                 role: "overline"
                                 secondary: true
@@ -583,12 +499,16 @@ FocusScope {
                                     required property int index
                                     objectName: "bankButton" + (index + 1)
                                     Layout.fillWidth: true
-                                    Layout.preferredHeight: 46
+                                    Layout.preferredHeight: 34
                                     text: (index + 1).toString()
                                     caption: {
                                         var occupied = root.builder.bankOccupancy[index]
                                         return occupied > 0 ? occupied + "/8" : ""
                                     }
+                                    // Occupancy remains visible through the
+                                    // key LED and Bank Map. Avoid squeezing a
+                                    // second text line into this shallow cap.
+                                    showCaption: false
                                     selected: root.builder.bank === index + 1
                                     fill: (root.builder.bankOccupancy[index] || 0) / 8
                                     indicator: (root.builder.bankOccupancy[index] || 0) > 0
@@ -603,10 +523,13 @@ FocusScope {
                         // NUMBER ---------------------------------------------
                         RowLayout {
                             Layout.fillWidth: true
+                            Layout.minimumHeight: 34
+                            Layout.preferredHeight: 34
+                            Layout.maximumHeight: 34
                             spacing: Metrics.spacingSm
 
                             XpLabel {
-                                Layout.preferredWidth: 76
+                                Layout.preferredWidth: 68
                                 text: qsTr("NUMBER")
                                 role: "overline"
                                 secondary: true
@@ -620,7 +543,7 @@ FocusScope {
                                         root.builder.slotIndexFor(root.builder.subgroup, root.builder.bank, index + 1)
                                     objectName: "numberButton" + (index + 1)
                                     Layout.fillWidth: true
-                                    Layout.preferredHeight: 46
+                                    Layout.preferredHeight: 34
                                     text: (index + 1).toString()
                                     selected: root.builder.number === index + 1
                                     indicator: root.builder.numberOccupancy[index] === true
@@ -635,13 +558,15 @@ FocusScope {
                         // The eight destinations -----------------------------
                         RowLayout {
                             Layout.fillWidth: true
-                            Layout.fillHeight: true
+                            Layout.minimumHeight: 112
+                            Layout.preferredHeight: 144
+                            Layout.maximumHeight: 144
                             spacing: Metrics.spacingSm
 
                             // Empty column keeping the tiles under the NUMBER
                             // buttons: the physical alignment is the thing that
                             // makes button and destination read as one control.
-                            Item { Layout.preferredWidth: 76 }
+                            Item { Layout.preferredWidth: 68 }
 
                             Repeater {
                                 id: tiles
@@ -651,13 +576,9 @@ FocusScope {
                                     required property int index
                                     objectName: "destination" + modelData.panelLabel
                                     Layout.fillWidth: true
-                                    // The destinations are the subject of the
-                                    // screen, so they take the plate's spare
-                                    // height rather than leaving a hole in the
-                                    // middle of the instrument.
                                     Layout.fillHeight: true
-                                    Layout.minimumHeight: 84
-                                    Layout.maximumHeight: 124
+                                    Layout.minimumHeight: 112
+                                    Layout.maximumHeight: 144
                                     destination: modelData
                                     current: modelData.current === true
                                     dropCandidate: root.dragActive
@@ -796,87 +717,12 @@ FocusScope {
         }
         height: Math.min(root.height - 120, savedColumn.implicitHeight + 2 * Metrics.cardPadding)
 
-        ColumnLayout {
+        BankSavedList {
             id: savedColumn
             anchors.fill: parent
-            spacing: Metrics.spacingSm
-
-            RowLayout {
-                Layout.fillWidth: true
-                XpLabel { text: qsTr("SAVED BANKS"); role: "overline"; secondary: true }
-                Item { Layout.fillWidth: true }
-                XpButton {
-                    iconName: "close"
-                    iconOnly: true
-                    compact: true
-                    variant: "ghost"
-                    onClicked: banksDrawer.visible = false
-                }
-            }
-
-            XpEmptyState {
-                Layout.fillWidth: true
-                visible: root.builder.savedBanks.length === 0
-                title: qsTr("No saved banks yet")
-                message: qsTr("Arrange destinations on the panel, then choose Save as new bank.")
-            }
-
-            Repeater {
-                model: root.builder.savedBanks
-                delegate: Rectangle {
-                    required property var modelData
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 48
-                    radius: Metrics.radiusSm
-                    color: openArea.containsMouse ? Theme.surfaceHover : Theme.surfaceSunken
-                    border.width: 1
-                    border.color: Theme.borderSubtle
-
-                    MouseArea {
-                        id: openArea
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        onClicked: {
-                            root.builder.loadBank(modelData.id)
-                            banksDrawer.visible = false
-                        }
-                    }
-
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.margins: Metrics.spacingSm
-                        spacing: Metrics.spacingSm
-
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            spacing: 0
-                            XpLabel {
-                                Layout.fillWidth: true
-                                text: modelData.name
-                                role: "value"
-                                elide: Text.ElideRight
-                            }
-                            XpLabel {
-                                Layout.fillWidth: true
-                                text: modelData.missing > 0
-                                      ? qsTr("%1 of 128 · %2 missing · %3")
-                                        .arg(modelData.occupied).arg(modelData.missing).arg(modelData.updated)
-                                      : qsTr("%1 of 128 · %2").arg(modelData.occupied).arg(modelData.updated)
-                                role: "caption"
-                                muted: true
-                                elide: Text.ElideRight
-                            }
-                        }
-
-                        XpButton {
-                            text: qsTr("Delete")
-                            compact: true
-                            variant: "ghost"
-                            onClicked: root.builder.deleteBank(modelData.id)
-                        }
-                    }
-                }
-            }
+            builder: root.builder
+            onBankOpened: banksDrawer.visible = false
+            onCloseRequested: banksDrawer.visible = false
         }
     }
 

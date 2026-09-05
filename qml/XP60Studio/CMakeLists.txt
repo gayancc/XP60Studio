@@ -67,6 +67,8 @@ set(XP60STUDIO_QML_FILES
   Controls/BankDestinationTile.qml
   Controls/BankOverviewMap.qml
   Controls/BankSourcePanel.qml
+  Controls/BankBuilderHeader.qml
+  Controls/BankSavedList.qml
   Shell/AppNavigationRail.qml
   Shell/AppHeader.qml
   Shell/ConnectionStatusIndicator.qml
@@ -100,5 +102,9 @@ qt_add_qml_module(xp60studio_ui
   RESOURCE_PREFIX /qt/qml
   OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/qml/XP60Studio
   QML_FILES ${XP60STUDIO_QML_FILES}
+  RESOURCES
+    Assets/Fonts/Silkscreen-Regular.ttf
+    Assets/Fonts/Silkscreen-Bold.ttf
+    Assets/Fonts/OFL.txt
 )
 target_link_libraries(xp60studio_ui PRIVATE Qt6::Quick Qt6::QuickControls2)

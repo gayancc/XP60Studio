@@ -88,6 +88,7 @@ void BankBuilderViewModel::selectSubgroup(int subgroup)
     m_subgroup = subgroup;
     emit selectionChanged();
     emit bankChanged();
+    emit auditionChanged();
 }
 
 void BankBuilderViewModel::selectBank(int bank)
@@ -98,6 +99,7 @@ void BankBuilderViewModel::selectBank(int bank)
     m_bank = bank;
     emit selectionChanged();
     emit bankChanged();
+    emit auditionChanged();
 }
 
 void BankBuilderViewModel::selectNumber(int number)
@@ -108,6 +110,7 @@ void BankBuilderViewModel::selectNumber(int number)
     m_number = number;
     emit selectionChanged();
     emit bankChanged();
+    emit auditionChanged();
 }
 
 void BankBuilderViewModel::selectSlot(int slotIndex)

@@ -57,6 +57,19 @@ TestCase {
         return row
     }
 
+    function verifySelectionSurfaces(screen, subgroup, bank, number, panel, linear) {
+        compare(screen.builder.subgroup, subgroup)
+        compare(screen.builder.bank, bank)
+        compare(screen.builder.number, number)
+        compare(findChild(screen, "bankDisplayPanelLabel").text, panel)
+        compare(findChild(screen, "bankDisplayLinearLabel").text, "PATCH " + linear)
+        verify(findChild(screen, subgroup === 0 ? "subgroupA" : "subgroupB").selected)
+        verify(findChild(screen, "bankButton" + bank).selected)
+        verify(findChild(screen, "numberButton" + number).selected)
+        verify(findChild(screen, "destination" + panel).current)
+        verify(screen.builder.overview[subgroup * 8 + bank - 1].current)
+    }
+
     // ── The panel ────────────────────────────────────────────────────────
 
     function test_panel_selection_names_the_destination() {
@@ -98,6 +111,43 @@ TestCase {
         compare(findChild(screen, "bankDisplayState").text, "EMPTY")
     }
 
+    function test_lcd_selectors_slots_and_map_share_one_live_destination() {
+        const screen = createScreen()
+
+        // Hardware selectors drive the LCD, visible destinations and map.
+        findChild(screen, "subgroupB").clicked()
+        findChild(screen, "bankButton3").clicked()
+        findChild(screen, "numberButton4").clicked()
+        verifySelectionSurfaces(screen, 1, 3, 4, "B34", "084")
+
+        // Assigning into that destination changes the same live LCD; there is
+        // no display-only copy of the Patch name or state.
+        const first = screen.library.rowData(0)
+        verify(screen.builder.placePatchAtCurrent(first.id))
+        compare(findChild(screen, "bankDisplayPatchName").text, first.name)
+        compare(findChild(screen, "bankDisplayState").text, "ASSIGNED")
+
+        // A destination tile is another route into the same selection.
+        findChild(screen, "destinationB35").clicked()
+        verifySelectionSurfaces(screen, 1, 3, 5, "B35", "085")
+
+        // The overview moves subgroup and bank while preserving NUMBER.
+        findChild(screen, "bankOverview").bankPicked(0, 2)
+        verifySelectionSurfaces(screen, 0, 2, 5, "A25", "013")
+
+        // A swap selects its target and the LCD immediately follows the Patch
+        // now occupying that target; clearing it immediately returns to EMPTY.
+        const second = screen.library.rowData(1)
+        verify(screen.builder.placePatch(12, first.id))   // A25
+        verify(screen.builder.placePatch(13, second.id))  // A26
+        verify(screen.builder.moveSlot(12, 13))
+        verifySelectionSurfaces(screen, 0, 2, 6, "A26", "014")
+        compare(findChild(screen, "bankDisplayPatchName").text, first.name)
+        verify(screen.builder.clearSlot(screen.builder.currentSlotIndex))
+        compare(findChild(screen, "bankDisplayPatchName").text, "-- EMPTY DESTINATION --")
+        compare(findChild(screen, "bankDisplayState").text, "EMPTY")
+    }
+
     function test_the_visible_eight_belong_to_the_selected_bank() {
         const screen = createScreen()
         screen.builder.selectSubgroup(1)
@@ -125,6 +175,31 @@ TestCase {
         compare(screen.builder.number, 6)
         compare(screen.builder.panelLabel, "A46")
         compare(screen.builder.linearLabel, "030")
+    }
+
+    function test_selector_keys_keep_hardware_proportions() {
+        const screen = createScreen()
+        const bankOne = findChild(screen, "bankButton1")
+        const bankEight = findChild(screen, "bankButton8")
+        const numberOne = findChild(screen, "numberButton1")
+
+        verify(bankOne.width > bankOne.height * 2,
+               "BANK keys are broad, low-profile hardware switches")
+        compare(Math.round(bankOne.width), Math.round(bankEight.width))
+        compare(Math.round(bankOne.width), Math.round(numberOne.width))
+        verify(findChild(screen, "subgroupA").width > 80,
+               "SUBGROUP has room for its range caption")
+    }
+
+    function test_destination_strip_stays_compact() {
+        const screen = createScreen()
+        verify(waitForRendering(screen), "compact strip completed layout")
+        const destination = findChild(screen, "destinationA11")
+
+        verify(destination.height >= 112,
+               "destination remains a usable drag and drop target")
+        verify(destination.height <= 144,
+               "destination strip does not expand into tall cards")
     }
 
     // ── Placement ────────────────────────────────────────────────────────

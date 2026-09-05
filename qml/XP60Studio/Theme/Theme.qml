@@ -77,6 +77,20 @@ QtObject {
     readonly property color midiIn: "#38BDF8"
     readonly property color midiOut: "#A855F7"
 
+    // XP-60 display ---------------------------------------------------------
+    // A dedicated palette keeps the simulated backlit LCD recognizable
+    // without letting its saturated blue leak into ordinary application
+    // panels. These colors are intentionally brighter than the data well:
+    // this is the one light-emitting surface on the Bank Builder panel.
+    readonly property color lcdBezel: "#03060B"
+    readonly property color lcdFrame: "#111925"
+    readonly property color lcdBacklightTop: "#1547DC"
+    readonly property color lcdBacklight: "#0A2BA8"
+    readonly property color lcdBacklightDeep: "#061A72"
+    readonly property color lcdText: "#E1F2FF"
+    readonly property color lcdTextDim: "#91BCFF"
+    readonly property color lcdSelection: "#F3FAFF"
+
     // Tone identity (stable across the whole application) --------------------
     readonly property color tone1: "#3B82F6"
     readonly property color tone2: "#14B8A6"
