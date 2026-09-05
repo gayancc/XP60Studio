@@ -103,6 +103,12 @@ Evidence row template:
 | 03:DISTORTION | Low Gain | not read from screen | 16 (EFX Parameter 4) | 15→22 | `--watch` 2026-09-04 | CME U2MIDI Pro | **Verified**, one step |
 | 03:DISTORTION | High Gain | not read from screen | 17 (EFX Parameter 5) | 15→19→22 | `--watch` 2026-09-04 | CME U2MIDI Pro | **Verified**, two steps |
 | 03:DISTORTION | Level | not read from screen | 18 (EFX Parameter 6) | 127→104→100 | `--watch` 2026-09-04 | CME U2MIDI Pro | **Verified**, two steps |
+| 02:OVER-DRIVE | Drive | not read from screen | 13 (EFX Parameter 1) | 127→106→102→100 | `--watch` 2026-09-04 | CME U2MIDI Pro | **Verified**, no endpoint |
+| 02:OVER-DRIVE | Pan | not read from screen | 14 (EFX Parameter 2) | 64→53 | `--watch` 2026-09-04 | CME U2MIDI Pro | **Verified**, one step |
+| 02:OVER-DRIVE | Amp Type | not read from screen | 15 (EFX Parameter 3) | 0→3 | `--watch` 2026-09-04 | CME U2MIDI Pro | **Verified**, 2 of 4 values |
+| 02:OVER-DRIVE | Low Gain | not read from screen | 16 (EFX Parameter 4) | 15→23 | `--watch` 2026-09-04 | CME U2MIDI Pro | **Verified**, one step |
+| 02:OVER-DRIVE | High Gain | not read from screen | 17 (EFX Parameter 5) | 15→24→29 | `--watch` 2026-09-04 | CME U2MIDI Pro | **Verified**, two steps |
+| 02:OVER-DRIVE | Level | not read from screen | 18 (EFX Parameter 6) | 127→106→101→100 | `--watch` 2026-09-04 | CME U2MIDI Pro | **Verified**, no endpoint |
 | all other algorithms | Pending | Pending | Unknown | Pending | Pending | Pending | Unverified |
 
 The first row is filled in by "First EFX slot established" below.
@@ -277,3 +283,46 @@ Drive, Amp Type, Low Gain, High Gain, Level sit at bytes 1, 3, 4, 5, 6 — with
 Whether that displacement is a property of Pan, of this algorithm, or of the
 printed table's layout cannot be told from one algorithm. It is the first thing
 a second algorithm's sweep will answer.
+
+## 02:OVER-DRIVE — the same layout, and what that is worth
+
+The manual gives OVER-DRIVE the same six controls as DISTORTION. Swept in the
+same order, one control at a time:
+
+| Byte | Common offset | Control | Observed raw | DISTORTION byte |
+|---|---|---|---|---|
+| EFX Parameter 1 | 13 | Drive | 127→106→102→100 | 1 |
+| EFX Parameter 2 | 14 | Pan | 64→53 | 2 |
+| EFX Parameter 3 | 15 | Amp Type | 0→3 | 3 |
+| EFX Parameter 4 | 16 | Low Gain | 15→23 | 4 |
+| EFX Parameter 5 | 17 | High Gain | 15→24→29 | 5 |
+| EFX Parameter 6 | 18 | Level | 127→106→101→100 | 6 |
+
+Byte for byte identical, **Pan displaced to byte 2 in both**. The displacement
+is reproducible and not a one-off reading of a single algorithm.
+
+### The limit of this particular comparison
+
+OVER-DRIVE and DISTORTION have the **same control list**. So this pair cannot
+separate the two explanations that matter:
+
+1. the slot of a control is a global property — Pan is byte 2 wherever it
+   appears;
+2. the layout belongs to the control set — two algorithms exposing the same
+   controls share a layout, and an algorithm with a different set may order
+   them differently.
+
+Both predict exactly what was observed. Choosing between them needs an
+algorithm whose control list **differs** but still contains Pan. `04:PHASER`
+(Manual, Rate, Depth, Resonance, Mix, Pan, Level) and `09:COMPRESSOR` (Attack,
+Sustain, Post Gain, Low Gain, High Gain, Pan, Level) both qualify, and both put
+Pan sixth of seven in print. If Pan still lands on byte 2 the rule is global; if
+it lands elsewhere, every algorithm needs its own sweep and area 8 is a
+40-algorithm job rather than a handful of patterns.
+
+### Range coverage, again thin
+
+Drive reached 100 from 127 and Level 100 from 127; neither touched an endpoint
+this time. Amp Type has now been seen at raw 0 and raw 3 across both algorithms,
+still two of its four values. No displayed value was read off the instrument in
+this pass either, so the raw-to-display conversions remain untested.
