@@ -126,9 +126,15 @@ TestCase {
         verify(name)
         compare(name.text, testEditor.patchName)
 
+        // Two badges, two questions. A Patch read from the temporary area is
+        // verified against the instrument and absent from the library, and the
+        // header says both rather than collapsing them into one word.
         var badge = findChild(screen, "patchStateBadge")
         verify(badge)
-        compare(badge.text, "ON XP-60")
+        compare(badge.text, "NOT IN LIBRARY")
+        var deviceBadge = findChild(screen, "patchDeviceBadge")
+        verify(deviceBadge)
+        compare(deviceBadge.text, "XP TEMP")
     }
 
     function test_four_tone_cards_are_present_and_colour_coded() {
@@ -450,7 +456,9 @@ TestCase {
         compare(testEditor.tones[0].level, before === 100 ? 90 : 100)
         verify(testEditor.modified)
         var badge = findChild(screen, "patchStateBadge")
-        compare(badge.text, "MODIFIED")
+        compare(badge.text, "EDITED")
+        // ...and the instrument no longer holds what is on screen.
+        compare(findChild(screen, "patchDeviceBadge").text, "NOT SENT")
     }
 
     function test_write_is_gated_behind_arming() {

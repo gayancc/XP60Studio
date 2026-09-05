@@ -357,7 +357,23 @@ void PatchEditorViewModel::setPatchName(const QString& name)
 
 QString PatchEditorViewModel::locationText() const
 {
-    return hasPatch() ? QStringLiteral("TEMPORARY PATCH") : QString();
+    if (!hasPatch()) {
+        return {};
+    }
+    // A Patch can now arrive from the Library or a bank destination as well as
+    // from the instrument, and the header has to say which — "TEMPORARY PATCH"
+    // over a library Patch would claim it came off the XP-60.
+    switch (m_workspace.origin().kind) {
+    case services::PatchOrigin::Kind::LibraryEntry:
+        return QStringLiteral("LIBRARY PATCH");
+    case services::PatchOrigin::Kind::DeviceUserSlot:
+        return QStringLiteral("USER:%1").arg(m_workspace.origin().userNumber, 3, 10, QLatin1Char('0'));
+    case services::PatchOrigin::Kind::DeviceTemporary:
+        return QStringLiteral("TEMPORARY PATCH");
+    case services::PatchOrigin::Kind::None:
+        break;
+    }
+    return QStringLiteral("WORKING PATCH");
 }
 
 QString PatchEditorViewModel::sourceText() const
@@ -424,8 +440,8 @@ QString PatchEditorViewModel::deviceMessage() const
 
 QString PatchEditorViewModel::emptyStateMessage() const
 {
-    return QStringLiteral("No Patch loaded. Go to Devices, connect the XP-60 and fetch the temporary Patch; "
-                          "it opens here for editing.");
+    return tr("No Patch loaded. Open one from the Library, from a Bank Builder destination, or connect the "
+              "XP-60 on the Devices screen and fetch its temporary Patch.");
 }
 
 // ---------------------------------------------------------------------------
