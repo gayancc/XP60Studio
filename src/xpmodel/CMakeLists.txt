@@ -17,6 +17,8 @@ add_library(xp60studio_xpmodel STATIC
   SysExStream.cpp
   PatchName.h
   PatchName.cpp
+  Xp60BankLocation.h
+  Xp60BankLocation.cpp
   Xp60PatchLayout.h
   Xp60PatchLayout.cpp
   Xp60Patch.h

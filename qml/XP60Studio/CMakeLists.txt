@@ -35,6 +35,8 @@ set(XP60STUDIO_QML_FILES
   Controls/ToneMiniEnvelope.qml
   Controls/EnvelopeEditor.qml
   Controls/KeyboardStrip.qml
+  Controls/DashboardSummaryCard.qml
+  Controls/DashboardToneCard.qml
   Controls/EffectsCanvas.qml
   Controls/EffectProcessorNode.qml
   Controls/EffectRouteChip.qml
@@ -60,14 +62,21 @@ set(XP60STUDIO_QML_FILES
   Controls/WaveAvailabilityBadge.qml
   Controls/LibraryResultRow.qml
   Controls/LibraryDetailsPanel.qml
+  Controls/XpHardwareButton.qml
+  Controls/BankPanelDisplay.qml
+  Controls/BankDestinationTile.qml
+  Controls/BankOverviewMap.qml
+  Controls/BankSourcePanel.qml
   Shell/AppNavigationRail.qml
   Shell/AppHeader.qml
   Shell/ConnectionStatusIndicator.qml
   Shell/ScreenHeader.qml
+  Screens/DashboardScreen.qml
   Screens/DevicesScreen.qml
   Screens/EditorScreen.qml
   Screens/WaveBrowserScreen.qml
   Screens/LibraryScreen.qml
+  Screens/BankBuilderScreen.qml
   Screens/UnavailableScreen.qml
 )
 

@@ -8,6 +8,21 @@ set "XP60_APP=%XP60_ROOT%build-windows\XP60Studio.exe"
 set "XP60_QT=%XP60_ROOT%.qt\6.11.2\mingw_64"
 set "XP60_MINGW=%XP60_ROOT%.qt\Tools\mingw1310_64\bin"
 
+echo.
+choice /C YN /M "Rebuild before run"
+if errorlevel 2 goto prepare_run
+if errorlevel 1 goto do_rebuild
+
+:do_rebuild
+echo.
+echo Rebuilding XP60Studio...
+powershell -NoProfile -ExecutionPolicy Bypass -File "%XP60_ROOT%tools\build_windows.ps1" -SkipTests
+if errorlevel 1 goto rebuild_failed
+echo.
+echo Rebuild finished.
+goto prepare_run
+
+:prepare_run
 if not exist "%XP60_APP%" goto missing_app
 if not exist "%XP60_QT%\bin\Qt6Core.dll" goto missing_runtime
 if not exist "%XP60_QT%\plugins\platforms\qwindows.dll" goto missing_runtime
@@ -25,10 +40,15 @@ start "" /D "%XP60_ROOT%build-windows" "%XP60_APP%"
 if errorlevel 1 goto launch_failed
 exit /b 0
 
+:rebuild_failed
+echo.
+echo Rebuild failed. Fix the build errors, then run this launcher again.
+goto failed
+
 :missing_app
 echo XP60Studio has not been built yet.
 echo.
-echo From this project's folder, run in PowerShell:
+echo Choose Y when prompted to rebuild, or from PowerShell run:
 echo   .\tools\build_windows.ps1
 echo.
 echo Then double-click Run-XP60Studio.bat again.

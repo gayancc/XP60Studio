@@ -383,9 +383,11 @@ private slots:
         QVERIFY(f.shell->isScreenAvailable(QStringLiteral("devices")));
         QVERIFY(f.shell->isScreenAvailable(QStringLiteral("editor")));  // built in Phase 4
         QVERIFY(f.shell->isScreenAvailable(QStringLiteral("library"))); // built in Phase 5
-        QVERIFY(!f.shell->isScreenAvailable(QStringLiteral("banks")));  // Phase 6
+        QVERIFY(f.shell->isScreenAvailable(QStringLiteral("banks")));   // Bank Builder
+        // Still unbuilt, and therefore still not navigable.
+        QVERIFY(!f.shell->isScreenAvailable(QStringLiteral("performance")));
         QSignalSpy spy(f.shell.get(), &AppShellViewModel::currentScreenChanged);
-        QVERIFY(!f.shell->navigate(QStringLiteral("banks")));
+        QVERIFY(!f.shell->navigate(QStringLiteral("performance")));
         QVERIFY(!f.shell->navigate(QStringLiteral("nonsense")));
         QCOMPARE(f.shell->currentScreen(), QStringLiteral("devices"));
         QCOMPARE(spy.count(), 0);
@@ -406,7 +408,7 @@ private slots:
                 ++enabled;
             }
         }
-        QCOMPARE(enabled, 3); // Devices, Editor and Library
+        QCOMPARE(enabled, 5); // Dashboard, Library, Editor, Banks and Devices
     }
 
     void patchFetchFlowsIntoTheViewModel()

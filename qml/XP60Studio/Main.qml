@@ -13,6 +13,9 @@ QQC.ApplicationWindow {
     required property PatchEditorViewModel editor
     required property LibraryListModel library
     required property LibraryTransferViewModel libraryTransfer
+    required property BankBuilderViewModel bankBuilder
+    required property LibraryListModel bankLibrary
+    required property DashboardViewModel dashboard
 
     visible: true
     width: Metrics.windowPreferredWidth
@@ -63,6 +66,16 @@ QQC.ApplicationWindow {
                     editor: window.editor
                 }
 
+                DashboardScreen {
+                    objectName: "dashboardScreen"
+                    anchors.fill: parent
+                    visible: window.shell.currentScreen === "dashboard"
+                    shell: window.shell
+                    editor: window.editor
+                    dashboard: window.dashboard
+                    devices: window.devices
+                }
+
                 LibraryScreen {
                     objectName: "libraryScreen"
                     anchors.fill: parent
@@ -71,10 +84,20 @@ QQC.ApplicationWindow {
                     transfer: window.libraryTransfer
                 }
 
+                BankBuilderScreen {
+                    objectName: "bankBuilderScreen"
+                    anchors.fill: parent
+                    visible: window.shell.currentScreen === "banks"
+                    builder: window.bankBuilder
+                    library: window.bankLibrary
+                }
+
                 UnavailableScreen {
                     anchors.fill: parent
                     visible: window.shell.currentScreen !== "devices" && window.shell.currentScreen !== "editor"
                              && window.shell.currentScreen !== "library"
+                             && window.shell.currentScreen !== "banks"
+                             && window.shell.currentScreen !== "dashboard"
                     screenTitle: window.shell.currentScreenTitle
                     availability: "a later phase"
                 }

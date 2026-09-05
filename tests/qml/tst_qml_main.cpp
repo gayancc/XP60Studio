@@ -2,12 +2,14 @@
 
 #include "midi/LoopbackMidiTransport.h"
 #include "presentation/AppShellViewModel.h"
+#include "presentation/BankBuilderViewModel.h"
 #include <QTemporaryDir>
 #include <QUrl>
 
 #include "library/LibraryDatabase.h"
 #include "library/SyxImport.h"
 #include "presentation/DevicesViewModel.h"
+#include "presentation/DashboardViewModel.h"
 #include "presentation/LibraryListModel.h"
 #include "presentation/LibraryTransferViewModel.h"
 #include "services/LibraryExportService.h"
@@ -131,10 +133,23 @@ public slots:
         m_libraryTransfer = std::make_unique<xp60studio::presentation::LibraryTransferViewModel>(
             *m_libraryImport, *m_libraryExport);
         engine->rootContext()->setContextProperty(QStringLiteral("testLibrary"), m_libraryModel.get());
+        m_dashboard = std::make_unique<xp60studio::presentation::DashboardViewModel>();
+        m_dashboard->setDatabase(m_library.get());
         engine->rootContext()->setContextProperty(QStringLiteral("testLibraryTransfer"), m_libraryTransfer.get());
+        engine->rootContext()->setContextProperty(QStringLiteral("testDashboard"), m_dashboard.get());
         engine->rootContext()->setContextProperty(QStringLiteral("testDevices"), m_devices.get());
         engine->rootContext()->setContextProperty(QStringLiteral("testShell"), m_shell.get());
         engine->rootContext()->setContextProperty(QStringLiteral("testEditor"), m_editor.get());
+
+        // The Bank Builder browses the same library through its own list
+        // model, exactly as the application wires it, so a filter set in a
+        // Bank Builder test cannot change what the Library screen test sees.
+        m_bankSourceModel = std::make_unique<xp60studio::presentation::LibraryListModel>();
+        m_bankSourceModel->setDatabase(m_library.get());
+        m_bankBuilder = std::make_unique<xp60studio::presentation::BankBuilderViewModel>();
+        m_bankBuilder->setDatabase(m_library.get());
+        engine->rootContext()->setContextProperty(QStringLiteral("testBankBuilder"), m_bankBuilder.get());
+        engine->rootContext()->setContextProperty(QStringLiteral("testBankLibrary"), m_bankSourceModel.get());
         engine->rootContext()->setContextProperty(QStringLiteral("testHarness"), this);
     }
 
@@ -167,6 +182,9 @@ private:
     std::unique_ptr<xp60studio::services::LibraryImportService> m_libraryImport;
     std::unique_ptr<xp60studio::services::LibraryExportService> m_libraryExport;
     std::unique_ptr<xp60studio::presentation::LibraryTransferViewModel> m_libraryTransfer;
+    std::unique_ptr<xp60studio::presentation::DashboardViewModel> m_dashboard;
+    std::unique_ptr<xp60studio::presentation::LibraryListModel> m_bankSourceModel;
+    std::unique_ptr<xp60studio::presentation::BankBuilderViewModel> m_bankBuilder;
     std::unique_ptr<QTemporaryDir> m_scratch;
 };
 

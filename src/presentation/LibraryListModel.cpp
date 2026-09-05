@@ -161,6 +161,7 @@ library::LibraryQuery LibraryListModel::baseQuery() const
     library::LibraryQuery query;
     query.text = m_searchText.toStdString();
     query.category = m_category.toStdString();
+    query.sourceDigest = m_sourceDigest.toStdString();
     query.tags = fromQt(m_tags);
     if (m_favouritesOnly) {
         query.favourite = true;
@@ -262,6 +263,15 @@ void LibraryListModel::setCategory(const QString& category)
     rebuild();
 }
 
+void LibraryListModel::setSourceDigest(const QString& digest)
+{
+    if (m_sourceDigest == digest) {
+        return;
+    }
+    m_sourceDigest = digest;
+    rebuild();
+}
+
 void LibraryListModel::setTags(const QStringList& tags)
 {
     if (m_tags == tags) {
@@ -306,6 +316,7 @@ void LibraryListModel::clearFilters()
     }
     m_searchText.clear();
     m_category.clear();
+    m_sourceDigest.clear();
     m_tags.clear();
     m_favouritesOnly = false;
     m_minimumRating = 0;
@@ -314,7 +325,8 @@ void LibraryListModel::clearFilters()
 
 bool LibraryListModel::filtered() const
 {
-    return !m_searchText.isEmpty() || !m_category.isEmpty() || !m_tags.isEmpty() || m_favouritesOnly
+    return !m_searchText.isEmpty() || !m_category.isEmpty() || !m_sourceDigest.isEmpty()
+        || !m_tags.isEmpty() || m_favouritesOnly
            || m_minimumRating > 0;
 }
 
@@ -557,6 +569,23 @@ QVariantList LibraryListModel::duplicatesOf(int row) const
     }
     for (const auto& duplicate : m_database->findDuplicatesOf(record->id)) {
         list.append(recordMap(duplicate));
+    }
+    return list;
+}
+
+
+QVariantList LibraryListModel::sourcesInUse() const
+{
+    QVariantList list;
+    if (!m_database) {
+        return list;
+    }
+    for (const auto& source : m_database->sourcesInUse()) {
+        QVariantMap map;
+        map.insert(QStringLiteral("digest"), QString::fromStdString(source.digest));
+        map.insert(QStringLiteral("name"), QString::fromStdString(source.name));
+        map.insert(QStringLiteral("patchCount"), source.patchCount);
+        list.append(map);
     }
     return list;
 }

@@ -10,6 +10,8 @@
 #include "midi/LoopbackMidiTransport.h"
 #include "library/LibraryDatabase.h"
 #include "presentation/AppShellViewModel.h"
+#include "presentation/BankBuilderViewModel.h"
+#include "presentation/DashboardViewModel.h"
 #include "presentation/LibraryListModel.h"
 #include "presentation/LibraryTransferViewModel.h"
 #include "services/LibraryExportService.h"
@@ -139,6 +141,19 @@ int main(int argc, char* argv[])
 
     // Import and export. The services own the file I/O and the worker thread;
     // the view model is what QML sees.
+    xp60studio::presentation::DashboardViewModel dashboard;
+    dashboard.setDatabase(&libraryDatabase);
+
+    // The Bank Builder. It gets its own list model on purpose: the source
+    // library it browses is filtered and searched independently of the Library
+    // screen, and a filter set while building a bank must not silently change
+    // what the Library screen is showing.
+    xp60studio::presentation::LibraryListModel bankSourceModel;
+    bankSourceModel.setDatabase(&libraryDatabase);
+    xp60studio::presentation::BankBuilderViewModel bankBuilder;
+    bankBuilder.setDatabase(&libraryDatabase);
+    bankBuilder.setTransfer(&transfer);
+
     xp60studio::services::LibraryImportService libraryImport(libraryDatabase);
     xp60studio::services::LibraryExportService libraryExport(libraryDatabase);
     xp60studio::presentation::LibraryTransferViewModel libraryTransfer(libraryImport, libraryExport);
@@ -146,6 +161,14 @@ int main(int argc, char* argv[])
     // rather than keep showing counts from before the import.
     QObject::connect(&libraryTransfer, &xp60studio::presentation::LibraryTransferViewModel::libraryChanged,
                      &libraryModel, &xp60studio::presentation::LibraryListModel::refresh);
+    QObject::connect(&libraryTransfer, &xp60studio::presentation::LibraryTransferViewModel::libraryChanged,
+                     &bankSourceModel, &xp60studio::presentation::LibraryListModel::refresh);
+    // An import adds source banks the Bank Builder's source picker has to know
+    // about, so its own summaries are re-read too.
+    QObject::connect(&libraryTransfer, &xp60studio::presentation::LibraryTransferViewModel::libraryChanged,
+                     &bankBuilder, &xp60studio::presentation::BankBuilderViewModel::refresh);
+    QObject::connect(&libraryTransfer, &xp60studio::presentation::LibraryTransferViewModel::libraryChanged,
+                     &dashboard, &xp60studio::presentation::DashboardViewModel::refresh);
 
     // Declared after DeviceSession so the pump is destroyed before the
     // session-owned LoopbackMidiTransport it references.
@@ -177,6 +200,9 @@ int main(int argc, char* argv[])
         {QStringLiteral("editor"), QVariant::fromValue(&editor)},
         {QStringLiteral("library"), QVariant::fromValue(&libraryModel)},
         {QStringLiteral("libraryTransfer"), QVariant::fromValue(&libraryTransfer)},
+        {QStringLiteral("bankBuilder"), QVariant::fromValue(&bankBuilder)},
+        {QStringLiteral("bankLibrary"), QVariant::fromValue(&bankSourceModel)},
+        {QStringLiteral("dashboard"), QVariant::fromValue(&dashboard)},
     });
     QObject::connect(
         &engine, &QQmlApplicationEngine::objectCreationFailed, &app, [] { QCoreApplication::exit(1); },

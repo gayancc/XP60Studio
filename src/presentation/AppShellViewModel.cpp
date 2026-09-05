@@ -15,10 +15,10 @@ namespace {
 const std::vector<AppShellViewModel::NavigationItem>& items()
 {
     static const std::vector<AppShellViewModel::NavigationItem> kItems{
-        {QStringLiteral("dashboard"), QStringLiteral("Dashboard"), QStringLiteral("▦"), false, QStringLiteral("Coming soon")},
+        {QStringLiteral("dashboard"), QStringLiteral("Dashboard"), QStringLiteral("▦"), true, QString()},
         {QStringLiteral("library"), QStringLiteral("Library"), QStringLiteral("▤"), true, QString()},
         {QStringLiteral("editor"), QStringLiteral("Editor"), QStringLiteral("✎"), true, QString()},
-        {QStringLiteral("banks"), QStringLiteral("Banks"), QStringLiteral("▥"), false, QStringLiteral("Coming soon")},
+        {QStringLiteral("banks"), QStringLiteral("Banks"), QStringLiteral("▥"), true, QString()},
         {QStringLiteral("performance"), QStringLiteral("Performance"), QStringLiteral("♪"), false, QStringLiteral("Coming soon")},
         {QStringLiteral("compare"), QStringLiteral("Compare"), QStringLiteral("⇄"), false, QStringLiteral("Coming soon")},
         {QStringLiteral("devices"), QStringLiteral("Devices"), QStringLiteral("⌁"), true, QString()},

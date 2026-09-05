@@ -53,10 +53,10 @@ TestCase {
         for (var i = 0; i < testShell.navigationItems.length; ++i) {
             if (testShell.navigationItems[i].enabled) enabled++
         }
-        compare(enabled, 3) // Devices, Editor and Library
+        compare(enabled, 5) // Dashboard, Library, Editor, Banks and Devices
         compare(testShell.currentScreen, "devices")
         // Disabled destinations must not navigate.
-        compare(testShell.navigate("banks"), false)
+        compare(testShell.navigate("performance"), false)
         compare(testShell.currentScreen, "devices")
         // Enabled ones must.
         compare(testShell.navigate("editor"), true)

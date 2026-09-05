@@ -57,6 +57,15 @@ xp60studio_add_test(tst_block_codec
   SOURCES tst_block_codec.cpp
   LIBS xp60studio::xpmodel)
 
+# The XP-60 patch-selection hierarchy and the bank being built from it.
+xp60studio_add_test(tst_bank_location
+  SOURCES tst_bank_location.cpp
+  LIBS xp60studio::xpmodel)
+
+xp60studio_add_test(tst_bank_draft
+  SOURCES tst_bank_draft.cpp
+  LIBS xp60studio::library)
+
 xp60studio_add_test(tst_memory_image
   SOURCES tst_memory_image.cpp
   LIBS xp60studio::xpmodel)
@@ -128,6 +137,12 @@ xp60studio_add_test(tst_library_database
   SOURCES tst_library_database.cpp
   LIBS xp60studio::library)
 target_compile_definitions(tst_library_database
+  PRIVATE XP60STUDIO_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/xp60")
+
+xp60studio_add_test(tst_bank_store
+  SOURCES tst_bank_store.cpp
+  LIBS xp60studio::library)
+target_compile_definitions(tst_bank_store
   PRIVATE XP60STUDIO_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/xp60")
 
 xp60studio_add_test(tst_library_export

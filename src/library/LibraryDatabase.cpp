@@ -9,6 +9,7 @@
 #include <QVariant>
 
 #include <algorithm>
+#include <chrono>
 #include <map>
 
 namespace xp60studio::library {
@@ -57,6 +58,30 @@ constexpr const char* kSchemaStatements[] = {
     "  PRIMARY KEY (patch_id, tag)"
     ")",
     "CREATE INDEX IF NOT EXISTS idx_patch_tags_tag ON patch_tags(tag)",
+    // Schema version 2 -- bank engineering.
+    //
+    // A bank is an arrangement of references, so `bank_slots.patch_id` is
+    // ON DELETE SET NULL rather than CASCADE: deleting a Patch from the
+    // library must not delete the destination it occupied in somebody's bank.
+    // The cached name survives the deletion, which is what lets the Bank
+    // Builder say "GrandPiano -- no longer in the library" instead of quietly
+    // presenting A35 as free.
+    "CREATE TABLE IF NOT EXISTS banks ("
+    "  id         INTEGER PRIMARY KEY AUTOINCREMENT,"
+    "  name       TEXT    NOT NULL,"
+    "  created_at INTEGER NOT NULL,"
+    "  updated_at INTEGER NOT NULL"
+    ")",
+    "CREATE TABLE IF NOT EXISTS bank_slots ("
+    "  bank_id     INTEGER NOT NULL REFERENCES banks(id) ON DELETE CASCADE,"
+    "  slot_index  INTEGER NOT NULL,"
+    "  patch_id    INTEGER          REFERENCES patches(id) ON DELETE SET NULL,"
+    "  patch_name  TEXT    NOT NULL DEFAULT '',"
+    "  source_name TEXT    NOT NULL DEFAULT '',"
+    "  source_slot TEXT    NOT NULL DEFAULT '',"
+    "  PRIMARY KEY (bank_id, slot_index)"
+    ")",
+    "CREATE INDEX IF NOT EXISTS idx_bank_slots_patch ON bank_slots(patch_id)",
 };
 
 QString toQt(const std::string& text)
@@ -252,6 +277,16 @@ bool LibraryDatabase::open(const QString& path)
             close();
             return false;
         }
+    } else if (*version < kSchemaVersion) {
+        // Forward migration. Every statement above is CREATE ... IF NOT
+        // EXISTS and has already run, so an older library has gained the new
+        // tables and nothing else has changed; all that remains is to record
+        // which schema this file now is.
+        if (!sql.exec(QStringLiteral("UPDATE schema_info SET version = %1").arg(kSchemaVersion))) {
+            m_lastError = sql.lastError().text();
+            close();
+            return false;
+        }
     } else if (*version > kSchemaVersion) {
         m_lastError = QStringLiteral("This library was written by a newer version of XP60Studio "
                                      "(schema %1; this build understands %2). Refusing to open it "
@@ -261,7 +296,6 @@ bool LibraryDatabase::open(const QString& path)
         close();
         return false;
     }
-    // A future *older* version would migrate forward here.
 
     m_lastError.clear();
     return true;
@@ -733,6 +767,253 @@ std::vector<std::string> LibraryDatabase::tagsInUse() const
         values.push_back(fromQt(sql.value(0).toString()));
     }
     return values;
+}
+
+// ---------------------------------------------------------------------------
+// Bank engineering
+// ---------------------------------------------------------------------------
+
+namespace {
+
+std::int64_t toEpochSeconds(std::chrono::system_clock::time_point when)
+{
+    return std::chrono::duration_cast<std::chrono::seconds>(when.time_since_epoch()).count();
+}
+
+std::chrono::system_clock::time_point fromEpochSeconds(std::int64_t seconds)
+{
+    return std::chrono::system_clock::time_point(std::chrono::seconds(seconds));
+}
+
+} // namespace
+
+std::optional<std::int64_t> LibraryDatabase::saveBank(const std::string& name,
+    const std::vector<BankSlotContent>& destinations, std::optional<std::int64_t> existingId)
+{
+    if (!isOpen()) {
+        m_lastError = QStringLiteral("The library is not open.");
+        return std::nullopt;
+    }
+    if (name.empty()) {
+        m_lastError = QStringLiteral("A saved bank needs a name.");
+        return std::nullopt;
+    }
+    if (destinations.size() > static_cast<std::size_t>(BankDraft::kSlotCount)) {
+        // Refuse rather than truncate: writing 128 of 140 destinations would
+        // silently drop part of the user's arrangement.
+        m_lastError = QStringLiteral("A User bank holds %1 destinations; %2 were given.")
+                          .arg(BankDraft::kSlotCount)
+                          .arg(destinations.size());
+        return std::nullopt;
+    }
+
+    const auto now = toEpochSeconds(std::chrono::system_clock::now());
+
+    if (!m_d->database.transaction()) {
+        m_lastError = m_d->database.lastError().text();
+        return std::nullopt;
+    }
+
+    auto fail = [this](const QString& error) -> std::optional<std::int64_t> {
+        m_lastError = error;
+        m_d->database.rollback();
+        return std::nullopt;
+    };
+
+    auto sql = m_d->query();
+    std::int64_t bankId = 0;
+    if (existingId) {
+        sql.prepare(QStringLiteral("UPDATE banks SET name = ?, updated_at = ? WHERE id = ?"));
+        sql.addBindValue(toQt(name));
+        sql.addBindValue(QVariant::fromValue<qlonglong>(now));
+        sql.addBindValue(QVariant::fromValue<qlonglong>(*existingId));
+        if (!sql.exec()) {
+            return fail(sql.lastError().text());
+        }
+        if (sql.numRowsAffected() == 0) {
+            return fail(QStringLiteral("No saved bank with id %1.").arg(*existingId));
+        }
+        bankId = *existingId;
+        sql.prepare(QStringLiteral("DELETE FROM bank_slots WHERE bank_id = ?"));
+        sql.addBindValue(QVariant::fromValue<qlonglong>(bankId));
+        if (!sql.exec()) {
+            return fail(sql.lastError().text());
+        }
+    } else {
+        sql.prepare(QStringLiteral("INSERT INTO banks (name, created_at, updated_at) VALUES (?, ?, ?)"));
+        sql.addBindValue(toQt(name));
+        sql.addBindValue(QVariant::fromValue<qlonglong>(now));
+        sql.addBindValue(QVariant::fromValue<qlonglong>(now));
+        if (!sql.exec()) {
+            return fail(sql.lastError().text());
+        }
+        bankId = sql.lastInsertId().toLongLong();
+    }
+
+    // Only occupied destinations are stored. An empty destination is the
+    // absence of a row, so a mostly empty bank costs almost nothing and the
+    // 128 positions are always reconstructed from the slot index.
+    for (std::size_t index = 0; index < destinations.size(); ++index) {
+        const auto& content = destinations[index];
+        if (content.empty()) {
+            continue;
+        }
+        sql.prepare(QStringLiteral("INSERT INTO bank_slots (bank_id, slot_index, patch_id, patch_name, "
+                                   "source_name, source_slot) VALUES (?, ?, ?, ?, ?, ?)"));
+        sql.addBindValue(QVariant::fromValue<qlonglong>(bankId));
+        sql.addBindValue(static_cast<int>(index));
+        // A destination whose Patch is already gone keeps its null reference
+        // and its name, so saving never repairs history by inventing an id.
+        sql.addBindValue(content.patchId > 0 ? QVariant::fromValue<qlonglong>(content.patchId) : QVariant());
+        sql.addBindValue(toQt(content.patchName));
+        sql.addBindValue(toQt(content.sourceName));
+        sql.addBindValue(toQt(content.sourceSlotLabel));
+        if (!sql.exec()) {
+            return fail(sql.lastError().text());
+        }
+    }
+
+    if (!m_d->database.commit()) {
+        const QString error = m_d->database.lastError().text();
+        m_d->database.rollback();
+        m_lastError = error;
+        return std::nullopt;
+    }
+    m_lastError.clear();
+    return bankId;
+}
+
+std::vector<SavedBankRecord> LibraryDatabase::banks() const
+{
+    std::vector<SavedBankRecord> records;
+    if (!isOpen()) {
+        return records;
+    }
+    auto sql = m_d->query();
+    if (!sql.exec(QStringLiteral(
+            "SELECT b.id, b.name, b.created_at, b.updated_at, "
+            "  (SELECT COUNT(*) FROM bank_slots s WHERE s.bank_id = b.id), "
+            "  (SELECT COUNT(*) FROM bank_slots s WHERE s.bank_id = b.id AND s.patch_id IS NULL) "
+            "FROM banks b ORDER BY b.updated_at DESC, b.id DESC"))) {
+        m_lastError = sql.lastError().text();
+        return records;
+    }
+    while (sql.next()) {
+        SavedBankRecord record;
+        record.id = sql.value(0).toLongLong();
+        record.name = fromQt(sql.value(1).toString());
+        record.createdAt = fromEpochSeconds(sql.value(2).toLongLong());
+        record.updatedAt = fromEpochSeconds(sql.value(3).toLongLong());
+        record.occupiedCount = sql.value(4).toInt();
+        record.missingCount = sql.value(5).toInt();
+        records.push_back(std::move(record));
+    }
+    return records;
+}
+
+std::optional<SavedBank> LibraryDatabase::loadBank(std::int64_t id) const
+{
+    if (!isOpen()) {
+        m_lastError = QStringLiteral("The library is not open.");
+        return std::nullopt;
+    }
+    auto sql = m_d->query();
+    sql.prepare(QStringLiteral("SELECT name, created_at, updated_at FROM banks WHERE id = ?"));
+    sql.addBindValue(QVariant::fromValue<qlonglong>(id));
+    if (!sql.exec()) {
+        m_lastError = sql.lastError().text();
+        return std::nullopt;
+    }
+    if (!sql.next()) {
+        m_lastError = QStringLiteral("No saved bank with id %1.").arg(id);
+        return std::nullopt;
+    }
+
+    SavedBank bank;
+    bank.record.id = id;
+    bank.record.name = fromQt(sql.value(0).toString());
+    bank.record.createdAt = fromEpochSeconds(sql.value(1).toLongLong());
+    bank.record.updatedAt = fromEpochSeconds(sql.value(2).toLongLong());
+    bank.destinations.assign(static_cast<std::size_t>(BankDraft::kSlotCount), BankSlotContent{});
+
+    auto slotQuery = m_d->query();
+    slotQuery.prepare(QStringLiteral("SELECT slot_index, patch_id, patch_name, source_name, source_slot "
+                                     "FROM bank_slots WHERE bank_id = ? ORDER BY slot_index"));
+    slotQuery.addBindValue(QVariant::fromValue<qlonglong>(id));
+    if (!slotQuery.exec()) {
+        m_lastError = slotQuery.lastError().text();
+        return std::nullopt;
+    }
+    while (slotQuery.next()) {
+        const int index = slotQuery.value(0).toInt();
+        if (index < 0 || index >= BankDraft::kSlotCount) {
+            continue;
+        }
+        BankSlotContent content;
+        const QVariant patchId = slotQuery.value(1);
+        content.patchId = patchId.isNull() ? 0 : patchId.toLongLong();
+        content.patchName = fromQt(slotQuery.value(2).toString());
+        content.sourceName = fromQt(slotQuery.value(3).toString());
+        content.sourceSlotLabel = fromQt(slotQuery.value(4).toString());
+        // The row exists, so the user put something here. A null reference
+        // means the Patch was deleted from the library afterwards.
+        content.missing = content.patchId == 0;
+        if (content.missing) {
+            ++bank.record.missingCount;
+        }
+        ++bank.record.occupiedCount;
+        bank.destinations[static_cast<std::size_t>(index)] = std::move(content);
+    }
+    m_lastError.clear();
+    return bank;
+}
+
+bool LibraryDatabase::removeBank(std::int64_t id)
+{
+    if (!isOpen()) {
+        m_lastError = QStringLiteral("The library is not open.");
+        return false;
+    }
+    auto sql = m_d->query();
+    sql.prepare(QStringLiteral("DELETE FROM banks WHERE id = ?"));
+    sql.addBindValue(QVariant::fromValue<qlonglong>(id));
+    if (!sql.exec()) {
+        m_lastError = sql.lastError().text();
+        return false;
+    }
+    if (sql.numRowsAffected() == 0) {
+        m_lastError = QStringLiteral("No saved bank with id %1.").arg(id);
+        return false;
+    }
+    m_lastError.clear();
+    return true;
+}
+
+std::vector<LibrarySourceSummary> LibraryDatabase::sourcesInUse() const
+{
+    std::vector<LibrarySourceSummary> sources;
+    if (!isOpen()) {
+        return sources;
+    }
+    auto sql = m_d->query();
+    // Grouped by digest, because that is what identifies one file no matter
+    // what it was called when it was imported. Entries with no digest -- a
+    // device read, for instance -- group by their source name instead.
+    if (!sql.exec(QStringLiteral(
+            "SELECT source_digest, source_name, COUNT(*), MAX(imported_at) FROM patches "
+            "GROUP BY source_digest, source_name ORDER BY MAX(imported_at) DESC, source_name ASC"))) {
+        m_lastError = sql.lastError().text();
+        return sources;
+    }
+    while (sql.next()) {
+        LibrarySourceSummary summary;
+        summary.digest = fromQt(sql.value(0).toString());
+        summary.name = fromQt(sql.value(1).toString());
+        summary.patchCount = sql.value(2).toInt();
+        summary.importedAt = fromEpochSeconds(sql.value(3).toLongLong());
+        sources.push_back(std::move(summary));
+    }
+    return sources;
 }
 
 } // namespace xp60studio::library

@@ -33,6 +33,12 @@ class LibraryListModel final : public QAbstractListModel
     Q_OBJECT
     Q_PROPERTY(QString searchText READ searchText WRITE setSearchText NOTIFY filterChanged)
     Q_PROPERTY(QString category READ category WRITE setCategory NOTIFY filterChanged)
+    // One import source -- one file, or one device read -- by the digest its
+    // provenance recorded. This is what "open a source bank" means in the Bank
+    // Builder: the library narrowed to the patches that arrived together.
+    // Empty means every source.
+    Q_PROPERTY(QString sourceDigest READ sourceDigest WRITE setSourceDigest NOTIFY filterChanged)
+    Q_PROPERTY(QVariantList sourcesInUse READ sourcesInUse NOTIFY vocabularyChanged)
     Q_PROPERTY(QStringList tags READ tags WRITE setTags NOTIFY filterChanged)
     Q_PROPERTY(bool favouritesOnly READ favouritesOnly WRITE setFavouritesOnly NOTIFY filterChanged)
     Q_PROPERTY(int minimumRating READ minimumRating WRITE setMinimumRating NOTIFY filterChanged)
@@ -91,6 +97,8 @@ public:
     void setSearchText(const QString& text);
     [[nodiscard]] QString category() const { return m_category; }
     void setCategory(const QString& category);
+    [[nodiscard]] QString sourceDigest() const { return m_sourceDigest; }
+    void setSourceDigest(const QString& digest);
     [[nodiscard]] QStringList tags() const { return m_tags; }
     void setTags(const QStringList& tags);
     [[nodiscard]] bool favouritesOnly() const { return m_favouritesOnly; }
@@ -105,6 +113,9 @@ public:
     [[nodiscard]] bool filtered() const;
     [[nodiscard]] QStringList categoriesInUse() const;
     [[nodiscard]] QStringList tagsInUse() const;
+    // One entry per import source: {digest, name, patchCount}. Sorted most
+    // recently imported first, which is the order a librarian looks in.
+    [[nodiscard]] QVariantList sourcesInUse() const;
 
     [[nodiscard]] QVariantMap selected() const;
     [[nodiscard]] int selectedRow() const { return m_selectedRow; }
@@ -172,6 +183,7 @@ private:
 
     QString m_searchText;
     QString m_category;
+    QString m_sourceDigest;
     QStringList m_tags;
     bool m_favouritesOnly = false;
     int m_minimumRating = 0;

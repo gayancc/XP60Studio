@@ -12,9 +12,12 @@
 #include "support/FakeXp60.h"
 
 #include "library/LibraryDatabase.h"
+#include "library/SyxImport.h"
 #include "midi/LoopbackMidiTransport.h"
 #include "presentation/AppShellViewModel.h"
+#include "presentation/BankBuilderViewModel.h"
 #include "presentation/DevicesViewModel.h"
+#include "presentation/DashboardViewModel.h"
 #include "presentation/LibraryListModel.h"
 #include "presentation/LibraryTransferViewModel.h"
 #include "services/LibraryExportService.h"
@@ -24,6 +27,7 @@
 #include "services/DeviceSession.h"
 #include "services/PatchTransfer.h"
 
+#include <QFile>
 #include <QGuiApplication>
 #include <QImage>
 #include <QQmlApplicationEngine>
@@ -71,6 +75,25 @@ int main(int argc, char* argv[])
     if (!libraryDatabase.open(QString::fromLatin1(xp60studio::library::LibraryDatabase::kInMemoryPath))) {
         qWarning("Could not open the in-memory library; the Library screen renders empty");
     }
+    // The golden fixture's 128 real User patches, so the Library and Bank
+    // Builder captures show real names and real provenance rather than
+    // invented rows.
+    std::vector<std::int64_t> fixtureIds;
+    {
+        QFile fixture(QStringLiteral(XP60STUDIO_FIXTURE_DIR "/user-bank-amal.syx"));
+        if (fixture.open(QIODevice::ReadOnly)) {
+            const QByteArray bytes = fixture.readAll();
+            const auto* begin = reinterpret_cast<const xp60studio::roland::Byte*>(bytes.constData());
+            xp60studio::library::SyxImportOptions options;
+            options.sourceName = "user-bank-amal.syx";
+            const auto imported = xp60studio::library::importSyxStream(
+                xp60studio::roland::ByteSpan(begin, static_cast<std::size_t>(bytes.size())), options);
+            if (const auto ids = libraryDatabase.insertAll(imported.entries)) {
+                fixtureIds = *ids;
+            }
+        }
+    }
+
     xp60studio::presentation::LibraryListModel libraryModel;
     libraryModel.setDatabase(&libraryDatabase);
 
@@ -100,6 +123,14 @@ int main(int argc, char* argv[])
     // Main.qml requires every view model the shell binds. The harness has to
     // supply them all or the engine refuses to load the scene, which is how
     // this capture tool notices a new required property.
+    xp60studio::presentation::DashboardViewModel dashboard;
+    dashboard.setDatabase(&libraryDatabase);
+    xp60studio::presentation::LibraryListModel bankSourceModel;
+    bankSourceModel.setDatabase(&libraryDatabase);
+    xp60studio::presentation::BankBuilderViewModel bankBuilder;
+    bankBuilder.setDatabase(&libraryDatabase);
+    bankBuilder.setTransfer(&transfer);
+
     xp60studio::services::LibraryImportService libraryImport(libraryDatabase);
     xp60studio::services::LibraryExportService libraryExport(libraryDatabase);
     xp60studio::presentation::LibraryTransferViewModel libraryTransfer(libraryImport, libraryExport);
@@ -109,6 +140,9 @@ int main(int argc, char* argv[])
         {QStringLiteral("editor"), QVariant::fromValue(&editor)},
         {QStringLiteral("library"), QVariant::fromValue(&libraryModel)},
         {QStringLiteral("libraryTransfer"), QVariant::fromValue(&libraryTransfer)},
+        {QStringLiteral("bankBuilder"), QVariant::fromValue(&bankBuilder)},
+        {QStringLiteral("bankLibrary"), QVariant::fromValue(&bankSourceModel)},
+        {QStringLiteral("dashboard"), QVariant::fromValue(&dashboard)},
     });
     engine.load(QUrl(QStringLiteral("qrc:/qt/qml/XP60Studio/Main.qml")));
     if (engine.rootObjects().isEmpty()) {
@@ -179,6 +213,37 @@ int main(int argc, char* argv[])
     if (qEnvironmentVariableIsSet("XP60STUDIO_SHOT_DISCLOSURE")) {
         editor.setDisclosure(qEnvironmentVariableIntValue("XP60STUDIO_SHOT_DISCLOSURE"));
     }
+    // Bank Builder capture states. Each one is the real view model being
+    // driven, so a capture can never show a state the surface cannot reach.
+    if (qEnvironmentVariableIsSet("XP60STUDIO_SHOT_BANK_FILL") && !fixtureIds.empty()) {
+        // A believable half-built bank: a run through subgroup A and a few in
+        // B, taken from the fixture in order.
+        const auto plan = qEnvironmentVariable("XP60STUDIO_SHOT_BANK_FILL").split(QLatin1Char(','));
+        int patch = 0;
+        for (const auto& entry : plan) {
+            const auto parts = entry.split(QLatin1Char('-'));
+            if (parts.size() != 2) {
+                continue;
+            }
+            for (int slot = parts[0].toInt(); slot <= parts[1].toInt(); ++slot) {
+                if (patch >= static_cast<int>(fixtureIds.size())) {
+                    break;
+                }
+                bankBuilder.placePatch(slot, fixtureIds[static_cast<std::size_t>(patch++)]);
+            }
+        }
+        bankBuilder.acknowledge();
+    }
+    if (qEnvironmentVariableIsSet("XP60STUDIO_SHOT_BANK_SUBGROUP")) {
+        bankBuilder.selectSubgroup(qEnvironmentVariableIntValue("XP60STUDIO_SHOT_BANK_SUBGROUP"));
+    }
+    if (qEnvironmentVariableIsSet("XP60STUDIO_SHOT_BANK_BANK")) {
+        bankBuilder.selectBank(qEnvironmentVariableIntValue("XP60STUDIO_SHOT_BANK_BANK"));
+    }
+    if (qEnvironmentVariableIsSet("XP60STUDIO_SHOT_BANK_NUMBER")) {
+        bankBuilder.selectNumber(qEnvironmentVariableIntValue("XP60STUDIO_SHOT_BANK_NUMBER"));
+    }
+
     if (!shell.navigate(screenId)) {
         qWarning("Screen '%s' is not available", qPrintable(screenId));
         return 3;
@@ -199,6 +264,27 @@ int main(int argc, char* argv[])
                 canvas->setProperty("focusedNode", qEnvironmentVariable("XP60STUDIO_SHOT_CANVAS_FOCUS"));
             if (qEnvironmentVariableIsSet("XP60STUDIO_SHOT_CANVAS_ROUTE"))
                 canvas->setProperty("isolatedRoute", qEnvironmentVariable("XP60STUDIO_SHOT_CANVAS_ROUTE"));
+        });
+    }
+
+    if (qEnvironmentVariableIsSet("XP60STUDIO_SHOT_BANK_DRAG") && !fixtureIds.empty()) {
+        QTimer::singleShot(500, &app, [&] {
+            auto* screen = window->findChild<QQuickItem*>(QStringLiteral("bankBuilderScreen"));
+            if (!screen) {
+                qWarning("Bank Builder screen not found");
+                return;
+            }
+            const int slot = qEnvironmentVariableIntValue("XP60STUDIO_SHOT_BANK_DRAG");
+            const auto record = libraryDatabase.record(fixtureIds.back());
+            // The screen stages the drag itself, so the capture goes through
+            // the same state a real gesture produces.
+            QMetaObject::invokeMethod(screen, "stageDrag",
+                Q_ARG(QVariant, QVariant::fromValue<qint64>(fixtureIds.back())),
+                Q_ARG(QVariant, record ? QString::fromStdString(record->name) : QStringLiteral("Patch")),
+                Q_ARG(QVariant, slot),
+                Q_ARG(QVariant, qEnvironmentVariableIsSet("XP60STUDIO_SHOT_BANK_DRAG_FROM")
+                                    ? qEnvironmentVariableIntValue("XP60STUDIO_SHOT_BANK_DRAG_FROM")
+                                    : -1));
         });
     }
 

@@ -164,6 +164,10 @@ The Library inherits visual language from M3/M4 but is a dedicated screen.
 
 Visual anchor: **M4, bottom-right of the master mockup**.
 
+Implemented as the Virtual XP-60 patch panel — SUBGROUP / BANK / NUMBER over
+the linear 001-128 identity. See [BANK_BUILDER.md](BANK_BUILDER.md) for the
+mental model, the drag rules, the component list and the screenshots.
+
 | Function | UI surface | Behavior |
 |---|---|---|
 | Select User bank/work bank | Header selector | Distinguish local bank from keyboard User bank |

@@ -11,6 +11,8 @@ add_library(xp60studio_library STATIC
   PatchProvenance.cpp
   LibraryEntry.h
   LibraryEntry.cpp
+  BankDraft.h
+  BankDraft.cpp
   SyxImport.h
   SyxImport.cpp
   SyxExport.h

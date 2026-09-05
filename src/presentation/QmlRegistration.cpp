@@ -3,6 +3,8 @@
 #include "presentation/AppShellViewModel.h"
 #include "presentation/ConnectionState.h"
 #include "presentation/DevicesViewModel.h"
+#include "presentation/DashboardViewModel.h"
+#include "presentation/BankBuilderViewModel.h"
 #include "presentation/LibraryListModel.h"
 #include "presentation/LibraryTransferViewModel.h"
 #include "presentation/PatchEditorViewModel.h"
@@ -32,7 +34,9 @@ void registerQmlTypes()
     qmlRegisterUncreatableType<ToneViewModel>(kPresentationModuleUri, 1, 0, "ToneViewModel", QString::fromLatin1(reason));
     qmlRegisterUncreatableType<WaveBrowserModel>(kPresentationModuleUri, 1, 0, "WaveBrowserModel", QString::fromLatin1(reason));
     qmlRegisterUncreatableType<LibraryListModel>(kPresentationModuleUri, 1, 0, "LibraryListModel", QString::fromLatin1(reason));
+    qmlRegisterUncreatableType<DashboardViewModel>(kPresentationModuleUri, 1, 0, "DashboardViewModel", QString::fromLatin1(reason));
     qmlRegisterUncreatableType<LibraryTransferViewModel>(kPresentationModuleUri, 1, 0, "LibraryTransferViewModel", QString::fromLatin1(reason));
+    qmlRegisterUncreatableType<BankBuilderViewModel>(kPresentationModuleUri, 1, 0, "BankBuilderViewModel", QString::fromLatin1(reason));
     qmlRegisterUncreatableType<EditorParameterModel>(kPresentationModuleUri, 1, 0, "EditorParameterModel", QString::fromLatin1(reason));
     qmlRegisterUncreatableType<MidiEndpointListModel>(kPresentationModuleUri, 1, 0, "MidiEndpointListModel", QString::fromLatin1(reason));
     qmlRegisterUncreatableType<ProtocolLogModel>(kPresentationModuleUri, 1, 0, "ProtocolLogModel", QString::fromLatin1(reason));

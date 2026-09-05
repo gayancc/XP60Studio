@@ -1,11 +1,13 @@
 #pragma once
 
+#include "library/BankDraft.h"
 #include "library/LibraryEntry.h"
 #include "library/PatchFingerprint.h"
 #include "library/PatchProvenance.h"
 
 #include <QString>
 
+#include <chrono>
 #include <cstdint>
 #include <memory>
 #include <optional>
@@ -68,6 +70,41 @@ struct LibraryQuery
     int offset = 0;
 };
 
+// One import source, as the Bank Builder's source picker needs it.
+//
+// A "source bank" is simply everything that arrived from one file or one
+// device read: patches are grouped by the digest their provenance recorded, so
+// the grouping is a fact about where the data came from rather than a category
+// anybody had to maintain.
+struct LibrarySourceSummary
+{
+    std::string digest;   // empty for entries with no file source
+    std::string name;     // the source name recorded at import
+    int patchCount = 0;
+    std::chrono::system_clock::time_point importedAt{};
+};
+
+// A User bank the user arranged and saved.
+struct SavedBankRecord
+{
+    std::int64_t id = 0;
+    std::string name;
+    int occupiedCount = 0;
+    // Destinations whose Patch has since been deleted from the library. The
+    // arrangement keeps them, and says so, rather than pretending they are
+    // free.
+    int missingCount = 0;
+    std::chrono::system_clock::time_point createdAt{};
+    std::chrono::system_clock::time_point updatedAt{};
+};
+
+struct SavedBank
+{
+    SavedBankRecord record;
+    // Always BankDraft::kSlotCount entries, in slot order.
+    std::vector<BankSlotContent> destinations;
+};
+
 // The persistent local library.
 //
 // `.syx` files are an import/export format, not the database
@@ -92,7 +129,11 @@ class LibraryDatabase
 public:
     // Bumped whenever the schema changes; `open` migrates forward and refuses
     // to open a file written by a newer build.
-    static constexpr int kSchemaVersion = 1;
+    //
+    // 2 added the `banks` / `bank_slots` tables. The migration is additive —
+    // no existing row is touched — so opening a version 1 library simply
+    // creates the two new tables and stamps the new version.
+    static constexpr int kSchemaVersion = 2;
     // Passed as the path to keep the whole library in memory (tests).
     static constexpr const char* kInMemoryPath = ":memory:";
 
@@ -139,6 +180,31 @@ public:
     // Distinct values in use, for filter chips. Sorted, no empties.
     [[nodiscard]] std::vector<std::string> categoriesInUse() const;
     [[nodiscard]] std::vector<std::string> tagsInUse() const;
+
+
+    // Bank engineering ------------------------------------------------------
+    //
+    // A saved bank is an *arrangement*: 128 destinations, each either empty or
+    // a reference to a Patch that stays exactly where it is in the library.
+    // Saving a bank never copies, moves or rewrites a Patch, and deleting a
+    // bank never deletes a Patch.
+    //
+    // A destination keeps the Patch name it was given even after that Patch is
+    // deleted from the library. The reference becomes null, the slot is
+    // reported as missing, and the user is told — which is the opposite of
+    // silently shrinking their bank.
+
+    // Inserts a new bank, or replaces the arrangement of `existingId`.
+    // `destinations` shorter than 128 is padded with empty destinations; longer is
+    // refused. Returns the bank's id.
+    [[nodiscard]] std::optional<std::int64_t> saveBank(const std::string& name,
+        const std::vector<BankSlotContent>& destinations, std::optional<std::int64_t> existingId = std::nullopt);
+    [[nodiscard]] std::vector<SavedBankRecord> banks() const;
+    [[nodiscard]] std::optional<SavedBank> loadBank(std::int64_t id) const;
+    [[nodiscard]] bool removeBank(std::int64_t id);
+
+    // Where the library's Patches came from, one entry per distinct source.
+    [[nodiscard]] std::vector<LibrarySourceSummary> sourcesInUse() const;
 
 private:
     class Private;
