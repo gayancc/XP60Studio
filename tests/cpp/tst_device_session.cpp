@@ -417,14 +417,14 @@ private slots:
         QVERIFY(f.session->fetchTemporaryPatch());
         QCOMPARE(f.session->patchFetch().state, services::DeviceSession::PatchFetchState::InProgress);
         QCOMPARE(f.session->patchFetch().totalBlocks, std::size_t(5));
-        QCOMPARE(f.transport->sentMessages().size(), std::size_t(5)); // pacing 0 ms -> all sent
+        // Block reads are serialised: the XP-60 drops requests that arrive
+        // while it is still transmitting a reply, so only the first is sent.
+        QCOMPARE(f.transport->sentMessages().size(), std::size_t(1));
         QVERIFY(!f.session->fetchTemporaryPatch()); // one at a time
 
         // The RQ1s follow the Parameter Address Map blocks.
         QCOMPARE(QString::fromStdString(toHex(f.transport->sentMessages()[0])),
                  QStringLiteral("F0 41 10 6A 11 03 00 00 00 00 00 00 49 34 F7"));
-        QCOMPARE(QString::fromStdString(toHex(f.transport->sentMessages()[1])),
-                 QStringLiteral("F0 41 10 6A 11 03 00 10 00 00 00 01 01 6B F7"));
 
         // Build a synthetic patch and answer block by block, tones in 128 + 1 packets.
         const auto base = xpmodel::Xp60PatchLayout::temporaryPatchAddress();
@@ -460,6 +460,11 @@ private slots:
         QVERIFY(fetch.message.find("Patch decoded") != std::string::npos);
         QVERIFY(fetchSpy.count() >= 3);
         QCOMPARE(f.session->statistics().requestsCompleted, std::uint64_t(5));
+        // One RQ1 per block, and the second only went out after the first
+        // block's reply completed.
+        QCOMPARE(f.transport->sentMessages().size(), std::size_t(5));
+        QCOMPARE(QString::fromStdString(toHex(f.transport->sentMessages()[1])),
+                 QStringLiteral("F0 41 10 6A 11 03 00 10 00 00 00 01 01 6B F7"));
 
         // A second fetch is allowed once the first finished.
         QVERIFY(f.session->fetchTemporaryPatch());
@@ -476,7 +481,8 @@ private slots:
         QCOMPARE(f.session->patchFetch().state, services::DeviceSession::PatchFetchState::Failed);
         QVERIFY(f.session->patchFetch().message.find("Timed out") != std::string::npos);
         QVERIFY(!f.session->patchFetch().patch.has_value());
-        QVERIFY(!f.session->tracker().hasOutstanding()); // remaining blocks timed out too
+        // Serialised reads mean no later block was ever issued.
+        QVERIFY(!f.session->tracker().hasOutstanding());
     }
 
     void patchFetchFailsImmediatelyWhenABlockCannotBeSent()
@@ -492,7 +498,7 @@ private slots:
         // The remaining blocks cannot be queued after a transport failure.
         QCOMPARE(f.session->patchFetch().state, services::DeviceSession::PatchFetchState::Failed);
         QVERIFY(f.session->patchFetch().message.find("cable") != std::string::npos);
-        QVERIFY(!f.session->tracker().hasOutstanding()); // the other blocks were cancelled
+        QVERIFY(!f.session->tracker().hasOutstanding()); // nothing was left outstanding
     }
 
     void patchFetchRequiresConnection()

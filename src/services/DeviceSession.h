@@ -212,6 +212,7 @@ private:
 
     void handleIncomingMessage(midi::MidiBytes bytes);
     void updatePatchFetch();
+    bool requestNextPatchBlock();
     void handleTransportError(midi::TransportError error);
     void handleEndpointsChanged();
     void checkOpenEndpoints();
@@ -264,6 +265,10 @@ private:
     bool m_automaticTimeoutPolling = true;
 
     PatchFetchStatus m_patchFetch;
+    // Remaining blocks of the fetch in progress. Block reads are issued one at
+    // a time: see fetchPatch() for why the XP-60 cannot be pipelined.
+    std::vector<xpmodel::Xp60PatchLayout::ReadRequest> m_patchFetchPlan;
+    bool m_patchFetchAdvancing = false;
 
     Statistics m_statistics;
     std::deque<diagnostics::ProtocolLogEntry> m_log;

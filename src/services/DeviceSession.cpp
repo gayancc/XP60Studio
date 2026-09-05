@@ -572,24 +572,73 @@ bool DeviceSession::fetchPatch(const roland::RolandAddress& patchBase, PatchFetc
     m_patchFetch.base = patchBase;
     m_patchFetch.totalBlocks = plan.size();
     m_patchFetch.message = "Reading " + std::to_string(plan.size()) + " blocks from " + patchBase.toHexString();
-    for (const auto& request : plan) {
-        const auto id = sendDataRequest(request.address, request.size);
-        if (!id.isValid()) {
-            m_patchFetch.state = PatchFetchState::Failed;
-            m_patchFetch.message = m_lastError.empty()
-                ? "Could not queue the request for " + std::string(request.block.name)
-                : m_lastError;
-            emit patchFetchChanged();
-            return false;
-        }
-        m_patchFetch.requests.push_back(id);
+    m_patchFetchPlan = plan;
+
+    // Block reads are issued one at a time, each sent only after the previous
+    // block's reply has completed.
+    //
+    // The XP-60 cannot be pipelined. A 129-byte Tone block reply is 140 bytes
+    // on the wire, which at the MIDI DIN rate of 31250 baud takes about 45 ms
+    // to transmit (measured: 53 ms from request to complete reply). Queueing
+    // all five RQ1s and spacing them only by interMessageDelay asks the
+    // instrument to receive further requests while it is still transmitting,
+    // and it drops them: with the former 20 ms default the last block read
+    // timed out every time (hardware, 2026-09-04).
+    //
+    // Waiting for each reply is used rather than a larger delay because the
+    // safe delay is a property of the link, not of the instrument -- the
+    // measured cliff sat between 30 and 33 ms on a USB-MIDI cable and would
+    // differ again over Bluetooth. Serialising is correct on any link.
+    if (!requestNextPatchBlock()) {
+        return false;
     }
     logSystem(LogKind::Operation, LogSeverity::Info, "Patch fetch started: " + m_patchFetch.message);
     emit patchFetchChanged();
-    // A send failure during queueing marks its request terminal while
-    // updatePatchFetch() is still short-circuited by the "all queued" guard;
-    // evaluate once now that every block has been requested.
-    updatePatchFetch();
+    return true;
+}
+
+// Issues the next outstanding block read. Returns false when the send failed,
+// having already marked the fetch failed.
+bool DeviceSession::requestNextPatchBlock()
+{
+    if (m_patchFetch.requests.size() >= m_patchFetchPlan.size()) {
+        return true;
+    }
+    const auto& request = m_patchFetchPlan[m_patchFetch.requests.size()];
+    // sendDataRequest() emits operationChanged, which re-enters
+    // updatePatchFetch(); the guard keeps that from issuing a second block.
+    m_patchFetchAdvancing = true;
+    const auto id = sendDataRequest(request.address, request.size);
+    m_patchFetchAdvancing = false;
+    if (!id.isValid()) {
+        m_patchFetch.state = PatchFetchState::Failed;
+        m_patchFetch.message = m_lastError.empty()
+            ? "Could not queue the request for " + std::string(request.block.name)
+            : m_lastError;
+        for (const auto other : m_patchFetch.requests) {
+            const auto* op = m_tracker.find(other);
+            if (op && !protocol::isTerminal(op->state)) {
+                cancelRequest(other);
+            }
+        }
+        emit patchFetchChanged();
+        return false;
+    }
+    m_patchFetch.requests.push_back(id);
+
+    // A transport failure marks the request terminal from inside
+    // sendDataRequest(), while the re-entry guard above was suppressing
+    // updatePatchFetch(). Nothing else would notice it, so check here.
+    const auto* op = m_tracker.find(id);
+    if (op && protocol::isTerminal(op->state) && op->state != protocol::RequestState::Completed) {
+        m_patchFetch.state = PatchFetchState::Failed;
+        m_patchFetch.message = "Block read at " + request.address.toHexString() + " "
+            + std::string(protocol::requestStateLabel(op->state))
+            + (op->failureReason.empty() ? std::string() : ": " + op->failureReason);
+        logSystem(LogKind::Operation, LogSeverity::Error, "Patch fetch failed: " + m_patchFetch.message);
+        emit patchFetchChanged();
+        return false;
+    }
     return true;
 }
 
@@ -611,9 +660,9 @@ void DeviceSession::updatePatchFetch()
     if (m_patchFetch.state != PatchFetchState::InProgress) {
         return;
     }
-    // sendDataRequest() emits operationChanged while fetchPatch() is still
-    // queueing; completion is only meaningful once every block is requested.
-    if (m_patchFetch.requests.size() < m_patchFetch.totalBlocks) {
+    // Re-entered by the operationChanged emitted from within
+    // requestNextPatchBlock(); that block has not been answered yet.
+    if (m_patchFetchAdvancing) {
         return;
     }
     std::size_t completed = 0;
@@ -650,6 +699,13 @@ void DeviceSession::updatePatchFetch()
         emit patchFetchChanged();
     }
     if (completed != m_patchFetch.requests.size()) {
+        return;
+    }
+    // Every block issued so far is complete; ask for the next one.
+    if (m_patchFetch.requests.size() < m_patchFetchPlan.size()) {
+        if (requestNextPatchBlock()) {
+            emit patchFetchChanged();
+        }
         return;
     }
 
