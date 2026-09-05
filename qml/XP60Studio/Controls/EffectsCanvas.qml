@@ -134,7 +134,9 @@ Item {
         if (edge.from === "reverb") return qsTr("REVERB RETURN")
         if (edge.from === "source" && edge.to === "mix") return qsTr("DRY")
         if (edge.from === "source" && edge.to === "efx") return qsTr("TO EFX")
-        return qsTr("SEND")
+        if (edge.to === "direct") return qsTr("DIRECT OUT")
+        if (edge.to === "unknown") return qsTr("UNMAPPED OUT")
+        return qsTr("TONE LEVEL")
     }
     function levelFraction(edge) {
         var v = parseInt(edge.level)
@@ -307,8 +309,10 @@ Item {
             top: root.detailed ? header.bottom : parent.top
             topMargin: root.detailed ? Metrics.spacingSm : 0
         }
-        implicitHeight: root.detailed ? (root.showDirect ? 320 : 264)
-                                      : (root.showDirect ? 176 : 132)
+        // Derived from the tiers below, never guessed. A constant height here
+        // is what let the alternate output overlap the spine when the routing
+        // grew a row.
+        implicitHeight: (root.showDirect ? tierAlt + nodeH : laneDry) + (root.detailed ? 10 : 6)
         height: implicitHeight
 
         // Clicking bare canvas returns to Overview.
@@ -337,8 +341,8 @@ Item {
         readonly property real laneSendEfx: laneSendSource + (root.detailed ? 26 : 8)
         readonly property real tierMain: laneSendEfx + (root.detailed ? 24 : 10)
         readonly property real laneDry: tierMain + Math.max(nodeH, efxH) + (root.detailed ? 18 : 8)
-        readonly property real tierAlt: implicitHeight - nodeH
-        readonly property real laneDirect: root.showDirect ? (laneDry + (root.detailed ? 22 : 8)) : laneDry
+        readonly property real laneDirect: laneDry + (root.detailed ? 20 : 8)
+        readonly property real tierAlt: laneDirect + (root.detailed ? 14 : 6)
         // The spine's centreline: every main rail is dead straight along it.
         readonly property real spineY: tierMain + Math.max(nodeH, efxH) / 2
 
@@ -457,6 +461,7 @@ Item {
 
         // ── Nodes ────────────────────────────────────────────────────────
         EffectProcessorNode {
+            compact: !root.detailed
             id: sourceNode
             objectName: "canvasSource"
             x: 0; y: stage.spineY - stage.nodeH / 2
@@ -474,6 +479,7 @@ Item {
         }
 
         EffectProcessorNode {
+            compact: !root.detailed
             id: efxNode
             objectName: "canvasEfx"
             x: stage.colStep; y: stage.spineY - stage.efxH / 2
@@ -493,6 +499,7 @@ Item {
         }
 
         EffectProcessorNode {
+            compact: !root.detailed
             id: chorusNode
             objectName: "canvasChorus"
             x: 2 * stage.colStep; y: stage.tierSend
@@ -512,6 +519,7 @@ Item {
         }
 
         EffectProcessorNode {
+            compact: !root.detailed
             id: reverbNode
             objectName: "canvasReverb"
             x: 3 * stage.colStep; y: stage.tierSend
@@ -530,6 +538,7 @@ Item {
         }
 
         EffectProcessorNode {
+            compact: !root.detailed
             id: mixNode
             objectName: "canvasMix"
             x: 4 * stage.colStep; y: stage.spineY - stage.nodeH / 2
@@ -548,6 +557,7 @@ Item {
         }
 
         EffectProcessorNode {
+            compact: !root.detailed
             id: directNode
             objectName: "canvasDirect"
             // Shown as a ghost target while a routing drag is looking for a

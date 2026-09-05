@@ -179,3 +179,28 @@ the gesture over, that a click isolates without changing a value, that a real
 drag adjusts and leaves exactly one undo entry, that a drop near a destination
 still lands, that a cancelled drag writes nothing, and that no two chips overlap
 at any supported width.
+
+## Layout defects found by rendering each state
+
+Capturing every state caught three faults the tests did not, because each was a
+matter of where things landed rather than what they did.
+
+**The alternate output overlapped the spine.** The stage height was a constant
+while the tiers were computed from the top down, so when the routing grew a
+DIRECT row the two disagreed and the node landed on the spine. The height is now
+derived from the tiers, so the two cannot drift apart again.
+
+**A direct route was labelled "SEND".** The caption fell through to a generic
+name for anything that was neither a send nor a return — which is precisely the
+unexplained value this redesign set out to remove. Direct and unmapped outputs
+are now named.
+
+**The compact strip leaked text.** A 46 px node cannot hold four lines, and the
+badge was drawing outside its own body onto the canvas. Nodes now take a
+`compact` flag that drops the badge and tightens the drawing, and the body clips,
+so nothing can escape it again.
+
+The captures in [`screenshots/effects-canvas/`](screenshots/effects-canvas/) are
+one per state — overview, focus, isolation, direct output at the narrowest
+supported width, and the compact strip — because a state nobody has looked at is
+a state nobody has checked.

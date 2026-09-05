@@ -31,6 +31,10 @@ Item {
     property bool interactive: true
     // Shown on the destination node, and wherever a value arrives.
     property string badgeText: ""
+    // The strip outside the Effects section. A short node cannot hold four
+    // lines, and letting the last one spill outside the body is worse than
+    // dropping it: identity and state stay, the badge goes.
+    property bool compact: false
 
     signal activated()
 
@@ -62,6 +66,9 @@ Item {
     Rectangle {
         id: body
         anchors.fill: parent
+        // Nothing may draw outside the node: a label escaping its own box is
+        // how the compact strip started leaking text onto the canvas.
+        clip: true
         color: root.focused ? Theme.surfaceRaised : Theme.surface
         // The destination is a terminal, so it loses the left shoulder; the
         // source loses the right. Only processors are symmetrical.
@@ -145,7 +152,7 @@ Item {
                 objectName: "microViz"
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                Layout.minimumHeight: 18
+                Layout.minimumHeight: root.compact ? 8 : 18
                 kind: root.kind
                 tint: root.accentColor
                 amount: root.vizAmount
@@ -154,7 +161,7 @@ Item {
             }
 
             XpLabel {
-                visible: root.badgeText.length > 0
+                visible: !root.compact && root.badgeText.length > 0
                 text: root.badgeText
                 role: "caption"
                 secondary: true
@@ -167,7 +174,7 @@ Item {
     // Bypassed / out-of-path stages say so in words as well as in weight,
     // because a faded box alone is ambiguous.
     Rectangle {
-        visible: !root.active
+        visible: !root.active && !root.compact
         anchors { right: body.right; top: body.top; margins: Metrics.spacingXs }
         width: bypassLabel.implicitWidth + Metrics.spacingSm
         height: bypassLabel.implicitHeight + 2

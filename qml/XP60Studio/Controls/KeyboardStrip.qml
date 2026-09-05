@@ -43,7 +43,7 @@ Item {
     // Where each black key sits, in white-key widths from the start of its
     // octave. The middle black of a group is centred on the boundary between
     // its neighbours; the outer ones shift outward, as on a real keyboard.
-    readonly property var blackCentre: ({ 1: 0.90, 3: 2.10, 6: 3.85, 8: 5.00, 10: 6.15 })
+    readonly property var blackCentre: ({ 1: 0.95, 3: 2.05, 6: 3.90, 8: 5.00, 10: 6.10 })
 
     readonly property int windowFirst: Math.max(0, Math.min(root.firstNote, root.lastNote))
     readonly property int windowLast: Math.min(127, Math.max(root.firstNote, root.lastNote))
@@ -56,7 +56,9 @@ Item {
         return Math.max(1, n)
     }
     readonly property real whiteWidth: keyArea.width / whiteCount
-    readonly property real blackWidth: Math.max(2, whiteWidth * 0.60)
+    // 13.7 mm against 23.5 mm on a real keyboard. Floored at 3 px, because
+    // below that a black key stops reading as a key and becomes a hairline.
+    readonly property real blackWidth: Math.max(2.5, whiteWidth * 0.583)
 
     // Number of white keys before `note` within the window.
     function whiteIndex(note) {
@@ -151,6 +153,20 @@ Item {
             height: parent.height - root.barHeight - 3
                     - (root.showOctaveLabels && root.whiteWidth >= 9 ? 14 : 0)
 
+            // The felt strip along the back of the keys. A small thing, but it
+            // is most of what makes a drawing read as a keybed rather than as
+            // a row of rectangles.
+            Rectangle {
+                id: felt
+                anchors { left: parent.left; right: parent.right; top: parent.top }
+                height: Math.max(2, Math.round(parent.height * 0.055))
+                z: 3
+                gradient: Gradient {
+                    GradientStop { position: 0.0; color: Qt.rgba(0, 0, 0, 0.55) }
+                    GradientStop { position: 1.0; color: Qt.rgba(0, 0, 0, 0.18) }
+                }
+            }
+
             Canvas {
                 id: keys
                 anchors.fill: parent
@@ -210,17 +226,19 @@ Item {
                         inRange = n >= Math.round(lo) && n <= Math.round(hi)
                         var lift = n === hover ? 0.10 : 0
 
-                        var top = Qt.rgba(0.914, 0.929, 0.953, 1)   // #E9EDF3
-                        var mid = Qt.rgba(0.835, 0.859, 0.894, 1)   // #D5DBE4
-                        var bot = Qt.rgba(0.725, 0.761, 0.812, 1)   // #B9C2CF
-                        // A wash, not a repaint: at full range a heavy tint
-                        // turns the keybed into a coloured block and stops
-                        // reading as keys. The range bar below carries the
-                        // reading; the keys only echo it.
+                        // Ivory, not a tinted surface. A Patch whose range is
+                        // the whole keyboard used to turn every key accent
+                        // coloured, and a keybed that is uniformly blue stops
+                        // looking like keys. The range is carried by the bar
+                        // below, the glow along the front and the span line;
+                        // the keys themselves barely change.
+                        var top = Qt.rgba(0.976, 0.973, 0.961, 1)   // #F9F8F5 ivory
+                        var mid = Qt.rgba(0.925, 0.918, 0.898, 1)   // #ECEAE5
+                        var bot = Qt.rgba(0.804, 0.796, 0.776, 1)   // #CDCBC6
                         if (inRange) {
-                            top = tint(top, 0.08 * emphasis)
-                            mid = tint(mid, 0.12 * emphasis)
-                            bot = tint(bot, 0.22 * emphasis)
+                            top = tint(top, 0.015 * emphasis)
+                            mid = tint(mid, 0.03 * emphasis)
+                            bot = tint(bot, 0.06 * emphasis)
                         }
                         if (lift > 0) {
                             top = Qt.lighter(top, 1 + lift)
@@ -229,19 +247,25 @@ Item {
 
                         grad = ctx.createLinearGradient(0, 0, 0, H)
                         grad.addColorStop(0, top)
-                        grad.addColorStop(0.72, mid)
+                        grad.addColorStop(0.80, mid)
                         grad.addColorStop(1, bot)
                         ctx.fillStyle = grad
                         roundedBottom(ctx, left, 0, ww, H, radius)
                         ctx.fill()
 
-                        // Separator between keys, and the shadow line along the front.
-                        ctx.strokeStyle = Qt.rgba(0, 0, 0, 0.42)
-                        ctx.lineWidth = 1
-                        ctx.beginPath()
-                        ctx.moveTo(left + ww - 0.5, 0)
-                        ctx.lineTo(left + ww - 0.5, H - radius)
-                        ctx.stroke()
+                        // The gap between keys is a slot, not a drawn line: two
+                        // tones give it depth even when it is one pixel wide.
+                        ctx.fillStyle = Qt.rgba(0, 0, 0, 0.55)
+                        ctx.fillRect(left + ww - 1, 0, 1, H - radius)
+                        if (ww > 6) {
+                            ctx.fillStyle = Qt.rgba(1, 1, 1, 0.35)
+                            ctx.fillRect(left, 0, 1, H - radius)
+                        }
+
+                        // The front lip catches light on a real key.
+                        ctx.fillStyle = Qt.rgba(1, 1, 1, 0.30)
+                        ctx.fillRect(left + 1, H - Math.max(1.5, H * 0.045), Math.max(1, ww - 2),
+                                     Math.max(1, H * 0.02))
                     }
 
                     // Black keys, over the whites, each with its own shadow.
@@ -250,31 +274,45 @@ Item {
                         left = root.keyLeft(n, ww, bw)
                         inRange = n >= Math.round(lo) && n <= Math.round(hi)
 
-                        ctx.fillStyle = Qt.rgba(0, 0, 0, 0.30)
-                        roundedBottom(ctx, left + 1, 0, bw, bh + 2, radius)
+                        // The shadow a raised key casts, drawn *below* the key
+                        // rather than around it. Widening the shadow closes the
+                        // gaps between the three-key group at small sizes, and
+                        // a keybed whose blacks touch has no readable octave
+                        // pattern left.
+                        ctx.fillStyle = Qt.rgba(0, 0, 0, 0.42)
+                        roundedBottom(ctx, left, 0, bw, bh + Math.max(1.5, bh * 0.06), radius)
                         ctx.fill()
 
-                        var btop = Qt.rgba(0.165, 0.192, 0.251, 1)  // #2A3140
-                        var bbot = Qt.rgba(0.020, 0.027, 0.043, 1)  // #05070B
+                        // Genuinely black. The previous slate read as grey at
+                        // small widths, which is why the octave pattern was
+                        // hard to see at all.
+                        var btop = Qt.rgba(0.130, 0.141, 0.165, 1)  // #21242A
+                        var bbot = Qt.rgba(0.020, 0.024, 0.031, 1)  // #050608
                         if (inRange) {
-                            btop = tint(btop, 0.20 * emphasis)
-                            bbot = tint(bbot, 0.08 * emphasis)
+                            btop = tint(btop, 0.22 * emphasis)
+                            bbot = tint(bbot, 0.07 * emphasis)
                         }
-                        if (n === hover) {
-                            btop = Qt.lighter(btop, 1.35)
-                        }
+                        if (n === hover)
+                            btop = Qt.lighter(btop, 1.45)
                         grad = ctx.createLinearGradient(0, 0, 0, bh)
                         grad.addColorStop(0, btop)
-                        grad.addColorStop(0.62, Qt.rgba((btop.r + bbot.r) / 2, (btop.g + bbot.g) / 2,
+                        grad.addColorStop(0.70, Qt.rgba((btop.r + bbot.r) / 2, (btop.g + bbot.g) / 2,
                                                         (btop.b + bbot.b) / 2, 1))
                         grad.addColorStop(1, bbot)
                         ctx.fillStyle = grad
                         roundedBottom(ctx, left, 0, bw, bh, radius)
                         ctx.fill()
 
-                        // Gloss along the top edge.
-                        ctx.fillStyle = Qt.rgba(1, 1, 1, 0.16)
-                        ctx.fillRect(left + 1, 1, bw - 2, Math.max(1, bh * 0.06))
+                        // The bevel along the playing end, and a highlight down
+                        // one side: together they make the key look raised
+                        // rather than painted on.
+                        ctx.fillStyle = Qt.rgba(1, 1, 1, 0.22)
+                        ctx.fillRect(left + 0.5, bh - Math.max(1.5, bh * 0.10), Math.max(1, bw - 1),
+                                     Math.max(1, bh * 0.05))
+                        if (bw > 4) {
+                            ctx.fillStyle = Qt.rgba(1, 1, 1, 0.10)
+                            ctx.fillRect(left + 0.5, 1, 1, bh - 3)
+                        }
                     }
 
                     // Glow along the front of the sounding keys: the range is
@@ -283,11 +321,16 @@ Item {
                         var gl = root.keyLeft(Math.max(first, Math.round(lo)), ww, bw)
                         var hiNote = Math.min(last, Math.round(hi))
                         var gr = root.keyRight(hiNote, ww, bw)
-                        var glow = ctx.createLinearGradient(0, H - H * 0.22, 0, H)
+                        // Kept shallow and faint on purpose. A Patch that
+                        // responds across the whole keyboard is the common
+                        // case, and a tall glow under every key turns the
+                        // keybed into a blue block -- the bar below is what
+                        // states the range, not the keys.
+                        var glow = ctx.createLinearGradient(0, H - H * 0.12, 0, H)
                         glow.addColorStop(0, Qt.rgba(accent.r, accent.g, accent.b, 0))
-                        glow.addColorStop(1, Qt.rgba(accent.r, accent.g, accent.b, 0.60 * emphasis))
+                        glow.addColorStop(1, Qt.rgba(accent.r, accent.g, accent.b, 0.34 * emphasis))
                         ctx.fillStyle = glow
-                        ctx.fillRect(gl, H - H * 0.22, Math.max(1, gr - gl), H * 0.22)
+                        ctx.fillRect(gl, H - H * 0.12, Math.max(1, gr - gl), H * 0.12)
 
                         // And a bright line across the top of the span, so the
                         // two edges are exact even where the wash is subtle.
