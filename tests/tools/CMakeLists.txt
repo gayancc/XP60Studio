@@ -23,3 +23,13 @@ target_link_libraries(xp60studio_hardware_probe PRIVATE
   xp60studio::roland
   xp60studio::xp60
   xp60studio::xpmodel)
+
+# Phase 3 write round trip against a physical XP-60. Drives
+# services::PatchTransfer, so the armed write flow's safety properties apply.
+qt_add_executable(xp60studio_write_roundtrip write_roundtrip_harness.cpp)
+target_link_libraries(xp60studio_write_roundtrip PRIVATE
+  Qt6::Core
+  xp60studio::midi_libremidi
+  xp60studio::services
+  xp60studio::xpmodel)
+set_target_properties(xp60studio_write_roundtrip PROPERTIES AUTOMOC ON WIN32_EXECUTABLE FALSE)
