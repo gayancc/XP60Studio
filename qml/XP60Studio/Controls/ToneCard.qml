@@ -20,9 +20,21 @@ Rectangle {
 
     radius: Metrics.radiusMd
     color: Theme.surface
-    border.width: selected ? 2 : Metrics.borderWidth
+    border.width: Metrics.borderWidth
     border.color: selected ? toneColor : Qt.rgba(toneColor.r, toneColor.g, toneColor.b, 0.45)
     implicitHeight: layout.implicitHeight + 2 * Metrics.spacingMd
+
+    // Selection is drawn as an inset ring rather than a thicker border, so the
+    // card's content does not move by a pixel when it becomes current.
+    Rectangle {
+        visible: root.selected
+        anchors.fill: parent
+        anchors.margins: 2
+        radius: parent.radius - 2
+        color: "transparent"
+        border.width: Metrics.borderWidth
+        border.color: root.toneColor
+    }
 
     // Faint tone-coloured wash, as in the mockup.
     Rectangle {
@@ -84,8 +96,8 @@ Rectangle {
             // Explicit enable marker, with mouse and keyboard parity.
             Rectangle {
                 objectName: "toneEnableButton"
-                implicitWidth: 26
-                implicitHeight: 26
+                implicitWidth: 28
+                implicitHeight: 28
                 radius: Metrics.radiusSm
                 color: enableHover.hovered ? Theme.surfaceHover : "transparent"
                 border.width: 1
@@ -116,7 +128,7 @@ Rectangle {
         ColumnLayout {
             Layout.fillWidth: true
             spacing: 1
-            XpLabel { text: qsTr("Wave"); role: "overline"; secondary: true }
+            XpLabel { text: qsTr("Wave"); role: "label"; secondary: true }
             Rectangle {
                 Layout.fillWidth: true
                 implicitHeight: waveCol.implicitHeight + Metrics.spacingXs
@@ -146,10 +158,19 @@ Rectangle {
                         elide: Text.ElideRight
                         Layout.fillWidth: true
                     }
-                    XpLabel {
-                        text: qsTr("Browse waves")
-                        role: "overline"
-                        color: Theme.accentText
+                    RowLayout {
+                        spacing: Metrics.spacingXs
+                        XpLabel {
+                            text: qsTr("Browse waves")
+                            role: "label"
+                            color: waveHover.hovered ? Theme.textPrimary : Theme.accentText
+                        }
+                        XpIcon {
+                            name: "chevron-right"
+                            color: waveHover.hovered ? Theme.textPrimary : Theme.accentText
+                            implicitWidth: Metrics.iconSizeSm
+                            implicitHeight: Metrics.iconSizeSm
+                        }
                     }
                 }
             }
@@ -162,7 +183,9 @@ Rectangle {
 
             ColumnLayout {
                 spacing: 2
-                XpLabel { text: qsTr("Level"); role: "overline"; secondary: true; Layout.alignment: Qt.AlignHCenter }
+                Layout.fillWidth: true
+                Layout.alignment: Qt.AlignTop
+                XpLabel { text: qsTr("Level"); role: "label"; secondary: true; Layout.alignment: Qt.AlignHCenter }
                 XpKnob {
                     objectName: "toneLevelKnob"
                     from: 0; to: 127
@@ -178,7 +201,9 @@ Rectangle {
 
             ColumnLayout {
                 spacing: 2
-                XpLabel { text: qsTr("Pan"); role: "overline"; secondary: true; Layout.alignment: Qt.AlignHCenter }
+                Layout.fillWidth: true
+                Layout.alignment: Qt.AlignTop
+                XpLabel { text: qsTr("Pan"); role: "label"; secondary: true; Layout.alignment: Qt.AlignHCenter }
                 XpKnob {
                     objectName: "tonePanKnob"
                     from: 0; to: 127
@@ -196,12 +221,13 @@ Rectangle {
             ColumnLayout {
                 spacing: 2
                 Layout.fillWidth: true
-                XpLabel { text: qsTr("Octave"); role: "overline"; secondary: true; Layout.alignment: Qt.AlignHCenter }
+                Layout.alignment: Qt.AlignTop
+                XpLabel { text: qsTr("Octave"); role: "label"; secondary: true; Layout.alignment: Qt.AlignHCenter }
                 Rectangle {
                     objectName: "toneOctaveField"
                     Layout.alignment: Qt.AlignHCenter
-                    implicitWidth: 46
-                    implicitHeight: 30
+                    implicitWidth: 48
+                    implicitHeight: Metrics.controlHeight
                     radius: Metrics.radiusSm
                     color: Theme.surfaceSunken
                     border.width: 1
@@ -250,7 +276,7 @@ Rectangle {
                         required property var modelData
                         readonly property bool active: modelData.solo ? root.tone.solo : root.tone.mute
                         implicitWidth: 28
-                        implicitHeight: 26
+                        implicitHeight: Metrics.controlHeightSm
                         radius: Metrics.radiusSm
                         objectName: modelData.solo ? "toneSoloButton" : "toneMuteButton"
                         color: active ? (modelData.solo ? Theme.warning : Theme.error)

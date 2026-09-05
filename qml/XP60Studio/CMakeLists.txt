@@ -13,6 +13,11 @@ set(XP60STUDIO_QML_FILES
   Controls/XpComboBox.qml
   Controls/XpDivider.qml
   Controls/XpEmptyState.qml
+  Controls/XpSection.qml
+  Controls/XpSwitch.qml
+  Controls/XpFieldRow.qml
+  Controls/XpValueReadout.qml
+  Controls/XpByteView.qml
   Controls/XpLabel.qml
   Controls/XpMetricTile.qml
   Controls/XpPanelHeader.qml
@@ -36,15 +41,18 @@ set(XP60STUDIO_QML_FILES
   Controls/FourToneMixer.qml
   Controls/LfoShapeSelector.qml
   Controls/LfoPreview.qml
-  Controls/DeviceConnectionCard.qml
+  Controls/DeviceConnectionBar.qml
   Controls/DeviceHealthCard.qml
   Controls/SafeReadFlow.qml
   Controls/OperationProgressRow.qml
+  Controls/LibraryTransferCard.qml
   Controls/ProtocolActivityPanel.qml
   Controls/TransferMismatchCard.qml
   Controls/WaveSearchBar.qml
   Controls/WaveResultRow.qml
   Controls/WaveAvailabilityBadge.qml
+  Controls/LibraryResultRow.qml
+  Controls/LibraryDetailsPanel.qml
   Shell/AppNavigationRail.qml
   Shell/AppHeader.qml
   Shell/ConnectionStatusIndicator.qml
@@ -52,6 +60,7 @@ set(XP60STUDIO_QML_FILES
   Screens/DevicesScreen.qml
   Screens/EditorScreen.qml
   Screens/WaveBrowserScreen.qml
+  Screens/LibraryScreen.qml
   Screens/UnavailableScreen.qml
 )
 

@@ -381,10 +381,11 @@ private slots:
         QCOMPARE(f.shell->currentScreenTitle(), QStringLiteral("Devices"));
         QCOMPARE(f.shell->navigationItems().size(), 8);
         QVERIFY(f.shell->isScreenAvailable(QStringLiteral("devices")));
-        QVERIFY(f.shell->isScreenAvailable(QStringLiteral("editor"))); // built in Phase 4
-        QVERIFY(!f.shell->isScreenAvailable(QStringLiteral("library")));
+        QVERIFY(f.shell->isScreenAvailable(QStringLiteral("editor")));  // built in Phase 4
+        QVERIFY(f.shell->isScreenAvailable(QStringLiteral("library"))); // built in Phase 5
+        QVERIFY(!f.shell->isScreenAvailable(QStringLiteral("banks")));  // Phase 6
         QSignalSpy spy(f.shell.get(), &AppShellViewModel::currentScreenChanged);
-        QVERIFY(!f.shell->navigate(QStringLiteral("library")));
+        QVERIFY(!f.shell->navigate(QStringLiteral("banks")));
         QVERIFY(!f.shell->navigate(QStringLiteral("nonsense")));
         QCOMPARE(f.shell->currentScreen(), QStringLiteral("devices"));
         QCOMPARE(spy.count(), 0);
@@ -405,7 +406,7 @@ private slots:
                 ++enabled;
             }
         }
-        QCOMPARE(enabled, 2); // Devices and Editor
+        QCOMPARE(enabled, 3); // Devices, Editor and Library
     }
 
     void patchFetchFlowsIntoTheViewModel()

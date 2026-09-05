@@ -24,11 +24,25 @@ TestCase {
 
     Component {
         id: indicatorComponent
-        ConnectionStatusIndicator { connectionState: ConnectionState.Disconnected; label: "Offline" }
+        ConnectionStatusIndicator { shell: testShell }
     }
 
     function init() {
         testDevices.disconnectDevice()
+        testShell.navigate("devices")
+    }
+
+    // Collects every descendant carrying `name`, so a delegate deep inside a
+    // Repeater can be measured.
+    function descendants(item, name, found) {
+        found = found || []
+        for (var i = 0; i < item.children.length; ++i) {
+            var child = item.children[i]
+            if (child.objectName === name)
+                found.push(child)
+            descendants(child, name, found)
+        }
+        return found
     }
 
     function test_navigation_rail_lists_all_destinations_and_gates_unbuilt_ones() {
@@ -39,10 +53,10 @@ TestCase {
         for (var i = 0; i < testShell.navigationItems.length; ++i) {
             if (testShell.navigationItems[i].enabled) enabled++
         }
-        compare(enabled, 2) // Devices and Editor
+        compare(enabled, 3) // Devices, Editor and Library
         compare(testShell.currentScreen, "devices")
         // Disabled destinations must not navigate.
-        compare(testShell.navigate("library"), false)
+        compare(testShell.navigate("banks"), false)
         compare(testShell.currentScreen, "devices")
         // Enabled ones must.
         compare(testShell.navigate("editor"), true)
@@ -50,18 +64,58 @@ TestCase {
         testShell.navigate("devices")
     }
 
-    function test_connection_indicator_reflects_state_by_text_and_tone() {
+    // Regression guard. Navigation labels used to be pinned to their implicit
+    // width, so "Performance" plus its availability text was drawn past the
+    // rail's own divider and over the content area. No label may leave the
+    // rail, at the rail's real width, for any destination.
+    function test_navigation_labels_stay_inside_the_rail() {
+        var rail = createTemporaryObject(railComponent, testCase)
+        verify(rail)
+        rail.width = Metrics.railWidth
+        wait(0)
+        var labels = descendants(rail, "navLabel")
+        compare(labels.length, testShell.navigationItems.length)
+        for (var i = 0; i < labels.length; ++i) {
+            var right = labels[i].mapToItem(rail, labels[i].width, 0).x
+            verify(right <= rail.width,
+                   "navigation label " + i + " right edge " + right
+                   + " exceeds rail width " + rail.width)
+        }
+    }
+
+    // The shell view-model is the only place that maps connection state to a
+    // tone and to wording; the indicator must not re-derive either.
+    function test_shell_owns_the_connection_vocabulary() {
         var indicator = createTemporaryObject(indicatorComponent, testCase)
         verify(indicator)
-        compare(indicator.tone, "neutral")
-        indicator.connectionState = ConnectionState.Connected
+        compare(testShell.connectionTone, indicator.tone)
+
+        testDevices.connectDevice()
+        tryCompare(testDevices, "connectionState", ConnectionState.Connected)
+        compare(testShell.connectionPhase, "connected")
+        compare(testShell.connectionTone, "warning")
+        compare(testShell.connectionShortLabel, "Connected")
         compare(indicator.tone, "warning")
-        indicator.verified = true
-        compare(indicator.tone, "live")
-        indicator.connectionState = ConnectionState.Error
-        compare(indicator.tone, "error")
-        indicator.connectionState = ConnectionState.Connecting
-        compare(indicator.tone, "warning")
+
+        testDevices.disconnectDevice()
+        // Endpoints are still selected, so this is "available", not "offline":
+        // the shell should not tell the user to go and find ports it can see.
+        compare(testShell.connectionPhase, "available")
+        compare(testShell.connectionShortLabel, "Ready to connect")
+        compare(testShell.connectionTone, "neutral")
+    }
+
+    // The shell offers a jump to Devices only when that is useful.
+    function test_connection_action_is_not_offered_on_devices() {
+        testShell.navigate("devices")
+        compare(testShell.connectionActionable, false)
+        compare(testShell.connectionActionLabel, "")
+
+        testShell.navigate("editor")
+        compare(testShell.connectionActionable, true)
+        compare(testShell.connectionActionLabel, "Set up")
+
+        testShell.navigate("devices")
     }
 
     function test_header_follows_shell_connection() {

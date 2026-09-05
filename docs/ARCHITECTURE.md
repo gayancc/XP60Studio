@@ -17,19 +17,22 @@ XP60Studio
 ├── XP60Studio QML Component Library
 ├── C++ Presentation Models
 ├── Application Services / Commands
+├── Simulation / Demo Mode (optional path)
 ├── Library Intelligence & Persistence
 ├── XP Domain Model & Codecs
 ├── XP-60 Device Protocol
 ├── Roland SysEx Protocol
 ├── IMidiTransport
-└── libremidi / platform MIDI backend
+└── libremidi / platform MIDI backend  OR  Loopback (Demo Mode)
        │
-       └── XP-60
+       └── XP-60  OR  SimulatedXp60
 ```
 
 The UI must never manually build Roland SysEx packets.
 
 The SysEx layer must never depend on visual components.
+
+Demo Mode is a composition-root choice: the same `DeviceSession` / presentation stack runs against `LoopbackMidiTransport` + `SimulatedXp60` instead of libremidi + hardware. QML still never builds SysEx.
 
 ---
 
@@ -260,6 +263,29 @@ Services own cancellation, progress, retries, validation, and hardware side effe
 
 ---
 
+# 8a. Simulation / Demo Mode
+
+Optional path used when the application is launched with `--demo` or `XP60STUDIO_DEMO`.
+
+```text
+main.cpp (Demo Mode)
+  → LoopbackMidiTransport
+  → DeviceSession + PatchTransfer   (unchanged)
+  → SimulatedXp60 + DemoReplyPump
+  → Presentation / QML              (demoMode badge + XP-60 SIM labels)
+```
+
+Responsibilities:
+
+- answer RQ1 / apply DT1 from an in-memory `MemoryImage`
+- pump replies on the Qt event loop for the whole session
+- seed temporary Patch data from an embedded fixture resource
+- never open OS MIDI ports
+
+The UI must still never construct SysEx. Demo Mode only swaps the transport and adds a simulated device behind the existing service stack. Details: [`DEMO_MODE.md`](DEMO_MODE.md).
+
+---
+
 # 9. Presentation Layer
 
 This layer is the intentional boundary between C++ application logic and QML.
@@ -357,6 +383,10 @@ The persistent local library should support:
 - optional later audio-preview references
 
 Choose the persistence technology after query patterns are understood. Do not add cloud/distributed architecture prematurely.
+
+Decided 2026-09-04, once the Phase 5 query patterns existed: **SQLite through Qt SQL**
+(`QSQLITE`, already shipped with Qt). See `PHASE_5_LIBRARIAN.md` for the schema, what is
+deliberately not stored, and the query patterns that motivated the choice.
 
 ---
 

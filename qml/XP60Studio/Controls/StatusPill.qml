@@ -14,7 +14,7 @@ Rectangle {
     readonly property color foreground: Theme.toneForeground(tone)
 
     implicitWidth: row.implicitWidth + 2 * Metrics.spacingSm + 2
-    implicitHeight: 22
+    implicitHeight: 24
     radius: Metrics.radiusPill
     color: Theme.toneBackground(tone)
     border.width: Metrics.borderWidth

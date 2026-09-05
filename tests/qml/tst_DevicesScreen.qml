@@ -14,7 +14,16 @@ TestCase {
 
     Component {
         id: screenComponent
-        DevicesScreen { devices: testDevices; width: 1300; height: 900 }
+        DevicesScreen {}
+    }
+
+    function makeScreen(extra) {
+        var props = { devices: testDevices, shell: testShell, width: 1300, height: 900 }
+        if (extra) {
+            for (var key in extra)
+                props[key] = extra[key]
+        }
+        return createTemporaryObject(screenComponent, testCase, props)
     }
 
     function init() {
@@ -31,7 +40,7 @@ TestCase {
     }
 
     function test_screen_loads_and_binds() {
-        var screen = createTemporaryObject(screenComponent, testCase)
+        var screen = makeScreen()
         verify(screen)
         verify(screen.twoColumns)
         var connectButton = findChild(screen, "connectButton")
@@ -53,10 +62,11 @@ TestCase {
         compare(inputPicker.displayText, "XP-60 IN · Loopback")
         var addressField = findChild(screen, "addressField")
         compare(addressField.text, "03 00 00 00")
+        verify(findChild(screen, "enterDemoModeButton"))
     }
 
     function test_connect_flow_enables_request() {
-        var screen = createTemporaryObject(screenComponent, testCase)
+        var screen = makeScreen()
         verify(screen)
         var connectButton = findChild(screen, "connectButton")
         var disconnectButton = findChild(screen, "disconnectButton")
@@ -75,7 +85,7 @@ TestCase {
         compare(disconnectButton.enabled, true)
         compare(sendButton.enabled, true)
         var inputPicker = findChild(screen, "inputPicker")
-        compare(inputPicker.enabled, false) // pickers lock while connected
+        compare(inputPicker.visible, false) // pickers hide while connected
 
         var logBefore = testDevices.log.count
         reveal(screen, sendButton)
@@ -96,7 +106,7 @@ TestCase {
     }
 
     function test_invalid_address_disables_send_and_shows_message() {
-        var screen = createTemporaryObject(screenComponent, testCase)
+        var screen = makeScreen()
         verify(screen)
         testDevices.connectDevice()
         tryCompare(testDevices, "connectionState", ConnectionState.Connected)
@@ -120,7 +130,7 @@ TestCase {
     }
 
     function test_connection_test_and_pacing_are_bound_to_the_session() {
-        var screen = createTemporaryObject(screenComponent, testCase)
+        var screen = makeScreen()
         var probe = findChild(screen, "testConnectionButton")
         var pacing = findChild(screen, "pacingPicker")
         verify(probe)
@@ -144,7 +154,7 @@ TestCase {
     }
 
     function test_patch_fetch_button_follows_connection() {
-        var screen = createTemporaryObject(screenComponent, testCase)
+        var screen = makeScreen()
         verify(screen)
         var fetchButton = findChild(screen, "fetchPatchButton")
         var pill = findChild(screen, "patchFetchPill")
@@ -168,7 +178,7 @@ TestCase {
     }
 
     function test_write_is_gated_behind_a_read_then_arming() {
-        var screen = createTemporaryObject(screenComponent, testCase)
+        var screen = makeScreen()
         verify(screen)
         var armButton = findChild(screen, "armWriteButton")
         var writeButton = findChild(screen, "writeVerifyButton")
@@ -202,7 +212,7 @@ TestCase {
     }
 
     function test_stacks_to_one_column_when_narrow() {
-        var screen = createTemporaryObject(screenComponent, testCase)
+        var screen = makeScreen()
         verify(screen)
         screen.width = 900
         compare(screen.twoColumns, false)

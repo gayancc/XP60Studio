@@ -104,7 +104,8 @@ while requests or a Patch transfer are active. There are no automatic write retr
 
 ## Physical acceptance still required
 
-Record the OS version, Bluetooth radio/interface, WIDI firmware, XP-60 firmware,
+This is area 1 of [`DEVICE_ACCEPTANCE.md`](DEVICE_ACCEPTANCE.md), the index for
+the single connected session. Record the OS version, Bluetooth radio/interface, WIDI firmware, XP-60 firmware,
 backend, both selected port names, Device ID and pacing for each route tested.
 Use [the XP-60 hardware procedure](HARDWARE_VALIDATION_XP60.md), then record:
 

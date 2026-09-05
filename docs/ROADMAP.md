@@ -15,6 +15,33 @@ The four anchor screens shown in the master mockup must be implemented to closel
 
 ---
 
+# Cross-cutting — Demo Mode (Simulation)
+
+Status: **added** (2026-09-04). See [`DEMO_MODE.md`](DEMO_MODE.md).
+
+Goal: let musicians and reviewers experience every *shipped* workflow without a physical XP-60 or OS MIDI ports.
+
+Entry:
+
+- **In-app (primary):** Devices → **Enter Demo Mode** / header **Exit Demo** (preference saved; app relaunches into the chosen mode)
+- Developer overrides: `XP60Studio --demo` or `XP60STUDIO_DEMO=1` (`XP60STUDIO_DEMO=0` forces live)
+
+Behavior:
+
+- Loopback MIDI transport with named demo ports (no libremidi / no OS MIDI)
+- In-process `SimulatedXp60` answering RQ1 and accepting DT1
+- Continuous reply pump on the Qt event loop
+- Auto-connect + seed temporary Patch from the embedded bank fixture
+- Shell shows **DEMO MODE** and **XP-60 SIM** (never unqualified LIVE)
+
+Simulated today: Devices connection/health/fetch/transfer, Patch Editor (Play/Design/Expert), Wave Browser, write/verify/live audition against the simulator.
+
+Deferred with their phases: Dashboard, Library, Bank Builder, and other unfinished nav destinations stay unavailable — do not invent fake Dashboard actions. Extend Demo Mode when those screens ship.
+
+Success condition: launch in Demo Mode, edit a seeded patch, and run a simulated write/verify without opening real MIDI ports.
+
+---
+
 # Phase 1 — Protocol Foundation + Application Shell
 
 Goal: establish a trustworthy C++/Qt application foundation, MIDI transport, and Roland SysEx infrastructure.
@@ -123,6 +150,11 @@ Resolve all unexplained differences before calling the Patch codec mature.
 
 This phase requires clear hardware test scripts when Codex cannot access the physical XP-60 directly.
 
+Execution update (2026-09-04): physical validation for this and every later
+phase is deferred to one final connected session. `DEVICE_ACCEPTANCE.md` indexes
+every deferred check by functional area and links each to the document that
+owns its steps. Local work continues; no hardware fact is promoted meanwhile.
+
 UI remains diagnostic/inspection focused.
 
 ---
@@ -172,6 +204,15 @@ Acceptance: follow `design/UI_ACCEPTANCE_CRITERIA.md`.
 ---
 
 # Phase 5 — Librarian + Dashboard
+
+Execution update (2026-09-04): the librarian half is complete and tested
+against the real bank fixture — patch fingerprints, provenance, library entries,
+`.syx` import and export, local persistence with search over SQLite, the
+observable import service with progress and cancellation, and the virtualized
+Library screen. Import/export actions on that screen, the M1 Dashboard and its
+screenshot review remain open. Phase 4's outstanding items are all
+blocked on the deferred physical session and are not superseded by this.
+See `PHASE_5_LIBRARIAN.md`.
 
 Goal: make SysEx collections searchable/manageable and introduce the polished command center once meaningful data exists.
 

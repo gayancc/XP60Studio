@@ -9,6 +9,7 @@ target_link_libraries(tst_qml PRIVATE
   Qt6::QuickTest
   Qt6::QuickControls2
   xp60studio::presentation
+  xp60studio::simulation
   xp60studio_ui
 )
 set_target_properties(tst_qml PROPERTIES AUTOMOC ON WIN32_EXECUTABLE FALSE)

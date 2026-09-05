@@ -11,7 +11,7 @@ T.SpinBox {
     editable: true
     leftPadding: Metrics.spacingSm
     rightPadding: Metrics.spacingSm
-    font.pointSize: Typography.bodySize
+    font.pixelSize: Typography.bodySize
     font.family: Typography.monoFamily
 
     Accessible.role: Accessible.SpinBox
@@ -38,19 +38,31 @@ T.SpinBox {
     up.indicator: Rectangle {
         x: control.mirrored ? 0 : parent.width - width
         height: parent.height
-        width: 28
+        width: Metrics.hitTarget - 4
         radius: Metrics.radiusSm
         color: control.up.pressed ? Theme.surfacePressed : (control.up.hovered ? Theme.surfaceHover : "transparent")
-        XpLabel { anchors.centerIn: parent; text: "+"; color: control.enabled ? Theme.textSecondary : Theme.textDisabled }
+        XpIcon {
+            anchors.centerIn: parent
+            name: "plus"
+            color: control.enabled ? Theme.textSecondary : Theme.textDisabled
+            implicitWidth: Metrics.iconSizeSm
+            implicitHeight: Metrics.iconSizeSm
+        }
     }
 
     down.indicator: Rectangle {
         x: control.mirrored ? parent.width - width : 0
         height: parent.height
-        width: 28
+        width: Metrics.hitTarget - 4
         radius: Metrics.radiusSm
         color: control.down.pressed ? Theme.surfacePressed : (control.down.hovered ? Theme.surfaceHover : "transparent")
-        XpLabel { anchors.centerIn: parent; text: "−"; color: control.enabled ? Theme.textSecondary : Theme.textDisabled }
+        XpIcon {
+            anchors.centerIn: parent
+            name: "minus"
+            color: control.enabled ? Theme.textSecondary : Theme.textDisabled
+            implicitWidth: Metrics.iconSizeSm
+            implicitHeight: Metrics.iconSizeSm
+        }
     }
 
     background: Rectangle {

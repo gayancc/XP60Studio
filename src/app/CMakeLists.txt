@@ -36,6 +36,7 @@ target_link_libraries(xp60studio PRIVATE
   Qt6::Quick
   Qt6::QuickControls2
   xp60studio::presentation
+  xp60studio::simulation
   xp60studio::midi_libremidi
   xp60studio_ui
 )

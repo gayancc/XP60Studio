@@ -19,7 +19,7 @@ T.TextField {
     selectionColor: Theme.selection
     selectedTextColor: Theme.textPrimary
     font.family: mono ? Typography.monoFamily : Typography.family
-    font.pointSize: mono ? Typography.monoSize : Typography.bodySize
+    font.pixelSize: mono ? Typography.monoSize : Typography.bodySize
     verticalAlignment: TextInput.AlignVCenter
     selectByMouse: true
 

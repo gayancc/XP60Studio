@@ -7,7 +7,10 @@
 #   diagnostics - structured protocol log entries and formatting   (no Qt)
 #   xpmodel     - XP domain model & codecs: parameter tables, block  (no Qt)
 #                 codec, memory image, .syx stream parsing
+#   library     - fingerprints, provenance, .syx import/export,    (Qt Core)
+#                 library metadata and persistence
 #   services    - DeviceSession orchestration                      (Qt Core)
+#   simulation  - Demo Mode SimulatedXp60 + reply pump             (Qt Core)
 #   presentation- view models / Qt item models for QML             (Qt Core/Qml)
 #   app         - Qt Quick executable
 add_subdirectory(roland)
@@ -16,7 +19,9 @@ add_subdirectory(midi)
 add_subdirectory(protocol)
 add_subdirectory(diagnostics)
 add_subdirectory(xpmodel)
+add_subdirectory(library)
 add_subdirectory(services)
+add_subdirectory(simulation)
 add_subdirectory(presentation)
 
 if(XP60STUDIO_BUILD_APP)

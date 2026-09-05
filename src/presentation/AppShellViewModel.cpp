@@ -1,5 +1,7 @@
 #include "presentation/AppShellViewModel.h"
 
+#include "simulation/DemoBootstrap.h"
+
 #include <QCoreApplication>
 #include <QVariantMap>
 #include <QtGlobal>
@@ -14,7 +16,7 @@ const std::vector<AppShellViewModel::NavigationItem>& items()
 {
     static const std::vector<AppShellViewModel::NavigationItem> kItems{
         {QStringLiteral("dashboard"), QStringLiteral("Dashboard"), QStringLiteral("▦"), false, QStringLiteral("Coming soon")},
-        {QStringLiteral("library"), QStringLiteral("Library"), QStringLiteral("▤"), false, QStringLiteral("Coming soon")},
+        {QStringLiteral("library"), QStringLiteral("Library"), QStringLiteral("▤"), true, QString()},
         {QStringLiteral("editor"), QStringLiteral("Editor"), QStringLiteral("✎"), true, QString()},
         {QStringLiteral("banks"), QStringLiteral("Banks"), QStringLiteral("▥"), false, QStringLiteral("Coming soon")},
         {QStringLiteral("performance"), QStringLiteral("Performance"), QStringLiteral("♪"), false, QStringLiteral("Coming soon")},
@@ -33,6 +35,12 @@ AppShellViewModel::AppShellViewModel(DevicesViewModel* devices, QObject* parent)
 {
     if (m_devices) {
         connect(m_devices, &DevicesViewModel::connectionChanged, this, &AppShellViewModel::connectionChanged);
+        // midiActive is derived from traffic, which is reported by three
+        // separate signals; without these the shell's activity indicator would
+        // only ever update when the connection itself changed.
+        connect(m_devices, &DevicesViewModel::operationsChanged, this, &AppShellViewModel::connectionChanged);
+        connect(m_devices, &DevicesViewModel::transferChanged, this, &AppShellViewModel::connectionChanged);
+        connect(m_devices, &DevicesViewModel::patchFetchChanged, this, &AppShellViewModel::connectionChanged);
     }
 }
 
@@ -97,6 +105,10 @@ bool AppShellViewModel::navigate(const QString& key)
     }
     m_currentScreen = key;
     emit currentScreenChanged();
+    // connectionActionable depends on which screen is showing: offering
+    // "Set up" while the user is already on Devices is what produced
+    // "Open Devices to connect" on the Devices screen itself.
+    emit connectionChanged();
     return true;
 }
 
@@ -121,25 +133,159 @@ QString AppShellViewModel::connectionLabel() const
     // the indicator, not the primary connection string.
     switch (connectionState()) {
     case ConnectionState::Connected:
+        if (m_demoMode) {
+            return connectionVerified() ? QStringLiteral("XP-60 SIM") : QStringLiteral("Connected (Demo)");
+        }
         return connectionVerified() ? QStringLiteral("XP-60 LIVE") : QStringLiteral("Connected");
     case ConnectionState::Connecting:
         return QStringLiteral("Connecting");
     case ConnectionState::Error:
         return QStringLiteral("Connection error");
     case ConnectionState::Disconnected:
-        return QStringLiteral("Offline");
+        return m_demoMode ? QStringLiteral("Demo Offline") : QStringLiteral("Offline");
     }
     return {};
 }
 
 QString AppShellViewModel::connectionDetail() const
 {
+    if (m_demoMode) {
+        return QStringLiteral("Simulated XP-60 — no hardware MIDI");
+    }
     return m_devices ? m_devices->connectionDetail() : QString();
+}
+
+QString AppShellViewModel::connectionPhase() const
+{
+    // One vocabulary for the whole application. Callers switch on this rather
+    // than on ConnectionState plus a verified flag plus a demo flag, each in
+    // their own words.
+    switch (connectionState()) {
+    case ConnectionState::Connected:
+        return connectionVerified() ? QStringLiteral("verified") : QStringLiteral("connected");
+    case ConnectionState::Connecting:
+        return QStringLiteral("connecting");
+    case ConnectionState::Error:
+        return QStringLiteral("problem");
+    case ConnectionState::Disconnected:
+        // "Available" is a materially different situation from "offline": the
+        // ports are there and one click away, so the shell should not be
+        // telling the user to go and find them.
+        return (m_devices && m_devices->canConnect()) ? QStringLiteral("available")
+                                                      : QStringLiteral("offline");
+    }
+    return QStringLiteral("offline");
+}
+
+QString AppShellViewModel::connectionTone() const
+{
+    const QString phase = connectionPhase();
+    if (phase == QStringLiteral("verified")) {
+        return QStringLiteral("live");
+    }
+    if (phase == QStringLiteral("connected") || phase == QStringLiteral("connecting")) {
+        return QStringLiteral("warning");
+    }
+    if (phase == QStringLiteral("problem")) {
+        return QStringLiteral("error");
+    }
+    return QStringLiteral("neutral");
+}
+
+QString AppShellViewModel::connectionShortLabel() const
+{
+    // Two words at most. The shell chip is for awareness; the Devices screen
+    // carries the explanation.
+    const QString phase = connectionPhase();
+    if (phase == QStringLiteral("verified")) {
+        return m_demoMode ? QStringLiteral("XP-60 SIM") : QStringLiteral("XP-60 LIVE");
+    }
+    if (phase == QStringLiteral("connected")) {
+        return QStringLiteral("Connected");
+    }
+    if (phase == QStringLiteral("connecting")) {
+        return QStringLiteral("Connecting");
+    }
+    if (phase == QStringLiteral("problem")) {
+        return QStringLiteral("MIDI problem");
+    }
+    if (phase == QStringLiteral("available")) {
+        return QStringLiteral("Ready to connect");
+    }
+    return QStringLiteral("Offline");
+}
+
+bool AppShellViewModel::connectionNeedsAttention() const
+{
+    return connectionPhase() == QStringLiteral("problem");
+}
+
+bool AppShellViewModel::connectionActionable() const
+{
+    if (m_currentScreen == QStringLiteral("devices")) {
+        return false;
+    }
+    const QString phase = connectionPhase();
+    return phase != QStringLiteral("verified") && phase != QStringLiteral("connecting");
+}
+
+QString AppShellViewModel::connectionActionLabel() const
+{
+    if (!connectionActionable()) {
+        return {};
+    }
+    return connectionPhase() == QStringLiteral("problem") ? QStringLiteral("Diagnose")
+                                                          : QStringLiteral("Set up");
+}
+
+bool AppShellViewModel::midiActive() const
+{
+    return m_devices
+           && (m_devices->hasOutstandingRequests() || m_devices->transferBusy()
+               || m_devices->patchFetchInProgress());
 }
 
 QString AppShellViewModel::deviceName() const
 {
-    return QStringLiteral("Roland XP-60");
+    return m_demoMode ? QStringLiteral("Roland XP-60 (Simulated)") : QStringLiteral("Roland XP-60");
+}
+
+void AppShellViewModel::setDemoMode(bool enabled)
+{
+    if (m_demoMode == enabled) {
+        return;
+    }
+    m_demoMode = enabled;
+    emit demoModeChanged();
+    emit connectionChanged();
+}
+
+bool AppShellViewModel::requestDemoModeSwitch(bool enabled)
+{
+    if (m_demoModeSwitchPending) {
+        return false;
+    }
+    if (m_demoMode == enabled) {
+        return true;
+    }
+    m_demoModeSwitchPending = true;
+    emit demoModeSwitchPendingChanged();
+    if (!simulation::relaunchForDemoMode(enabled)) {
+        m_demoModeSwitchPending = false;
+        emit demoModeSwitchPendingChanged();
+        return false;
+    }
+    return true;
+}
+
+bool AppShellViewModel::enterDemoMode()
+{
+    return requestDemoModeSwitch(true);
+}
+
+bool AppShellViewModel::exitDemoMode()
+{
+    return requestDemoModeSwitch(false);
 }
 
 } // namespace xp60studio::presentation

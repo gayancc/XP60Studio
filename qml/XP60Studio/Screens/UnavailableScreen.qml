@@ -9,7 +9,7 @@ Item {
 
     XpEmptyState {
         anchors.fill: parent
-        glyph: "◫"
+        iconName: "dashboard"
         title: screenTitle + " is not part of Phase 1"
         message: "This destination is implemented in " + availability + " once its backing domain layer is trustworthy."
     }

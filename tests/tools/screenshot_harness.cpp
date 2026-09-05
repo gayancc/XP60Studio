@@ -11,9 +11,11 @@
 
 #include "support/FakeXp60.h"
 
+#include "library/LibraryDatabase.h"
 #include "midi/LoopbackMidiTransport.h"
 #include "presentation/AppShellViewModel.h"
 #include "presentation/DevicesViewModel.h"
+#include "presentation/LibraryListModel.h"
 #include "presentation/PatchEditorViewModel.h"
 #include "presentation/QmlRegistration.h"
 #include "services/DeviceSession.h"
@@ -62,10 +64,22 @@ int main(int argc, char* argv[])
     xp60studio::presentation::PatchEditorViewModel editor(session, &transfer);
     xp60studio::presentation::AppShellViewModel shell(&devices);
 
+    xp60studio::library::LibraryDatabase libraryDatabase;
+    if (!libraryDatabase.open(QString::fromLatin1(xp60studio::library::LibraryDatabase::kInMemoryPath))) {
+        qWarning("Could not open the in-memory library; the Library screen renders empty");
+    }
+    xp60studio::presentation::LibraryListModel libraryModel;
+    libraryModel.setDatabase(&libraryDatabase);
+
     xp60studio::testsupport::FakeXp60 fake(xp60studio::testsupport::temporaryAreaWith(4));
-    session.connectEndpoints("in-1", "out-1");
-    session.fetchTemporaryPatch();
-    for (int i = 0; i < 40; ++i) {
+    // Offline capture: the shell's disconnected state is a first-class screen
+    // and has to be reviewable too, so leave the endpoints closed.
+    const bool offline = qEnvironmentVariableIsSet("XP60STUDIO_SHOT_OFFLINE");
+    if (!offline) {
+        session.connectEndpoints("in-1", "out-1");
+        session.fetchTemporaryPatch();
+    }
+    for (int i = 0; offline ? false : i < 40; ++i) {
         QCoreApplication::processEvents();
         const auto replies = fake.exchange(*transport);
         for (const auto& reply : replies) {
@@ -84,6 +98,7 @@ int main(int argc, char* argv[])
         {QStringLiteral("shell"), QVariant::fromValue(&shell)},
         {QStringLiteral("devices"), QVariant::fromValue(&devices)},
         {QStringLiteral("editor"), QVariant::fromValue(&editor)},
+        {QStringLiteral("library"), QVariant::fromValue(&libraryModel)},
     });
     engine.load(QUrl(QStringLiteral("qrc:/qt/qml/XP60Studio/Main.qml")));
     if (engine.rootObjects().isEmpty()) {

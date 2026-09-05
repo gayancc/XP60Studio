@@ -11,6 +11,8 @@ QQC.ApplicationWindow {
     required property AppShellViewModel shell
     required property DevicesViewModel devices
     required property PatchEditorViewModel editor
+    required property LibraryListModel library
+    required property LibraryTransferViewModel libraryTransfer
 
     visible: true
     width: Metrics.windowPreferredWidth
@@ -51,6 +53,7 @@ QQC.ApplicationWindow {
                     anchors.fill: parent
                     visible: window.shell.currentScreen === "devices"
                     devices: window.devices
+                    shell: window.shell
                 }
 
                 EditorScreen {
@@ -60,9 +63,18 @@ QQC.ApplicationWindow {
                     editor: window.editor
                 }
 
+                LibraryScreen {
+                    objectName: "libraryScreen"
+                    anchors.fill: parent
+                    visible: window.shell.currentScreen === "library"
+                    library: window.library
+                    transfer: window.libraryTransfer
+                }
+
                 UnavailableScreen {
                     anchors.fill: parent
                     visible: window.shell.currentScreen !== "devices" && window.shell.currentScreen !== "editor"
+                             && window.shell.currentScreen !== "library"
                     screenTitle: window.shell.currentScreenTitle
                     availability: "a later phase"
                 }

@@ -128,7 +128,7 @@ Item {
                 rowSpacing: Metrics.spacingSm
                 Layout.fillWidth: true
 
-                XpLabel { text: "Address"; role: "overline"; secondary: true }
+                XpLabel { text: "Address"; role: "label"; secondary: true }
                 XpTextField {
                     objectName: "addressField"
                     Layout.fillWidth: true
@@ -140,7 +140,7 @@ Item {
                     Accessible.name: "Roland address, four hex bytes"
                 }
 
-                XpLabel { text: "Size"; role: "overline"; secondary: true }
+                XpLabel { text: "Size"; role: "label"; secondary: true }
                 RowLayout {
                     Layout.fillWidth: true
                     spacing: Metrics.spacingMd

@@ -45,6 +45,10 @@ find_package(Qt6 ${XP60STUDIO_QT_MINIMUM} REQUIRED COMPONENTS
   Qml
   Quick
   QuickControls2
+  # Local library persistence (SQLite through the bundled QSQLITE driver).
+  # See docs/PHASE_5_LIBRARIAN.md; ARCHITECTURE.md §12 deferred this choice
+  # until the query patterns were known.
+  Sql
 )
 
 if(Qt6_VERSION VERSION_LESS XP60STUDIO_QT_BASELINE)

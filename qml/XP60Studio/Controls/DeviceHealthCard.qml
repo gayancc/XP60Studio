@@ -132,17 +132,17 @@ XpCard {
             columns: 4
             columnSpacing: Metrics.spacingMd
             rowSpacing: Metrics.spacingXs
-            XpLabel { text: "In"; role: "overline"; secondary: true }
+            XpLabel { text: "In"; role: "label"; secondary: true }
             XpLabel { text: root.devices.messagesIn; role: "mono" }
-            XpLabel { text: "Out"; role: "overline"; secondary: true }
+            XpLabel { text: "Out"; role: "label"; secondary: true }
             XpLabel { text: root.devices.messagesOut; role: "mono" }
-            XpLabel { text: "SysEx in"; role: "overline"; secondary: true }
+            XpLabel { text: "SysEx in"; role: "label"; secondary: true }
             XpLabel { text: root.devices.sysExIn; role: "mono" }
-            XpLabel { text: "SysEx out"; role: "overline"; secondary: true }
+            XpLabel { text: "SysEx out"; role: "label"; secondary: true }
             XpLabel { text: root.devices.sysExOut; role: "mono" }
-            XpLabel { text: "Checksum"; role: "overline"; secondary: true }
+            XpLabel { text: "Checksum"; role: "label"; secondary: true }
             XpLabel { text: root.devices.checksumFailures; role: "mono"; color: root.devices.checksumFailures > 0 ? Theme.error : Theme.textPrimary }
-            XpLabel { text: "Timeouts"; role: "overline"; secondary: true }
+            XpLabel { text: "Timeouts"; role: "label"; secondary: true }
             XpLabel { text: root.devices.timeouts; role: "mono"; color: root.devices.timeouts > 0 ? Theme.warning : Theme.textPrimary }
         }
     }

@@ -11,7 +11,7 @@ T.ComboBox {
     implicitHeight: Metrics.controlHeight
     leftPadding: Metrics.spacingMd
     rightPadding: Metrics.spacingMd + indicatorItem.width
-    font.pointSize: Typography.bodySize
+    font.pixelSize: Typography.bodySize
     hoverEnabled: true
 
     Accessible.role: Accessible.ComboBox
@@ -42,11 +42,15 @@ T.ComboBox {
         x: control.mirrored ? control.leftPadding : control.width - width - Metrics.spacingSm
         width: 20
         height: parent.height
-        XpLabel {
+        // A real icon, so the chevron shares the stroke weight and optical
+        // centre of every other icon in the shell instead of inheriting the
+        // text font's.
+        XpIcon {
             anchors.centerIn: parent
-            text: "⌄"
-            role: "heading"
+            name: control.popup.visible ? "chevron-up" : "chevron-down"
             color: control.enabled ? Theme.textSecondary : Theme.textDisabled
+            implicitWidth: Metrics.iconSizeSm
+            implicitHeight: Metrics.iconSizeSm
         }
     }
 

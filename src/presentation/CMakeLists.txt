@@ -14,6 +14,10 @@ add_library(xp60studio_presentation STATIC
   ToneViewModel.cpp
   WaveBrowserModel.h
   WaveBrowserModel.cpp
+  LibraryListModel.h
+  LibraryListModel.cpp
+  LibraryTransferViewModel.h
+  LibraryTransferViewModel.cpp
   Xp60WaveCatalog.generated.h
   PatchEditorViewModel.h
   PatchEditorViewModel.cpp
@@ -31,6 +35,7 @@ target_link_libraries(xp60studio_presentation
     Qt6::Core
     Qt6::Qml
     xp60studio::services
+    xp60studio::simulation
 )
 set_target_properties(xp60studio_presentation PROPERTIES AUTOMOC ON)
 xp60studio_apply_warnings(xp60studio_presentation)
