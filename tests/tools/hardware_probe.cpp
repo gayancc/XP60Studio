@@ -15,6 +15,8 @@
 #include <fstream>
 #include <iostream>
 #include <memory>
+#include <algorithm>
+#include <map>
 #include <mutex>
 #include <optional>
 #include <string>
@@ -71,6 +73,7 @@ struct Options
     bool listParameters = false;
     int watchIntervalMs = 0;   // >0 enables watch mode
     int watchSeconds = 0;      // 0 = until interrupted
+    bool surveyWaves = false;
 };
 
 void usage()
@@ -90,6 +93,7 @@ void usage()
               << "  --verify            verify every parameter and round-trip the bytes (implies --patch)\n"
               << "  --list-parameters   with --verify, print every parameter, not only the failures\n"
               << "  --watch [ms]        poll the Patch and name every parameter that changes (default 700)\n"
+              << "  --survey-waves      tabulate wave references across all 128 User Patches\n"
               << "  --list-presets      print the available safe read presets and exit\n"
               << "\nOnly RQ1 (read) messages are ever transmitted.\n";
 }
@@ -418,6 +422,94 @@ int runProbe(const Options& options)
         return state->replies;
     };
 
+    // Wave reference survey across the permanent User Patch bank.
+    //
+    // Evidence for DEVICE_ACCEPTANCE.md area 9 that needs no front panel. Every
+    // Tone carries a (group type, group ID, number) triple, so the 128 User
+    // Patches hold 512 wave references the instrument itself wrote. If the
+    // catalog's bank structure is right, group IDs and number ranges must fall
+    // inside it; a reference outside it disproves the mapping outright.
+    //
+    // What this cannot do is confirm a *name*: that needs the wave name on the
+    // instrument's display, which is why area 9 still has panel steps.
+    if (options.surveyWaves) {
+        std::cout << "Surveying wave references across USER:001..128 (read-only)\n\n";
+        struct GroupStats
+        {
+            std::size_t count = 0;
+            int minNumber = 1 << 30;
+            int maxNumber = -1;
+        };
+        std::map<std::pair<int, int>, GroupStats> byGroup; // (groupType, groupId)
+        std::map<std::string, std::size_t> byTypeLabel;
+        std::size_t patchesRead = 0;
+        std::size_t patchesFailed = 0;
+
+        const auto userBase = roland::RolandAddress(0x11, 0x00, 0x00, 0x00);
+        for (int patchNumber = 0; patchNumber < 128; ++patchNumber) {
+            const auto base = userBase.plus(static_cast<std::uint64_t>(patchNumber)
+                * xpmodel::Xp60PatchLayout::kUserPatchStride);
+            if (!base)
+                break;
+            const auto patchRequest =
+                roland::RolandSysExMessage::dataRequest(*deviceId, xp60::modelId(), *base, size);
+            const auto patchRequestBytes = patchRequest.encode();
+            {
+                std::lock_guard<std::mutex> lock(state->mutex);
+                state->replies.clear();
+                state->requestSentAt = Clock::now();
+            }
+            if (transport.sendSysEx(midi::MidiByteSpan(patchRequestBytes.data(), patchRequestBytes.size())).failed()) {
+                ++patchesFailed;
+                continue;
+            }
+            std::vector<Reply> collected;
+            {
+                std::unique_lock<std::mutex> lock(state->mutex);
+                if (state->arrived.wait_for(lock, options.firstTimeout, [&] { return !state->replies.empty(); })) {
+                    while (true) {
+                        const auto seen = state->replies.size();
+                        if (!state->arrived.wait_for(
+                                lock, options.quietTimeout, [&] { return state->replies.size() > seen; }))
+                            break;
+                    }
+                }
+                collected = state->replies;
+            }
+            const auto patch = decodePatchFrom(collected, *base);
+            if (!patch) {
+                ++patchesFailed;
+                std::cout << "  USER:" << (patchNumber + 1) << " did not decode\n";
+                continue;
+            }
+            ++patchesRead;
+            for (const auto tone : xpmodel::ToneIndex::all()) {
+                const auto wave = patch->wave(tone);
+                auto& stats = byGroup[{wave.groupTypeRaw, wave.groupId}];
+                ++stats.count;
+                stats.minNumber = std::min(stats.minNumber, wave.numberDisplay);
+                stats.maxNumber = std::max(stats.maxNumber, wave.numberDisplay);
+                ++byTypeLabel[std::string(wave.groupTypeLabel)];
+            }
+        }
+
+        std::cout << "Patches read: " << patchesRead << ", failed: " << patchesFailed << "\n";
+        std::cout << "Wave references: " << (patchesRead * 4) << "\n\n";
+        std::cout << "  groupType  groupId  references  number range (display)\n";
+        for (const auto& [key, stats] : byGroup) {
+            std::cout << "  " << key.first << "          " << key.second << "        " << stats.count << "         "
+                      << stats.minNumber << " .. " << stats.maxNumber << "\n";
+        }
+        std::cout << "\n  group type labels seen:";
+        for (const auto& [label, count] : byTypeLabel)
+            std::cout << " " << label << "(" << count << ")";
+        std::cout << "\n\nCatalog for comparison: INT-A holds 255 waves, INT-B holds 193.\n"
+                  << "A number above a bank's size, or a group ID the catalog has no bank for,\n"
+                  << "would disprove the assumed mapping. Names still need the instrument display.\n";
+        transport.closeAll();
+        return 0;
+    }
+
     // Watch mode: poll the Patch and name every parameter that moves.
     //
     // This is the capture-pair workflow of DEVICE_ACCEPTANCE.md areas 8 and 9
@@ -616,6 +708,9 @@ int main(int argc, char** argv)
             options.firstTimeout = std::chrono::milliseconds(std::stoi(next("--timeout")));
         } else if (arg == "--quiet") {
             options.quietTimeout = std::chrono::milliseconds(std::stoi(next("--quiet")));
+        } else if (arg == "--survey-waves") {
+            options.decodePatch = true;
+            options.surveyWaves = true;
         } else if (arg == "--watch-for") {
             options.watchSeconds = std::stoi(next("--watch-for"));
         } else if (arg == "--watch") {

@@ -45,7 +45,8 @@ IDs. Tone cards retain raw identifiers until this is resolved.
 
 ## Final physical-device acceptance
 
-Retain the Phase 3 fetch/decode/encode/send/refetch comparison and M2 audio,
+This is area 9 of [`DEVICE_ACCEPTANCE.md`](DEVICE_ACCEPTANCE.md), the index for
+the single connected session. Retain the Phase 3 fetch/decode/encode/send/refetch comparison and M2 audio,
 live-update, Solo/Mute, A/B, routing and EFX capture checks. Also:
 
 1. Back up the instrument, choose a temporary Patch and isolate one Tone.
@@ -85,3 +86,53 @@ The narrow capture preserves readable results and the complete details panel.
 The AST graph update completed with 2,466 nodes and 5,133 edges; parser warnings
 mean it remains a navigation aid, not compiler validation. No physical MIDI
 writes were performed.
+
+## Wave reference survey on a physical XP-60 — 2026-09-04
+
+`xp60studio_hardware_probe --survey-waves` read all 128 permanent User Patches
+(read-only, RQ1 only) and tabulated the 512 wave references the instrument
+itself wrote. 128 of 128 patches decoded; none failed.
+
+| Group type | Group ID | References | Number range (display) |
+|---|---|---|---|
+| 0 (INT) | 1 | 302 | 1 .. 255 |
+| 0 (INT) | 2 | 149 | 2 .. 125 |
+| 2 (EXP) | 1 | 24 | 5 .. 130 |
+| 2 (EXP) | 5 | 4 | 5 .. 100 |
+| 2 (EXP) | 7 | 25 | 12 .. 149 |
+| 2 (EXP) | 18 | 8 | 16 .. 50 |
+
+Group type labels seen: INT 451, EXP 61.
+
+### What this establishes
+
+**INT group ID 1 is INT-A.** Group 1 references run to display number 255, and
+the catalog's INT-A bank holds exactly 255 waves. INT-B holds 193, so a
+reference numbered 255 could not belong to it: the alternative assignment is
+ruled out by the instrument's own data, not by assumption. The zero-based raw
+number with display = raw + 1 also fits exactly, raw 254 being the last INT-A
+wave.
+
+**Only two internal group IDs exist.** No INT reference in 128 Patches carries a
+group ID other than 1 or 2, consistent with exactly two internal banks.
+
+### What this does not establish
+
+**The INT-B upper boundary is untested.** Group 2 references stop at 125, well
+inside the assumed 193, so nothing here confirms where INT-B ends. The panel
+step for INT-B 193 in the acceptance procedure above is still required.
+
+**No wave name is confirmed.** The survey reads identifiers, not names. Only the
+instrument's display can settle whether identifier *n* is the wave the catalog
+calls *n*, and the INT-A 001 / INT-A 255 / INT-B 001 / INT-B 193 panel steps
+remain the way to do it.
+
+### Expansion references are real and unresolvable
+
+61 of the 512 references are EXP, spread over group IDs 1, 5, 7 and 18. The
+catalog covers INT-A and INT-B only, so none of these resolves to a name. That
+is the documented intent — unmapped expansion references are preserved
+byte-for-byte rather than normalised — and this instrument now provides 61 real
+examples to hold that behaviour to. Which of these group IDs correspond to
+boards actually installed is not established: a User Patch can reference a
+board that is absent.
