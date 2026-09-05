@@ -7,6 +7,8 @@ add_library(xp60studio_services STATIC
   PatchSyncState.cpp
   PatchWorkspace.h
   PatchWorkspace.cpp
+  UserMemoryWrite.h
+  UserMemoryWrite.cpp
   LibraryImportService.h
   LibraryImportService.cpp
   LibraryExportService.h

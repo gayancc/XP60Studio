@@ -2,6 +2,7 @@
 
 #include "library/PatchProvenance.h"
 #include "xpmodel/Xp60BankLocation.h"
+#include "xpmodel/Xp60PatchCodec.h"
 
 #include <QDateTime>
 
@@ -413,6 +414,191 @@ void BankBuilderViewModel::setWorkspace(services::PatchWorkspace* workspace)
                 &BankBuilderViewModel::announceBankChange);
     }
     announceBankChange();
+}
+
+// ---------------------------------------------------------------------------
+// Writing the bank into permanent USER memory
+// ---------------------------------------------------------------------------
+
+void BankBuilderViewModel::setUserMemoryWrite(services::UserMemoryWrite* writer)
+{
+    if (m_userWrite == writer) {
+        return;
+    }
+    if (m_userWrite) {
+        disconnect(m_userWrite, nullptr, this, nullptr);
+    }
+    m_userWrite = writer;
+    if (m_userWrite) {
+        connect(m_userWrite, &services::UserMemoryWrite::changed, this,
+                &BankBuilderViewModel::userWriteChanged);
+        connect(m_userWrite, &services::UserMemoryWrite::progressed, this,
+                [this] { emit userWriteChanged(); });
+    }
+    emit userWriteChanged();
+}
+
+// The destinations a write would cover: every occupied one, at the USER slot it
+// occupies. A MISSING destination -- one whose Patch was deleted from the
+// library -- contributes nothing, because there is no Patch to write.
+std::vector<services::UserMemoryWrite::Destination> BankBuilderViewModel::userWriteDestinations() const
+{
+    std::vector<services::UserMemoryWrite::Destination> destinations;
+    if (!m_database) {
+        return destinations;
+    }
+    // `slots` is a Qt keyword; `arrangement` is what this is anyway.
+    const auto& arrangement = m_draft.destinations();
+    for (std::size_t index = 0; index < arrangement.size(); ++index) {
+        const auto& content = arrangement[index];
+        if (content.patchId <= 0) {
+            continue;
+        }
+        // The working copy wins where it applies, so writing a bank writes what
+        // the musician is looking at rather than a stale stored version.
+        if (m_workspace && m_workspace->hasPatch() && m_workspace->origin().isLibraryEntry(content.patchId)) {
+            destinations.push_back({static_cast<int>(index) + 1, m_workspace->working()});
+            continue;
+        }
+        const auto entry = m_database->loadEntry(content.patchId);
+        if (!entry) {
+            continue;
+        }
+        destinations.push_back({static_cast<int>(index) + 1, entry->patch()});
+    }
+    return destinations;
+}
+
+bool BankBuilderViewModel::canWriteToUserMemory() const
+{
+    return m_userWrite && m_userWrite->isArmed() && !m_userWrite->isBusy() && m_draft.occupiedCount() > 0;
+}
+
+bool BankBuilderViewModel::canArmUserWrite() const
+{
+    return m_userWrite && m_userWrite->canArm() && m_draft.occupiedCount() > 0;
+}
+
+bool BankBuilderViewModel::userWriteArmed() const
+{
+    return m_userWrite && m_userWrite->isArmed();
+}
+
+bool BankBuilderViewModel::userWriteBusy() const
+{
+    return m_userWrite && m_userWrite->isBusy();
+}
+
+QString BankBuilderViewModel::userWriteState() const
+{
+    return m_userWrite ? m_userWrite->stateLabel() : QString();
+}
+
+QString BankBuilderViewModel::userWriteMessage() const
+{
+    if (!m_userWrite) {
+        return tr("Connect an XP-60 on the Devices screen to write this bank to its USER memory.");
+    }
+    return m_userWrite->message();
+}
+
+QString BankBuilderViewModel::userWriteTone() const
+{
+    if (!m_userWrite) {
+        return QStringLiteral("neutral");
+    }
+    switch (m_userWrite->state()) {
+    case services::UserMemoryWrite::State::Completed:
+        return QStringLiteral("success");
+    case services::UserMemoryWrite::State::Mismatch:
+    case services::UserMemoryWrite::State::Failed:
+        return QStringLiteral("error");
+    case services::UserMemoryWrite::State::Cancelled:
+        return QStringLiteral("warning");
+    case services::UserMemoryWrite::State::Snapshotting:
+    case services::UserMemoryWrite::State::Sending:
+    case services::UserMemoryWrite::State::Verifying:
+    case services::UserMemoryWrite::State::Restoring:
+        return QStringLiteral("info");
+    case services::UserMemoryWrite::State::Idle:
+        break;
+    }
+    return QStringLiteral("neutral");
+}
+
+QString BankBuilderViewModel::userWritePlan() const
+{
+    if (!m_userWrite) {
+        return {};
+    }
+    return m_userWrite->writePlanDescription(userWriteDestinations());
+}
+
+int BankBuilderViewModel::userWriteCompleted() const
+{
+    return m_userWrite ? static_cast<int>(m_userWrite->completed()) : 0;
+}
+
+int BankBuilderViewModel::userWriteTotal() const
+{
+    return m_userWrite ? static_cast<int>(m_userWrite->total()) : 0;
+}
+
+bool BankBuilderViewModel::canRestoreUserMemory() const
+{
+    return m_userWrite && m_userWrite->canRestore();
+}
+
+bool BankBuilderViewModel::armUserWrite()
+{
+    return m_userWrite && m_userWrite->arm();
+}
+
+void BankBuilderViewModel::disarmUserWrite()
+{
+    if (m_userWrite) {
+        m_userWrite->disarm();
+    }
+}
+
+bool BankBuilderViewModel::writeBankToUserMemory()
+{
+    if (!m_userWrite) {
+        reportError(tr("No XP-60 is connected."));
+        return false;
+    }
+    auto destinations = userWriteDestinations();
+    if (destinations.empty()) {
+        reportError(tr("This bank has no Patches in it, so there is nothing to write."));
+        return false;
+    }
+    const auto missing = m_draft.occupiedCount() - static_cast<int>(destinations.size());
+    if (!m_userWrite->write(std::move(destinations))) {
+        reportError(m_userWrite->message());
+        return false;
+    }
+    reportAction(missing > 0
+                     ? tr("Writing the bank to the XP-60 — %n destination(s) reference a Patch that is no longer in "
+                          "the library and were skipped", "", missing)
+                     : tr("Writing the bank to the XP-60's USER memory"),
+                 missing > 0 ? QStringLiteral("warning") : QStringLiteral("info"));
+    return true;
+}
+
+bool BankBuilderViewModel::restoreUserMemory()
+{
+    if (!m_userWrite || !m_userWrite->restore()) {
+        return false;
+    }
+    reportAction(tr("Putting the XP-60's previous Patches back"), QStringLiteral("info"));
+    return true;
+}
+
+void BankBuilderViewModel::cancelUserWrite()
+{
+    if (m_userWrite) {
+        m_userWrite->cancel();
+    }
 }
 
 bool BankBuilderViewModel::editSlot(int slotIndex)

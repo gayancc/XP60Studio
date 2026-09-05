@@ -19,6 +19,7 @@
 #include "presentation/DevicesViewModel.h"
 #include "presentation/PatchEditorViewModel.h"
 #include "services/PatchWorkspace.h"
+#include "services/UserMemoryWrite.h"
 #include "presentation/QmlRegistration.h"
 #include "services/DeviceSession.h"
 #include "services/PatchTransfer.h"
@@ -125,6 +126,7 @@ int main(int argc, char* argv[])
     // the view models because they hold a reference to it, and outliving them
     // because it is the thing they project.
     xp60studio::services::PatchWorkspace workspace;
+    xp60studio::services::UserMemoryWrite userMemoryWrite(session);
     xp60studio::presentation::PatchEditorViewModel editor(session, workspace, &transfer);
 
     // The XP-60 transmits Bank Select and Program Change when a Patch is chosen
@@ -178,6 +180,10 @@ int main(int argc, char* argv[])
     // edited state wherever they show that Patch, so a rename in the Editor is
     // visible on a bank destination and in a library row immediately.
     bankBuilder.setWorkspace(&workspace);
+    // The one destructive path: writing a built bank into the instrument's
+    // permanent USER memory. A separate service from the audition transfer, with
+    // its own arming, so neither can stand in for the other.
+    bankBuilder.setUserMemoryWrite(&userMemoryWrite);
 
     xp60studio::services::LibraryImportService libraryImport(libraryDatabase);
     xp60studio::services::LibraryExportService libraryExport(libraryDatabase);

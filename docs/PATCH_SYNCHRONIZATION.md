@@ -270,7 +270,7 @@ Listed rather than guessed, per `AGENTS.md`.
 
 | # | Unknown | Why it matters | How it would be settled |
 |---|---|---|---|
-| U1 | Whether the XP-60 honours a DT1 to `11 nn 00 00` (USER Patch), and whether **User Memory Protect** (M7) blocks it. The address map lists the region; it does not say the region is writable over SysEx. | The persistent-write feature depends on it entirely. | One armed write to a USER slot whose contents were fetched first, then read back and compared, with Protect both ON and OFF. Added to `DEVICE_ACCEPTANCE.md`. |
+| U1 | Whether the XP-60 honours a DT1 to `11 nn 00 00` (USER Patch), and whether **User Memory Protect** (M7) blocks it. Reads from these addresses *are* hardware-verified (128/128); only the write direction is open. | It does not block the feature — every write is proved by read-back at runtime (§7). Settling it turns a per-run check into a recorded fact. | One armed write to a USER slot whose contents were fetched first, then read back and compared, with Protect both ON and OFF. `DEVICE_ACCEPTANCE.md` area 11. |
 | U2 | Whether writing `03 00 00 00` while the instrument is in **Performance mode** is audible. The map has separate Performance-mode temporary Patches at `02 0n 00 00`. | Audition would silently do nothing in Performance mode. | Put the XP-60 in Performance mode, send a temporary Patch, listen and read back. |
 | U3 | Whether the XP-60 reports its current **mode** (Patch / Performance / Rhythm) over MIDI. | Would let the app pick the right temporary address instead of asking. | Probe System Common; inspect what the panel transmits on a mode change. |
 | U4 | Whether the XP-60 transmits anything when a **parameter** is edited on the front panel (as opposed to a Patch being selected, C1). | Would allow finer conflict detection than "assume stale". | Watch MIDI IN while turning the panel's VALUE dial. |
@@ -461,11 +461,21 @@ USER-memory overwrite. This design enforces it structurally, not by convention.
 4. **A safety snapshot of the destination is fetched first**, so the overwritten
    Patch can be put back. Refusing to write is preferred to writing without one.
 5. **Read-back verification is mandatory**, not optional as it is for audition.
-6. **U1 gates execution.** Until a hardware session proves the XP-60 accepts a
-   DT1 to `11 nn 00 00` and reveals how User Memory Protect (M7) interacts with
-   it, the path is built, tested against the simulator, and **refuses to
-   transmit to real hardware**, saying exactly why. This mirrors how Phase 1
-   handled DT1 writes before they were verified.
+6. **Every write is proved at runtime, which is what makes U1 survivable.**
+   The write direction into `11 nn 00 00` is documentation-derived rather than
+   hardware-confirmed, and how User Memory Protect (M7) interacts with it is
+   unknown. Withholding the feature over that would gut the product — a
+   librarian that cannot put a bank on the keyboard is not a librarian — and
+   would not even be conservative, since the user's alternative is sending the
+   `.syx` XP60Studio already exports with a tool that verifies nothing.
+   Instead every destination is read back and compared. A write the instrument
+   refuses is exactly what Protect being ON looks like from the wire, so the
+   unknown surfaces as a named mismatch rather than as silent data loss.
+
+Implemented as `services::UserMemoryWrite`. `PatchTransfer` still hard-codes
+`03 00 00 00` and cannot be pointed at USER memory; `UserMemoryWrite` must be
+handed a slot number and cannot write the temporary area. Arming one authorises
+nothing in the other.
 
 ### Renaming "Write to XP-60"
 
@@ -473,8 +483,13 @@ Per G3, the Editor's action is renamed to match the Owner's Manual's vocabulary:
 
 | Was | Becomes | Means |
 |---|---|---|
-| *Write to XP-60* | **Send to XP temp** | DT1 → `03 00 00 00`. Audible immediately; lost on patch change or power-off (M3). |
-| — | **Write to USER…** | DT1 → `11 nn 00 00`. Destructive, destination chosen, snapshot taken (§7). |
+| *Write to XP-60* (Editor) | **Send to XP temp** | DT1 → `03 00 00 00`. Audible immediately; lost on patch change or power-off (M3). |
+| — (Bank Builder) | **Arm** + **Write to XP-60 USER** | DT1 → `11 nn 00 00`, one destination per occupied slot. Destructive, two presses, confirmed, snapshotted, verified per Patch. |
+
+Empty destinations in a bank are **skipped, not erased**: whether a gap means
+"wipe whatever the instrument holds there" is not this application's decision.
+A destination whose Patch has been deleted from the library is skipped too and
+counted in the confirmation, because there is no Patch to write.
 
 ---
 
@@ -529,15 +544,12 @@ what the instrument itself does.
 | **1** | `PatchSyncState` + `PatchWorkspace`: the working Patch, origin, baselines, undo/redo, the §4 state machine. | **Done** — `tst_patch_workspace` |
 | **2** | `PatchEditorViewModel` backed by the workspace instead of `m_original`/`m_current`/`m_hardware`. Library and Bank Builder overlays. Open-in-Editor from both. | **Done** — `tst_patch_sync`, `tst_patch_editor` |
 | **3** | Staleness from C1: watch MIDI IN for Bank Select / Program Change. Deferred verification (§6). "Write to XP-60" renamed. | **Done** — `tst_patch_workspace`, `tst_patch_transfer` |
-| **4** | Persistent write to `11 nn 00 00` and its UI. | **Not started, gated on U1** |
+| **4** | Persistent write to `11 nn 00 00` and its UI: `services::UserMemoryWrite`, the Bank Builder's Arm + Write to XP-60 USER, the confirmation, progress, and Put back what was there. | **Done** — `tst_user_memory_write` |
 
-Stages 1–3 are implemented. Stage 4 stays closed until the hardware session
-settles U1: the address map lists the USER Patch region but does not say it is
-writable over SysEx, and building a destructive path on that inference is
-exactly what `AGENTS.md` forbids. Until then XP60Studio's persistent storage is
-its own library and its `.syx` export, and the instrument's own
-`[UTILITY]` → `1 Write` remains the way a sound reaches USER memory — which is
-also what the Owner's Manual describes.
+All four stages are implemented. A bank built in XP60Studio now reaches the
+keyboard directly, with the previous contents of every destination read first so
+they can be put back, and every write proved by a read-back before the next one
+starts.
 
 ### What stage 3 changed about latency
 

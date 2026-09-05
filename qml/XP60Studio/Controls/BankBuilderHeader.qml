@@ -27,6 +27,7 @@ RowLayout {
     signal newBankRequested()
     signal saveAsRequested()
     signal exportRequested()
+    signal writeToUserRequested()
 
     spacing: Metrics.spacingSm
 
@@ -136,6 +137,37 @@ RowLayout {
                           ? qsTr("Write %n destination(s) to a .syx file, addressed to the User slots they occupy here", "", root.builder.occupiedCount)
                           : qsTr("This bank has no Patches in it yet")
         onClicked: root.exportRequested()
+    }
+
+    // The destructive one. Deliberately last, deliberately two presses (arm,
+    // then write), and deliberately named for the memory it overwrites: the
+    // Owner's Manual reserves "write" for exactly this operation, and the
+    // XP-60's own front panel makes it a separate, destination-chosen,
+    // confirmed act (p.46). This mirrors that.
+    XpButton {
+        objectName: "bankArmUserWrite"
+        text: root.builder.userWriteArmed ? qsTr("Armed") : qsTr("Arm")
+        compact: true
+        variant: root.builder.userWriteArmed ? "danger" : "ghost"
+        visible: root.builder.userWriteTotal > 0 || root.builder.canArmUserWrite || root.builder.userWriteArmed
+        enabled: root.builder.userWriteArmed || root.builder.canArmUserWrite
+        QQC.ToolTip.visible: hovered
+        QQC.ToolTip.delay: 400
+        QQC.ToolTip.text: qsTr("Arms the write to the XP-60's permanent USER memory. One arming permits one write.")
+        onClicked: root.builder.userWriteArmed ? root.builder.disarmUserWrite() : root.builder.armUserWrite()
+    }
+    XpButton {
+        objectName: "bankWriteToUser"
+        text: qsTr("Write to XP-60 USER")
+        iconName: "midi-out"
+        compact: true
+        variant: "danger"
+        visible: root.builder.userWriteArmed || root.builder.userWriteBusy
+        enabled: root.builder.canWriteToUserMemory
+        QQC.ToolTip.visible: hovered
+        QQC.ToolTip.delay: 400
+        QQC.ToolTip.text: root.builder.userWritePlan
+        onClicked: root.writeToUserRequested()
     }
 
     XpButton {

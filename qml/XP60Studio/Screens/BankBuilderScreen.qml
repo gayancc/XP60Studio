@@ -337,6 +337,7 @@ FocusScope {
             transfer: root.transfer
             savedBanksOpen: banksDrawer.visible
             onExportRequested: exportDialog.open()
+            onWriteToUserRequested: userWriteConfirm.open()
             onSavedBanksToggled: banksDrawer.visible = !banksDrawer.visible
             onNewBankRequested: root.builder.occupiedCount > 0 || root.builder.modified
                                 ? discardConfirm.open()
@@ -345,6 +346,60 @@ FocusScope {
                 saveName.text = root.builder.bankName
                 saveDialog.open()
                 saveName.forceActiveFocus()
+            }
+        }
+
+        // Writing the bank into the instrument's permanent memory: what it is
+        // doing now, and what it did. Kept visible while it matters rather than
+        // shown in a toast, because a destructive operation's outcome is the
+        // one thing a musician must not miss.
+        XpCard {
+            objectName: "bankUserWriteCard"
+            Layout.fillWidth: true
+            visible: root.builder.userWriteBusy || root.builder.userWriteMessage.length > 0
+            padding: Metrics.spacingMd
+
+            RowLayout {
+                anchors.fill: parent
+                spacing: Metrics.spacingSm
+
+                StatusPill {
+                    objectName: "bankUserWriteState"
+                    text: root.builder.userWriteState
+                    tone: root.builder.userWriteTone
+                }
+                XpLabel {
+                    objectName: "bankUserWriteMessage"
+                    Layout.fillWidth: true
+                    text: root.builder.userWriteMessage
+                    role: "caption"
+                    wrapMode: Text.WordWrap
+                }
+                XpLabel {
+                    objectName: "bankUserWriteProgress"
+                    visible: root.builder.userWriteTotal > 0
+                    text: qsTr("%1 / %2").arg(root.builder.userWriteCompleted).arg(root.builder.userWriteTotal)
+                    role: "caption"
+                    muted: true
+                }
+                XpButton {
+                    objectName: "bankUserWriteCancel"
+                    text: qsTr("Stop")
+                    compact: true
+                    variant: "danger"
+                    visible: root.builder.userWriteBusy
+                    onClicked: root.builder.cancelUserWrite()
+                }
+                // The undo for a destructive operation. Available because every
+                // destination was read before it was written.
+                XpButton {
+                    objectName: "bankUserWriteRestore"
+                    text: qsTr("Put back what was there")
+                    compact: true
+                    variant: "ghost"
+                    visible: !root.builder.userWriteBusy && root.builder.canRestoreUserMemory
+                    onClicked: root.builder.restoreUserMemory()
+                }
             }
         }
 
@@ -827,6 +882,44 @@ FocusScope {
                   : qsTr("This clears all 128 destinations. Every Patch stays in the library.")
             role: "body"
             wrapMode: Text.WordWrap
+        }
+    }
+
+    // The one destructive confirmation in the application. It names what will
+    // be overwritten, says the previous Patches are read first so they can be
+    // put back, and warns about User Memory Protect — because a refused write
+    // is what that setting looks like from here.
+    QQC.Dialog {
+        id: userWriteConfirm
+        objectName: "bankUserWriteDialog"
+        anchors.centerIn: parent
+        modal: true
+        title: qsTr("Write this bank to the XP-60's USER memory?")
+        standardButtons: QQC.Dialog.Yes | QQC.Dialog.Cancel
+        onAccepted: root.builder.writeBankToUserMemory()
+
+        background: Rectangle {
+            color: Theme.surface
+            radius: Metrics.radiusMd
+            border.width: 1
+            border.color: Theme.borderStrong
+        }
+
+        ColumnLayout {
+            spacing: Metrics.spacingSm
+            XpLabel {
+                Layout.preferredWidth: 420
+                text: root.builder.userWritePlan
+                role: "body"
+                wrapMode: Text.WordWrap
+            }
+            XpLabel {
+                Layout.preferredWidth: 420
+                text: qsTr("Each destination is read back after it is written and compared byte for byte. Empty destinations in this bank are skipped, not erased.")
+                role: "caption"
+                muted: true
+                wrapMode: Text.WordWrap
+            }
         }
     }
 

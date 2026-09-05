@@ -4,6 +4,7 @@
 #include "library/LibraryDatabase.h"
 #include "services/PatchTransfer.h"
 #include "services/PatchWorkspace.h"
+#include "services/UserMemoryWrite.h"
 
 #include <QObject>
 #include <QString>
@@ -104,6 +105,23 @@ class BankBuilderViewModel : public QObject
     Q_PROPERTY(QString auditionState READ auditionState NOTIFY auditionChanged)
     Q_PROPERTY(QString auditionMessage READ auditionMessage NOTIFY auditionChanged)
 
+    // Writing the bank into the XP-60's permanent USER memory --------------
+    // The point of building a bank: getting it onto the keyboard. This is the
+    // only destructive operation the application performs, so it is armed
+    // separately from the audition path, states what it will overwrite, reads
+    // each destination before writing it, and verifies every write.
+    Q_PROPERTY(bool canWriteToUserMemory READ canWriteToUserMemory NOTIFY userWriteChanged)
+    Q_PROPERTY(bool canArmUserWrite READ canArmUserWrite NOTIFY userWriteChanged)
+    Q_PROPERTY(bool userWriteArmed READ userWriteArmed NOTIFY userWriteChanged)
+    Q_PROPERTY(bool userWriteBusy READ userWriteBusy NOTIFY userWriteChanged)
+    Q_PROPERTY(QString userWriteState READ userWriteState NOTIFY userWriteChanged)
+    Q_PROPERTY(QString userWriteMessage READ userWriteMessage NOTIFY userWriteChanged)
+    Q_PROPERTY(QString userWriteTone READ userWriteTone NOTIFY userWriteChanged)
+    Q_PROPERTY(QString userWritePlan READ userWritePlan NOTIFY bankChanged)
+    Q_PROPERTY(int userWriteCompleted READ userWriteCompleted NOTIFY userWriteChanged)
+    Q_PROPERTY(int userWriteTotal READ userWriteTotal NOTIFY userWriteChanged)
+    Q_PROPERTY(bool canRestoreUserMemory READ canRestoreUserMemory NOTIFY userWriteChanged)
+
     // Saved banks: {id, name, occupied, missing, updated}
     Q_PROPERTY(QVariantList savedBanks READ savedBanks NOTIFY savedBanksChanged)
     // Import sources, so the source library can be opened one bank at a time:
@@ -124,6 +142,32 @@ public:
     // in the Editor shows the *working* name and says it is being edited, so a
     // rename made in the Editor is visible on the panel immediately.
     void setWorkspace(services::PatchWorkspace* workspace);
+    // Optional. Without it the bank can be arranged, saved and exported but not
+    // written to the instrument, which is what the screenshot harness gets.
+    void setUserMemoryWrite(services::UserMemoryWrite* writer);
+
+    [[nodiscard]] bool canWriteToUserMemory() const;
+    [[nodiscard]] bool canArmUserWrite() const;
+    [[nodiscard]] bool userWriteArmed() const;
+    [[nodiscard]] bool userWriteBusy() const;
+    [[nodiscard]] QString userWriteState() const;
+    [[nodiscard]] QString userWriteMessage() const;
+    [[nodiscard]] QString userWriteTone() const;
+    // Exactly what pressing Write would overwrite, for the confirmation.
+    [[nodiscard]] QString userWritePlan() const;
+    [[nodiscard]] int userWriteCompleted() const;
+    [[nodiscard]] int userWriteTotal() const;
+    [[nodiscard]] bool canRestoreUserMemory() const;
+
+    Q_INVOKABLE bool armUserWrite();
+    Q_INVOKABLE void disarmUserWrite();
+    // Writes every occupied destination to the USER slot it occupies. Empty
+    // destinations are skipped entirely rather than erased: whether a gap in a
+    // bank means "wipe whatever the instrument has there" is not this
+    // application's decision to make.
+    Q_INVOKABLE bool writeBankToUserMemory();
+    Q_INVOKABLE bool restoreUserMemory();
+    Q_INVOKABLE void cancelUserWrite();
 
     // Opens the Patch at `slotIndex` in the Editor by adopting it into the
     // shared workspace. False when the destination is empty or its Patch is no
@@ -268,10 +312,12 @@ Q_SIGNALS:
     void actionChanged();
     void savedBanksChanged();
     void auditionChanged();
+    void userWriteChanged();
     void errorOccurred(const QString& message);
 
 private:
     [[nodiscard]] std::optional<library::BankSlotContent> contentFor(std::int64_t patchId) const;
+    [[nodiscard]] std::vector<services::UserMemoryWrite::Destination> userWriteDestinations() const;
     [[nodiscard]] QVariantMap destinationMap(int slotIndex) const;
     void reportAction(const QString& text, const QString& tone);
     void reportError(const QString& message);
@@ -281,6 +327,7 @@ private:
     library::LibraryDatabase* m_database = nullptr;
     services::PatchTransfer* m_transfer = nullptr;
     services::PatchWorkspace* m_workspace = nullptr;
+    services::UserMemoryWrite* m_userWrite = nullptr;
     library::BankDraft m_draft;
 
     int m_subgroup = 0;

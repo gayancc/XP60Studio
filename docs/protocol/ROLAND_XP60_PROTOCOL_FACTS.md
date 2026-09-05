@@ -161,12 +161,26 @@ announced on MIDI OUT, `DeviceSession::patchSelectionObserved` watches for those
 two messages: it is a documented, passive, zero-traffic way to learn that the
 application's copy of the temporary area has become worthless.
 
-### Unknown, and gating the persistent-write path
+### The write direction into USER memory
 
-Whether the XP-60 **honours** a DT1 addressed to `11 nn 00 00`, and how User
-Memory Protect interacts with it, is **Unknown**. The address map lists the
-region; it does not say the region is writable over SysEx. No code writes there,
-and none may until the check in `DEVICE_ACCEPTANCE.md` closes it.
+**Reads from `11 nn 00 00` are hardware-verified**: all 128 User Patches were
+read from those addresses on a physical XP-60, every parameter in range and
+every Patch re-encoding byte-exactly (`HARDWARE_VALIDATION_XP60.md`,
+`--verify-bank`). The addresses are right and the region is live.
+
+The **write** direction is Documentation-derived: DT1 is documented as the
+message "used when you wish to set the data of the receiving device", Roland
+documents no read-only regions, and `.syx` bank files in the wild — including
+this project's golden fixture — are exactly these addresses and exist to be sent
+back. It is not yet confirmed by this project on hardware, and neither is how
+**User Memory Protect** (OM p.46) interacts with it.
+
+That is a reason to **prove every write at runtime**, not to withhold the
+feature. `services::UserMemoryWrite` reads each destination before writing it,
+reads it back afterwards and compares byte for byte. A write the instrument
+refuses — which is what User Memory Protect being ON looks like from the wire —
+surfaces as a mismatch naming that cause, never as success. Area 11 of
+`DEVICE_ACCEPTANCE.md` promotes the row when the connected session runs it.
 
 ## 3. Address map (base addresses only)
 
@@ -203,8 +217,11 @@ All presets are RQ1 (read-only). None writes to the instrument.
 
 ## 5. Deliberately not implemented in Phase 1
 
-- **DT1 writes from the UI.** The write test button exists but is disabled with
-  an explanation until temporary-area semantics are hardware-verified.
+- ~~**DT1 writes from the UI.**~~ **Shipped.** Temporary-area writes are
+  hardware-verified (2026-09-04, 6/6 with read-back). Writes into permanent USER
+  memory ship through `services::UserMemoryWrite`, which reads each destination
+  before writing it, verifies every write by read-back, and is armed separately
+  from the audition path. See §2.4.
 - **Bulk dump / handshake commands** (`WSD`, `RQD`, `DAT`, `ACK`, `EOD`, `ERR`,
   `RJC`). The XP family's normal editor path is the one-way RQ1/DT1 pair; the
   handshake commands are not modelled.

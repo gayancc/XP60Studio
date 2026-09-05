@@ -264,15 +264,42 @@ Important deterministic test areas include:
 
 Local editing and experimentation should be non-destructive by default.
 
-Writing to the XP-60 must always be explicit. The UI must distinguish clearly between:
+**Transferring Patches and built banks to the XP-60 — including into its
+permanent USER memory — is a core product capability, not a hazard to be
+designed around.** A librarian that cannot put a bank on the keyboard is not a
+librarian. Nothing in this file may be read as a prohibition on it.
 
-- LOCAL
-- ON XP-60
-- MODIFIED / UNSAVED
+What the rules govern is the *envelope* around a write, never whether it may
+happen at all:
+
+- **Explicit.** A write is a deliberate, armed, confirmed act, never a side
+  effect of editing, selecting, arranging or connecting.
+- **Addressed.** The destination is chosen by the user, never inherited or
+  guessed.
+- **Backed up.** Whatever a persistent write is about to overwrite is read
+  first, so it can be put back.
+- **Verified.** The destination is read back and compared. A completed
+  transmission is not a verified state.
+- **Distinguished.** Temporary memory (`03 00 00 00`, what the instrument
+  sounds and discards on the next Patch change) and permanent USER memory
+  (`11 nn 00 00`) are different operations with different words in the UI.
+  Real-time audition uses the temporary area and must never write USER memory.
+
+The UI must distinguish clearly between:
+
+- LOCAL / NOT IN LIBRARY
+- EDITED
+- SENT (transmitted, not yet verified)
+- XP TEMP (verified in the instrument's temporary area)
+- STALE (the instrument's temporary area was replaced behind our back)
 - VERIFIED
 - MISMATCH / FAILED
 
-Never silently replace missing expansion waveforms, discard imported patches, or overwrite hardware state.
+See [`docs/PATCH_SYNCHRONIZATION.md`](docs/PATCH_SYNCHRONIZATION.md) for the
+memory architecture these states come from and the evidence behind it.
+
+Never silently replace missing expansion waveforms, discard imported patches, or
+overwrite hardware state *without the user having asked for it*.
 
 ## Implementation behavior
 
@@ -296,9 +323,18 @@ When physical hardware verification is required, state exactly what must be test
 
 ## Current priority
 
-Start with **Phase 1 — Protocol Foundation** unless the user explicitly directs otherwise.
+Phases 1-6 are implemented: the protocol foundation, the Patch model, the
+hardware round trip, the Patch Editor and Wave Browser, the librarian and
+Dashboard, and the Bank Builder including `.syx` bank import/export and the
+write into the instrument's USER memory. Patch synchronization across the
+Editor, Library, Bank Builder and a connected XP-60 is in
+[`docs/PATCH_SYNCHRONIZATION.md`](docs/PATCH_SYNCHRONIZATION.md).
 
-Phase 1 should establish the Qt/CMake application shell, C++/QML boundary, minimal diagnostics UI, MIDI abstraction/implementation, and Roland protocol foundation. It is not the phase for the polished Dashboard, Patch Editor, Bank Builder, Patch DNA, morphing, smart-bank generation, or setlists.
+Work the next open item in [`docs/ROADMAP.md`](docs/ROADMAP.md) unless the user
+directs otherwise. Physical validation for every phase is deferred to one
+connected session indexed by
+[`docs/DEVICE_ACCEPTANCE.md`](docs/DEVICE_ACCEPTANCE.md); local work continues
+meanwhile and no hardware fact is promoted without hardware evidence.
 
 ## Product standard
 
