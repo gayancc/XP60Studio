@@ -79,4 +79,3 @@ ColumnLayout {
     }
     Component.onDestruction: editor.endEffectGesture()
 }
-

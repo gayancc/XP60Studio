@@ -11,7 +11,6 @@ ColumnLayout {
     XpLabel { text: root.title; role: "overline"; secondary: true }
     Flow {
         Layout.fillWidth: true
-        
         spacing: Metrics.spacingSm
         Repeater {
             model: root.parameter.choices || []
@@ -28,5 +27,3 @@ ColumnLayout {
         }
     }
 }
-
-

@@ -172,4 +172,3 @@ Rectangle {
         QQC.ToolTip.text: root.xTitle + ": " + root.xv.display + " · " + root.yTitle + ": " + root.yv.display
     }
 }
-

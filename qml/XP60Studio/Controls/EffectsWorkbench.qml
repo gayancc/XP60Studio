@@ -70,7 +70,7 @@ ColumnLayout {
         }
         Flow {
             objectName: "effectAlgorithmPalette"
-            visible: root.browserOpen; Layout.fillWidth: true; 
+            visible: root.browserOpen; Layout.fillWidth: true;
             spacing: Metrics.spacingSm
             Repeater {
                 model: root.algorithms
@@ -240,5 +240,3 @@ ColumnLayout {
         }
     }
 }
-
-
