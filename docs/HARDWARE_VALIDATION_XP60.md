@@ -439,3 +439,44 @@ Values awaiting comparison, from the same capture of `Childlike`:
 |---|---|---|---|
 | Tone 1 Cutoff Frequency | 127 | | not yet read |
 | Tone 1 Wave number | INT group 1, #36 | | not yet read |
+
+### Step 7a closed — parameter spot checks match the instrument
+
+Read from the XP-60's own edit pages on the Patch `Childlike` and compared
+with the same capture (2026-09-04):
+
+| Parameter | XP60Studio decoded | XP-60 edit page | Result |
+|---|---|---|---|
+| Tone 1 Cutoff Frequency (TVF) | 127 | 127 | match |
+| Tone 1 Wave number (WG) | INT group 1, #36 | 36 | match |
+
+This is the first evidence in the project about parameter *meaning* rather than
+structure: the tables address the bytes the XP-60 addresses, and the
+raw-to-display conversion for these two is right. Area 4 closes and Phase 2 is
+hardware-verified.
+
+Two parameters are a spot check, not proof of all 584. What they establish is
+that Tone block addressing and offsets are sound in two distant parts of the
+Tone table (TVF and WG); they say nothing about any individual parameter not
+listed above.
+
+### VerificationStatus promotions
+
+`src/xp60/Xp60Device.cpp` promoted to `HardwareVerified`:
+
+- **Model ID** `6A`, single byte.
+- **Memory regions** `system`, `temporary-performance`, `temporary-patch` and
+  `user-patch` — base address only. Region *sizes* remain unestablished, and
+  the four regions never addressed (`02 00 00 00`, `02 09 00 00`,
+  `10 00 00 00`, `10 40 00 00`) stay `DocumentationDerived`.
+- **Safe read presets** 1-3, all answered by the instrument.
+
+`system-first-16` deliberately stays `ProjectDefined`. The XP-60 answering it
+does not make the 16-byte size a Roland fact — the partial size is still this
+project's invention, and relabelling it would lose that.
+
+`tests/cpp/tst_xp60_device.cpp` previously asserted that *nothing* claimed
+hardware verification. That guard now asserts the exact set of four verified
+regions instead, so promoting a region that was never read still fails the
+suite — verified by falsely promoting `user-performance` and watching the test
+fail.

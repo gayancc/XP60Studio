@@ -2,6 +2,10 @@
 
 #include <QtTest>
 
+#include <algorithm>
+#include <array>
+#include <string_view>
+
 using namespace xp60studio;
 
 class Xp60DeviceTest : public QObject
@@ -14,8 +18,9 @@ private slots:
         QCOMPARE(QString::fromStdString(xp60::modelId().toHexString()), QStringLiteral("6A"));
         QCOMPARE(xp60::modelId().size(), std::size_t(1));
         QCOMPARE(xp60::factoryDefaultDeviceId().displayNumber(), 17);
-        // Nothing may claim hardware verification before a capture exists.
-        QVERIFY(xp60::modelIdStatus() != xp60::VerificationStatus::HardwareVerified);
+        // Hardware-verified 2026-09-04: every reply from a physical XP-60 carried
+        // "41 <dev> 6A 12" after F0. See docs/HARDWARE_VALIDATION_XP60.md.
+        QCOMPARE(xp60::modelIdStatus(), xp60::VerificationStatus::HardwareVerified);
     }
 
     void memoryRegionsAreDistinctAndOrdered()
@@ -29,7 +34,16 @@ private slots:
         for (const auto& region : regions) {
             QVERIFY(!region.name.empty());
             QVERIFY(!region.sourceNote.empty());
-            QVERIFY(region.status != xp60::VerificationStatus::HardwareVerified);
+        }
+        // Only regions actually read on hardware may claim verification. The
+        // four below were read on 2026-09-04; the rest have never been
+        // addressed, and promoting one without a capture is the mistake this
+        // guards against.
+        const std::array<std::string_view, 4> verified{
+            {"system", "temporary-performance", "temporary-patch", "user-patch"}};
+        for (const auto& region : regions) {
+            const bool expectVerified = std::find(verified.begin(), verified.end(), region.id) != verified.end();
+            QCOMPARE(region.status == xp60::VerificationStatus::HardwareVerified, expectVerified);
         }
         QVERIFY(xp60::findMemoryRegion("temporary-patch") != nullptr);
         QVERIFY(xp60::findMemoryRegion("temporary-patch")->temporaryMemory);
@@ -53,7 +67,6 @@ private slots:
         for (const auto& preset : presets) {
             QVERIFY(!preset.size.isZero());
             QVERIFY(!preset.description.empty());
-            QVERIFY(preset.status != xp60::VerificationStatus::HardwareVerified);
         }
         // Patch-name reads: 12 characters at Patch Common offset 00 00.
         QCOMPARE(QString::fromStdString(presets[0].address.toHexString()), QStringLiteral("03 00 00 00"));
@@ -64,8 +77,15 @@ private slots:
         QCOMPARE(QString::fromStdString(presets[2].address.toHexString()), QStringLiteral("01 00 00 00"));
         QCOMPARE(QString::fromStdString(presets[2].size.toHexString()), QStringLiteral("00 00 1F 19"));
         QCOMPARE(presets[2].size.value(), 3993u);
-        QCOMPARE(presets[2].status, xp60::VerificationStatus::DocumentationDerived);
-        // The partial System read is a project choice, never labelled as Roland-documented.
+        // All three documented presets were answered by a physical XP-60 on
+        // 2026-09-04. The reply to presets[2] carried 466 payload bytes, not
+        // 3993: the size is an address span over padded blocks.
+        QCOMPARE(presets[0].status, xp60::VerificationStatus::HardwareVerified);
+        QCOMPARE(presets[1].status, xp60::VerificationStatus::HardwareVerified);
+        QCOMPARE(presets[2].status, xp60::VerificationStatus::HardwareVerified);
+        // The partial System read is a project choice, never labelled as
+        // Roland-documented. The instrument answering it does not make the
+        // 16-byte size a Roland fact, so this stays ProjectDefined.
         QCOMPARE(presets[3].status, xp60::VerificationStatus::ProjectDefined);
     }
 

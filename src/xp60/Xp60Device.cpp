@@ -22,6 +22,14 @@ constexpr std::string_view kMidiImplementationNote =
     "XP-60/XP-80 MIDI Implementation (owner's manual appendix); confirm with a hardware capture "
     "before relying on offsets beyond the base address.";
 
+// Regions read from a physical XP-60 on 2026-09-04; see
+// docs/HARDWARE_VALIDATION_XP60.md. Each answered an RQ1 at its base address
+// with data that decoded as documented. Only the base address and the fact
+// that the region answers are verified: region *sizes* are still unknown.
+constexpr std::string_view kHardwareReadNote =
+    "Base address confirmed on a physical XP-60 (2026-09-04 hardware log): the region answers an RQ1 "
+    "and returns data that decodes as documented. Region size is still not established.";
+
 const std::array<MemoryRegion, 8>& regions()
 {
     // Function-local so other translation units can use these facts during
@@ -34,8 +42,8 @@ const std::array<MemoryRegion, 8>& regions()
         RolandAddress{0x00, 0x00, 0x00, 0x00},
         std::nullopt,
         false,
-        VerificationStatus::DocumentationDerived,
-        kMidiImplementationNote,
+        VerificationStatus::HardwareVerified,
+        kHardwareReadNote,
     },
     MemoryRegion{
         "temporary-performance",
@@ -44,8 +52,8 @@ const std::array<MemoryRegion, 8>& regions()
         RolandAddress{0x01, 0x00, 0x00, 0x00},
         std::nullopt,
         true,
-        VerificationStatus::DocumentationDerived,
-        kMidiImplementationNote,
+        VerificationStatus::HardwareVerified,
+        kHardwareReadNote,
     },
     MemoryRegion{
         "temporary-patch-performance-part-1",
@@ -76,8 +84,8 @@ const std::array<MemoryRegion, 8>& regions()
         RolandAddress{0x03, 0x00, 0x00, 0x00},
         std::nullopt,
         true,
-        VerificationStatus::DocumentationDerived,
-        kMidiImplementationNote,
+        VerificationStatus::HardwareVerified,
+        kHardwareReadNote,
     },
     MemoryRegion{
         "user-performance",
@@ -106,8 +114,8 @@ const std::array<MemoryRegion, 8>& regions()
         RolandAddress{0x11, 0x00, 0x00, 0x00},
         std::nullopt,
         false,
-        VerificationStatus::DocumentationDerived,
-        kMidiImplementationNote,
+        VerificationStatus::HardwareVerified,
+        kHardwareReadNote,
     },
 }};
     return kRegions;
@@ -123,7 +131,7 @@ const std::array<SafeReadPreset, 4>& presets()
         "easy to confirm on the XP-60 display.",
         RolandAddress{0x03, 0x00, 0x00, 0x00},
         RolandSize{0x00, 0x00, 0x00, 0x0C},
-        VerificationStatus::DocumentationDerived,
+        VerificationStatus::HardwareVerified,
     },
     SafeReadPreset{
         "user-patch-001-name",
@@ -131,7 +139,7 @@ const std::array<SafeReadPreset, 4>& presets()
         "Reads the name of the first permanent User Patch. Read-only; nothing is written.",
         RolandAddress{0x11, 0x00, 0x00, 0x00},
         RolandSize{0x00, 0x00, 0x00, 0x0C},
-        VerificationStatus::DocumentationDerived,
+        VerificationStatus::HardwareVerified,
     },
     SafeReadPreset{
         "temporary-performance-roland-example",
@@ -140,7 +148,7 @@ const std::array<SafeReadPreset, 4>& presets()
         "several DT1 packets of at most 128 bytes, at least 20 ms apart, covering the whole range. Read-only.",
         RolandAddress{0x01, 0x00, 0x00, 0x00},
         RolandSize{0x00, 0x00, 0x1F, 0x19},
-        VerificationStatus::DocumentationDerived,
+        VerificationStatus::HardwareVerified,
     },
     SafeReadPreset{
         "system-first-16",
@@ -203,7 +211,9 @@ const roland::RolandModelId& modelId() noexcept
 
 VerificationStatus modelIdStatus() noexcept
 {
-    return VerificationStatus::DocumentationDerived;
+    // Hardware-verified 2026-09-04: every reply from a physical XP-60 carried
+    // "41 <dev> 6A 12" immediately after F0, i.e. the single-byte model ID 6A.
+    return VerificationStatus::HardwareVerified;
 }
 
 roland::RolandDeviceId factoryDefaultDeviceId() noexcept
