@@ -241,6 +241,104 @@ private slots:
         QVERIFY(f.editor->modified());
     }
 
+    // Use in Tone. The wave identifier mapping it relies on is hardware
+    // evidence, not documentation: see docs/PHASE_4_WAVE_BROWSER.md and
+    // src/xpmodel/Xp60WaveIdentifier.h.
+    void useWaveInToneWritesAllThreeBytesAsOneEdit()
+    {
+        Fixture f;
+        f.loadPatch();
+        const auto before = f.editor->patch();
+        const auto sent = f.device->dataSetsReceived();
+
+        QVERIFY(f.editor->useWaveInTone(2, QStringLiteral("INT-B"), 193));
+
+        const auto wave = f.editor->patch().wave(ToneIndex::tone2());
+        QCOMPARE(wave.groupTypeRaw, 0);  // INT
+        QCOMPARE(wave.groupId, 2);       // INT-B
+        QCOMPARE(wave.numberRaw, 192);   // zero-based
+        QCOMPARE(wave.numberDisplay, 193);
+
+        // One edit, so one undo restores every byte it touched.
+        f.editor->undo();
+        QVERIFY(f.editor->patch() == before);
+        f.editor->redo();
+        QCOMPARE(f.editor->patch().wave(ToneIndex::tone2()).numberRaw, 192);
+
+        // Local edit only: nothing was transmitted.
+        f.pump();
+        QCOMPARE(f.device->dataSetsReceived(), sent);
+    }
+
+    void useWaveInToneLeavesOtherTonesAndTheRestOfTheToneAlone()
+    {
+        Fixture f;
+        f.loadPatch();
+        const auto before = f.editor->patch();
+        QVERIFY(f.editor->useWaveInTone(1, QStringLiteral("INT-A"), 36));
+
+        const auto after = f.editor->patch();
+        for (const auto tone : ToneIndex::all()) {
+            if (tone == ToneIndex::tone1()) continue;
+            QCOMPARE(after.wave(tone).groupTypeRaw, before.wave(tone).groupTypeRaw);
+            QCOMPARE(after.wave(tone).groupId, before.wave(tone).groupId);
+            QCOMPARE(after.wave(tone).numberRaw, before.wave(tone).numberRaw);
+        }
+        // Wave Gain shares the wave group but is not part of the selection.
+        QCOMPARE(after.wave(ToneIndex::tone1()).gainRaw, before.wave(ToneIndex::tone1()).gainRaw);
+        QCOMPARE(after.raw(ToneIndex::tone1(), ToneParameter::CutoffFrequency),
+                 before.raw(ToneIndex::tone1(), ToneParameter::CutoffFrequency));
+    }
+
+    void useWaveInToneRefusesWhatTheInstrumentCannotSelect()
+    {
+        Fixture f;
+        f.loadPatch();
+        const auto before = f.editor->patch();
+
+        // INT-B holds 193 waves; 194 does not exist. Nothing is clamped, and a
+        // refused edit must not touch the patch or the undo history.
+        QVERIFY(!f.editor->useWaveInTone(1, QStringLiteral("INT-B"), 194));
+        QVERIFY(!f.editor->useWaveInTone(1, QStringLiteral("INT-A"), 256));
+        QVERIFY(!f.editor->useWaveInTone(1, QStringLiteral("INT-A"), 0));
+        QVERIFY(!f.editor->useWaveInTone(1, QStringLiteral("INT-C"), 1));
+        QVERIFY(!f.editor->useWaveInTone(5, QStringLiteral("INT-A"), 1));
+        QVERIFY(f.editor->patch() == before);
+        QVERIFY(!f.editor->modified());
+    }
+
+    void useWaveInToneIsRefusedWhileComparing()
+    {
+        Fixture f;
+        f.loadPatch();
+        f.editor->setComparing(true);
+        const auto before = f.editor->patch();
+        QVERIFY(!f.editor->useWaveInTone(1, QStringLiteral("INT-A"), 36));
+        QVERIFY(f.editor->patch() == before);
+    }
+
+    void useSelectedWaveAppliesTheBrowserSelectionToTheSelectedTone()
+    {
+        Fixture f;
+        f.loadPatch();
+        QVERIFY(!f.editor->canUseSelectedWave()); // nothing selected yet
+
+        f.editor->setSelectedTone(3);
+        f.editor->waves()->setQuery(QStringLiteral("Kalimba"));
+        QVERIFY(f.editor->waves()->count() > 0);
+        f.editor->waves()->selectRow(0);
+        QVERIFY(f.editor->canUseSelectedWave());
+
+        const auto selected = f.editor->waves()->selected();
+        QCOMPARE(selected.value("bank").toString(), QStringLiteral("INT-B"));
+        QCOMPARE(selected.value("number").toInt(), 1);
+
+        QVERIFY(f.editor->useSelectedWaveInTone());
+        const auto wave = f.editor->patch().wave(ToneIndex::tone3());
+        QCOMPARE(wave.groupId, 2);
+        QCOMPARE(wave.numberRaw, 0);
+    }
+
     void disclosureChangesDoNotAlterThePatchOrHistory()
     {
         Fixture f;

@@ -50,6 +50,7 @@ class PatchEditorViewModel : public QObject
     Q_PROPERTY(QVariantList tones READ tones CONSTANT)
     Q_PROPERTY(WaveBrowserModel* waves READ waves CONSTANT)
     Q_PROPERTY(int selectedTone READ selectedTone WRITE setSelectedTone NOTIFY selectedToneChanged)
+    Q_PROPERTY(bool canUseSelectedWave READ canUseSelectedWave NOTIFY patchChanged)
     Q_PROPERTY(int enabledToneCount READ enabledToneCount NOTIFY patchChanged)
 
     // Signal flow
@@ -189,6 +190,20 @@ public:
 
     [[nodiscard]] QVariantList toneSettings() const;
     Q_INVOKABLE void setToneSetting(const QString& parameterId, int raw);
+
+    // Use in Tone. Points a Tone at an internal wave as one atomic local edit:
+    // Wave Group Type, Group ID and Number move together or not at all, so a
+    // single undo takes all three back. Nothing is transmitted -- the edit
+    // reaches the instrument through the existing armed write or live audition
+    // paths, like any other.
+    //
+    // Returns false, changing nothing and leaving history untouched, for a wave
+    // the instrument could not select: a bank other than INT-A or INT-B, or a
+    // number outside that bank. Values are never clamped to fit.
+    Q_INVOKABLE bool useWaveInTone(int toneNumber, const QString& bank, int displayNumber);
+    // The browser's current selection applied to the currently selected Tone.
+    Q_INVOKABLE bool useSelectedWaveInTone();
+    [[nodiscard]] bool canUseSelectedWave() const;
 
     [[nodiscard]] bool comparing() const noexcept { return m_comparing; }
     void setComparing(bool comparing);

@@ -83,7 +83,10 @@ QVariantMap WaveBrowserModel::selected() const
 {
     if (m_selected < 0) return {};
     const auto& wave = catalog::waves[static_cast<std::size_t>(m_selected)];
+    // `number` is the 1-based number the XP-60 displays. Turning it into the
+    // Tone's raw bytes is xpmodel::encodeWave's job, not this model's: the
+    // catalog is display metadata and must not carry SysEx knowledge.
     return {{"name", QString::fromUtf8(wave.name)}, {"key", key(wave)},
-            {"bank", QString::fromLatin1(wave.bank)}, {"page", wave.page}};
+            {"bank", QString::fromLatin1(wave.bank)}, {"number", wave.number}, {"page", wave.page}};
 }
 } // namespace xp60studio::presentation

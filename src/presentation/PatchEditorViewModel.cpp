@@ -1,5 +1,7 @@
 #include "presentation/PatchEditorViewModel.h"
 
+#include "xpmodel/Xp60WaveIdentifier.h"
+
 #include "xp60/Xp60Device.h"
 #include "xpmodel/Xp60PatchLayout.h"
 #include "xpmodel/Xp60Effects.h"
@@ -152,6 +154,61 @@ void PatchEditorViewModel::setCommonRaw(CommonParameter parameter, int raw)
     pushUndo();
     m_current = std::move(edited);
     emitAll();
+}
+
+bool PatchEditorViewModel::useWaveInTone(int toneNumber, const QString& bank, int displayNumber)
+{
+    if (!m_current || m_comparing) {
+        return false;
+    }
+    const auto tone = ToneIndex::fromNumber(toneNumber);
+    if (!tone) {
+        return false;
+    }
+    const auto selectedBank = xpmodel::internalWaveBankFromLabel(bank.toStdString());
+    if (!selectedBank) {
+        return false; // EXP or an unknown bank: never guessed at
+    }
+    const auto identifier = xpmodel::encodeWave({*selectedBank, displayNumber});
+    if (!identifier) {
+        return false; // outside the bank; not clamped to fit
+    }
+
+    // Build the whole change on a copy first. If any byte is refused the patch
+    // and the undo history are left exactly as they were, rather than applying
+    // a partial wave reference the instrument never had.
+    auto edited = *m_current;
+    if (!edited.setRaw(*tone, ToneParameter::WaveGroupType, identifier->groupTypeRaw)
+        || !edited.setRaw(*tone, ToneParameter::WaveGroupId, identifier->groupIdRaw)
+        || !edited.setRaw(*tone, ToneParameter::WaveNumber, identifier->numberRaw)) {
+        return false;
+    }
+    if (edited == *m_current) {
+        return true; // already pointing at that wave; no history entry for a no-op
+    }
+    pushUndo();
+    m_current = std::move(edited);
+    emitAll();
+    return true;
+}
+
+bool PatchEditorViewModel::canUseSelectedWave() const
+{
+    if (!m_current || m_comparing) {
+        return false;
+    }
+    const auto selected = m_waves.selected();
+    return !selected.isEmpty()
+        && xpmodel::internalWaveBankFromLabel(selected.value("bank").toString().toStdString()).has_value();
+}
+
+bool PatchEditorViewModel::useSelectedWaveInTone()
+{
+    const auto selected = m_waves.selected();
+    if (selected.isEmpty()) {
+        return false;
+    }
+    return useWaveInTone(m_selectedTone, selected.value("bank").toString(), selected.value("number").toInt());
 }
 
 bool PatchEditorViewModel::anyToneSoloed() const
