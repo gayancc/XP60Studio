@@ -3,6 +3,10 @@ add_library(xp60studio_services STATIC
   DeviceSession.cpp
   PatchTransfer.h
   PatchTransfer.cpp
+  PatchSyncState.h
+  PatchSyncState.cpp
+  PatchWorkspace.h
+  PatchWorkspace.cpp
   LibraryImportService.h
   LibraryImportService.cpp
   LibraryExportService.h
