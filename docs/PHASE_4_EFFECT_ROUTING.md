@@ -390,3 +390,24 @@ needing every step rather than two endpoints. Three algorithms are mapped. The
 remaining 37 are a substantial session of their own, and the alternative —
 shipping with EFX parameters explicitly raw, which is what the code does
 today — remains honest and is not blocked by this.
+
+## Status of the slot work — paused 2026-09-04
+
+Sweeping stopped by decision after three algorithms, with the remaining 37 left
+for a future session. The reason is cost, not a blocker: the method works and
+is recorded above, but the per-algorithm result means each of the 37 needs its
+own sweeps, several have ten or more controls, and the nonlinear ones need every
+step rather than two endpoints.
+
+**What ships meanwhile.** EFX parameters remain explicitly raw in the editor, as
+they were before this work. That is not a regression and not a lie: the editor
+presents the raw byte and says so, rather than labelling a byte with a control
+name it cannot justify. The three mapped algorithms are recorded here and are
+not wired into the UI, because presenting semantic names for three algorithms
+out of forty would be a worse experience than presenting none — the user could
+not tell which pages were trustworthy.
+
+**Resuming.** Start the watcher, select an algorithm with the watcher already
+running so the `EFX Type` change is captured, and sweep its controls one at a
+time in the manual's printed order, noting that order. Every finding above came
+from that loop.
