@@ -52,14 +52,25 @@ std::optional<Placement> placementFor(const LibraryEntry& entry, const SyxExport
         return placement;
     }
 
-    case SyxExportTarget::Kind::UserBankFrom: {
-        const int userNumber = target.firstUserNumber + static_cast<int>(index);
+    case SyxExportTarget::Kind::UserBankFrom:
+    case SyxExportTarget::Kind::UserBankSlots: {
+        const int userNumber = target.kind == SyxExportTarget::Kind::UserBankSlots
+                                   ? target.userNumbers[index]
+                                   : target.firstUserNumber + static_cast<int>(index);
         const auto address = Xp60PatchLayout::userPatchAddress(userNumber);
         if (!address) {
             errorOut = "User slot " + std::to_string(userNumber) + " is outside the 128-slot User bank.";
             return std::nullopt;
         }
         Placement placement{*address, {}};
+        // A note reports what the export did that the caller did not literally
+        // ask for. With UserBankSlots the caller named this exact destination
+        // for this exact Patch, so landing there is the request being honoured
+        // rather than a deviation from it — and a built bank would otherwise
+        // produce a note per Patch, burying any real one.
+        if (target.kind == SyxExportTarget::Kind::UserBankSlots) {
+            return placement;
+        }
         if (!provenance.userNumber || *provenance.userNumber != userNumber) {
             placement.note = "'" + entry.displayName() + "' written to USER:" + paddedUserNumber(userNumber);
             if (provenance.userNumber) {
@@ -132,6 +143,27 @@ SyxExportResult exportEntries(const std::vector<LibraryEntry>& entries, const Sy
         if (first < kFirstUserNumber || last > kLastUserNumber) {
             return failure("USER:" + paddedUserNumber(std::max(first, 0)) + " plus "
                            + std::to_string(entries.size()) + " patches runs past the 128-slot User bank.");
+        }
+    }
+    if (options.target.kind == SyxExportTarget::Kind::UserBankSlots) {
+        const auto& numbers = options.target.userNumbers;
+        if (numbers.size() != entries.size()) {
+            return failure("Exporting to chosen User slots needs one slot per patch: "
+                           + std::to_string(entries.size()) + " patches, " + std::to_string(numbers.size())
+                           + " slots.");
+        }
+        std::vector<int> seen = numbers;
+        std::sort(seen.begin(), seen.end());
+        if (seen.front() < kFirstUserNumber || seen.back() > kLastUserNumber) {
+            return failure("USER:" + paddedUserNumber(std::max(seen.front(), 0)) + " to USER:"
+                           + paddedUserNumber(seen.back()) + " falls outside the 128-slot User bank.");
+        }
+        const auto duplicate = std::adjacent_find(seen.begin(), seen.end());
+        if (duplicate != seen.end()) {
+            // Writing two Patches to one slot leaves only the second, which is
+            // a silent loss on the instrument rather than in this file.
+            return failure("Two patches are addressed to USER:" + paddedUserNumber(*duplicate)
+                           + "; only the second would survive on the instrument.");
         }
     }
 

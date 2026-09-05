@@ -70,9 +70,9 @@ bank must not silently change what the Library screen is showing.
 ## Layout
 
 ```
-BANK BUILDER   [name] [MODIFIED]        undo redo | Saved banks  New  Save  Save as new bank
+BANK BUILDER   [name] [MODIFIED]   undo redo | Saved banks  New  Save  Export bank  Save as new bank
 ┌── SOURCE LIBRARY ───┬── TARGET XP BANK ─────────────────────────────────────┐
-│ source bank chips   │  ┌ recessed instrument display ──────────────────────┐│
+│ source chips + fill │  ┌ recessed instrument display ──────────────────────┐│
 │ search              │  │ USER  TARGET XP BANK                  [ASSIGNED]  ││
 │ ┌─────────────────┐ │  │ A35   SUBGROUP A · BANK 3 · NUMBER 5    27 / 128  ││
 │ │ patch rows with │ │  │       PATCH 021                            FILLED ││
@@ -104,7 +104,7 @@ row that happen to correspond. Both are the same drop destination.
 | `Controls/BankPanelDisplay.qml` | the recessed instrument display: group, state, `A35`, `SUBGROUP A · BANK 3 · NUMBER 5`, `PATCH 021`, name, provenance, occupancy |
 | `Controls/BankDestinationTile.qml` | one of the eight destinations; engraved NUMBER, occupancy LED, name, both identities, drop action badge, placement flash |
 | `Controls/BankOverviewMap.qml` | all 128 destinations as 2 × 8 mini banks of eight cells; click or drag-dwell to move the panel there |
-| `Controls/BankSourcePanel.qml` | the source library: source-bank chips, search, virtualized patch list with drag grips |
+| `Controls/BankSourcePanel.qml` | the source library: source-bank chips, search, virtualized patch list with drag grips, Import, and *Arrange this bank from the source* |
 | `Screens/BankBuilderScreen.qml` | composition, the drag layer, keyboard operation, save/open dialogs |
 
 `XpHardwareButton` is deliberately **not** `XpButton` with a different fill. A
@@ -208,6 +208,61 @@ session, arming is spent by one attempt, and the write is proved by reading it
 back. When those conditions are not met the Audition button is disabled and its
 tooltip says exactly why.
 
+## Getting a bank in and out as a file
+
+The Bank Builder reads and writes `.syx` through the same import and export
+services the Library screen uses (`LibraryTransferViewModel`), so a bank
+imported from either place is one source bank in both, and the result card is
+the same card.
+
+### Arranging a bank from a source — *Arrange this bank from the source*
+
+An imported `.syx` already records which User slot every Patch came from, so a
+bank that arrived as a bank can be laid out the way it arrived instead of being
+carried across 128 destinations by hand. `BankBuilderViewModel::fillFromSource`
+places every Patch of one source at the destination its provenance recorded.
+
+It never guesses:
+
+| Situation | What happens |
+|---|---|
+| the Patch records a User number | placed at that destination |
+| the Patch records none (read from the temporary area, say) | **left unplaced** and counted; dropping it into the first free destination would be inventing provenance |
+| two Patches claim one destination | the first is kept, the collision is counted, and the action line says so |
+| a destination the source says nothing about | left exactly as it is, so filling from a second source adds to the bank |
+
+The whole fill is **one undo step** (`BankDraft::assignAll`) — undoing it puts
+the entire arrangement back, rather than removing one of 128 placements at a
+time. The action is offered only while a single source bank is open: "fill from
+all sources" has no arrangement to reproduce.
+
+### Exporting the bank — *Export bank*
+
+`LibraryTransferViewModel::exportBankArrangement` writes the arrangement, not
+the library. Each Patch is addressed to the User slot it occupies **here**,
+using the `SyxExportTarget::Kind::UserBankSlots` target — one explicit
+destination per Patch:
+
+* a built bank has holes in it, and consecutive addressing (`UserBankFrom`)
+  would close them, silently moving a musician's Patches to destinations they
+  did not choose;
+* an **empty destination writes nothing at all**, not a blank Patch. Whether a
+  gap means "erase whatever the instrument holds there" is not this
+  application's decision to make;
+* two Patches addressed to one slot is refused outright — only the second would
+  survive on the instrument, which is a loss that happens after the file looks
+  fine;
+* re-addressing requires re-encoding from the model, so the export says
+  `ReencodedFromModel` rather than claiming to be original bytes.
+
+With `UserBankSlots` the export emits **no per-Patch re-address note**. A note
+reports what an export did that the caller did not literally ask for, and here
+the caller named every destination; a note per Patch would bury a real one. The
+destination each Patch came from is already on its tile.
+
+An empty bank is refused rather than written, and the action is disabled while
+the bank has nothing in it.
+
 ## Persistence
 
 Library schema version **2** adds two tables. The migration is additive: every
@@ -247,9 +302,11 @@ formula; `slotIndexFor`, `panelLabelFor`, `linearLabelFor`, `dropPreview` and
 | Test | Covers |
 |---|---|
 | `tests/cpp/tst_bank_location.cpp` | the panel ↔ linear bijection, exhaustively over 128; manual anchors; refusal of out-of-range coordinates |
-| `tests/cpp/tst_bank_draft.cpp` | place / replace / clear / move / swap, undo & redo including the saved state, redo-branch truncation, missing destinations |
+| `tests/cpp/tst_bank_draft.cpp` | place / replace / clear / move / swap, undo & redo including the saved state, redo-branch truncation, missing destinations, a many-destination fill as one undo step, and a fill that is refused whole when any part of it is illegal |
+| `tests/cpp/tst_bank_builder.cpp` | filling from a source: the slots a source records, Patches with no recorded slot left unplaced, the first Patch kept when two claim one destination, one undo step, adding to what is already there; exporting: each Patch addressed to the destination it occupies with the gaps left as gaps, and an empty bank refused |
+| `tests/cpp/tst_library_export.cpp` | `UserBankSlots`: chosen non-consecutive destinations, no re-address notes, and refusal of a count mismatch, a duplicate destination, an out-of-range slot and original-bytes re-addressing |
 | `tests/cpp/tst_bank_store.cpp` | save & reload an arrangement, saving leaves every Patch untouched, update in place, refusal of >128, deleted Patch leaves a MISSING destination, deleting a bank leaves the library alone, source grouping, version 1 → 2 migration |
-| `tests/qml/tst_BankBuilderScreen.qml` | panel selection naming the destination, the visible eight, NUMBER-button selection, placement preserving the source, drop previews (PLACE / REPLACE / MOVE / SWAP), a drop that lands nowhere, move & swap, undo/redo, the 16-bank overview and its navigation, occupancy reporting, Save as new bank preserving all 128 positions, new empty bank, opening one source bank |
+| `tests/qml/tst_BankBuilderScreen.qml` | panel selection naming the destination, the visible eight, NUMBER-button selection, placement preserving the source, drop previews (PLACE / REPLACE / MOVE / SWAP), a drop that lands nowhere, move & swap, undo/redo, the 16-bank overview and its navigation, occupancy reporting, Save as new bank preserving all 128 positions, new empty bank, opening one source bank, arranging a bank from the open source and undoing it in one step, and the export action's availability |
 
 ## Screenshots
 

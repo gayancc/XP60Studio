@@ -131,6 +131,35 @@ bool BankDraft::moveOrSwap(int from, int to)
     return true;
 }
 
+bool BankDraft::assignAll(const std::vector<std::pair<int, BankSlotContent>>& placements, std::string label)
+{
+    if (placements.empty()) {
+        return false;
+    }
+    // Validate everything before touching anything: a fill that turns out to
+    // be half-legal must not leave half an arrangement behind.
+    for (const auto& [slotIndex, content] : placements) {
+        if (!xpmodel::Xp60BankLocation::isValidSlotIndex(slotIndex) || content.empty()) {
+            return false;
+        }
+    }
+    const bool changes = std::any_of(placements.begin(), placements.end(), [this](const auto& placement) {
+        return !(m_slots[static_cast<std::size_t>(placement.first)] == placement.second);
+    });
+    if (!changes) {
+        return false;
+    }
+
+    pushUndo(label);
+    for (const auto& [slotIndex, content] : placements) {
+        m_slots[static_cast<std::size_t>(slotIndex)] = content;
+    }
+    m_modified = true;
+    m_lastActionLabel = std::move(label);
+    recount();
+    return true;
+}
+
 bool BankDraft::clearAll()
 {
     if (m_occupied == 0) {

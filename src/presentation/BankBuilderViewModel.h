@@ -219,6 +219,23 @@ public:
     Q_INVOKABLE bool saveAsNewBank(const QString& name);
     // Writes over the bank this draft was loaded from or last saved as.
     Q_INVOKABLE bool saveBank();
+    // Fills the draft from one import source, putting every Patch back at the
+    // User slot it was read from. This is what "open the bank I imported" has
+    // to mean: an imported `.syx` already says where each Patch lived, and
+    // re-deriving that arrangement by hand across 128 destinations is exactly
+    // the work this application exists to remove.
+    //
+    // It never guesses. A Patch whose provenance recorded no User number is
+    // left unplaced and counted, rather than dropped into the first free
+    // destination, and when two Patches claim one destination the first is
+    // kept and the collision is reported. Destinations the source says nothing
+    // about are left exactly as they are, so filling from a second source adds
+    // to the bank instead of replacing it.
+    //
+    // The whole fill is one undo step. Returns
+    // {ok, placed, unplaced, conflicts, sourceName, message}.
+    Q_INVOKABLE QVariantMap fillFromSource(const QString& digest);
+
     Q_INVOKABLE bool loadBank(qint64 bankId);
     Q_INVOKABLE bool deleteBank(qint64 bankId);
     Q_INVOKABLE void refresh();

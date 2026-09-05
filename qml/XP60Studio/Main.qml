@@ -90,6 +90,7 @@ QQC.ApplicationWindow {
                     visible: window.shell.currentScreen === "banks"
                     builder: window.bankBuilder
                     library: window.bankLibrary
+                    transfer: window.libraryTransfer
                 }
 
                 UnavailableScreen {

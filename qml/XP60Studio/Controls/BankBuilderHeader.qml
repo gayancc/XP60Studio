@@ -19,10 +19,14 @@ RowLayout {
 
     required property var builder
     property bool savedBanksOpen: false
+    // Optional: without it the screen arranges banks but cannot write one to a
+    // file, which is what the screenshot harness gets.
+    property var transfer: null
 
     signal savedBanksToggled()
     signal newBankRequested()
     signal saveAsRequested()
+    signal exportRequested()
 
     spacing: Metrics.spacingSm
 
@@ -115,6 +119,25 @@ RowLayout {
         enabled: root.builder.modified
         onClicked: root.builder.saveBank()
     }
+    // Writes the arrangement to a `.syx`, each Patch addressed to the
+    // destination it occupies. An empty bank has nothing to write, so the
+    // action is off rather than producing a file with no Patches in it.
+    XpButton {
+        objectName: "bankExport"
+        text: qsTr("Export bank")
+        iconName: "export"
+        compact: true
+        variant: "ghost"
+        visible: root.transfer !== null
+        enabled: root.transfer !== null && !root.transfer.busy && root.builder.occupiedCount > 0
+        QQC.ToolTip.visible: hovered
+        QQC.ToolTip.delay: 400
+        QQC.ToolTip.text: root.builder.occupiedCount > 0
+                          ? qsTr("Write %n destination(s) to a .syx file, addressed to the User slots they occupy here", "", root.builder.occupiedCount)
+                          : qsTr("This bank has no Patches in it yet")
+        onClicked: root.exportRequested()
+    }
+
     XpButton {
         objectName: "bankSaveAs"
         text: qsTr("Save as new bank")

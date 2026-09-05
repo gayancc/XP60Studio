@@ -61,6 +61,8 @@ private slots:
     void exportedOriginalBytesReimportIdentically();
     void refusesToCallReencodedBytesOriginal();
     void reencodesIntoConsecutiveUserSlotsAndSaysSo();
+    void reencodesIntoChosenUserSlotsKeepingTheGaps();
+    void refusesChosenUserSlotsThatWouldLoseData();
     void reencodedExportPreservesEveryParameter();
     void exportsOnePatchToTheTemporaryArea();
     void refusesExportsThatWouldLoseData();
@@ -184,6 +186,73 @@ void TestLibraryExport::reencodesIntoConsecutiveUserSlotsAndSaysSo()
         QCOMPARE(reimported.entries[i].provenance().userNumber, std::optional<int>{10 + static_cast<int>(i)});
         QVERIFY(reimported.entries[i].hasSameParameters(entries[i]));
     }
+}
+
+// A built bank is not a consecutive run: it has gaps, and the destinations are
+// chosen rather than counted from a starting number.
+void TestLibraryExport::reencodesIntoChosenUserSlotsKeepingTheGaps()
+{
+    auto entries = fixtureEntries();
+    entries.erase(entries.begin() + 3, entries.end()); // USER:001..003
+
+    SyxExportOptions options;
+    options.source = SyxExportSource::ReencodedFromModel;
+    options.target.kind = SyxExportTarget::Kind::UserBankSlots;
+    options.target.userNumbers = {5, 9, 128};
+
+    const auto result = library::exportEntries(entries, options);
+    QVERIFY2(result.ok, qPrintable(QString::fromStdString(result.error)));
+    QCOMPARE(result.patchCount, std::size_t{3});
+    // The caller named each destination, so landing there is the request being
+    // honoured, not a deviation worth reporting.
+    QVERIFY(result.notes.empty());
+
+    const auto reimported = library::importSyxStream(result.bytes);
+    QCOMPARE(reimported.entries.size(), std::size_t{3});
+    const std::vector<int> expected{5, 9, 128};
+    for (std::size_t i = 0; i < reimported.entries.size(); ++i) {
+        QCOMPARE(reimported.entries[i].provenance().userNumber, std::optional<int>{expected[i]});
+        QVERIFY(reimported.entries[i].hasSameParameters(entries[i]));
+    }
+    // The gaps are gaps: nothing at all is written for the destinations the
+    // bank leaves empty.
+    QCOMPARE(result.messageCount, std::size_t{3 * 9});
+}
+
+void TestLibraryExport::refusesChosenUserSlotsThatWouldLoseData()
+{
+    auto entries = fixtureEntries();
+    entries.erase(entries.begin() + 3, entries.end());
+
+    SyxExportOptions options;
+    options.source = SyxExportSource::ReencodedFromModel;
+    options.target.kind = SyxExportTarget::Kind::UserBankSlots;
+
+    // One destination per Patch, or the caller does not know where its Patches
+    // went.
+    options.target.userNumbers = {1, 2};
+    const auto mismatched = library::exportEntries(entries, options);
+    QVERIFY(!mismatched.ok);
+    QVERIFY(QString::fromStdString(mismatched.error).contains(QStringLiteral("one slot per patch")));
+
+    // Two Patches at one destination: only the second would survive on the
+    // instrument, which is a silent loss.
+    options.target.userNumbers = {7, 7, 9};
+    const auto colliding = library::exportEntries(entries, options);
+    QVERIFY(!colliding.ok);
+    QVERIFY(QString::fromStdString(colliding.error).contains(QStringLiteral("USER:007")));
+
+    options.target.userNumbers = {1, 2, 129};
+    QVERIFY(!library::exportEntries(entries, options).ok);
+    options.target.userNumbers = {0, 2, 3};
+    QVERIFY(!library::exportEntries(entries, options).ok);
+
+    // Original bytes cannot describe a destination they were not read from.
+    SyxExportOptions verbatim;
+    verbatim.source = SyxExportSource::OriginalBytes;
+    verbatim.target.kind = SyxExportTarget::Kind::UserBankSlots;
+    verbatim.target.userNumbers = {1, 2, 3};
+    QVERIFY(!library::exportEntries(entries, verbatim).ok);
 }
 
 void TestLibraryExport::reencodedExportPreservesEveryParameter()

@@ -6,6 +6,7 @@
 #include <deque>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace xp60studio::library {
@@ -85,6 +86,14 @@ public:
     // Places a Patch. Replacing an occupied destination is allowed — the UI is
     // required to say REPLACE before the drop — and is one undo step.
     bool assign(int slotIndex, BankSlotContent content);
+    // Fills several destinations at once as **one** undo step, which is what
+    // filling a bank from a source has to be: undoing it must put the whole
+    // arrangement back, not remove one of 128 placements at a time. Each pair
+    // is (slotIndex, content); an invalid index or empty content is refused
+    // outright rather than silently skipped, so a caller cannot believe it
+    // placed more than it did. Returns false and changes nothing when refused
+    // or when nothing would change.
+    bool assignAll(const std::vector<std::pair<int, BankSlotContent>>& placements, std::string label);
     bool clear(int slotIndex);
     // Moves within the bank: a swap when both are occupied, a move when the
     // destination is empty. Refused when `from` is empty, because there would

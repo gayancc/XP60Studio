@@ -38,10 +38,21 @@ struct SyxExportTarget
         TemporaryPatch,
         // Consecutive User bank slots from `firstUserNumber`, in list order.
         UserBankFrom,
+        // One explicit User slot per entry, given by `userNumbers`. This is
+        // what a built bank exports as: its destinations are chosen, not
+        // consecutive, and the holes in it are real. Consecutive addressing
+        // cannot express "these twelve Patches go to 003, 004, 009, ...", and
+        // silently closing the gaps would move a musician's Patches without
+        // being asked.
+        UserBankSlots,
     };
 
     Kind kind = Kind::AsImported;
     int firstUserNumber = 1; // 1..128, used by UserBankFrom
+    // One 1..128 destination per entry, in the same order. Used by
+    // UserBankSlots; duplicates are refused, because two Patches written to
+    // one slot means only the second one survives.
+    std::vector<int> userNumbers;
 };
 
 struct SyxExportOptions

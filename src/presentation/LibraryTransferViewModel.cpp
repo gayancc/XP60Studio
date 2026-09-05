@@ -197,6 +197,44 @@ bool LibraryTransferViewModel::exportIds(const QVariantList& ids, const QUrl& ur
     return result.ok;
 }
 
+bool LibraryTransferViewModel::exportBankArrangement(const QVariantList& arrangement, const QUrl& url)
+{
+    if (busy()) {
+        return false;
+    }
+
+    std::vector<std::int64_t> selected;
+    std::vector<int> userNumbers;
+    for (qsizetype slotIndex = 0; slotIndex < arrangement.size(); ++slotIndex) {
+        const auto id = static_cast<std::int64_t>(arrangement.at(slotIndex).toLongLong());
+        if (id <= 0) {
+            continue; // an empty destination is written as nothing, not as silence
+        }
+        selected.push_back(id);
+        userNumbers.push_back(static_cast<int>(slotIndex) + 1);
+    }
+
+    if (selected.empty()) {
+        services::LibraryExportResult empty;
+        empty.path = url.isLocalFile() ? url.toLocalFile() : url.toString();
+        empty.error = tr("This bank has no Patches in it yet, so there is nothing to export.");
+        publishExportResult(empty);
+        return false;
+    }
+
+    library::SyxExportOptions options;
+    // Every Patch is addressed to its destination in the bank, and an address
+    // the original bytes did not carry can only be written by re-encoding.
+    options.source = library::SyxExportSource::ReencodedFromModel;
+    options.target.kind = library::SyxExportTarget::Kind::UserBankSlots;
+    options.target.userNumbers = std::move(userNumbers);
+
+    const auto path = url.isLocalFile() ? url.toLocalFile() : url.toString();
+    const auto result = m_export.exportToFile(selected, path, options);
+    publishExportResult(result);
+    return result.ok;
+}
+
 void LibraryTransferViewModel::publishExportResult(const services::LibraryExportResult& result)
 {
     m_resultFiles.clear();

@@ -569,6 +569,108 @@ bool BankBuilderViewModel::saveBank()
     return true;
 }
 
+QVariantMap BankBuilderViewModel::fillFromSource(const QString& digest)
+{
+    QVariantMap report;
+    report.insert(QStringLiteral("ok"), false);
+    report.insert(QStringLiteral("placed"), 0);
+    report.insert(QStringLiteral("unplaced"), 0);
+    report.insert(QStringLiteral("conflicts"), 0);
+    report.insert(QStringLiteral("sourceName"), QString());
+
+    if (!m_database) {
+        report.insert(QStringLiteral("message"), tr("The library is not open."));
+        reportError(tr("The library is not open."));
+        return report;
+    }
+
+    library::LibraryQuery query;
+    query.sourceDigest = digest.toStdString();
+    query.order = library::LibraryQuery::Order::SourceSlotAscending;
+    const auto records = m_database->search(query);
+    if (records.empty()) {
+        const auto message = tr("That source has no Patches in the library.");
+        report.insert(QStringLiteral("message"), message);
+        reportError(message);
+        return report;
+    }
+
+    QString sourceName = toQt(records.front().provenance.sourceName);
+
+    std::vector<std::pair<int, BankSlotContent>> placements;
+    placements.reserve(records.size());
+    std::vector<bool> claimed(static_cast<std::size_t>(BankDraft::kSlotCount), false);
+    int unplaced = 0;
+    int conflicts = 0;
+
+    for (const auto& record : records) {
+        if (!record.provenance.userNumber || !Xp60BankLocation::isValidUserNumber(*record.provenance.userNumber)) {
+            // No recorded destination. Guessing one would invent provenance.
+            ++unplaced;
+            continue;
+        }
+        const int slotIndex = *record.provenance.userNumber - 1;
+        if (claimed[static_cast<std::size_t>(slotIndex)]) {
+            // Two Patches read from the same User slot: keep the first and say
+            // so, rather than deciding for the musician which one wins.
+            ++conflicts;
+            continue;
+        }
+        claimed[static_cast<std::size_t>(slotIndex)] = true;
+
+        BankSlotContent content;
+        content.patchId = record.id;
+        content.patchName = record.name;
+        content.sourceName = record.provenance.sourceName;
+        content.sourceSlotLabel = sourceSlotLabel(record.provenance).toStdString();
+        placements.emplace_back(slotIndex, std::move(content));
+    }
+
+    const int placed = static_cast<int>(placements.size());
+    report.insert(QStringLiteral("placed"), placed);
+    report.insert(QStringLiteral("unplaced"), unplaced);
+    report.insert(QStringLiteral("conflicts"), conflicts);
+    report.insert(QStringLiteral("sourceName"), sourceName);
+
+    if (placements.empty()) {
+        const auto message = tr("No Patch in “%1” records which User slot it came from, so there is nothing "
+                                "to arrange. Place them by hand instead.")
+                                 .arg(sourceName);
+        report.insert(QStringLiteral("message"), message);
+        reportError(message);
+        return report;
+    }
+
+    const QString label = tr("Fill from “%1” — %n destination(s)", "", placed).arg(sourceName);
+    if (!m_draft.assignAll(placements, label.toStdString())) {
+        const auto message = tr("“%1” is already arranged exactly like this.").arg(sourceName);
+        report.insert(QStringLiteral("ok"), true);
+        report.insert(QStringLiteral("message"), message);
+        reportAction(message, QStringLiteral("info"));
+        return report;
+    }
+
+    QString message = tr("Filled %n destination(s) from “%1”", "", placed).arg(sourceName);
+    QString tone = QStringLiteral("success");
+    QStringList caveats;
+    if (unplaced > 0) {
+        caveats.append(tr("%n Patch(es) record no User slot and were left out", "", unplaced));
+    }
+    if (conflicts > 0) {
+        caveats.append(tr("%n Patch(es) wanted a destination already taken by an earlier one", "", conflicts));
+    }
+    if (!caveats.isEmpty()) {
+        message += QStringLiteral(" — ") + caveats.join(QStringLiteral("; "));
+        tone = QStringLiteral("warning");
+    }
+
+    report.insert(QStringLiteral("ok"), true);
+    report.insert(QStringLiteral("message"), message);
+    reportAction(message, tone);
+    announceBankChange();
+    return report;
+}
+
 bool BankBuilderViewModel::loadBank(qint64 bankId)
 {
     if (!m_database) {

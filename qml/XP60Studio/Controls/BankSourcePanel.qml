@@ -29,6 +29,16 @@ Item {
     // up can be dimmed.
     property int draggingRow: -1
 
+    // The open source bank should be arranged into the target bank at the User
+    // slots it was read from.
+    signal fillRequested(string digest)
+    // A `.syx` should be brought into the library so it can supply this bank.
+    signal importRequested()
+    // Whether an import is running, so the action can say so rather than
+    // being pressed twice.
+    property bool importBusy: false
+    property bool canImport: false
+
     signal patchDragStarted(int row, var patchId, string patchName, real x, real y)
     signal patchDragMoved(real x, real y)
     signal patchDragReleased()
@@ -43,6 +53,16 @@ Item {
             spacing: Metrics.spacingSm
             XpLabel { text: qsTr("SOURCE LIBRARY"); role: "overline"; color: Theme.textSecondary }
             Item { Layout.fillWidth: true }
+            XpButton {
+                objectName: "bankSourceImport"
+                text: qsTr("Import")
+                iconName: "import"
+                compact: true
+                variant: "ghost"
+                visible: root.canImport
+                enabled: root.canImport && !root.importBusy
+                onClicked: root.importRequested()
+            }
             StatusPill {
                 objectName: "bankSourceCount"
                 text: root.library.filtered
@@ -89,6 +109,25 @@ Item {
             }
         }
 
+        // An imported `.syx` already says which User slot every Patch came
+        // from, so a whole bank can be laid out the way it arrived instead of
+        // being carried across 128 destinations by hand. Only offered with one
+        // source open: "fill from all sources" would have no arrangement to
+        // reproduce.
+        XpButton {
+            objectName: "bankSourceFill"
+            Layout.fillWidth: true
+            visible: root.library.sourceDigest !== ""
+            text: qsTr("Arrange this bank from the source")
+            iconName: "banks"
+            compact: true
+            variant: "ghost"
+            QQC.ToolTip.visible: hovered
+            QQC.ToolTip.delay: 400
+            QQC.ToolTip.text: qsTr("Put every Patch back at the User slot it was read from. Destinations this source says nothing about are left alone, and it is one undo step.")
+            onClicked: root.fillRequested(root.library.sourceDigest)
+        }
+
         XpTextField {
             id: search
             objectName: "bankSourceSearch"
@@ -115,7 +154,9 @@ Item {
                        ? qsTr("The library is empty")
                        : qsTr("No Patch matches this source or search")
                 message: root.library.libraryTotal === 0
-                         ? qsTr("Import a .syx file on the Library screen to start collecting Patches.")
+                         ? (root.canImport
+                            ? qsTr("Import a .syx file to start collecting Patches to build banks from.")
+                            : qsTr("Import a .syx file on the Library screen to start collecting Patches."))
                          : qsTr("Choose another source bank, or clear the search.")
             }
 

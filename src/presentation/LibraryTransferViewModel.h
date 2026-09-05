@@ -80,6 +80,21 @@ public:
     // Returns false and reports why through the result properties.
     Q_INVOKABLE bool exportIds(const QVariantList& ids, const QUrl& url, int userBankFrom = 0);
 
+    // Writes a built bank to `url` as a `.syx`.
+    //
+    // `arrangement` is what BankBuilderViewModel::arrangementIds() returns:
+    // 128 library ids in destination order, an empty destination as 0. Each
+    // Patch is addressed to the User slot it actually occupies in the bank,
+    // which is why this cannot be exportIds() with a starting number — a bank
+    // has holes in it, and closing them would silently move a musician's
+    // Patches to destinations they did not choose.
+    //
+    // An empty destination writes nothing at all rather than a blank Patch:
+    // this application does not decide that a gap means "erase whatever is on
+    // the instrument there". Returns false and reports why through the result
+    // properties.
+    Q_INVOKABLE bool exportBankArrangement(const QVariantList& arrangement, const QUrl& url);
+
     // Clears the last result. For "I have read this", not for hiding failures
     // automatically.
     Q_INVOKABLE void dismissResult();

@@ -51,7 +51,69 @@ private slots:
     void savingClearsModifiedAndUndoBringsItBack();
     void resetLoadsAnArrangementAndDropsHistory();
     void aMissingPatchStillOccupiesItsDestination();
+    void fillingManyDestinationsIsOneUndoStep();
+    void refusesAFillThatIsNotWhollyLegal();
 };
+
+// Filling a bank from a source touches dozens of destinations. Undoing it has
+// to put the whole arrangement back, not remove one placement at a time.
+void TestBankDraft::fillingManyDestinationsIsOneUndoStep()
+{
+    BankDraft draft;
+    draft.assign(slotOf("A11"), patch(1, "Kept"));
+
+    std::vector<std::pair<int, BankSlotContent>> placements;
+    for (int slotIndex = 8; slotIndex < 40; ++slotIndex) {
+        placements.emplace_back(slotIndex, patch(100 + slotIndex, "Filled"));
+    }
+    QVERIFY(draft.assignAll(placements, "Fill from piano-bank.syx"));
+    QCOMPARE(draft.occupiedCount(), 33);
+    QCOMPARE(draft.lastActionLabel(), std::string{"Fill from piano-bank.syx"});
+    QCOMPARE(draft.undoLabel(), std::string{"Fill from piano-bank.syx"});
+
+    QVERIFY(draft.undo());
+    // One step back is the whole fill, and the destination that was already
+    // there survives it.
+    QCOMPARE(draft.occupiedCount(), 1);
+    QCOMPARE(draft.slot(slotOf("A11")).patchId, std::int64_t{1});
+
+    QVERIFY(draft.redo());
+    QCOMPARE(draft.occupiedCount(), 33);
+    QCOMPARE(draft.slot(39).patchId, std::int64_t{139});
+
+    // Filling with exactly what is already there changes nothing and adds no
+    // undo step.
+    const auto undoLabel = draft.undoLabel();
+    QVERIFY(!draft.assignAll(placements, "Fill again"));
+    QCOMPARE(draft.undoLabel(), undoLabel);
+}
+
+void TestBankDraft::refusesAFillThatIsNotWhollyLegal()
+{
+    BankDraft draft;
+    draft.assign(slotOf("A11"), patch(1, "Kept"));
+
+    // One impossible destination refuses the whole fill: half an arrangement
+    // is worse than none, because nothing downstream would show what was left
+    // out.
+    std::vector<std::pair<int, BankSlotContent>> withBadSlot{
+        {slotOf("A12"), patch(2, "Fine")},
+        {128, patch(3, "Off the end")},
+    };
+    QVERIFY(!draft.assignAll(withBadSlot, "Fill"));
+    QCOMPARE(draft.occupiedCount(), 1);
+    QVERIFY(!draft.canRedo());
+
+    std::vector<std::pair<int, BankSlotContent>> withEmptyContent{
+        {slotOf("A12"), patch(2, "Fine")},
+        {slotOf("A13"), BankSlotContent{}},
+    };
+    QVERIFY(!draft.assignAll(withEmptyContent, "Fill"));
+    QCOMPARE(draft.occupiedCount(), 1);
+
+    QVERIFY(!draft.assignAll({}, "Fill"));
+    QVERIFY(draft.modified()); // from the first assign, and nothing since
+}
 
 void TestBankDraft::startsEmptyAndUnmodified()
 {

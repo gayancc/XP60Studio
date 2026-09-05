@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls as QQC
+import QtQuick.Dialogs
 import QtQuick.Layouts
 import XP60Studio
 import XP60Studio.Presentation
@@ -39,6 +40,10 @@ FocusScope {
 
     required property BankBuilderViewModel builder
     required property LibraryListModel library
+    // Optional: the shared import/export view model. Without it the screen
+    // arranges and saves banks exactly as before but cannot read or write a
+    // `.syx`, which is what the screenshot harness gets.
+    property var transfer: null
 
     readonly property bool wide: width >= 1180
 
@@ -325,7 +330,9 @@ FocusScope {
             objectName: "bankBuilderHeader"
             Layout.fillWidth: true
             builder: root.builder
+            transfer: root.transfer
             savedBanksOpen: banksDrawer.visible
+            onExportRequested: exportDialog.open()
             onSavedBanksToggled: banksDrawer.visible = !banksDrawer.visible
             onNewBankRequested: root.builder.occupiedCount > 0 || root.builder.modified
                                 ? discardConfirm.open()
@@ -337,6 +344,15 @@ FocusScope {
             }
         }
 
+        // What the last import or export did. Kept until dismissed rather
+        // than shown in a toast: an import can report duplicates, partial
+        // Patches and rejected messages, and those are worth reading slowly.
+        LibraryTransferCard {
+            objectName: "bankTransferCard"
+            Layout.fillWidth: true
+            visible: root.transfer !== null && (root.transfer.busy || root.transfer.hasResult)
+            transfer: root.transfer !== null ? root.transfer : null
+        }
 
         // Source | Panel ---------------------------------------------------
         RowLayout {
@@ -355,6 +371,14 @@ FocusScope {
                     anchors.fill: parent
                     library: root.library
                     draggingRow: root.dragFromRow
+                    canImport: root.transfer !== null
+                    importBusy: root.transfer !== null && root.transfer.busy
+                    onImportRequested: importDialog.open()
+                    onFillRequested: function (digest) {
+                        // The view model decides what can be arranged and says
+                        // what it left out; the screen only asks.
+                        root.builder.fillFromSource(digest)
+                    }
                     onPatchDragStarted: function (row, patchId, patchName, x, y) {
                         root.beginDragFromLibrary(row, patchId, patchName, x, y)
                     }
@@ -787,6 +811,37 @@ FocusScope {
                   : qsTr("This clears all 128 destinations. Every Patch stays in the library.")
             role: "body"
             wrapMode: Text.WordWrap
+        }
+    }
+
+    // ── Files ────────────────────────────────────────────────────────────
+    // Importing here fills the source library this screen builds from; it is
+    // the same import the Library screen runs, so a bank imported from either
+    // place is one source bank in both.
+    FileDialog {
+        id: importDialog
+        objectName: "bankImportDialog"
+        title: qsTr("Import SysEx banks")
+        fileMode: FileDialog.OpenFiles
+        nameFilters: [qsTr("Roland SysEx (*.syx)"), qsTr("All files (*)")]
+        onAccepted: if (root.transfer) root.transfer.importFiles(selectedFiles)
+    }
+
+    // Exporting writes the arrangement, not the library: each Patch is
+    // addressed to the User slot it occupies here, and the empty destinations
+    // contribute nothing at all rather than a blank Patch that would erase
+    // whatever the instrument holds there.
+    FileDialog {
+        id: exportDialog
+        objectName: "bankExportDialog"
+        title: qsTr("Export this bank to SysEx")
+        fileMode: FileDialog.SaveFile
+        defaultSuffix: "syx"
+        nameFilters: [qsTr("Roland SysEx (*.syx)")]
+        onAccepted: {
+            if (!root.transfer)
+                return
+            root.transfer.exportBankArrangement(root.builder.arrangementIds(), selectedFile)
         }
     }
 }

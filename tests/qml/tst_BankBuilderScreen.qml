@@ -436,4 +436,75 @@ TestCase {
         screen.library.clearFilters()
         compare(screen.library.count, 128)
     }
+
+    // Arranging a bank from an import is the alternative to carrying 128
+    // Patches across by hand. The panel offers it only with one source open,
+    // because "fill from all sources" has no arrangement to reproduce.
+    function test_arranging_a_bank_from_the_open_source() {
+        const screen = createScreen()
+        const fill = findChild(screen, "bankSourceFill")
+        verify(fill, "the fill action exists")
+        verify(!fill.visible, "not offered while all sources are shown")
+
+        const sources = screen.library.sourcesInUse
+        screen.library.sourceDigest = sources[0].digest
+        verify(fill.visible)
+
+        fill.clicked()
+        // The fixture is a whole User bank read from USER:001..128, so it
+        // comes back arranged exactly as it arrived.
+        compare(screen.builder.occupiedCount, 128)
+        compare(screen.builder.destinationAt(0).sourceSlot, "USER:001")
+        compare(screen.builder.destinationAt(127).sourceSlot, "USER:128")
+        compare(screen.builder.destinationAt(0).panelLabel, "A11")
+        verify(screen.builder.modified)
+
+        // One undo step, not 128.
+        verify(screen.builder.undo())
+        compare(screen.builder.occupiedCount, 0)
+        verify(!screen.builder.canUndo)
+    }
+
+    // A destination the source claims is filled with what the source says
+    // belongs there. Nothing is lost either way: the Patch that was standing
+    // in the way is still in the library, and one undo puts it back.
+    function test_arranging_from_a_source_replaces_the_destinations_it_claims() {
+        const screen = createScreen()
+        const other = screen.library.rowData(5)
+        verify(other.id !== undefined)
+        verify(screen.builder.placePatch(0, other.id))
+        compare(screen.builder.patchIdAt(0), other.id)
+
+        screen.library.sourceDigest = screen.library.sourcesInUse[0].digest
+        findChild(screen, "bankSourceFill").clicked()
+        compare(screen.builder.occupiedCount, 128)
+        compare(screen.builder.destinationAt(0).sourceSlot, "USER:001")
+        verify(screen.builder.patchIdAt(0) !== other.id)
+
+        verify(screen.builder.undo())
+        compare(screen.builder.occupiedCount, 1)
+        compare(screen.builder.patchIdAt(0), other.id)
+    }
+
+    // The export action is about the bank as a whole, so it is off until the
+    // bank has something in it. Without a transfer view model the screen is
+    // arrange-and-save only, exactly as it was before files were involved.
+    function test_export_is_offered_only_for_a_bank_with_patches_in_it() {
+        const screen = createScreen()
+        const exportButton = findChild(screen, "bankExport")
+        verify(exportButton, "the export action exists")
+        verify(!exportButton.visible, "hidden without a transfer view model")
+
+        compare(screen.transfer, null)
+        compare(screen.builder.occupiedCount, 0)
+        compare(screen.builder.arrangementIds().length, 128)
+
+        verify(screen.builder.placePatch(20, firstPatch(screen).id))
+        // The arrangement an export would be handed: the ids in slot order,
+        // empty destinations as 0.
+        const ids = screen.builder.arrangementIds()
+        compare(ids.length, 128)
+        compare(ids[0], 0)
+        verify(ids[20] > 0)
+    }
 }
