@@ -20,6 +20,11 @@ Rectangle {
     required property int rating
     required property string category
     required property var tags
+    // Compatibility with the declared instrument: "internal", "available",
+    // "missing", "unknown" or "unscanned". The row shows a mark only when
+    // there is something to say — an internal-only Patch needs no badge.
+    required property string compatibility
+    required property string compatibilityLabel
 
     property bool selected: false
 
@@ -82,6 +87,22 @@ Rectangle {
                     elide: Text.ElideRight
                 }
             }
+        }
+
+        // Whether this will play on the instrument the musician declared.
+        // "unknown" is a warning rather than an error on purpose: it means
+        // XP60Studio has not been told enough, not that the Patch is broken.
+        StatusPill {
+            objectName: "libraryRowCompatibility"
+            visible: root.compatibility !== "internal"
+            text: root.compatibility === "missing" ? qsTr("NEEDS BOARD")
+                  : root.compatibility === "available" ? qsTr("EXP")
+                  : root.compatibility === "unscanned" ? qsTr("NOT ANALYSED")
+                                                       : qsTr("EXP?")
+            tone: root.compatibility === "missing" ? "error"
+                  : root.compatibility === "available" ? "success" : "warning"
+            showDot: false
+            Accessible.description: root.compatibilityLabel
         }
 
         // The user's own classification, shown only when they set it.

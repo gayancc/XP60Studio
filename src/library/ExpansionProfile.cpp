@@ -111,6 +111,17 @@ bool ExpansionProfile::anyGroupUnknown() const
     });
 }
 
+std::set<int> ExpansionProfile::providedGroups() const
+{
+    std::set<int> groups;
+    for (const auto& board : m_boards) {
+        if (!board.name.empty() && board.waveGroupId) {
+            groups.insert(*board.waveGroupId);
+        }
+    }
+    return groups;
+}
+
 bool ExpansionProfile::isEmpty() const
 {
     return installedCount() == 0;

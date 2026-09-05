@@ -157,16 +157,24 @@ PatchCompatibilityReport analysePatch(const xpmodel::Xp60Patch& patch, const Exp
     return report;
 }
 
+std::set<int> requiredExpansionGroups(const xpmodel::Xp60Patch& patch)
+{
+    std::set<int> groups;
+    for (const auto tone : ToneIndex::all()) {
+        const auto wave = patch.wave(tone);
+        if (const auto expansion = xpmodel::expansionWave(wave.groupTypeRaw, wave.groupId, wave.numberRaw)) {
+            groups.insert(expansion->groupIdRaw);
+        }
+    }
+    return groups;
+}
+
 std::set<int> requiredExpansionGroups(const std::vector<xpmodel::Xp60Patch>& patches)
 {
     std::set<int> groups;
     for (const auto& patch : patches) {
-        for (const auto tone : ToneIndex::all()) {
-            const auto wave = patch.wave(tone);
-            if (const auto expansion = xpmodel::expansionWave(wave.groupTypeRaw, wave.groupId, wave.numberRaw)) {
-                groups.insert(expansion->groupIdRaw);
-            }
-        }
+        const auto one = requiredExpansionGroups(patch);
+        groups.insert(one.begin(), one.end());
     }
     return groups;
 }

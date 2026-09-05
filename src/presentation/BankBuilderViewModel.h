@@ -91,6 +91,12 @@ class BankBuilderViewModel : public QObject
     // legitimate thing to do, and so is keeping two copies of a sound. The
     // musician decides whether it was meant.
     Q_PROPERTY(int duplicateCount READ duplicateCount NOTIFY bankChanged)
+    // What this bank would need from Wave Expansion Boards, judged against the
+    // instrument the musician declared. {needsBoard, undecided, usesExpansion,
+    // missingGroups, summary} — read before a write, because putting a bank on
+    // the keyboard is exactly when "half of these have nothing to sound" is
+    // worth knowing.
+    Q_PROPERTY(QVariantMap expansionSummary READ expansionSummary NOTIFY bankChanged)
     Q_PROPERTY(int slotCount READ slotCount CONSTANT)
     Q_PROPERTY(bool modified READ modified NOTIFY bankChanged)
     Q_PROPERTY(bool savedBefore READ savedBefore NOTIFY bankChanged)
@@ -198,6 +204,14 @@ public:
     [[nodiscard]] QString userWriteTone() const;
     // Exactly what pressing Write would overwrite, for the confirmation.
     [[nodiscard]] QString userWritePlan() const;
+    [[nodiscard]] QVariantMap expansionSummary() const;
+
+    // The instrument this bank is judged against. Optional: without it every
+    // expansion destination reads as undecided, which is the honest answer when
+    // XP60Studio has been told nothing.
+    void setExpansionProfile(const library::ExpansionProfile* profile);
+    // Call when the profile behind that pointer changes.
+    Q_INVOKABLE void expansionProfileChanged();
     [[nodiscard]] int userWriteCompleted() const;
     [[nodiscard]] int userWriteTotal() const;
     [[nodiscard]] bool canRestoreUserMemory() const;
@@ -448,6 +462,7 @@ private:
     void announceBankChange();
 
     library::LibraryDatabase* m_database = nullptr;
+    const library::ExpansionProfile* m_expansionProfile = nullptr;
     services::PatchTransfer* m_transfer = nullptr;
     services::PatchWorkspace* m_workspace = nullptr;
     services::UserMemoryWrite* m_userWrite = nullptr;

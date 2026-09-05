@@ -1,5 +1,6 @@
 #include "library/LibraryDatabase.h"
 
+#include "library/PatchCompatibility.h"
 #include "library/SyxImport.h"
 
 #include <QSqlDatabase>
@@ -107,6 +108,26 @@ constexpr const char* kSchemaStatements[] = {
     "  name          TEXT    NOT NULL,"
     "  wave_group_id INTEGER"
     ")",
+    // Schema version 5 -- what each Patch needs from an expansion board.
+    //
+    // This is derived data: the Wave Group IDs already present in the stored
+    // SysEx, extracted so that "which of these will play on my XP-60?" is an
+    // indexed query rather than a decode of every Patch in the library. The
+    // stored bytes remain the only source of truth; these rows can be dropped
+    // and rebuilt from them at any time.
+    //
+    // Two tables, because "no groups" and "not analysed yet" are different
+    // facts and a missing row cannot say which. An internal-only Patch has a
+    // `patch_expansion_scan` row and no `patch_expansion_groups` rows.
+    "CREATE TABLE IF NOT EXISTS patch_expansion_scan ("
+    "  patch_id INTEGER PRIMARY KEY REFERENCES patches(id) ON DELETE CASCADE"
+    ")",
+    "CREATE TABLE IF NOT EXISTS patch_expansion_groups ("
+    "  patch_id INTEGER NOT NULL REFERENCES patches(id) ON DELETE CASCADE,"
+    "  group_id INTEGER NOT NULL,"
+    "  PRIMARY KEY (patch_id, group_id)"
+    ")",
+    "CREATE INDEX IF NOT EXISTS idx_patch_expansion_group ON patch_expansion_groups(group_id)",
 };
 
 QString toQt(const std::string& text)
@@ -208,6 +229,41 @@ Filter buildFilter(const LibraryQuery& query)
                        .arg(query.tags.size());
     }
 
+    // The expansion filters read only the derived tables, so narrowing a
+    // library of thousands to "needs a board you do not have" stays one indexed
+    // query and decodes nothing.
+    const QString anyGroup = QStringLiteral("EXISTS (SELECT 1 FROM patch_expansion_groups g WHERE g.patch_id = p.id)");
+    switch (query.expansion) {
+    case LibraryQuery::Expansion::Any:
+        break;
+    case LibraryQuery::Expansion::InternalOnly:
+        clauses << QStringLiteral("NOT ") + anyGroup;
+        break;
+    case LibraryQuery::Expansion::UsesExpansion:
+        clauses << anyGroup;
+        break;
+    case LibraryQuery::Expansion::NeedsGroupOutsideProfile:
+    case LibraryQuery::Expansion::PlaysWithProfile: {
+        QStringList placeholders;
+        for (const int group : query.providedGroups) {
+            placeholders << QStringLiteral("?");
+            filter.values << group;
+        }
+        // With no provided groups the NOT IN list is empty, so every expansion
+        // reference qualifies — right for an instrument with no boards in it.
+        const QString provided =
+            placeholders.isEmpty() ? QString()
+                                   : QStringLiteral(" AND g.group_id NOT IN (%1)").arg(placeholders.join(QStringLiteral(", ")));
+        const QString needsOne = QStringLiteral("EXISTS (SELECT 1 FROM patch_expansion_groups g "
+                                                "WHERE g.patch_id = p.id%1)")
+                                     .arg(provided);
+        clauses << (query.expansion == LibraryQuery::Expansion::PlaysWithProfile
+                        ? QStringLiteral("NOT ") + needsOne
+                        : needsOne);
+        break;
+    }
+    }
+
     if (!clauses.isEmpty()) {
         filter.where = QStringLiteral(" WHERE ") + clauses.join(QStringLiteral(" AND "));
     }
@@ -219,6 +275,35 @@ void bindAll(QSqlQuery& sql, const QVariantList& values)
     for (const auto& value : values) {
         sql.addBindValue(value);
     }
+}
+
+// Records what a Patch needs from an expansion board. The scan row is written
+// even when there are no groups: "internal only" is an answer, and without it a
+// later reader could not tell it from "never looked".
+bool writeExpansionGroups(QSqlQuery& sql, std::int64_t patchId, const std::set<int>& groups, QString& errorOut)
+{
+    sql.prepare(QStringLiteral("DELETE FROM patch_expansion_groups WHERE patch_id = ?"));
+    sql.addBindValue(QVariant::fromValue<qlonglong>(patchId));
+    if (!sql.exec()) {
+        errorOut = sql.lastError().text();
+        return false;
+    }
+    for (const int group : groups) {
+        sql.prepare(QStringLiteral("INSERT OR IGNORE INTO patch_expansion_groups (patch_id, group_id) VALUES (?, ?)"));
+        sql.addBindValue(QVariant::fromValue<qlonglong>(patchId));
+        sql.addBindValue(group);
+        if (!sql.exec()) {
+            errorOut = sql.lastError().text();
+            return false;
+        }
+    }
+    sql.prepare(QStringLiteral("INSERT OR IGNORE INTO patch_expansion_scan (patch_id) VALUES (?)"));
+    sql.addBindValue(QVariant::fromValue<qlonglong>(patchId));
+    if (!sql.exec()) {
+        errorOut = sql.lastError().text();
+        return false;
+    }
+    return true;
 }
 
 } // namespace
@@ -322,8 +407,50 @@ bool LibraryDatabase::open(const QString& path)
         return false;
     }
 
+    backfillExpansionGroups();
+
     m_lastError.clear();
     return true;
+}
+
+// Derives the expansion-group rows for entries that have none — every entry in
+// a library written before schema 5, and nothing else.
+//
+// This decodes stored bytes; it does not read them for anything but the Wave
+// Group IDs already in them, writes no user-visible state, and asks nothing of
+// the musician. An entry whose bytes no longer decode is left unscanned rather
+// than recorded as internal-only: the library still opens, and every screen
+// that reads the derived data says "not analysed" for that row instead of
+// quietly calling it safe. Failure here is never a reason to refuse the
+// library.
+void LibraryDatabase::backfillExpansionGroups()
+{
+    auto ids = m_d->query();
+    if (!ids.exec(QStringLiteral("SELECT p.id FROM patches p "
+                                 "WHERE NOT EXISTS (SELECT 1 FROM patch_expansion_scan s WHERE s.patch_id = p.id)"))) {
+        return;
+    }
+    std::vector<std::int64_t> pending;
+    while (ids.next()) {
+        pending.push_back(ids.value(0).toLongLong());
+    }
+    if (pending.empty()) {
+        return;
+    }
+
+    const bool inTransaction = m_d->database.transaction();
+    auto sql = m_d->query();
+    QString ignored;
+    for (const auto id : pending) {
+        const auto entry = loadEntry(id);
+        if (!entry) {
+            continue;
+        }
+        (void)writeExpansionGroups(sql, id, requiredExpansionGroups(entry->patch()), ignored);
+    }
+    if (inTransaction && !m_d->database.commit()) {
+        m_d->database.rollback();
+    }
 }
 
 std::optional<int> LibraryDatabase::schemaVersion() const
@@ -392,7 +519,7 @@ bool insertOne(QSqlQuery& sql, const LibraryEntry& entry, std::int64_t& idOut, Q
             return false;
         }
     }
-    return true;
+    return writeExpansionGroups(sql, idOut, requiredExpansionGroups(entry.patch()), errorOut);
 }
 
 } // namespace
@@ -606,6 +733,21 @@ std::optional<LibraryRecord> LibraryDatabase::record(std::int64_t id) const
             record.userMetadata.tags.push_back(fromQt(tags.value(0).toString()));
         }
     }
+
+    auto scan = m_d->query();
+    scan.prepare(QStringLiteral("SELECT 1 FROM patch_expansion_scan WHERE patch_id = ?"));
+    scan.addBindValue(QVariant::fromValue<qlonglong>(id));
+    record.expansionScanned = scan.exec() && scan.next();
+
+    auto groups = m_d->query();
+    groups.prepare(QStringLiteral("SELECT group_id FROM patch_expansion_groups WHERE patch_id = ? ORDER BY group_id"));
+    groups.addBindValue(QVariant::fromValue<qlonglong>(id));
+    if (groups.exec()) {
+        while (groups.next()) {
+            record.expansionGroups.insert(groups.value(0).toInt());
+        }
+    }
+
     m_lastError.clear();
     return record;
 }
@@ -710,6 +852,31 @@ std::vector<LibraryRecord> LibraryDatabase::search(const LibraryQuery& query) co
                 const auto it = indexById.find(tags.value(0).toLongLong());
                 if (it != indexById.end()) {
                     records[it->second].userMetadata.tags.push_back(fromQt(tags.value(1).toString()));
+                }
+            }
+        }
+
+        // Two more queries for the whole page, so a scrolling library pays for
+        // its compatibility badges once per page rather than once per row —
+        // and never by decoding a Patch.
+        auto scan = m_d->query();
+        if (scan.exec(QStringLiteral("SELECT patch_id FROM patch_expansion_scan WHERE patch_id IN (%1)")
+                          .arg(ids.join(QStringLiteral(", "))))) {
+            while (scan.next()) {
+                const auto it = indexById.find(scan.value(0).toLongLong());
+                if (it != indexById.end()) {
+                    records[it->second].expansionScanned = true;
+                }
+            }
+        }
+        auto groups = m_d->query();
+        if (groups.exec(QStringLiteral("SELECT patch_id, group_id FROM patch_expansion_groups "
+                                       "WHERE patch_id IN (%1) ORDER BY group_id")
+                            .arg(ids.join(QStringLiteral(", "))))) {
+            while (groups.next()) {
+                const auto it = indexById.find(groups.value(0).toLongLong());
+                if (it != indexById.end()) {
+                    records[it->second].expansionGroups.insert(groups.value(1).toInt());
                 }
             }
         }
@@ -1122,6 +1289,44 @@ std::optional<ExpansionProfile> LibraryDatabase::loadExpansionProfile() const
     profile.setBoards(std::move(boards));
     m_lastError.clear();
     return profile;
+}
+
+std::map<std::int64_t, std::set<int>> LibraryDatabase::expansionGroupsOf(const std::vector<std::int64_t>& ids) const
+{
+    std::map<std::int64_t, std::set<int>> result;
+    if (!isOpen() || ids.empty()) {
+        return result;
+    }
+    QStringList list;
+    for (const auto id : ids) {
+        list << QString::number(id);
+    }
+    const auto joined = list.join(QStringLiteral(", "));
+
+    // The scan rows first, so an internal-only Patch comes back as a present,
+    // empty entry rather than looking like one nobody analysed.
+    auto scan = m_d->query();
+    if (!scan.exec(QStringLiteral("SELECT patch_id FROM patch_expansion_scan WHERE patch_id IN (%1)").arg(joined))) {
+        m_lastError = scan.lastError().text();
+        return result;
+    }
+    while (scan.next()) {
+        result.emplace(scan.value(0).toLongLong(), std::set<int>{});
+    }
+
+    auto groups = m_d->query();
+    if (groups.exec(QStringLiteral("SELECT patch_id, group_id FROM patch_expansion_groups "
+                                   "WHERE patch_id IN (%1) ORDER BY group_id")
+                        .arg(joined))) {
+        while (groups.next()) {
+            const auto it = result.find(groups.value(0).toLongLong());
+            if (it != result.end()) {
+                it->second.insert(groups.value(1).toInt());
+            }
+        }
+    }
+    m_lastError.clear();
+    return result;
 }
 
 std::vector<LibrarySourceSummary> LibraryDatabase::sourcesInUse() const

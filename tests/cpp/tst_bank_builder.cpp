@@ -13,6 +13,7 @@
 // bank — and the export is checked by re-importing the file it wrote.
 
 #include "library/BankDraft.h"
+#include "library/ExpansionProfile.h"
 #include "library/LibraryDatabase.h"
 #include "library/SyxImport.h"
 #include "presentation/BankBuilderViewModel.h"
@@ -87,6 +88,8 @@ private slots:
     void comparesTwoDestinationsAgainstEachOther();
     void exportsEachPatchToTheDestinationItOccupies();
     void refusesToExportAnEmptyBank();
+
+    void saysWhatTheWholeBankWouldNeedFromExpansionBoards();
 
 private:
     // Imports the fixture into the database and returns the source digest the
@@ -589,6 +592,62 @@ void TestBankBuilder::refusesToExportAnEmptyBank()
     QCOMPARE(transfer.resultTone(), QStringLiteral("error"));
     // Nothing written: an empty file that looks importable is worse than none.
     QVERIFY(!QFile::exists(path));
+}
+
+// Putting a bank on the keyboard is exactly the moment "half of these have
+// nothing to sound" is worth knowing, so the summary is computed for the whole
+// arrangement and reported before the write — three-valued like every other
+// compatibility verdict here.
+void TestBankBuilder::saysWhatTheWholeBankWouldNeedFromExpansionBoards()
+{
+    const auto digest = importFixture();
+    BankBuilderViewModel builder;
+    builder.setDatabase(&m_db);
+    QVERIFY(builder.fillFromSource(digest).value(QStringLiteral("ok")).toBool());
+
+    // With nothing declared, the bank's expansion Patches are flagged to check,
+    // not condemned, and the summary points at the Expansion Manager.
+    auto summary = builder.expansionSummary();
+    const int usesExpansion = summary.value(QStringLiteral("usesExpansion")).toInt();
+    QVERIFY2(usesExpansion > 0, "the fixture bank uses expansion waves");
+    QVERIFY(summary.value(QStringLiteral("undecided")).toBool());
+    QCOMPARE(summary.value(QStringLiteral("needsBoard")).toInt(), usesExpansion);
+    QVERIFY(summary.value(QStringLiteral("summary")).toString().contains(QStringLiteral("Expansion Manager")));
+    const auto groups = summary.value(QStringLiteral("missingGroups")).toString();
+    QVERIFY(!groups.isEmpty());
+
+    // Declaring boards turns "check this" into an answer. The instrument has
+    // four slots and this bank asks for five wave groups, so filling every slot
+    // still leaves some destinations wanting a board — which is a true thing
+    // about this bank, not a limitation of the analysis.
+    const auto wanted = groups.split(QStringLiteral(", "));
+    QVERIFY2(wanted.size() > library::kSlotCount,
+             "the fixture bank needs more wave groups than an XP-60 has slots");
+
+    library::ExpansionProfile profile;
+    builder.setExpansionProfile(&profile);
+    for (int slot = 1; slot <= library::kSlotCount; ++slot) {
+        QVERIFY(profile.setBoard(slot, "declared", wanted.at(slot - 1).toInt()));
+    }
+    builder.expansionProfileChanged();
+    summary = builder.expansionSummary();
+    QVERIFY(!summary.value(QStringLiteral("undecided")).toBool());
+    QCOMPARE(summary.value(QStringLiteral("usesExpansion")).toInt(), usesExpansion);
+    const int stillNeeded = summary.value(QStringLiteral("needsBoard")).toInt();
+    QVERIFY(stillNeeded > 0);
+    QVERIFY2(stillNeeded < usesExpansion, "declaring four boards must cover the Patches that use them");
+    // Now it is a statement about what will happen, not a question.
+    QVERIFY(summary.value(QStringLiteral("summary")).toString().contains(QStringLiteral("nothing to sound")));
+    // Only the groups no declared board answers for are named.
+    QCOMPARE(summary.value(QStringLiteral("missingGroups")).toString().split(QStringLiteral(", ")).size(),
+             wanted.size() - library::kSlotCount);
+
+    // An empty bank asks nothing of any board.
+    BankBuilderViewModel empty;
+    empty.setDatabase(&m_db);
+    empty.setExpansionProfile(&profile);
+    QCOMPARE(empty.expansionSummary().value(QStringLiteral("usesExpansion")).toInt(), 0);
+    QCOMPARE(empty.expansionSummary().value(QStringLiteral("needsBoard")).toInt(), 0);
 }
 
 QTEST_MAIN(TestBankBuilder)

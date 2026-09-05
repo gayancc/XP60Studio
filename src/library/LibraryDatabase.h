@@ -10,8 +10,10 @@
 
 #include <chrono>
 #include <cstdint>
+#include <map>
 #include <memory>
 #include <optional>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -33,6 +35,17 @@ struct LibraryRecord
     PatchUserMetadata userMetadata;
     // Bytes of the preserved original SysEx, without loading it.
     std::int64_t originalSysExSize = 0;
+
+    // Every Wave Expansion group this Patch's Tones refer to, ascending. Read
+    // from the derived tables rather than by decoding, so a row can say "needs
+    // a board" without the library ever paying for a decode while scrolling.
+    //
+    // `expansionScanned` separates "uses no expansion wave" from "not analysed
+    // yet"; an empty set means the first only when it is true. Nothing but a
+    // library opened read-only or an entry inserted by an older build should
+    // ever be unscanned.
+    std::set<int> expansionGroups;
+    bool expansionScanned = false;
 };
 
 // What to look for.
@@ -65,6 +78,34 @@ struct LibraryQuery
     // Only entries whose parameters hash to this. Used to find exact
     // duplicates; the caller still confirms against the parameters.
     std::optional<PatchFingerprint> fingerprint;
+
+    // What the Patch needs from a Wave Expansion Board.
+    //
+    // Deliberately not spelled "playable" / "unplayable". This layer knows
+    // which groups a Patch refers to and which groups the caller says it has;
+    // it does not know whether the caller's picture of the instrument is
+    // complete. Turning `NeedsGroupOutsideProfile` into "will not play" rather
+    // than "may not play" needs that, and it belongs where the profile lives.
+    enum class Expansion {
+        Any,
+        // No Tone refers to an expansion wave, so no board can be missing.
+        InternalOnly,
+        // At least one Tone does, whoever provides it.
+        UsesExpansion,
+        // At least one Tone refers to a group not in `providedGroups`.
+        NeedsGroupOutsideProfile,
+        // Every group the Patch refers to, if any, is in `providedGroups` — the
+        // exact complement of the above. Internal-only Patches qualify, because
+        // needing no board is a way of having every board you need.
+        PlaysWithProfile,
+    };
+
+    Expansion expansion = Expansion::Any;
+    // The groups the caller's boards answer for. Only read for
+    // `NeedsGroupOutsideProfile`; an empty set there means every expansion
+    // reference is outside the profile, which is exactly right for an
+    // instrument with no boards in it.
+    std::set<int> providedGroups;
 
     Order order = Order::NameAscending;
     int limit = 0;  // 0 = no limit
@@ -138,7 +179,13 @@ public:
     // 2 added the `banks` / `bank_slots` tables. The migration is additive —
     // no existing row is touched — so opening a version 1 library simply
     // creates the two new tables and stamps the new version.
-    static constexpr int kSchemaVersion = 4;
+    //
+    // 5 added `patch_expansion_scan` / `patch_expansion_groups`. Those hold
+    // derived data — the Wave Group IDs already present in each Patch's stored
+    // SysEx — so an older library opens with them empty and `open` backfills
+    // them by decoding the bytes it already has. Nothing is asked of the user
+    // and nothing stored is altered.
+    static constexpr int kSchemaVersion = 5;
     // Passed as the path to keep the whole library in memory (tests).
     static constexpr const char* kInMemoryPath = ":memory:";
 
@@ -219,7 +266,20 @@ public:
     // Where the library's Patches came from, one entry per distinct source.
     [[nodiscard]] std::vector<LibrarySourceSummary> sourcesInUse() const;
 
+    // The expansion wave groups each of `ids` needs, for entries that have been
+    // scanned. An id absent from the result was never scanned or is not in the
+    // library; an id present with an empty set uses internal waves only. One
+    // query whatever the count, so asking about a whole 128-destination bank is
+    // as cheap as asking about one Patch — and decodes nothing.
+    [[nodiscard]] std::map<std::int64_t, std::set<int>> expansionGroupsOf(const std::vector<std::int64_t>& ids) const;
+
 private:
+    // Fills the derived expansion tables for entries that have no scan row —
+    // every entry in a library written before schema 5. Best-effort: an entry
+    // whose stored bytes no longer decode stays unscanned, and the library
+    // still opens.
+    void backfillExpansionGroups();
+
     class Private;
     std::unique_ptr<Private> m_d;
     mutable QString m_lastError;

@@ -1194,6 +1194,18 @@ FocusScope {
                 muted: true
                 wrapMode: Text.WordWrap
             }
+            // Said here rather than only in the header: a Patch whose board is
+            // absent still writes correctly and still has nothing to sound,
+            // and this is the last moment to notice.
+            XpLabel {
+                objectName: "bankWriteExpansionWarning"
+                Layout.preferredWidth: 420
+                visible: root.builder.expansionSummary.needsBoard > 0
+                text: root.builder.expansionSummary.summary
+                role: "caption"
+                color: Theme.warning
+                wrapMode: Text.WordWrap
+            }
         }
     }
 

@@ -197,6 +197,19 @@ int main(int argc, char* argv[])
     expansion.setDatabase(&libraryDatabase);
     expansion.setWorkspace(&workspace);
 
+    // Both library lists judge their rows against the same declared instrument,
+    // and re-judge them the moment it changes: a board declared in the Expansion
+    // Manager must not leave the Library still calling its Patches unplayable.
+    libraryModel.setExpansionProfile(&expansion.profile());
+    bankSourceModel.setExpansionProfile(&expansion.profile());
+    bankBuilder.setExpansionProfile(&expansion.profile());
+    QObject::connect(&expansion, &xp60studio::presentation::ExpansionViewModel::profileChanged,
+                     &bankBuilder, &xp60studio::presentation::BankBuilderViewModel::expansionProfileChanged);
+    QObject::connect(&expansion, &xp60studio::presentation::ExpansionViewModel::profileChanged,
+                     &libraryModel, &xp60studio::presentation::LibraryListModel::expansionProfileChanged);
+    QObject::connect(&expansion, &xp60studio::presentation::ExpansionViewModel::profileChanged,
+                     &bankSourceModel, &xp60studio::presentation::LibraryListModel::expansionProfileChanged);
+
     xp60studio::services::LibraryImportService libraryImport(libraryDatabase);
     xp60studio::services::LibraryExportService libraryExport(libraryDatabase);
     xp60studio::presentation::LibraryTransferViewModel libraryTransfer(libraryImport, libraryExport);

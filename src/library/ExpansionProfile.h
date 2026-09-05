@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <optional>
+#include <set>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -78,6 +79,11 @@ public:
     // is why `anyGroupUnknown()` exists to explain a "cannot tell" verdict.
     [[nodiscard]] std::optional<int> slotProviding(int waveGroupId) const;
     [[nodiscard]] bool providesGroup(int waveGroupId) const { return slotProviding(waveGroupId).has_value(); }
+    // Every group a declared board answers for, ascending. Boards whose group
+    // is not known contribute nothing, so an empty set can mean either "no
+    // boards" or "no groups learned yet" — `anyGroupUnknown()` and `isEmpty()`
+    // separate the two.
+    [[nodiscard]] std::set<int> providedGroups() const;
     // True when at least one installed board has no known wave group, so a
     // "missing" verdict cannot be trusted and must be reported as unknown.
     [[nodiscard]] bool anyGroupUnknown() const;

@@ -93,6 +93,11 @@ struct PatchCompatibilityReport
 [[nodiscard]] PatchCompatibilityReport analysePatch(const xpmodel::Xp60Patch& patch,
                                                     const ExpansionProfile& profile);
 
+// The expansion groups one Patch needs, in ascending order. Disabled Tones
+// count: turning one on is an ordinary edit, and a musician deserves to know it
+// would then want a board.
+[[nodiscard]] std::set<int> requiredExpansionGroups(const xpmodel::Xp60Patch& patch);
+
 // The expansion groups a set of Patches needs, in ascending order. Used to
 // answer "what boards does this bank want?" without analysing each Patch twice.
 [[nodiscard]] std::set<int> requiredExpansionGroups(const std::vector<xpmodel::Xp60Patch>& patches);

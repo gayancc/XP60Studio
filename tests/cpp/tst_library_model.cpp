@@ -14,6 +14,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <set>
 
 using namespace xp60studio;
 using library::LibraryDatabase;
@@ -63,6 +64,14 @@ private slots:
     void dropsARowThatNoLongerMatchesAFilter();
     void removesARow();
     void reportsDuplicates();
+
+    // Phase 7 — compatibility with the declared instrument.
+    void everyRowIsScannedForWhatItNeedsFromAnExpansionBoard();
+    void internalOnlyAndUsesExpansionPartitionTheLibrary();
+    void withNoProfileEveryExpansionVerdictIsUndecided();
+    void declaringABoardTurnsUnknownIntoAvailable();
+    void oneBoardWithoutAGroupHoldsBackEveryMissingVerdict();
+    void theNeedsBoardFilterNarrowsAsBoardsAreDeclared();
 
     void selectionFollowsTheRowAndClearsWhenGone();
     void emptiesWhenThereIsNoDatabase();
@@ -396,6 +405,201 @@ void TestLibraryModel::reportsDuplicates()
 // ---------------------------------------------------------------------------
 // Selection and lifetime
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Phase 7 — compatibility
+//
+// The fixture is one real musician's User bank, and 192 of its 512 Tones point
+// at expansion waves, so these run over the mixture a librarian actually has
+// rather than a constructed one.
+// ---------------------------------------------------------------------------
+
+namespace {
+
+QString verdictAt(const LibraryListModel& model, int row)
+{
+    return model.data(model.index(row), LibraryListModel::CompatibilityRole).toString();
+}
+
+int countWithVerdict(const LibraryListModel& model, const QString& verdict)
+{
+    int found = 0;
+    for (int row = 0; row < model.count(); ++row) {
+        if (verdictAt(model, row) == verdict) {
+            ++found;
+        }
+    }
+    return found;
+}
+
+// The groups the fixture actually uses, read from the model rather than
+// asserted, so this test says what the library holds instead of restating a
+// number from somewhere else.
+std::set<int> groupsInUse(const LibraryListModel& model)
+{
+    std::set<int> groups;
+    for (int row = 0; row < model.count(); ++row) {
+        for (const auto& group : model.data(model.index(row), LibraryListModel::ExpansionGroupsRole).toList()) {
+            groups.insert(group.toInt());
+        }
+    }
+    return groups;
+}
+
+} // namespace
+
+// Nothing may be reported as internal-only because nobody looked. Every entry
+// inserted through the library carries a scan result.
+void TestLibraryModel::everyRowIsScannedForWhatItNeedsFromAnExpansionBoard()
+{
+    QCOMPARE(model().count(), 128);
+    QCOMPARE(countWithVerdict(model(), QStringLiteral("unscanned")), 0);
+
+    const auto groups = groupsInUse(model());
+    QVERIFY2(!groups.empty(), "the fixture bank uses expansion waves");
+    // Every group is a real 7-bit Wave Group ID, carried raw and never mapped
+    // to a board name this project cannot prove.
+    for (const int group : groups) {
+        QVERIFY(group >= 0 && group <= 127);
+    }
+}
+
+void TestLibraryModel::internalOnlyAndUsesExpansionPartitionTheLibrary()
+{
+    model().setExpansionFilter(LibraryListModel::InternalOnly);
+    const int internal = model().count();
+    QCOMPARE(countWithVerdict(model(), QStringLiteral("internal")), internal);
+
+    model().setExpansionFilter(LibraryListModel::UsesExpansion);
+    const int expansion = model().count();
+    QCOMPARE(countWithVerdict(model(), QStringLiteral("internal")), 0);
+
+    QVERIFY(internal > 0);
+    QVERIFY(expansion > 0);
+    QCOMPARE(internal + expansion, 128);
+
+    model().setExpansionFilter(LibraryListModel::AnyExpansion);
+    QCOMPARE(model().count(), 128);
+}
+
+// With nothing declared, "you do not have this board" is not something
+// XP60Studio is in a position to say — the musician has not told us they lack
+// it. Every expansion Patch reads as undecided, and the note says why.
+void TestLibraryModel::withNoProfileEveryExpansionVerdictIsUndecided()
+{
+    QVERIFY(model().compatibilityUndecided());
+    QVERIFY(model().compatibilityNote().contains(QStringLiteral("No expansion boards declared")));
+
+    model().setExpansionFilter(LibraryListModel::UsesExpansion);
+    QVERIFY(model().count() > 0);
+    QCOMPARE(countWithVerdict(model(), QStringLiteral("missing")), 0);
+    QCOMPARE(countWithVerdict(model(), QStringLiteral("unknown")), model().count());
+    QVERIFY(model()
+                .data(model().index(0), LibraryListModel::CompatibilityLabelRole)
+                .toString()
+                .contains(QStringLiteral("Declare your boards")));
+}
+
+void TestLibraryModel::declaringABoardTurnsUnknownIntoAvailable()
+{
+    library::ExpansionProfile profile;
+    model().setExpansionProfile(&profile);
+
+    model().setExpansionFilter(LibraryListModel::UsesExpansion);
+    const auto groups = groupsInUse(model());
+    QVERIFY(groups.size() >= 2);
+    const int first = *groups.begin();
+
+    QVERIFY(profile.setBoard(1, "The one this bank was made with", first));
+    model().expansionProfileChanged();
+    QVERIFY(!model().compatibilityUndecided());
+
+    // Patches needing only that group now play; the rest name a board that is
+    // genuinely absent, because the profile is complete enough to say so.
+    QVERIFY(countWithVerdict(model(), QStringLiteral("available")) > 0);
+    QVERIFY(countWithVerdict(model(), QStringLiteral("missing")) > 0);
+    QCOMPARE(countWithVerdict(model(), QStringLiteral("unknown")), 0);
+
+    // Declaring every group in use leaves nothing missing.
+    int slot = 2;
+    for (const int group : groups) {
+        if (group == first) {
+            continue;
+        }
+        if (slot > library::kSlotCount) {
+            break;
+        }
+        QVERIFY(profile.setBoard(slot++, "another", group));
+    }
+    model().expansionProfileChanged();
+    if (static_cast<int>(groups.size()) <= library::kSlotCount) {
+        QCOMPARE(countWithVerdict(model(), QStringLiteral("missing")), 0);
+        QCOMPARE(model().count(), countWithVerdict(model(), QStringLiteral("available")));
+    }
+}
+
+// The heart of the three-valued rule: an installed board nobody can name a
+// group for could be the one a Patch is asking for, so no Patch may be called
+// unplayable while that is true.
+void TestLibraryModel::oneBoardWithoutAGroupHoldsBackEveryMissingVerdict()
+{
+    library::ExpansionProfile profile;
+    model().setExpansionProfile(&profile);
+    model().setExpansionFilter(LibraryListModel::UsesExpansion);
+
+    const auto groups = groupsInUse(model());
+    QVERIFY(profile.setBoard(1, "known", *groups.begin()));
+    model().expansionProfileChanged();
+    const int missingWithACompleteProfile = countWithVerdict(model(), QStringLiteral("missing"));
+    QVERIFY(missingWithACompleteProfile > 0);
+
+    // Now add a board whose group nobody knows. Nothing about the Patches
+    // changed, but XP60Studio can no longer rule anything out.
+    QVERIFY(profile.setBoard(2, "the unlabelled one", std::nullopt));
+    model().expansionProfileChanged();
+    QVERIFY(model().compatibilityUndecided());
+    QCOMPARE(countWithVerdict(model(), QStringLiteral("missing")), 0);
+    QCOMPARE(countWithVerdict(model(), QStringLiteral("unknown")), missingWithACompleteProfile);
+    // The Patches that *were* available stay available: a board that answers
+    // for nothing cannot take a group away from one that does.
+    QVERIFY(countWithVerdict(model(), QStringLiteral("available")) > 0);
+    QVERIFY(model().compatibilityNote().contains(QStringLiteral("no wave group yet")));
+}
+
+void TestLibraryModel::theNeedsBoardFilterNarrowsAsBoardsAreDeclared()
+{
+    library::ExpansionProfile profile;
+    model().setExpansionProfile(&profile);
+
+    model().setExpansionFilter(LibraryListModel::UsesExpansion);
+    const int usesExpansion = model().count();
+    const auto groups = groupsInUse(model());
+
+    // With no boards declared, "needs a board" is every expansion Patch: the
+    // widest honest answer, not a claim that all of them fail.
+    model().setExpansionFilter(LibraryListModel::NeedsBoard);
+    QCOMPARE(model().count(), usesExpansion);
+
+    QVERIFY(profile.setBoard(1, "one board", *groups.begin()));
+    model().expansionProfileChanged();
+    const int stillNeeded = model().count();
+    QVERIFY2(stillNeeded < usesExpansion, "declaring a board must remove the Patches it covers");
+    QVERIFY(stillNeeded > 0);
+
+    // "Plays on my XP-60" is exactly the complement, so the two never overlap
+    // and never leave a Patch unaccounted for.
+    model().setExpansionFilter(LibraryListModel::PlaysHere);
+    const int plays = model().count();
+    QCOMPARE(plays + stillNeeded, 128);
+    QCOMPARE(countWithVerdict(model(), QStringLiteral("missing")), 0);
+
+    // The filter counts as a filter: clearing it restores the library.
+    QVERIFY(model().filtered());
+    QVERIFY(model().filtered());
+    model().clearFilters();
+    QCOMPARE(model().expansionFilter(), int(LibraryListModel::AnyExpansion));
+    QCOMPARE(model().count(), 128);
+}
 
 void TestLibraryModel::selectionFollowsTheRowAndClearsWhenGone()
 {

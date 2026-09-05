@@ -66,6 +66,22 @@ RowLayout {
                 text: qsTr("%n duplicate(s)", "", root.builder.duplicateCount)
                 tone: "info"
             }
+            // What this bank would want from the instrument's expansion slots.
+            // Reported wherever the bank is, and read before a write: "these
+            // will have nothing to sound" is worth knowing before 128
+            // destinations are committed to USER memory.
+            StatusPill {
+                objectName: "bankNeedsBoards"
+                visible: root.builder.expansionSummary.needsBoard > 0
+                text: root.builder.expansionSummary.undecided
+                      ? qsTr("%n may need a board", "", root.builder.expansionSummary.needsBoard)
+                      : qsTr("%n need a board", "", root.builder.expansionSummary.needsBoard)
+                tone: root.builder.expansionSummary.undecided ? "warning" : "error"
+                HoverHandler { id: needsBoardHover }
+                QQC.ToolTip.visible: needsBoardHover.hovered
+                QQC.ToolTip.delay: 400
+                QQC.ToolTip.text: root.builder.expansionSummary.summary
+            }
             StatusPill {
                 objectName: "bankMissing"
                 visible: root.builder.missingCount > 0

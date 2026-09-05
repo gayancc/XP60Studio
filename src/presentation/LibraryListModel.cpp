@@ -113,6 +113,9 @@ QHash<int, QByteArray> LibraryListModel::roleNames() const
         {NotesRole, "notes"},
         {EditingRole, "editing"},
         {EditedRole, "edited"},
+        {CompatibilityRole, "compatibility"},
+        {CompatibilityLabelRole, "compatibilityLabel"},
+        {ExpansionGroupsRole, "expansionGroups"},
     };
 }
 
@@ -187,6 +190,17 @@ QVariant LibraryListModel::data(const QModelIndex& index, int role) const
         return editing;
     case EditedRole:
         return editing && m_workspace->modified();
+    case CompatibilityRole:
+        return compatibilityOf(*record);
+    case CompatibilityLabelRole:
+        return compatibilityLabelOf(*record);
+    case ExpansionGroupsRole: {
+        QVariantList groups;
+        for (const int group : record->expansionGroups) {
+            groups.append(group);
+        }
+        return groups;
+    }
     case SourceNameRole:
         return toQt(record->provenance.sourceName);
     case SlotLabelRole:
@@ -230,6 +244,29 @@ library::LibraryQuery LibraryListModel::baseQuery() const
     }
     if (m_minimumRating > 0) {
         query.minimumRating = m_minimumRating;
+    }
+    switch (m_expansionFilter) {
+    case InternalOnly:
+        query.expansion = library::LibraryQuery::Expansion::InternalOnly;
+        break;
+    case UsesExpansion:
+        query.expansion = library::LibraryQuery::Expansion::UsesExpansion;
+        break;
+    case PlaysHere:
+    case NeedsBoard:
+        query.expansion = m_expansionFilter == PlaysHere ? library::LibraryQuery::Expansion::PlaysWithProfile
+                                                         : library::LibraryQuery::Expansion::NeedsGroupOutsideProfile;
+        // With no profile this leaves `providedGroups` empty, so the filter
+        // returns every Patch that uses any expansion wave. That is the widest
+        // honest answer to "which of these might not play?" when XP60Studio has
+        // been told nothing about the instrument — and `compatibilityNote()`
+        // says as much beside it rather than letting the count imply more.
+        if (m_expansionProfile) {
+            query.providedGroups = m_expansionProfile->providedGroups();
+        }
+        break;
+    default:
+        break;
     }
     query.order = toOrder(m_sortOrder);
     return query;
@@ -382,6 +419,118 @@ void LibraryListModel::clearFilters()
     m_tags.clear();
     m_favouritesOnly = false;
     m_minimumRating = 0;
+    m_expansionFilter = AnyExpansion;
+    rebuild();
+}
+
+// ---------------------------------------------------------------------------
+// Compatibility with the declared instrument
+// ---------------------------------------------------------------------------
+
+QString LibraryListModel::compatibilityOf(const library::LibraryRecord& record) const
+{
+    // "Nothing found" and "never looked" are different answers, and only the
+    // derived scan row tells them apart. Calling an unscanned entry
+    // internal-only would be the one mistake that reads as a clean pass.
+    if (!record.expansionScanned) {
+        return QStringLiteral("unscanned");
+    }
+    if (record.expansionGroups.empty()) {
+        return QStringLiteral("internal");
+    }
+    if (!m_expansionProfile) {
+        return QStringLiteral("unknown");
+    }
+    const bool allProvided = std::all_of(record.expansionGroups.begin(), record.expansionGroups.end(),
+                                         [this](const int group) { return m_expansionProfile->providesGroup(group); });
+    if (allProvided) {
+        return QStringLiteral("available");
+    }
+    // A board is declared whose wave group nobody knows, so it could be the one
+    // this Patch is asking for. That is not a missing board; it is an
+    // undecided question, and saying otherwise trains musicians to ignore the
+    // warning.
+    return m_expansionProfile->anyGroupUnknown() || m_expansionProfile->isEmpty() ? QStringLiteral("unknown")
+                                                                                 : QStringLiteral("missing");
+}
+
+QString LibraryListModel::compatibilityLabelOf(const library::LibraryRecord& record) const
+{
+    const auto verdict = compatibilityOf(record);
+    if (verdict == QLatin1String("unscanned")) {
+        return tr("Not analysed — its stored data could not be decoded.");
+    }
+    if (verdict == QLatin1String("internal")) {
+        return tr("Internal waves only. Plays on any XP-60.");
+    }
+
+    QStringList groups;
+    QStringList unprovided;
+    for (const int group : record.expansionGroups) {
+        groups.append(QString::number(group));
+        if (!m_expansionProfile || !m_expansionProfile->providesGroup(group)) {
+            unprovided.append(QString::number(group));
+        }
+    }
+    const auto list = groups.join(QStringLiteral(", "));
+    if (verdict == QLatin1String("available")) {
+        return tr("Needs expansion wave group %1, which your boards provide.").arg(list);
+    }
+    if (verdict == QLatin1String("missing")) {
+        return tr("Needs expansion wave group %1, and no board you have declared provides %2.")
+            .arg(list, unprovided.join(QStringLiteral(", ")));
+    }
+    if (!m_expansionProfile || m_expansionProfile->isEmpty()) {
+        return tr("Needs expansion wave group %1. Declare your boards in the Expansion Manager and XP60Studio can "
+                  "say whether you have them.")
+            .arg(list);
+    }
+    return tr("Needs expansion wave group %1. One of your declared boards has no wave group yet, so it could be "
+              "the one providing %2.")
+        .arg(list, unprovided.join(QStringLiteral(", ")));
+}
+
+bool LibraryListModel::compatibilityUndecided() const
+{
+    return !m_expansionProfile || m_expansionProfile->isEmpty() || m_expansionProfile->anyGroupUnknown();
+}
+
+QString LibraryListModel::compatibilityNote() const
+{
+    if (!m_expansionProfile || m_expansionProfile->isEmpty()) {
+        return tr("No expansion boards declared, so XP60Studio cannot say which of these need one you do not have. "
+                  "“Needs a board” lists every Patch that uses an expansion wave at all.");
+    }
+    if (m_expansionProfile->anyGroupUnknown()) {
+        return tr("One declared board has no wave group yet, so it could be providing any of these. “Needs a "
+                  "board” is what to check, not what will fail.");
+    }
+    return tr("Every declared board has a wave group, so “Needs a board” is exactly what will not play as it "
+              "stands.");
+}
+
+void LibraryListModel::setExpansionProfile(const library::ExpansionProfile* profile)
+{
+    if (m_expansionProfile == profile) {
+        return;
+    }
+    m_expansionProfile = profile;
+    expansionProfileChanged();
+}
+
+void LibraryListModel::expansionProfileChanged()
+{
+    // Every row's badge and, under the compatibility filter, the matching set
+    // itself depend on the profile, so this is a rebuild rather than a repaint.
+    rebuild();
+}
+
+void LibraryListModel::setExpansionFilter(int filter)
+{
+    if (filter < AnyExpansion || filter > PlaysHere || filter == m_expansionFilter) {
+        return;
+    }
+    m_expansionFilter = filter;
     rebuild();
 }
 
@@ -389,7 +538,7 @@ bool LibraryListModel::filtered() const
 {
     return !m_searchText.isEmpty() || !m_category.isEmpty() || !m_sourceDigest.isEmpty()
         || !m_tags.isEmpty() || m_favouritesOnly
-           || m_minimumRating > 0;
+           || m_minimumRating > 0 || m_expansionFilter != AnyExpansion;
 }
 
 QStringList LibraryListModel::categoriesInUse() const

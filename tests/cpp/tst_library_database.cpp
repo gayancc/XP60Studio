@@ -79,6 +79,9 @@ private slots:
     void reportsDuplicatesWithoutMergingThem();
     void listsCategoriesAndTagsInUse();
 
+    void derivesWhatEachPatchNeedsFromAnExpansionBoard();
+    void backfillsTheDerivedExpansionDataForAnOlderLibrary();
+
 private:
     [[nodiscard]] std::vector<LibraryEntry> fixtureEntries() const;
 
@@ -574,6 +577,118 @@ void TestLibraryDatabase::listsCategoriesAndTagsInUse()
 
     QCOMPARE(m_db.categoriesInUse(), (std::vector<std::string>{"Bass", "Pad"}));
     QCOMPARE(m_db.tagsInUse(), (std::vector<std::string>{"analog", "warm"}));
+}
+
+// ---------------------------------------------------------------------------
+// Phase 7 — derived expansion data
+// ---------------------------------------------------------------------------
+
+void TestLibraryDatabase::derivesWhatEachPatchNeedsFromAnExpansionBoard()
+{
+    const auto ids = m_db.insertAll(fixtureEntries());
+    QVERIFY2(ids.has_value(), qPrintable(m_db.lastError()));
+
+    const auto groupsById = m_db.expansionGroupsOf(*ids);
+    // Every entry is accounted for: an internal-only Patch is a present, empty
+    // entry, never an absent one that would read as "nobody looked".
+    QCOMPARE(groupsById.size(), ids->size());
+
+    std::set<int> everyGroup;
+    int usingExpansion = 0;
+    for (const auto& [id, groups] : groupsById) {
+        if (!groups.empty()) {
+            ++usingExpansion;
+        }
+        everyGroup.insert(groups.begin(), groups.end());
+    }
+    QVERIFY2(usingExpansion > 0, "the fixture bank uses expansion waves");
+    QVERIFY(usingExpansion < static_cast<int>(ids->size()));
+
+    // The records agree with the batch lookup, and both say the entry was
+    // scanned.
+    const auto record = m_db.record(ids->front());
+    QVERIFY(record.has_value());
+    QVERIFY(record->expansionScanned);
+    QCOMPARE(record->expansionGroups, groupsById.at(ids->front()));
+
+    // The filters partition the library exactly.
+    LibraryQuery internal;
+    internal.expansion = LibraryQuery::Expansion::InternalOnly;
+    LibraryQuery expansion;
+    expansion.expansion = LibraryQuery::Expansion::UsesExpansion;
+    QCOMPARE(m_db.count(expansion).value_or(-1), usingExpansion);
+    QCOMPARE(m_db.count(internal).value_or(-1) + usingExpansion, static_cast<int>(ids->size()));
+
+    // "Needs a group outside the profile" and "plays with the profile" are
+    // complements at every profile, including the empty one.
+    for (const auto& provided : {std::set<int>{}, everyGroup}) {
+        LibraryQuery needs;
+        needs.expansion = LibraryQuery::Expansion::NeedsGroupOutsideProfile;
+        needs.providedGroups = provided;
+        LibraryQuery plays = needs;
+        plays.expansion = LibraryQuery::Expansion::PlaysWithProfile;
+        QCOMPARE(m_db.count(needs).value_or(-1) + m_db.count(plays).value_or(-1), static_cast<int>(ids->size()));
+    }
+
+    // Declaring every group in use leaves nothing needing a board.
+    LibraryQuery satisfied;
+    satisfied.expansion = LibraryQuery::Expansion::NeedsGroupOutsideProfile;
+    satisfied.providedGroups = everyGroup;
+    QCOMPARE(m_db.count(satisfied).value_or(-1), 0);
+
+    // Deleting an entry takes its derived rows with it.
+    QVERIFY(m_db.remove(ids->front()));
+    QCOMPARE(m_db.expansionGroupsOf({ids->front()}).size(), std::size_t{0});
+}
+
+// A library written before schema 5 has no derived rows. Opening it fills them
+// from the bytes already stored — nothing is asked of the user, and nothing
+// stored is altered.
+void TestLibraryDatabase::backfillsTheDerivedExpansionDataForAnOlderLibrary()
+{
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const QString path = directory.filePath(QStringLiteral("older.xp60lib"));
+
+    std::vector<std::int64_t> ids;
+    {
+        LibraryDatabase db;
+        QVERIFY2(db.open(path), qPrintable(db.lastError()));
+        const auto inserted = db.insertAll(fixtureEntries());
+        QVERIFY2(inserted.has_value(), qPrintable(db.lastError()));
+        ids = *inserted;
+        db.close();
+    }
+
+    // Age the file by hand: drop the derived rows and stamp the older version,
+    // which is exactly the state a library written by the previous build is in.
+    {
+        const QString connection = QStringLiteral("tst_backfill");
+        {
+            auto sql = QSqlDatabase::addDatabase(QStringLiteral("QSQLITE"), connection);
+            sql.setDatabaseName(path);
+            QVERIFY(sql.open());
+            QSqlQuery query(sql);
+            QVERIFY(query.exec(QStringLiteral("DELETE FROM patch_expansion_groups")));
+            QVERIFY(query.exec(QStringLiteral("DELETE FROM patch_expansion_scan")));
+            QVERIFY(query.exec(QStringLiteral("UPDATE schema_info SET version = 4")));
+        }
+        QSqlDatabase::removeDatabase(connection);
+    }
+
+    LibraryDatabase reopened;
+    QVERIFY2(reopened.open(path), qPrintable(reopened.lastError()));
+    QCOMPARE(reopened.schemaVersion().value_or(-1), LibraryDatabase::kSchemaVersion);
+
+    const auto groupsById = reopened.expansionGroupsOf(ids);
+    QCOMPARE(groupsById.size(), ids.size());
+    const int usingExpansion = static_cast<int>(std::count_if(
+        groupsById.begin(), groupsById.end(), [](const auto& pair) { return !pair.second.empty(); }));
+    QVERIFY(usingExpansion > 0);
+
+    LibraryQuery expansion;
+    expansion.expansion = LibraryQuery::Expansion::UsesExpansion;
+    QCOMPARE(reopened.count(expansion).value_or(-1), usingExpansion);
 }
 
 QTEST_MAIN(TestLibraryDatabase)

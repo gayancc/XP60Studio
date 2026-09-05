@@ -185,6 +185,30 @@ FocusScope {
                 }
             }
 
+            // What the instrument can play. Deliberately worded as a question
+            // to check rather than a verdict: whether "needs a board" means
+            // "will not play" or only "cannot tell" turns on how complete the
+            // declared profile is, and the caption below says which.
+            XpButton {
+                objectName: "libraryPlaysHereFilter"
+                text: qsTr("Plays on my XP-60")
+                compact: true
+                variant: root.library.expansionFilter === LibraryListModel.PlaysHere ? "primary" : "ghost"
+                onClicked: root.library.expansionFilter =
+                    root.library.expansionFilter === LibraryListModel.PlaysHere
+                        ? LibraryListModel.AnyExpansion : LibraryListModel.PlaysHere
+            }
+
+            XpButton {
+                objectName: "libraryNeedsBoardFilter"
+                text: qsTr("Needs a board")
+                compact: true
+                variant: root.library.expansionFilter === LibraryListModel.NeedsBoard ? "primary" : "ghost"
+                onClicked: root.library.expansionFilter =
+                    root.library.expansionFilter === LibraryListModel.NeedsBoard
+                        ? LibraryListModel.AnyExpansion : LibraryListModel.NeedsBoard
+            }
+
             XpButton {
                 objectName: "libraryClearFilters"
                 text: qsTr("Clear filters")
@@ -193,6 +217,19 @@ FocusScope {
                 visible: root.library.filtered
                 onClicked: root.library.clearFilters()
             }
+        }
+
+        // Says what the two chips above can and cannot promise, so a count is
+        // never read as more certainty than the declared profile supports.
+        XpLabel {
+            objectName: "libraryCompatibilityNote"
+            Layout.fillWidth: true
+            visible: root.library.expansionFilter === LibraryListModel.PlaysHere
+                     || root.library.expansionFilter === LibraryListModel.NeedsBoard
+            text: root.library.compatibilityNote
+            role: "caption"
+            wrapMode: Text.WordWrap
+            color: root.library.compatibilityUndecided ? Theme.warning : Theme.textSecondary
         }
 
         // ---------------------------------------------------------------

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "library/ExpansionProfile.h"
 #include "library/LibraryDatabase.h"
 #include "services/PatchWorkspace.h"
 
@@ -44,6 +45,14 @@ class LibraryListModel final : public QAbstractListModel
     Q_PROPERTY(bool favouritesOnly READ favouritesOnly WRITE setFavouritesOnly NOTIFY filterChanged)
     Q_PROPERTY(int minimumRating READ minimumRating WRITE setMinimumRating NOTIFY filterChanged)
     Q_PROPERTY(int sortOrder READ sortOrder WRITE setSortOrder NOTIFY filterChanged)
+    // One of the ExpansionFilter values.
+    Q_PROPERTY(int expansionFilter READ expansionFilter WRITE setExpansionFilter NOTIFY filterChanged)
+    // True when the declared profile is too incomplete for "missing" to mean
+    // anything, so every unprovided verdict reads as "cannot tell" instead.
+    Q_PROPERTY(bool compatibilityUndecided READ compatibilityUndecided NOTIFY filterChanged)
+    // What the compatibility filter can honestly promise right now, for the
+    // caption beside it.
+    Q_PROPERTY(QString compatibilityNote READ compatibilityNote NOTIFY filterChanged)
     // How many rows match the current filters, and how many the library holds
     // in total. Both are shown so "12 of 1,284" reads correctly.
     Q_PROPERTY(int count READ count NOTIFY filterChanged)
@@ -86,8 +95,35 @@ public:
         EditingRole,
         // True when that working Patch differs from what this row holds.
         EditedRole,
+        // Compatibility with the declared instrument, as one of "internal",
+        // "available", "missing", "unknown" or "unscanned". Read from derived
+        // data, so a scrolling list never decodes a Patch to draw a badge.
+        CompatibilityRole,
+        // A row-sized explanation of that verdict, e.g. "Needs wave group 14,
+        // which no declared board provides".
+        CompatibilityLabelRole,
+        // The expansion wave groups this Patch refers to, ascending. Empty for
+        // an internal-only Patch.
+        ExpansionGroupsRole,
     };
     Q_ENUM(Role)
+
+    // How the list is narrowed by what the instrument can play.
+    //
+    // `NeedsBoard` deliberately does not promise the Patch will fail: whether
+    // "needs a group nothing declared provides" means *missing* or merely
+    // *undecided* turns on whether the profile is complete, and the UI says
+    // which by reading `compatibilityUndecided`.
+    enum ExpansionFilter {
+        AnyExpansion = 0,
+        InternalOnly,
+        UsesExpansion,
+        NeedsBoard,
+        // Everything `NeedsBoard` leaves out: internal-only Patches and the
+        // expansion ones a declared board covers.
+        PlaysHere,
+    };
+    Q_ENUM(ExpansionFilter)
 
     explicit LibraryListModel(QObject* parent = nullptr);
 
@@ -126,6 +162,18 @@ public:
     void setMinimumRating(int rating);
     [[nodiscard]] int sortOrder() const { return m_sortOrder; }
     void setSortOrder(int order);
+    [[nodiscard]] int expansionFilter() const { return m_expansionFilter; }
+    void setExpansionFilter(int filter);
+    [[nodiscard]] bool compatibilityUndecided() const;
+    [[nodiscard]] QString compatibilityNote() const;
+
+    // The instrument the list is judged against. Optional: without it every
+    // row's verdict is "unknown" and the compatibility filter says so rather
+    // than pretending an empty profile means an empty instrument.
+    void setExpansionProfile(const library::ExpansionProfile* profile);
+    // Call when the profile behind that pointer changes; every verdict and the
+    // filtered count depend on it.
+    Q_INVOKABLE void expansionProfileChanged();
 
     [[nodiscard]] int count() const { return m_count; }
     [[nodiscard]] int libraryTotal() const { return m_libraryTotal; }
@@ -196,6 +244,10 @@ private:
     // library is closed or the row simply is not in the current results.
     [[nodiscard]] const library::LibraryRecord* requireRecord(int row);
     bool applyMetadata(int row, const library::PatchUserMetadata& metadata);
+    // The verdict for one row, from derived data and the declared profile.
+    // Never decodes a Patch and never consults the instrument.
+    [[nodiscard]] QString compatibilityOf(const library::LibraryRecord& record) const;
+    [[nodiscard]] QString compatibilityLabelOf(const library::LibraryRecord& record) const;
     void setError(const QString& message);
 
     library::LibraryDatabase* m_database = nullptr;
@@ -208,6 +260,8 @@ private:
     bool m_favouritesOnly = false;
     int m_minimumRating = 0;
     int m_sortOrder = NameAscending;
+    int m_expansionFilter = AnyExpansion;
+    const library::ExpansionProfile* m_expansionProfile = nullptr;
 
     int m_count = 0;
     int m_libraryTotal = 0;

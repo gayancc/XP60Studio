@@ -553,6 +553,101 @@ QString BankBuilderViewModel::userWritePlan() const
     return m_userWrite->writePlanDescription(userWriteDestinations());
 }
 
+// What this bank would ask of the instrument's expansion slots.
+//
+// Read from the derived tables — one query for all 128 destinations — so this
+// costs nothing to keep on screen and decodes no Patch. Like every other
+// compatibility verdict in XP60Studio it is three-valued: with an incomplete
+// profile it reports what to check, not what will fail.
+QVariantMap BankBuilderViewModel::expansionSummary() const
+{
+    QVariantMap result;
+    result.insert(QStringLiteral("needsBoard"), 0);
+    result.insert(QStringLiteral("usesExpansion"), 0);
+    result.insert(QStringLiteral("undecided"), true);
+    result.insert(QStringLiteral("missingGroups"), QString());
+    result.insert(QStringLiteral("summary"), QString());
+    if (!m_database) {
+        return result;
+    }
+
+    std::vector<std::int64_t> ids;
+    for (int slot = 0; slot < library::BankDraft::kSlotCount; ++slot) {
+        const auto& content = m_draft.slot(slot);
+        if (content.patchId > 0) {
+            ids.push_back(content.patchId);
+        }
+    }
+    const auto groupsById = m_database->expansionGroupsOf(ids);
+
+    const bool undecided = !m_expansionProfile || m_expansionProfile->isEmpty()
+        || m_expansionProfile->anyGroupUnknown();
+    int usesExpansion = 0;
+    int needsBoard = 0;
+    std::set<int> unprovided;
+    for (const auto id : ids) {
+        const auto it = groupsById.find(id);
+        if (it == groupsById.end() || it->second.empty()) {
+            continue;
+        }
+        ++usesExpansion;
+        bool covered = true;
+        for (const int group : it->second) {
+            if (!m_expansionProfile || !m_expansionProfile->providesGroup(group)) {
+                covered = false;
+                unprovided.insert(group);
+            }
+        }
+        if (!covered) {
+            ++needsBoard;
+        }
+    }
+
+    QStringList groups;
+    for (const int group : unprovided) {
+        groups.append(QString::number(group));
+    }
+
+    result.insert(QStringLiteral("needsBoard"), needsBoard);
+    result.insert(QStringLiteral("usesExpansion"), usesExpansion);
+    result.insert(QStringLiteral("undecided"), undecided);
+    result.insert(QStringLiteral("missingGroups"), groups.join(QStringLiteral(", ")));
+
+    QString summary;
+    if (usesExpansion == 0) {
+        summary = tr("Every Patch in this bank uses internal waves only.");
+    } else if (needsBoard == 0) {
+        summary = tr("%n Patch(es) in this bank use expansion waves, and your declared boards provide all of them.",
+                     "", usesExpansion);
+    } else if (undecided) {
+        summary = tr("%n Patch(es) in this bank need wave group(s) %1, and XP60Studio cannot yet tell whether you "
+                     "have them. Declare your boards in the Expansion Manager.",
+                     "", needsBoard)
+                      .arg(groups.join(QStringLiteral(", ")));
+    } else {
+        summary = tr("%n Patch(es) in this bank need wave group(s) %1, which no board you have declared provides. "
+                     "They will still write; they will have nothing to sound.",
+                     "", needsBoard)
+                      .arg(groups.join(QStringLiteral(", ")));
+    }
+    result.insert(QStringLiteral("summary"), summary);
+    return result;
+}
+
+void BankBuilderViewModel::setExpansionProfile(const library::ExpansionProfile* profile)
+{
+    if (m_expansionProfile == profile) {
+        return;
+    }
+    m_expansionProfile = profile;
+    expansionProfileChanged();
+}
+
+void BankBuilderViewModel::expansionProfileChanged()
+{
+    emit bankChanged();
+}
+
 int BankBuilderViewModel::userWriteCompleted() const
 {
     return m_userWrite ? static_cast<int>(m_userWrite->completed()) : 0;
