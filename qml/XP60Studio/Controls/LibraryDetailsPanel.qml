@@ -17,6 +17,10 @@ XpCard {
     readonly property var entry: library.selected
     readonly property bool hasSelection: Object.keys(entry).length > 0
 
+    // The Patch should be opened in the Editor. The screen owns the navigation;
+    // this panel owns the action.
+    signal editRequested(var entryId)
+
     XpEmptyState {
         anchors.fill: parent
         visible: !root.hasSelection
@@ -38,12 +42,28 @@ XpCard {
                 Layout.fillWidth: true
                 spacing: 2
                 XpLabel { text: qsTr("SELECTED PATCH"); role: "overline"; color: Theme.accentText }
-                XpLabel {
-                    objectName: "libraryDetailsName"
-                    text: root.entry.name ?? ""
-                    role: "heading"
+                RowLayout {
                     Layout.fillWidth: true
-                    elide: Text.ElideRight
+                    spacing: Metrics.spacingSm
+                    XpLabel {
+                        objectName: "libraryDetailsName"
+                        text: root.entry.name ?? ""
+                        role: "heading"
+                        Layout.fillWidth: true
+                        elide: Text.ElideRight
+                    }
+                    // Opening a Patch here and opening it from a bank
+                    // destination reach the same working Patch, which is why
+                    // both screens can show it changing.
+                    XpButton {
+                        objectName: "libraryEdit"
+                        text: qsTr("Edit")
+                        iconName: "editor"
+                        compact: true
+                        variant: "ghost"
+                        enabled: root.hasSelection
+                        onClicked: root.editRequested(root.entry.id)
+                    }
                 }
             }
 

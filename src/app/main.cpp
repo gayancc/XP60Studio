@@ -157,6 +157,7 @@ int main(int argc, char* argv[])
     }
     xp60studio::presentation::LibraryListModel libraryModel;
     libraryModel.setDatabase(&libraryDatabase);
+    libraryModel.setWorkspace(&workspace);
 
     // Import and export. The services own the file I/O and the worker thread;
     // the view model is what QML sees.
@@ -169,9 +170,14 @@ int main(int argc, char* argv[])
     // what the Library screen is showing.
     xp60studio::presentation::LibraryListModel bankSourceModel;
     bankSourceModel.setDatabase(&libraryDatabase);
+    bankSourceModel.setWorkspace(&workspace);
     xp60studio::presentation::BankBuilderViewModel bankBuilder;
     bankBuilder.setDatabase(&libraryDatabase);
     bankBuilder.setTransfer(&transfer);
+    // The Library and the Bank Builder show the working Patch's live name and
+    // edited state wherever they show that Patch, so a rename in the Editor is
+    // visible on a bank destination and in a library row immediately.
+    bankBuilder.setWorkspace(&workspace);
 
     xp60studio::services::LibraryImportService libraryImport(libraryDatabase);
     xp60studio::services::LibraryExportService libraryExport(libraryDatabase);

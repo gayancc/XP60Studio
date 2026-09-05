@@ -158,7 +158,14 @@ QString BankBuilderViewModel::spokenLabel() const
 
 QString BankBuilderViewModel::currentPatchName() const
 {
-    return toQt(m_draft.slot(currentSlotIndex()).patchName);
+    // The instrument display reads from the working copy too, so the LCD and
+    // the Editor's title cannot show different names for the same Patch.
+    const auto& content = m_draft.slot(currentSlotIndex());
+    if (m_workspace && m_workspace->hasPatch() && content.patchId > 0
+        && m_workspace->origin().isLibraryEntry(content.patchId)) {
+        return m_workspace->displayName();
+    }
+    return toQt(content.patchName);
 }
 
 QString BankBuilderViewModel::currentSourceName() const
@@ -204,7 +211,15 @@ QVariantMap BankBuilderViewModel::destinationMap(int slotIndex) const
     map.insert(QStringLiteral("panelLabel"), toQt(location->panelLabel()));
     map.insert(QStringLiteral("linearLabel"), toQt(location->linearLabel()));
     map.insert(QStringLiteral("patchId"), QVariant::fromValue<qint64>(content.patchId));
-    map.insert(QStringLiteral("patchName"), toQt(content.patchName));
+    // A destination holding the Patch open in the Editor answers from the
+    // working copy. Without this the panel would keep showing the name the
+    // Patch had when it was placed, which is exactly the drift this
+    // architecture exists to prevent.
+    const bool editing = m_workspace && m_workspace->hasPatch() && content.patchId > 0
+        && m_workspace->origin().isLibraryEntry(content.patchId);
+    map.insert(QStringLiteral("editing"), editing);
+    map.insert(QStringLiteral("edited"), editing && m_workspace->modified());
+    map.insert(QStringLiteral("patchName"), editing ? m_workspace->displayName() : toQt(content.patchName));
     map.insert(QStringLiteral("sourceName"), toQt(content.sourceName));
     map.insert(QStringLiteral("sourceSlot"), toQt(content.sourceSlotLabel));
     map.insert(QStringLiteral("occupied"), !content.empty());
@@ -381,6 +396,52 @@ std::optional<BankSlotContent> BankBuilderViewModel::contentFor(std::int64_t pat
     content.sourceName = record->provenance.sourceName;
     content.sourceSlotLabel = sourceSlotLabel(record->provenance).toStdString();
     return content;
+}
+
+void BankBuilderViewModel::setWorkspace(services::PatchWorkspace* workspace)
+{
+    if (m_workspace == workspace) {
+        return;
+    }
+    if (m_workspace) {
+        disconnect(m_workspace, nullptr, this, nullptr);
+    }
+    m_workspace = workspace;
+    if (m_workspace) {
+        connect(m_workspace, &services::PatchWorkspace::changed, this, &BankBuilderViewModel::announceBankChange);
+        connect(m_workspace, &services::PatchWorkspace::originChanged, this,
+                &BankBuilderViewModel::announceBankChange);
+    }
+    announceBankChange();
+}
+
+bool BankBuilderViewModel::editSlot(int slotIndex)
+{
+    if (!m_database || !m_workspace) {
+        return false;
+    }
+    const auto& content = m_draft.slot(slotIndex);
+    if (content.patchId <= 0) {
+        reportError(tr("That destination is empty."));
+        return false;
+    }
+    const auto entry = m_database->loadEntry(content.patchId);
+    if (!entry) {
+        // The cached name survives a deleted Patch so the destination can say
+        // MISSING; it is not enough to edit from.
+        reportError(tr("“%1” is no longer in the library.").arg(toQt(content.patchName)));
+        return false;
+    }
+    m_workspace->adopt(entry->patch(), services::PatchOrigin::library(content.patchId));
+    selectSlot(slotIndex);
+    reportAction(tr("Editing “%1” from %2").arg(toQt(content.patchName), panelLabelFor(slotIndex)),
+                 QStringLiteral("info"));
+    return true;
+}
+
+bool BankBuilderViewModel::editCurrent()
+{
+    return editSlot(currentSlotIndex());
 }
 
 bool BankBuilderViewModel::placePatch(int slotIndex, qint64 patchId)

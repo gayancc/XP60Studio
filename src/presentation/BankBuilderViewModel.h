@@ -3,6 +3,7 @@
 #include "library/BankDraft.h"
 #include "library/LibraryDatabase.h"
 #include "services/PatchTransfer.h"
+#include "services/PatchWorkspace.h"
 
 #include <QObject>
 #include <QString>
@@ -118,6 +119,17 @@ public:
     // Optional. Without it the surface is arrangement-only, which is what it
     // is when no instrument is connected.
     void setTransfer(services::PatchTransfer* transfer);
+    // The shared working Patch. Optional: without it destinations read purely
+    // from the draft. With it, a destination holding the Patch currently open
+    // in the Editor shows the *working* name and says it is being edited, so a
+    // rename made in the Editor is visible on the panel immediately.
+    void setWorkspace(services::PatchWorkspace* workspace);
+
+    // Opens the Patch at `slotIndex` in the Editor by adopting it into the
+    // shared workspace. False when the destination is empty or its Patch is no
+    // longer in the library; nothing is changed either way.
+    Q_INVOKABLE bool editSlot(int slotIndex);
+    Q_INVOKABLE bool editCurrent();
 
     [[nodiscard]] int subgroup() const;
     [[nodiscard]] int bank() const;
@@ -268,6 +280,7 @@ private:
 
     library::LibraryDatabase* m_database = nullptr;
     services::PatchTransfer* m_transfer = nullptr;
+    services::PatchWorkspace* m_workspace = nullptr;
     library::BankDraft m_draft;
 
     int m_subgroup = 0;

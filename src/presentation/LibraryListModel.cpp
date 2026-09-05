@@ -111,7 +111,58 @@ QHash<int, QByteArray> LibraryListModel::roleNames() const
         {CategoryRole, "category"},
         {TagsRole, "tags"},
         {NotesRole, "notes"},
+        {EditingRole, "editing"},
+        {EditedRole, "edited"},
     };
+}
+
+void LibraryListModel::setWorkspace(services::PatchWorkspace* workspace)
+{
+    if (m_workspace == workspace) {
+        return;
+    }
+    if (m_workspace) {
+        disconnect(m_workspace, nullptr, this, nullptr);
+    }
+    m_workspace = workspace;
+    if (m_workspace) {
+        // Only two roles can move, and only for one row, but which row that is
+        // changes with the origin. Refreshing the whole visible range is a few
+        // hundred cheap reads against an already-fetched page, and it is
+        // correct without tracking the previous origin.
+        const auto refresh = [this] {
+            if (rowCount() > 0) {
+                emit dataChanged(index(0, 0), index(rowCount() - 1, 0), {NameRole, EditingRole, EditedRole});
+            }
+        };
+        connect(m_workspace, &services::PatchWorkspace::changed, this, refresh);
+        connect(m_workspace, &services::PatchWorkspace::originChanged, this, refresh);
+    }
+    if (rowCount() > 0) {
+        emit dataChanged(index(0, 0), index(rowCount() - 1, 0), {NameRole, EditingRole, EditedRole});
+    }
+}
+
+bool LibraryListModel::editRow(int row)
+{
+    const auto* record = recordAt(row);
+    return record ? editEntry(record->id) : false;
+}
+
+bool LibraryListModel::editEntry(qlonglong entryId)
+{
+    if (!m_database || !m_workspace || entryId <= 0) {
+        return false;
+    }
+    const auto entry = m_database->loadEntry(entryId);
+    if (!entry) {
+        return false;
+    }
+    // Adopting replaces whatever was being worked on, history included. The
+    // screen is responsible for confirming that with the user first when the
+    // outgoing Patch has unsaved changes; this is the mechanism, not the policy.
+    m_workspace->adopt(entry->patch(), services::PatchOrigin::library(entryId));
+    return true;
 }
 
 QVariant LibraryListModel::data(const QModelIndex& index, int role) const
@@ -120,11 +171,22 @@ QVariant LibraryListModel::data(const QModelIndex& index, int role) const
     if (!record) {
         return {};
     }
+    // The row for the Patch open in the Editor answers from the working copy,
+    // not from the database. Without this the Library would keep showing the
+    // stored name after a rename, which is the disagreement this whole
+    // architecture exists to prevent.
+    const bool editing = m_workspace && m_workspace->hasPatch()
+        && m_workspace->origin().isLibraryEntry(record->id);
+
     switch (role) {
     case IdRole:
         return QVariant::fromValue<qlonglong>(record->id);
     case NameRole:
-        return toQt(record->name);
+        return editing ? m_workspace->displayName() : toQt(record->name);
+    case EditingRole:
+        return editing;
+    case EditedRole:
+        return editing && m_workspace->modified();
     case SourceNameRole:
         return toQt(record->provenance.sourceName);
     case SlotLabelRole:

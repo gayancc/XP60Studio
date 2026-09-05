@@ -1,6 +1,7 @@
 #pragma once
 
 #include "library/LibraryDatabase.h"
+#include "services/PatchWorkspace.h"
 
 #include <QAbstractListModel>
 #include <QStringList>
@@ -79,6 +80,12 @@ public:
         CategoryRole,
         TagsRole,
         NotesRole,
+        // True for the row holding the Patch currently open in the Editor. The
+        // row then shows the *working* name rather than the stored one, so a
+        // rename in the Editor is visible here immediately.
+        EditingRole,
+        // True when that working Patch differs from what this row holds.
+        EditedRole,
     };
     Q_ENUM(Role)
 
@@ -88,6 +95,18 @@ public:
     // which is what a closed library looks like.
     void setDatabase(library::LibraryDatabase* database);
     [[nodiscard]] library::LibraryDatabase* database() const noexcept { return m_database; }
+
+    // The shared working Patch. Optional: without it the model is exactly what
+    // the database says, which is what the screenshot harness gets. With it,
+    // the row for the Patch being edited reports live values, so the Library
+    // and the Editor cannot disagree about a name.
+    void setWorkspace(services::PatchWorkspace* workspace);
+
+    // Opens the Patch in row `row` in the Editor by adopting it into the shared
+    // workspace. False when the row is gone or the Patch cannot be loaded;
+    // nothing is changed either way.
+    Q_INVOKABLE bool editRow(int row);
+    Q_INVOKABLE bool editEntry(qlonglong entryId);
 
     int rowCount(const QModelIndex& parent = {}) const override;
     QVariant data(const QModelIndex& index, int role) const override;
@@ -180,6 +199,7 @@ private:
     void setError(const QString& message);
 
     library::LibraryDatabase* m_database = nullptr;
+    services::PatchWorkspace* m_workspace = nullptr;
 
     QString m_searchText;
     QString m_category;

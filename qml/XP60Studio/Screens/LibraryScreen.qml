@@ -24,6 +24,8 @@ FocusScope {
     // it was before import and export existed and what the screenshot harness
     // still gets.
     property var transfer: null
+    // The selected Patch was opened in the Editor, so the shell should go there.
+    signal editRequested()
     readonly property bool wide: width >= 1040
     readonly property var selection: library.selected
 
@@ -270,6 +272,10 @@ FocusScope {
                 Layout.fillHeight: root.wide
                 Layout.preferredHeight: root.wide ? -1 : 260
                 library: root.library
+                onEditRequested: function (entryId) {
+                    if (root.library.editEntry(entryId))
+                        root.editRequested()
+                }
             }
         }
     }

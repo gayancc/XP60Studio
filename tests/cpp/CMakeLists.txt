@@ -151,6 +151,12 @@ xp60studio_add_test(tst_patch_workspace
 target_compile_definitions(tst_patch_workspace
   PRIVATE XP60STUDIO_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/xp60")
 
+xp60studio_add_test(tst_patch_sync
+  SOURCES tst_patch_sync.cpp
+  LIBS xp60studio::presentation xp60studio::services)
+target_compile_definitions(tst_patch_sync
+  PRIVATE XP60STUDIO_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/xp60")
+
 xp60studio_add_test(tst_bank_builder
   SOURCES tst_bank_builder.cpp
   LIBS xp60studio::presentation xp60studio::services)

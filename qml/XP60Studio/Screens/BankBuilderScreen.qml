@@ -44,6 +44,10 @@ FocusScope {
     // arranges and saves banks exactly as before but cannot read or write a
     // `.syx`, which is what the screenshot harness gets.
     property var transfer: null
+    // The destination's Patch was opened in the Editor, so the shell should go
+    // there. The Bank Builder keeps its arrangement exactly as it was: opening a
+    // Patch for editing is not a bank edit.
+    signal editRequested()
 
     readonly property bool wide: width >= 1180
 
@@ -413,6 +417,18 @@ FocusScope {
                         tone: root.builder.lastActionTone
                     }
                     Item { Layout.fillWidth: true }
+                    XpButton {
+                        objectName: "bankEdit"
+                        text: qsTr("Edit patch")
+                        iconName: "editor"
+                        compact: true
+                        variant: "ghost"
+                        enabled: root.builder.currentOccupied
+                        QQC.ToolTip.visible: hovered
+                        QQC.ToolTip.delay: 400
+                        QQC.ToolTip.text: qsTr("Open this destination's Patch in the Editor. The bank is not changed; the same working Patch is shown in both places.")
+                        onClicked: if (root.builder.editCurrent()) root.editRequested()
+                    }
                     XpButton {
                         objectName: "bankAudition"
                         text: qsTr("Audition")

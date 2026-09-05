@@ -82,6 +82,7 @@ QQC.ApplicationWindow {
                     visible: window.shell.currentScreen === "library"
                     library: window.library
                     transfer: window.libraryTransfer
+                    onEditRequested: window.shell.navigate("editor")
                 }
 
                 BankBuilderScreen {
@@ -91,6 +92,7 @@ QQC.ApplicationWindow {
                     builder: window.bankBuilder
                     library: window.bankLibrary
                     transfer: window.libraryTransfer
+                    onEditRequested: window.shell.navigate("editor")
                 }
 
                 UnavailableScreen {
