@@ -14,11 +14,20 @@ FocusScope {
     // Optional: without it the browser stays read-only, which is what the
     // screenshot harness and any catalog-only context get.
     property var editor: null
+    // Optional: the Expansion Manager's view model. With it the Expansion tab
+    // reports this instrument's declared boards instead of a flat "unverified";
+    // without it (screenshot harness, catalog-only contexts) the tab falls back
+    // to the one fact that holds regardless — there is no expansion waveform
+    // catalog in this project.
+    property var expansion: null
     signal closed()
     signal waveUsed()
 
     readonly property bool canUse: root.editor !== null && root.editor.canUseSelectedWave
     readonly property bool wide: width >= 1040
+    readonly property string expansionNote: root.expansion
+        ? root.expansion.browserNote
+        : qsTr("XP60Studio has no waveform-name list for expansion boards, so their waves cannot be browsed or assigned by name here. A Tone that already uses one keeps it.")
     onVisibleChanged: if (visible) search.forceActiveFocus()
     Keys.onEscapePressed: root.closed()
 
@@ -137,10 +146,8 @@ FocusScope {
                         XpEmptyState {
                             anchors.fill: parent
                             visible: root.catalog.count === 0
-                            title: root.catalog.sourceFilter === 3 ? qsTr("Expansion catalog unavailable") : qsTr("No matching waveforms")
-                            message: root.catalog.sourceFilter === 3
-                                     ? qsTr("Expansion names and installed-board compatibility have not been verified.")
-                                     : qsTr("Try another name, number or source.")
+                            title: root.catalog.sourceFilter === 3 ? qsTr("Expansion waves cannot be listed") : qsTr("No matching waveforms")
+                            message: root.catalog.sourceFilter === 3 ? root.expansionNote : qsTr("Try another name, number or source.")
                         }
                     }
                 }
@@ -224,7 +231,7 @@ FocusScope {
                     }
                     XpLabel {
                         Layout.fillWidth: true
-                        text: qsTr("Audio preview unavailable. Expansion waves cannot be assigned: their bank identifiers are not established.")
+                        text: qsTr("Audio preview unavailable. Expansion waves cannot be assigned from here: %1").arg(root.expansionNote)
                         wrapMode: Text.WordWrap; role: "caption"; color: Theme.warning
                     }
                 }

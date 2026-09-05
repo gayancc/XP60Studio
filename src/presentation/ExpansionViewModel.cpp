@@ -139,6 +139,36 @@ QString ExpansionViewModel::advice() const
               "you do not have.");
 }
 
+QString ExpansionViewModel::browserNote() const
+{
+    // Two independent gaps, and conflating them would be the lie. XP60Studio
+    // does not know what is in the instrument (the musician can fix that in the
+    // Expansion Manager), and it has no waveform-name list for any SR-JV80
+    // board (nobody can fix that from this screen). Say both.
+    const QString noCatalog =
+        tr("XP60Studio has no waveform-name list for expansion boards, so their waves cannot be browsed or "
+           "assigned by name here. A Tone that already uses one keeps it, and the Expansion Manager says whether "
+           "it will play.");
+    if (m_profile.isEmpty()) {
+        return tr("No expansion boards declared. %1").arg(noCatalog);
+    }
+
+    QStringList declared;
+    for (int slot = 1; slot <= library::kSlotCount; ++slot) {
+        const auto& board = m_profile.board(slot);
+        if (board.name.empty()) {
+            continue;
+        }
+        declared.append(board.waveGroupId
+                            ? tr("%1 · %2 (wave group %3)")
+                                  .arg(toQt(library::slotLabel(slot)), toQt(board.name))
+                                  .arg(*board.waveGroupId)
+                            : tr("%1 · %2 (wave group not known yet)")
+                                  .arg(toQt(library::slotLabel(slot)), toQt(board.name)));
+    }
+    return tr("You have declared: %1. %2").arg(declared.join(QStringLiteral("; ")), noCatalog);
+}
+
 bool ExpansionViewModel::setBoard(int slot, const QString& name, int waveGroupId)
 {
     const auto group = waveGroupId >= 0 ? std::optional<int>{waveGroupId} : std::nullopt;

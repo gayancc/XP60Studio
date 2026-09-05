@@ -65,6 +65,7 @@ QQC.ApplicationWindow {
                     anchors.fill: parent
                     visible: window.shell.currentScreen === "editor"
                     editor: window.editor
+                    expansion: window.expansion
                 }
 
                 DashboardScreen {

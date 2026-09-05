@@ -77,6 +77,7 @@ private slots:
     void theProfileSurvivesBeingSavedAndReopened();
     void learnsAWaveGroupFromThePatchOnScreen();
     void refusesToLearnFromAnAmbiguousPatch();
+    void theWaveBrowserNoteSeparatesTheTwoGaps();
 
 private:
     std::vector<Xp60Patch> m_patches;
@@ -446,6 +447,34 @@ void TestExpansionCompatibility::refusesToLearnFromAnAmbiguousPatch()
     QVERIFY2(!manager.learnFromCurrentPatch(1), "two candidates means nothing unambiguous to learn");
     QVERIFY(!manager.profile().board(1).waveGroupId.has_value());
     QVERIFY(manager.learnAdvice(1).contains(QStringLiteral("cannot tell which one")));
+}
+
+// The Wave Browser's Expansion tab has two different things to be sorry about,
+// and the note must not blur them: XP60Studio does not know what is in the
+// instrument (the musician can fix that), and it has no waveform-name list for
+// any SR-JV80 board (nobody can fix that from that screen). The second holds
+// however complete the profile is.
+void TestExpansionCompatibility::theWaveBrowserNoteSeparatesTheTwoGaps()
+{
+    presentation::ExpansionViewModel manager;
+
+    const auto empty = manager.browserNote();
+    QVERIFY(empty.contains(QStringLiteral("No expansion boards declared")));
+    QVERIFY(empty.contains(QStringLiteral("no waveform-name list")));
+
+    QVERIFY(manager.setBoard(1, QStringLiteral("SR-JV80-05 World"), 5));
+    QVERIFY(manager.setBoard(3, QStringLiteral("The unlabelled one"), -1));
+
+    const auto declared = manager.browserNote();
+    QVERIFY(!declared.contains(QStringLiteral("No expansion boards declared")));
+    QVERIFY(declared.contains(QStringLiteral("SR-JV80-05 World")));
+    QVERIFY(declared.contains(QStringLiteral("wave group 5")));
+    QVERIFY(declared.contains(QStringLiteral("The unlabelled one")));
+    QVERIFY(declared.contains(QStringLiteral("not known yet")));
+    // Declaring boards never earns a browsable expansion catalog.
+    QVERIFY(declared.contains(QStringLiteral("no waveform-name list")));
+    // EXP-B is empty and must not be listed as something the musician owns.
+    QVERIFY(!declared.contains(QStringLiteral("EXP-B")));
 }
 
 QTEST_MAIN(TestExpansionCompatibility)

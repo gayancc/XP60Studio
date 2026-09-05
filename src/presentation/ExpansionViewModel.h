@@ -41,6 +41,8 @@ class ExpansionViewModel : public QObject
     // "missing" verdict is held back.
     Q_PROPERTY(bool anyGroupUnknown READ anyGroupUnknown NOTIFY profileChanged)
     Q_PROPERTY(QString advice READ advice NOTIFY profileChanged)
+    // What the Wave Browser's Expansion tab can honestly say. See browserNote().
+    Q_PROPERTY(QString browserNote READ browserNote NOTIFY profileChanged)
 
     // The Patch currently being worked on, analysed against the profile above.
     // {usesExpansion, playable, undecided, summary, requiredGroups,
@@ -65,6 +67,15 @@ public:
     [[nodiscard]] int installedCount() const { return m_profile.installedCount(); }
     [[nodiscard]] bool anyGroupUnknown() const { return m_profile.anyGroupUnknown(); }
     [[nodiscard]] QString advice() const;
+
+    // The Wave Browser cannot list expansion waves: this project has no
+    // waveform-name list for any SR-JV80 board — Roland publishes those per
+    // board and none is transcribed here — and no way to turn a board into the
+    // Wave Group ID a Tone would need. What it *can* say is which boards the
+    // musician has declared, so the tab reports the real state of this
+    // instrument instead of a flat "unverified".
+    [[nodiscard]] QString browserNote() const;
+
     [[nodiscard]] QVariantMap currentPatch() const;
     [[nodiscard]] QVariantList learnableGroups() const;
 

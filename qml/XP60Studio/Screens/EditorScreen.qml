@@ -13,6 +13,8 @@ Item {
     id: root
 
     required property PatchEditorViewModel editor
+    // Optional — see WaveBrowserScreen.expansion.
+    property var expansion: null
     property bool browsingWaves: false
 
     WaveBrowserScreen {
@@ -20,6 +22,7 @@ Item {
         visible: root.browsingWaves
         catalog: root.editor.waves
         editor: root.editor
+        expansion: root.expansion
         onWaveUsed: root.browsingWaves = false
         onClosed: {
             root.browsingWaves = false
