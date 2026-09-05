@@ -1,6 +1,7 @@
 #pragma once
 
 #include "library/BankDraft.h"
+#include "library/ExpansionProfile.h"
 #include "library/LibraryEntry.h"
 #include "library/PatchFingerprint.h"
 #include "library/PatchProvenance.h"
@@ -137,7 +138,7 @@ public:
     // 2 added the `banks` / `bank_slots` tables. The migration is additive —
     // no existing row is touched — so opening a version 1 library simply
     // creates the two new tables and stamps the new version.
-    static constexpr int kSchemaVersion = 3;
+    static constexpr int kSchemaVersion = 4;
     // Passed as the path to keep the whole library in memory (tests).
     static constexpr const char* kInMemoryPath = ":memory:";
 
@@ -207,6 +208,13 @@ public:
     [[nodiscard]] std::vector<SavedBankRecord> banks() const;
     [[nodiscard]] std::optional<SavedBank> loadBank(std::int64_t id) const;
     [[nodiscard]] bool removeBank(std::int64_t id);
+
+    // The musician's Wave Expansion configuration ---------------------------
+    // One row per occupied slot. Stored in the library because it is the same
+    // kind of thing as everything else here: XP60Studio's knowledge about the
+    // user's setup, not Roland data.
+    [[nodiscard]] bool saveExpansionProfile(const ExpansionProfile& profile);
+    [[nodiscard]] std::optional<ExpansionProfile> loadExpansionProfile() const;
 
     // Where the library's Patches came from, one entry per distinct source.
     [[nodiscard]] std::vector<LibrarySourceSummary> sourcesInUse() const;

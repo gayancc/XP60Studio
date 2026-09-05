@@ -94,6 +94,19 @@ constexpr const char* kSchemaStatements[] = {
     "  name       TEXT    NOT NULL,"
     "  PRIMARY KEY (bank_id, first_slot)"
     ")",
+    // Schema version 4 -- the Wave Expansion configuration.
+    //
+    // One row per occupied slot. `wave_group_id` is nullable on purpose: a
+    // board can be installed while XP60Studio does not yet know which Wave
+    // Group ID its waves carry, and that is a different state from an empty
+    // slot. Which board an ID denotes is not documented
+    // (ROLAND_XP60_PROTOCOL_FACTS.md §7), so this is the musician's knowledge,
+    // recorded rather than inferred.
+    "CREATE TABLE IF NOT EXISTS expansion_slots ("
+    "  slot          INTEGER PRIMARY KEY,"
+    "  name          TEXT    NOT NULL,"
+    "  wave_group_id INTEGER"
+    ")",
 };
 
 QString toQt(const std::string& text)
@@ -1037,6 +1050,78 @@ bool LibraryDatabase::removeBank(std::int64_t id)
     }
     m_lastError.clear();
     return true;
+}
+
+bool LibraryDatabase::saveExpansionProfile(const ExpansionProfile& profile)
+{
+    if (!isOpen()) {
+        m_lastError = QStringLiteral("The library is not open.");
+        return false;
+    }
+    if (!m_d->database.transaction()) {
+        m_lastError = m_d->database.lastError().text();
+        return false;
+    }
+    auto sql = m_d->query();
+    if (!sql.exec(QStringLiteral("DELETE FROM expansion_slots"))) {
+        m_lastError = sql.lastError().text();
+        m_d->database.rollback();
+        return false;
+    }
+    for (const auto& board : profile.boards()) {
+        // An empty slot is the absence of a row, as an empty bank destination
+        // is: there is nothing to record about a slot with no board in it.
+        if (board.name.empty()) {
+            continue;
+        }
+        sql.prepare(QStringLiteral("INSERT INTO expansion_slots (slot, name, wave_group_id) VALUES (?, ?, ?)"));
+        sql.addBindValue(board.slot);
+        sql.addBindValue(toQt(board.name));
+        sql.addBindValue(board.waveGroupId ? QVariant(*board.waveGroupId) : QVariant());
+        if (!sql.exec()) {
+            m_lastError = sql.lastError().text();
+            m_d->database.rollback();
+            return false;
+        }
+    }
+    if (!m_d->database.commit()) {
+        const QString error = m_d->database.lastError().text();
+        m_d->database.rollback();
+        m_lastError = error;
+        return false;
+    }
+    m_lastError.clear();
+    return true;
+}
+
+std::optional<ExpansionProfile> LibraryDatabase::loadExpansionProfile() const
+{
+    if (!isOpen()) {
+        m_lastError = QStringLiteral("The library is not open.");
+        return std::nullopt;
+    }
+    auto sql = m_d->query();
+    if (!sql.exec(QStringLiteral("SELECT slot, name, wave_group_id FROM expansion_slots ORDER BY slot"))) {
+        m_lastError = sql.lastError().text();
+        return std::nullopt;
+    }
+    ExpansionProfile profile;
+    std::vector<ExpansionBoard> boards;
+    while (sql.next()) {
+        ExpansionBoard board;
+        board.slot = sql.value(0).toInt();
+        board.name = fromQt(sql.value(1).toString());
+        const QVariant group = sql.value(2);
+        // A null group is "installed, but we cannot yet tell which waves are
+        // its" -- preserved rather than defaulted to a plausible number.
+        if (!group.isNull()) {
+            board.waveGroupId = group.toInt();
+        }
+        boards.push_back(std::move(board));
+    }
+    profile.setBoards(std::move(boards));
+    m_lastError.clear();
+    return profile;
 }
 
 std::vector<LibrarySourceSummary> LibraryDatabase::sourcesInUse() const

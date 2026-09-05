@@ -16,10 +16,14 @@
 
 #include "library/ExpansionProfile.h"
 #include "library/PatchCompatibility.h"
+#include "library/LibraryDatabase.h"
 #include "library/SyxImport.h"
+#include "presentation/ExpansionViewModel.h"
+#include "services/PatchWorkspace.h"
 #include "xpmodel/Xp60WaveIdentifier.h"
 
 #include <QFile>
+#include <QSqlDatabase>
 #include <QTest>
 
 using namespace xp60studio;
@@ -68,6 +72,11 @@ private slots:
 
     // The bank
     void reportsWhatAWholeBankNeeds();
+
+    // Persistence and the manager
+    void theProfileSurvivesBeingSavedAndReopened();
+    void learnsAWaveGroupFromThePatchOnScreen();
+    void refusesToLearnFromAnAmbiguousPatch();
 
 private:
     std::vector<Xp60Patch> m_patches;
@@ -330,6 +339,113 @@ void TestExpansionCompatibility::reportsWhatAWholeBankNeeds()
     QCOMPARE(missingAcrossBank, expectedMissing);
     QVERIFY2(unplayable > 0, "this bank genuinely needs boards that are not declared");
     QVERIFY2(unplayable < static_cast<int>(m_patches.size()), "and plenty of it plays regardless");
+}
+
+// ---------------------------------------------------------------------------
+// Persistence and the Expansion Manager
+// ---------------------------------------------------------------------------
+
+void TestExpansionCompatibility::theProfileSurvivesBeingSavedAndReopened()
+{
+    QVERIFY2(QSqlDatabase::isDriverAvailable(QStringLiteral("QSQLITE")), "this Qt build has no QSQLITE driver");
+    library::LibraryDatabase db;
+    QVERIFY2(db.open(QString::fromLatin1(library::LibraryDatabase::kInMemoryPath)), qPrintable(db.lastError()));
+
+    ExpansionProfile profile;
+    QVERIFY(profile.setBoard(1, "SR-JV80-05 World", 5));
+    // Installed, but its wave group is not yet known — the state that must
+    // survive a round trip rather than being defaulted to a plausible number.
+    QVERIFY(profile.setBoard(3, "The one I have not identified", std::nullopt));
+    QVERIFY(db.saveExpansionProfile(profile));
+
+    const auto loaded = db.loadExpansionProfile();
+    QVERIFY2(loaded.has_value(), qPrintable(db.lastError()));
+    QCOMPARE(loaded->installedCount(), 2);
+    QCOMPARE(QString::fromStdString(loaded->board(1).name), QStringLiteral("SR-JV80-05 World"));
+    QCOMPARE(loaded->board(1).waveGroupId.value(), 5);
+    QVERIFY(!loaded->board(3).name.empty());
+    QVERIFY2(!loaded->board(3).waveGroupId.has_value(), "an unknown group stays unknown");
+    QVERIFY(loaded->anyGroupUnknown());
+    QVERIFY(loaded->board(2).name.empty());
+
+    // Saving replaces the configuration rather than accumulating one.
+    ExpansionProfile fewer;
+    QVERIFY(fewer.setBoard(4, "Only this", 7));
+    QVERIFY(db.saveExpansionProfile(fewer));
+    const auto again = db.loadExpansionProfile();
+    QVERIFY(again.has_value());
+    QCOMPARE(again->installedCount(), 1);
+    QCOMPARE(again->slotProviding(7).value(), 4);
+}
+
+// The honest alternative to a lookup table this project cannot write: read the
+// group out of a Patch the musician made on their own instrument.
+void TestExpansionCompatibility::learnsAWaveGroupFromThePatchOnScreen()
+{
+    services::PatchWorkspace workspace;
+    presentation::ExpansionViewModel manager;
+    manager.setWorkspace(&workspace);
+
+    QVERIFY(manager.setBoard(2, QStringLiteral("The one with the sitar on it"), -1));
+    QVERIFY(manager.anyGroupUnknown());
+    // Nothing to learn from before a Patch is on screen, and it says why.
+    QVERIFY(!manager.learnFromCurrentPatch(2));
+    QVERIFY(manager.learnAdvice(2).contains(QStringLiteral("Fetch a Patch")));
+
+    // The musician selected a wave from that board and fetched the Patch. Only
+    // group 14 is unaccounted for in it.
+    workspace.adopt(patchUsingGroup(14), services::PatchOrigin::temporary());
+    QCOMPARE(manager.learnableGroups().size(), 1);
+    QVERIFY(manager.learnAdvice(2).contains(QStringLiteral("wave group 14")));
+
+    QVERIFY(manager.learnFromCurrentPatch(2));
+    QCOMPARE(manager.profile().slotProviding(14).value(), 2);
+    QVERIFY(!manager.anyGroupUnknown());
+
+    // And the Patch that taught it now reports as playable rather than unknown.
+    const auto view = manager.currentPatch();
+    QVERIFY(view.value(QStringLiteral("usesExpansion")).toBool());
+    QVERIFY(!view.value(QStringLiteral("undecided")).toBool());
+    QVERIFY(view.value(QStringLiteral("playable")).toBool());
+
+    // A slot with no board in it cannot learn anything.
+    QVERIFY(!manager.learnFromCurrentPatch(4));
+    QVERIFY(manager.learnAdvice(4).contains(QStringLiteral("Name the board")));
+}
+
+// Picking the first of several candidates would make every later verdict rest
+// on a coin toss, so an ambiguous Patch teaches nothing.
+void TestExpansionCompatibility::refusesToLearnFromAnAmbiguousPatch()
+{
+    services::PatchWorkspace workspace;
+    presentation::ExpansionViewModel manager;
+    manager.setWorkspace(&workspace);
+    QVERIFY(manager.setBoard(1, QStringLiteral("Unidentified"), -1));
+
+    // Find a fixture Patch whose Tones span two different expansion groups.
+    const Xp60Patch* ambiguous = nullptr;
+    for (const auto& patch : m_patches) {
+        std::set<int> groups;
+        for (const auto tone : ToneIndex::all()) {
+            const auto wave = patch.wave(tone);
+            if (const auto expansion = xpmodel::expansionWave(wave.groupTypeRaw, wave.groupId, wave.numberRaw)) {
+                groups.insert(expansion->groupIdRaw);
+            }
+        }
+        if (groups.size() > 1) {
+            ambiguous = &patch;
+            break;
+        }
+    }
+    if (!ambiguous) {
+        QSKIP("no fixture Patch spans two expansion groups");
+    }
+
+    workspace.adopt(*ambiguous, services::PatchOrigin::temporary());
+    QVERIFY(manager.learnableGroups().size() > 1);
+    QVERIFY2(!manager.learnFromCurrentPatch(1), "two candidates means nothing unambiguous to learn");
+    QVERIFY(!manager.profile().board(1).waveGroupId.has_value());
+    QVERIFY(manager.learnAdvice(1).contains(QStringLiteral("cannot tell which one")));
 }
 
 QTEST_MAIN(TestExpansionCompatibility)

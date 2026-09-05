@@ -17,6 +17,7 @@
 #include "services/LibraryExportService.h"
 #include "services/LibraryImportService.h"
 #include "presentation/DevicesViewModel.h"
+#include "presentation/ExpansionViewModel.h"
 #include "presentation/PatchEditorViewModel.h"
 #include "services/PatchWorkspace.h"
 #include "services/UserBankRead.h"
@@ -189,6 +190,13 @@ int main(int argc, char* argv[])
     bankBuilder.setUserMemoryWrite(&userMemoryWrite);
     bankBuilder.setUserBankRead(&userBankRead);
 
+    // Which SR-JV80 boards this XP-60 has, and what that means for the Patch on
+    // screen. The profile is the musician's own knowledge: which board answers
+    // to which wave group is not documented, so nothing here is inferred.
+    xp60studio::presentation::ExpansionViewModel expansion;
+    expansion.setDatabase(&libraryDatabase);
+    expansion.setWorkspace(&workspace);
+
     xp60studio::services::LibraryImportService libraryImport(libraryDatabase);
     xp60studio::services::LibraryExportService libraryExport(libraryDatabase);
     xp60studio::presentation::LibraryTransferViewModel libraryTransfer(libraryImport, libraryExport);
@@ -243,6 +251,7 @@ int main(int argc, char* argv[])
         {QStringLiteral("library"), QVariant::fromValue(&libraryModel)},
         {QStringLiteral("libraryTransfer"), QVariant::fromValue(&libraryTransfer)},
         {QStringLiteral("bankBuilder"), QVariant::fromValue(&bankBuilder)},
+        {QStringLiteral("expansion"), QVariant::fromValue(&expansion)},
         {QStringLiteral("bankLibrary"), QVariant::fromValue(&bankSourceModel)},
         {QStringLiteral("dashboard"), QVariant::fromValue(&dashboard)},
     });

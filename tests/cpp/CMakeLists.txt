@@ -159,7 +159,7 @@ target_compile_definitions(tst_user_memory_write
 
 xp60studio_add_test(tst_expansion_compatibility
   SOURCES tst_expansion_compatibility.cpp
-  LIBS xp60studio::library)
+  LIBS xp60studio::library xp60studio::presentation xp60studio::services)
 target_compile_definitions(tst_expansion_compatibility
   PRIVATE XP60STUDIO_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/xp60")
 

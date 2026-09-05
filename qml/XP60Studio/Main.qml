@@ -14,6 +14,7 @@ QQC.ApplicationWindow {
     required property LibraryListModel library
     required property LibraryTransferViewModel libraryTransfer
     required property BankBuilderViewModel bankBuilder
+    required property ExpansionViewModel expansion
     required property LibraryListModel bankLibrary
     required property DashboardViewModel dashboard
 
@@ -95,12 +96,20 @@ QQC.ApplicationWindow {
                     onEditRequested: window.shell.navigate("editor")
                 }
 
+                ExpansionScreen {
+                    objectName: "expansionScreen"
+                    anchors.fill: parent
+                    visible: window.shell.currentScreen === "expansion"
+                    expansion: window.expansion
+                }
+
                 UnavailableScreen {
                     anchors.fill: parent
                     visible: window.shell.currentScreen !== "devices" && window.shell.currentScreen !== "editor"
                              && window.shell.currentScreen !== "library"
                              && window.shell.currentScreen !== "banks"
                              && window.shell.currentScreen !== "dashboard"
+                             && window.shell.currentScreen !== "expansion"
                     screenTitle: window.shell.currentScreenTitle
                     availability: "a later phase"
                 }

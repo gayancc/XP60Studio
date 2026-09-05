@@ -379,11 +379,12 @@ private slots:
         Fixture f;
         QCOMPARE(f.shell->currentScreen(), QStringLiteral("devices"));
         QCOMPARE(f.shell->currentScreenTitle(), QStringLiteral("Devices"));
-        QCOMPARE(f.shell->navigationItems().size(), 8);
+        QCOMPARE(f.shell->navigationItems().size(), 9);
         QVERIFY(f.shell->isScreenAvailable(QStringLiteral("devices")));
         QVERIFY(f.shell->isScreenAvailable(QStringLiteral("editor")));  // built in Phase 4
         QVERIFY(f.shell->isScreenAvailable(QStringLiteral("library"))); // built in Phase 5
         QVERIFY(f.shell->isScreenAvailable(QStringLiteral("banks")));   // Bank Builder
+        QVERIFY(f.shell->isScreenAvailable(QStringLiteral("expansion"))); // Expansion Manager
         // Still unbuilt, and therefore still not navigable.
         QVERIFY(!f.shell->isScreenAvailable(QStringLiteral("performance")));
         QSignalSpy spy(f.shell.get(), &AppShellViewModel::currentScreenChanged);
@@ -408,7 +409,7 @@ private slots:
                 ++enabled;
             }
         }
-        QCOMPARE(enabled, 5); // Dashboard, Library, Editor, Banks and Devices
+        QCOMPARE(enabled, 6); // Dashboard, Library, Editor, Banks, Expansion and Devices
     }
 
     void patchFetchFlowsIntoTheViewModel()

@@ -79,6 +79,7 @@ set(XP60STUDIO_QML_FILES
   Screens/WaveBrowserScreen.qml
   Screens/LibraryScreen.qml
   Screens/BankBuilderScreen.qml
+  Screens/ExpansionScreen.qml
   Screens/UnavailableScreen.qml
 )
 

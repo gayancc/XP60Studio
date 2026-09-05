@@ -22,6 +22,8 @@ add_library(xp60studio_presentation STATIC
   LibraryTransferViewModel.cpp
   BankBuilderViewModel.h
   BankBuilderViewModel.cpp
+  ExpansionViewModel.h
+  ExpansionViewModel.cpp
   Xp60WaveCatalog.generated.h
   PatchEditorViewModel.h
   PatchEditorViewModel.cpp
