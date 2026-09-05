@@ -543,3 +543,28 @@ instrument, and the same figure would be wrong over Bluetooth — which matters
 here, since the WIDI Master path is still intended. Serialising is correct on
 any link and needs no tuning. With it, the round trip verifies 6 / 6 at the
 20 ms default.
+
+### Whole-bank parameter verification — 2026-09-04
+
+`xp60studio_hardware_probe --verify-bank` applied both structural checks to
+every permanent User Patch (read-only):
+
+```text
+Patches read:            128 of 128
+Patches failing to read: 0
+Parameters checked:      74752
+Outside documented range:0
+Byte-exact re-encode:    128 of 128
+No problems.
+```
+
+640 blocks and 74752 parameters of real instrument data. Every documented
+parameter decodes inside its documented range, and re-encoding every Patch
+reproduces the bytes the XP-60 sent, byte for byte.
+
+This is the strongest structural evidence obtainable without the front panel,
+and it is the precondition the librarian and the write path both rest on: a
+codec that could not reproduce an arbitrary Patch from the instrument has no
+business exporting or writing one. It remains structural — it says nothing
+about whether a parameter *means* what its table says, which only the panel
+comparisons of area 4 and area 8 can establish.

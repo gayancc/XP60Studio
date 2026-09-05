@@ -16,6 +16,7 @@
 #include <iostream>
 #include <memory>
 #include <algorithm>
+#include <array>
 #include <map>
 #include <mutex>
 #include <optional>
@@ -74,6 +75,7 @@ struct Options
     int watchIntervalMs = 0;   // >0 enables watch mode
     int watchSeconds = 0;      // 0 = until interrupted
     bool surveyWaves = false;
+    bool verifyBank = false;
 };
 
 void usage()
@@ -93,6 +95,7 @@ void usage()
               << "  --verify            verify every parameter and round-trip the bytes (implies --patch)\n"
               << "  --list-parameters   with --verify, print every parameter, not only the failures\n"
               << "  --watch [ms]        poll the Patch and name every parameter that changes (default 700)\n"
+              << "  --verify-bank       verify every parameter of all 128 User Patches\n"
               << "  --survey-waves      tabulate wave references across all 128 User Patches\n"
               << "  --list-presets      print the available safe read presets and exit\n"
               << "\nOnly RQ1 (read) messages are ever transmitted.\n";
@@ -422,6 +425,131 @@ int runProbe(const Options& options)
         return state->replies;
     };
 
+    // Whole-bank parameter verification.
+    //
+    // The same two checks --verify applies to one Patch, applied to all 128
+    // permanent User Patches: every documented parameter in range, and a
+    // byte-exact re-encode of what the instrument sent. 128 Patches is 640
+    // blocks and 74752 parameters of real instrument data rather than fixtures,
+    // which is the strongest structural evidence available without the panel.
+    if (options.verifyBank) {
+        std::cout << "Verifying every parameter of USER:001..128 (read-only)\n\n";
+        std::size_t patchesRead = 0;
+        std::size_t patchesFailed = 0;
+        std::size_t patchesByteExact = 0;
+        std::size_t totalParameters = 0;
+        std::size_t totalOutOfRange = 0;
+        std::vector<std::string> problems;
+
+        const auto userBase = roland::RolandAddress(0x11, 0x00, 0x00, 0x00);
+        for (int patchNumber = 0; patchNumber < 128; ++patchNumber) {
+            const auto base = userBase.plus(
+                static_cast<std::uint64_t>(patchNumber) * xpmodel::Xp60PatchLayout::kUserPatchStride);
+            if (!base)
+                break;
+            const auto patchRequest =
+                roland::RolandSysExMessage::dataRequest(*deviceId, xp60::modelId(), *base, size);
+            const auto patchRequestBytes = patchRequest.encode();
+            {
+                std::lock_guard<std::mutex> lock(state->mutex);
+                state->replies.clear();
+                state->requestSentAt = Clock::now();
+            }
+            if (transport.sendSysEx(midi::MidiByteSpan(patchRequestBytes.data(), patchRequestBytes.size())).failed()) {
+                ++patchesFailed;
+                problems.push_back("USER:" + std::to_string(patchNumber + 1) + " send failed");
+                continue;
+            }
+            std::vector<Reply> collected;
+            {
+                std::unique_lock<std::mutex> lock(state->mutex);
+                if (state->arrived.wait_for(lock, options.firstTimeout, [&] { return !state->replies.empty(); })) {
+                    while (true) {
+                        const auto seen = state->replies.size();
+                        if (!state->arrived.wait_for(
+                                lock, options.quietTimeout, [&] { return state->replies.size() > seen; }))
+                            break;
+                    }
+                }
+                collected = state->replies;
+            }
+
+            xpmodel::MemoryImage image;
+            for (const auto& reply : collected) {
+                const auto decoded = roland::decodeRolandSysEx(
+                    roland::ByteSpan(reply.bytes.data(), reply.bytes.size()), xp60::modelId());
+                if (decoded.ok())
+                    image.addDataSet(*decoded.message);
+            }
+            const auto result = xpmodel::Xp60PatchCodec::decode(image, *base);
+            if (!result.ok()) {
+                ++patchesFailed;
+                problems.push_back("USER:" + std::to_string(patchNumber + 1) + " did not decode: " + result.describe());
+                continue;
+            }
+            ++patchesRead;
+            const auto& patch = *result.patch;
+
+            // Range check across all five blocks.
+            const std::array<const xpmodel::BlockValues*, 5> blocks{{&patch.common(),
+                &patch.tone(xpmodel::ToneIndex::tone1()), &patch.tone(xpmodel::ToneIndex::tone2()),
+                &patch.tone(xpmodel::ToneIndex::tone3()), &patch.tone(xpmodel::ToneIndex::tone4())}};
+            for (const auto* block : blocks) {
+                const auto parameters = block->table().parameters();
+                for (std::size_t i = 0; i < parameters.size(); ++i) {
+                    ++totalParameters;
+                    if (!parameters[i].isRawInRange(block->rawAt(i))) {
+                        ++totalOutOfRange;
+                        problems.push_back("USER:" + std::to_string(patchNumber + 1) + " "
+                            + std::string(block->table().blockName()) + " " + std::string(parameters[i].id) + " raw "
+                            + std::to_string(block->rawAt(i)) + " outside "
+                            + std::to_string(parameters[i].rawMin) + ".." + std::to_string(parameters[i].rawMax));
+                    }
+                }
+            }
+
+            // Byte-exact re-encode against what the instrument sent.
+            const auto reencoded = xpmodel::Xp60PatchCodec::blockBytes(patch);
+            const std::array<std::uint32_t, 5> offsets{0,
+                xpmodel::Xp60PatchLayout::toneOffset(xpmodel::ToneIndex::tone1()),
+                xpmodel::Xp60PatchLayout::toneOffset(xpmodel::ToneIndex::tone2()),
+                xpmodel::Xp60PatchLayout::toneOffset(xpmodel::ToneIndex::tone3()),
+                xpmodel::Xp60PatchLayout::toneOffset(xpmodel::ToneIndex::tone4())};
+            bool exact = true;
+            for (std::size_t b = 0; b < reencoded.size(); ++b) {
+                const auto blockAddress = base->plus(offsets[b]);
+                if (!blockAddress)
+                    continue;
+                const auto sent = image.read(*blockAddress, static_cast<std::uint32_t>(reencoded[b].size()));
+                if (!sent || *sent != reencoded[b]) {
+                    exact = false;
+                    problems.push_back("USER:" + std::to_string(patchNumber + 1) + " block " + std::to_string(b)
+                        + " re-encode differs from what the device sent");
+                }
+            }
+            if (exact)
+                ++patchesByteExact;
+
+            if ((patchNumber + 1) % 32 == 0)
+                std::cout << "  ... " << (patchNumber + 1) << " of 128\n" << std::flush;
+        }
+
+        std::cout << "\nPatches read:            " << patchesRead << " of 128\n";
+        std::cout << "Patches failing to read: " << patchesFailed << "\n";
+        std::cout << "Parameters checked:      " << totalParameters << "\n";
+        std::cout << "Outside documented range:" << totalOutOfRange << "\n";
+        std::cout << "Byte-exact re-encode:    " << patchesByteExact << " of " << patchesRead << "\n";
+        if (problems.empty()) {
+            std::cout << "\nNo problems.\n";
+        } else {
+            std::cout << "\nProblems (" << problems.size() << "):\n";
+            for (std::size_t i = 0; i < problems.size() && i < 60; ++i)
+                std::cout << "  " << problems[i] << "\n";
+        }
+        transport.closeAll();
+        return problems.empty() ? 0 : 1;
+    }
+
     // Wave reference survey across the permanent User Patch bank.
     //
     // Evidence for DEVICE_ACCEPTANCE.md area 9 that needs no front panel. Every
@@ -708,6 +836,9 @@ int main(int argc, char** argv)
             options.firstTimeout = std::chrono::milliseconds(std::stoi(next("--timeout")));
         } else if (arg == "--quiet") {
             options.quietTimeout = std::chrono::milliseconds(std::stoi(next("--quiet")));
+        } else if (arg == "--verify-bank") {
+            options.decodePatch = true;
+            options.verifyBank = true;
         } else if (arg == "--survey-waves") {
             options.decodePatch = true;
             options.surveyWaves = true;
