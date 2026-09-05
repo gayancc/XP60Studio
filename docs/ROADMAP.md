@@ -263,8 +263,11 @@ read-back, and Put back what was there as the undo). See
 Duplicate warnings and the mini comparison inspector are in too — both built on
 `library::PatchFingerprint` and `xpmodel::Xp60PatchDiff`, which already existed.
 
-Still open in this phase: multi-select, the user-defined section rail, mismatch
-retry, and the screenshot review against the master mockup.
+Multi-select is in: a marked set kept separate from the panel's own selection,
+with `Space`/`Delete`/`Escape` and a bulk clear that is one undo step.
+
+Still open in this phase: the user-defined section rail, mismatch retry, and the
+screenshot review against the master mockup.
 
 Goal: make the 128-slot User Patch bank easy and safe to engineer.
 

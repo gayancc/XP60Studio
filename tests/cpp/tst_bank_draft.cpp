@@ -53,7 +53,35 @@ private slots:
     void aMissingPatchStillOccupiesItsDestination();
     void fillingManyDestinationsIsOneUndoStep();
     void refusesAFillThatIsNotWhollyLegal();
+    void clearingSeveralDestinationsIsOneUndoStep();
 };
+
+// A multi-selection cleared destination by destination would take as many undo
+// presses to put back, which is not what the user did.
+void TestBankDraft::clearingSeveralDestinationsIsOneUndoStep()
+{
+    BankDraft draft;
+    for (int slotIndex = 0; slotIndex < 6; ++slotIndex) {
+        draft.assign(slotIndex, patch(100 + slotIndex, "Filled"));
+    }
+    QCOMPARE(draft.occupiedCount(), 6);
+
+    // An index that is out of range or already empty is ignored rather than
+    // refusing the whole operation: a selection may legitimately include one.
+    QVERIFY(draft.clearSlots({1, 2, 3, 200, 60}, "Clear 3 destinations"));
+    QCOMPARE(draft.occupiedCount(), 3);
+    QCOMPARE(draft.undoLabel(), std::string{"Clear 3 destinations"});
+
+    QVERIFY(draft.undo());
+    QCOMPARE(draft.occupiedCount(), 6);
+    QCOMPARE(draft.slot(2).patchId, std::int64_t{102});
+
+    // Clearing a set that is entirely empty changes nothing and costs no step.
+    const auto label = draft.undoLabel();
+    QVERIFY(!draft.clearSlots({70, 71}, "Clear nothing"));
+    QCOMPARE(draft.undoLabel(), label);
+    QVERIFY(!draft.clearSlots({}, "Clear nothing"));
+}
 
 // Filling a bank from a source touches dozens of destinations. Undoing it has
 // to put the whole arrangement back, not remove one placement at a time.

@@ -82,6 +82,7 @@ private slots:
     void refusesToFillFromASourceThatIsNotThere();
 
     void reportsDuplicateSoundsWithoutActingOnThem();
+    void marksSeveralDestinationsAndClearsThemAsOneStep();
     void comparesTwoDestinationsAgainstEachOther();
     void exportsEachPatchToTheDestinationItOccupies();
     void refusesToExportAnEmptyBank();
@@ -323,6 +324,55 @@ void TestBankBuilder::reportsDuplicateSoundsWithoutActingOnThem()
     // Clearing one end resolves the pair.
     QVERIFY(builder.clearSlot(slotOf("A14")));
     QCOMPARE(builder.duplicateCount(), 2);
+}
+
+// A marked set, kept deliberately separate from the panel's own selection: the
+// panel always names exactly one destination, as the instrument does.
+void TestBankBuilder::marksSeveralDestinationsAndClearsThemAsOneStep()
+{
+    QVERIFY(!importFixture().isEmpty());
+    BankBuilderViewModel builder;
+    builder.setDatabase(&m_db);
+
+    // Fill a run, then mark part of it.
+    const auto records = m_db.search({});
+    QVERIFY(records.size() >= 6);
+    for (int i = 0; i < 6; ++i) {
+        QVERIFY(builder.placePatch(i, records[static_cast<std::size_t>(i)].id));
+    }
+    QCOMPARE(builder.occupiedCount(), 6);
+
+    builder.selectSlot(1);
+    builder.selectRangeTo(3);
+    QCOMPARE(builder.selectionCount(), 3);
+    QVERIFY(builder.isSelected(1));
+    QVERIFY(builder.isSelected(3));
+    QVERIFY(!builder.isSelected(4));
+    // Marking does not move the panel: it still names what it named.
+    QCOMPARE(builder.currentSlotIndex(), 1);
+    QVERIFY(builder.destinationAt(2).value(QStringLiteral("selected")).toBool());
+
+    builder.toggleSelected(2);
+    QCOMPARE(builder.selectionCount(), 2);
+    builder.toggleSelected(2);
+    QCOMPARE(builder.selectionCount(), 3);
+
+    // Clearing the marked set is one undo step, and unmarks them.
+    QVERIFY(builder.clearSelectedSlots());
+    QCOMPARE(builder.occupiedCount(), 3);
+    QCOMPARE(builder.selectionCount(), 0);
+    QVERIFY(builder.undo());
+    QCOMPARE(builder.occupiedCount(), 6);
+
+    // The Patches are untouched in the library: only the arrangement changed.
+    QCOMPARE(static_cast<int>(m_db.search({}).size()), static_cast<int>(records.size()));
+
+    builder.selectAllOccupied();
+    QCOMPARE(builder.selectionCount(), 6);
+    builder.clearSelection();
+    QCOMPARE(builder.selectionCount(), 0);
+    // Clearing nothing is not an edit.
+    QVERIFY(!builder.clearSelectedSlots());
 }
 
 // The question the duplicate marks make people ask: are these two really the

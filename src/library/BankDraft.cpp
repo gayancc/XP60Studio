@@ -160,6 +160,27 @@ bool BankDraft::assignAll(const std::vector<std::pair<int, BankSlotContent>>& pl
     return true;
 }
 
+bool BankDraft::clearSlots(const std::vector<int>& slotIndices, std::string label)
+{
+    const bool anything = std::any_of(slotIndices.begin(), slotIndices.end(), [this](int slotIndex) {
+        return xpmodel::Xp60BankLocation::isValidSlotIndex(slotIndex)
+            && !m_slots[static_cast<std::size_t>(slotIndex)].empty();
+    });
+    if (!anything) {
+        return false;
+    }
+    pushUndo(label);
+    for (const int slotIndex : slotIndices) {
+        if (xpmodel::Xp60BankLocation::isValidSlotIndex(slotIndex)) {
+            m_slots[static_cast<std::size_t>(slotIndex)] = BankSlotContent{};
+        }
+    }
+    m_modified = true;
+    m_lastActionLabel = std::move(label);
+    recount();
+    return true;
+}
+
 bool BankDraft::clearAll()
 {
     if (m_occupied == 0) {

@@ -242,6 +242,7 @@ QVariantMap BankBuilderViewModel::destinationMap(int slotIndex) const
                ? tr("The same Patch is also at %1").arg(panelLabelFor(duplicateOf))
                : tr("The same sound, under another name, is also at %1").arg(panelLabelFor(duplicateOf))));
     map.insert(QStringLiteral("current"), slotIndex == currentSlotIndex());
+    map.insert(QStringLiteral("selected"), m_selection.count(slotIndex) > 0);
     return map;
 }
 
@@ -756,6 +757,94 @@ void BankBuilderViewModel::adoptFetchedBank()
     emit libraryChanged();
     emit bankFetchChanged();
     announceBankChange();
+}
+
+// ---------------------------------------------------------------------------
+// Multi-selection
+// ---------------------------------------------------------------------------
+
+QVariantList BankBuilderViewModel::selectedSlots() const
+{
+    QVariantList list;
+    for (const int slotIndex : m_selection) {
+        list.append(slotIndex);
+    }
+    return list;
+}
+
+bool BankBuilderViewModel::isSelected(int slotIndex) const
+{
+    return m_selection.count(slotIndex) > 0;
+}
+
+void BankBuilderViewModel::toggleSelected(int slotIndex)
+{
+    if (!Xp60BankLocation::isValidSlotIndex(slotIndex)) {
+        return;
+    }
+    if (!m_selection.insert(slotIndex).second) {
+        m_selection.erase(slotIndex);
+    }
+    emit selectionSetChanged();
+    emit bankChanged();
+}
+
+void BankBuilderViewModel::selectRangeTo(int slotIndex)
+{
+    if (!Xp60BankLocation::isValidSlotIndex(slotIndex)) {
+        return;
+    }
+    // Linear order, not panel order: a range that crosses a BANK boundary is
+    // still a run of consecutive User numbers, which is what the instrument
+    // and the exported file both see.
+    const int from = std::min(currentSlotIndex(), slotIndex);
+    const int to = std::max(currentSlotIndex(), slotIndex);
+    for (int index = from; index <= to; ++index) {
+        m_selection.insert(index);
+    }
+    emit selectionSetChanged();
+    emit bankChanged();
+}
+
+void BankBuilderViewModel::selectAllOccupied()
+{
+    const auto& arrangement = m_draft.destinations();
+    for (std::size_t index = 0; index < arrangement.size(); ++index) {
+        if (!arrangement[index].empty()) {
+            m_selection.insert(static_cast<int>(index));
+        }
+    }
+    emit selectionSetChanged();
+    emit bankChanged();
+}
+
+void BankBuilderViewModel::clearSelection()
+{
+    if (m_selection.empty()) {
+        return;
+    }
+    m_selection.clear();
+    emit selectionSetChanged();
+    emit bankChanged();
+}
+
+bool BankBuilderViewModel::clearSelectedSlots()
+{
+    if (m_selection.empty()) {
+        return false;
+    }
+    const std::vector<int> indices(m_selection.begin(), m_selection.end());
+    const QString label = tr("Clear %n destination(s)", "", static_cast<int>(indices.size()));
+    if (!m_draft.clearSlots(indices, label.toStdString())) {
+        // Every marked destination was already empty.
+        clearSelection();
+        return false;
+    }
+    m_selection.clear();
+    emit selectionSetChanged();
+    reportAction(toQt(m_draft.lastActionLabel()), QStringLiteral("warning"));
+    announceBankChange();
+    return true;
 }
 
 // ---------------------------------------------------------------------------

@@ -95,6 +95,12 @@ public:
     // or when nothing would change.
     bool assignAll(const std::vector<std::pair<int, BankSlotContent>>& placements, std::string label);
     bool clear(int slotIndex);
+    // Empties several destinations as **one** undo step, for a multi-selection.
+    // Indices that are out of range or already empty are ignored rather than
+    // refusing the whole operation: clearing a selection that happens to
+    // include an empty destination is a perfectly sensible thing to ask for.
+    // Returns false and changes nothing when nothing would be emptied.
+    bool clearSlots(const std::vector<int>& slotIndices, std::string label);
     // Moves within the bank: a swap when both are occupied, a move when the
     // destination is empty. Refused when `from` is empty, because there would
     // be nothing to move.

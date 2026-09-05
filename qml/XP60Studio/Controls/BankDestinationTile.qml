@@ -41,6 +41,10 @@ Item {
     // error: filling several destinations from one Patch is a legitimate thing
     // to do, so this is a quiet mark rather than a warning colour.
     readonly property bool duplicate: destination.duplicate === true
+    // Marked for a bulk action. Distinct from `current`, which is the one
+    // destination the panel names — a musician can mark several while the panel
+    // still points at one, exactly as the instrument works.
+    readonly property bool selected: destination.selected === true
 
     implicitHeight: 84
     opacity: dragging ? 0.35 : 1
@@ -138,6 +142,20 @@ Item {
                 font.weight: Typography.weightBold
                 color: root.current ? Theme.accentText
                                     : (root.occupied ? Theme.textSecondary : Theme.textDisabled)
+            }
+
+            // Marked for a bulk action: a dashed-looking inset edge, quiet
+            // enough not to compete with the lit current destination.
+            Rectangle {
+                objectName: "selectionEdge"
+                anchors.fill: parent
+                anchors.margins: 2
+                visible: root.selected
+                color: "transparent"
+                radius: Metrics.radiusSm
+                border.width: 1
+                border.color: Theme.accentText
+                opacity: 0.7
             }
 
             // Occupancy LED, mirroring the NUMBER button's.

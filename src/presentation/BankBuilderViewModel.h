@@ -4,6 +4,7 @@
 #include "library/PatchFingerprint.h"
 
 #include <map>
+#include <set>
 #include "library/LibraryDatabase.h"
 #include "services/PatchTransfer.h"
 #include "services/PatchWorkspace.h"
@@ -141,6 +142,13 @@ class BankBuilderViewModel : public QObject
     Q_PROPERTY(int bankFetchCompleted READ bankFetchCompleted NOTIFY bankFetchChanged)
     Q_PROPERTY(int bankFetchTotal READ bankFetchTotal NOTIFY bankFetchChanged)
 
+    // Multi-selection ---------------------------------------------------------
+    // A marked set, deliberately separate from the panel's own selection: the
+    // panel always names exactly one destination, as the instrument does, and
+    // marking several for a bulk action must not fight with that.
+    Q_PROPERTY(int selectionCount READ selectionCount NOTIFY selectionSetChanged)
+    Q_PROPERTY(QVariantList selectedSlots READ selectedSlots NOTIFY selectionSetChanged)
+
     // Comparing two destinations ---------------------------------------------
     // A bank is where "are these two really the same sound?" gets asked, and
     // the duplicate marks make people ask it. Pinning one destination and
@@ -218,6 +226,20 @@ public:
     Q_INVOKABLE bool pinForComparison(int slotIndex);
     Q_INVOKABLE bool pinCurrentForComparison();
     Q_INVOKABLE void clearComparison();
+
+    // Multi-selection --------------------------------------------------------
+    [[nodiscard]] int selectionCount() const noexcept { return static_cast<int>(m_selection.size()); }
+    [[nodiscard]] QVariantList selectedSlots() const;
+    [[nodiscard]] Q_INVOKABLE bool isSelected(int slotIndex) const;
+    Q_INVOKABLE void toggleSelected(int slotIndex);
+    // Marks every destination between the panel's current one and `slotIndex`,
+    // inclusive, in linear order. This is what shift-clicking means.
+    Q_INVOKABLE void selectRangeTo(int slotIndex);
+    Q_INVOKABLE void selectAllOccupied();
+    Q_INVOKABLE void clearSelection();
+    // Empties every marked destination as one undo step, then unmarks them.
+    // The Patches stay in the library; only the arrangement changes.
+    Q_INVOKABLE bool clearSelectedSlots();
 
     // Opens the Patch at `slotIndex` in the Editor by adopting it into the
     // shared workspace. False when the destination is empty or its Patch is no
@@ -366,6 +388,7 @@ Q_SIGNALS:
     void userWriteChanged();
     void bankFetchChanged();
     void comparisonChanged();
+    void selectionSetChanged();
     // A device read added Patches, so any library model showing this database
     // needs to re-read.
     void libraryChanged();
@@ -390,6 +413,8 @@ private:
     // destination the panel currently names, so comparing is done by walking
     // the panel rather than by picking from a list.
     int m_pinnedSlot = -1;
+    // Sorted, so a bulk action happens in the order a musician reads the bank.
+    std::set<int> m_selection;
     // Recorded on Patches read from the instrument, so provenance says which
     // device answered. Set alongside the reader.
     std::optional<roland::RolandDeviceId> m_deviceIdForProvenance;

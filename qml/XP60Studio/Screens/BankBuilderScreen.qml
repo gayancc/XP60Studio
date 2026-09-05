@@ -314,7 +314,19 @@ FocusScope {
         } else if (event.key === Qt.Key_B) {
             root.builder.selectSubgroup(1)
         } else if (event.key === Qt.Key_Delete || event.key === Qt.Key_Backspace) {
-            root.builder.clearSlot(root.builder.currentSlotIndex)
+            // Delete acts on the marked set when there is one, and on the
+            // destination the panel names when there is not — so the key means
+            // "remove what I have chosen" either way.
+            if (root.builder.selectionCount > 0)
+                root.builder.clearSelectedSlots()
+            else
+                root.builder.clearSlot(root.builder.currentSlotIndex)
+        } else if (event.key === Qt.Key_Space) {
+            // Space marks and unmarks the destination the panel names, which
+            // makes the whole multi-selection reachable from the keyboard.
+            root.builder.toggleSelected(root.builder.currentSlotIndex)
+        } else if (event.key === Qt.Key_Escape) {
+            root.builder.clearSelection()
         } else if (event.key >= Qt.Key_1 && event.key <= Qt.Key_8) {
             root.builder.selectNumber(event.key - Qt.Key_0)
         } else {
@@ -560,6 +572,35 @@ FocusScope {
                     // Pin one destination, then walk the panel: the right side
                     // of a comparison is always whatever the panel names, so
                     // there is no second selection model to keep in step.
+                    // Bulk actions on the marked set. Only present while
+                    // something is marked, so the row stays quiet the rest of
+                    // the time.
+                    StatusPill {
+                        objectName: "bankSelectionCount"
+                        visible: root.builder.selectionCount > 0
+                        text: qsTr("%n selected", "", root.builder.selectionCount)
+                        tone: "info"
+                        showDot: false
+                    }
+                    XpButton {
+                        objectName: "bankClearSelected"
+                        text: qsTr("Clear selected")
+                        compact: true
+                        variant: "ghost"
+                        visible: root.builder.selectionCount > 0
+                        QQC.ToolTip.visible: hovered
+                        QQC.ToolTip.delay: 400
+                        QQC.ToolTip.text: qsTr("Empties every marked destination as one undo step. The Patches stay in the library.")
+                        onClicked: root.builder.clearSelectedSlots()
+                    }
+                    XpButton {
+                        objectName: "bankClearSelection"
+                        text: qsTr("Deselect")
+                        compact: true
+                        variant: "ghost"
+                        visible: root.builder.selectionCount > 0
+                        onClicked: root.builder.clearSelection()
+                    }
                     XpButton {
                         objectName: "bankCompare"
                         text: root.builder.comparing ? qsTr("Comparing") : qsTr("Compare")

@@ -329,6 +329,26 @@ write. Fingerprints are cached by library id, because a stored Patch's
 fingerprint does not change while it sits in the library, so a drag does not
 re-read the database 128 times.
 
+## Multi-selection
+
+A **marked set**, deliberately separate from the panel's own selection. The
+panel always names exactly one destination, as the instrument does; marking
+several for a bulk action must not fight with that, so a musician can mark a run
+while the panel still points where it pointed.
+
+| Gesture | Effect |
+|---|---|
+| `Space` | mark / unmark the destination the panel names |
+| `selectRangeTo` (shift-click) | mark everything between the panel's destination and the clicked one, in **linear** order — a range crossing a BANK boundary is still a run of consecutive User numbers, which is what the instrument and the exported file see |
+| `Delete` | empties the marked set when there is one, otherwise the panel's destination |
+| `Escape` | unmark everything |
+
+Clearing the marked set is **one undo step** (`BankDraft::clearSlots`), because
+one undo press is what the user expects to put back one action. Indices that are
+out of range or already empty are ignored rather than refusing the whole
+operation: a selection may legitimately include an empty destination. The
+Patches stay in the library; only the arrangement changes.
+
 ## Comparing two destinations
 
 The duplicate marks make people ask "are these two really the same sound?", so
