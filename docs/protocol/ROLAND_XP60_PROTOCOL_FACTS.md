@@ -69,12 +69,12 @@ than guessing the command position. An earlier draft of this project recorded
 
 | Fact | Value | Status | Notes |
 |---|---|---|---|
-| DT1 packet size | data longer than 128 bytes is split into packets of **128 bytes or less** | Documentation-derived, **contradicted by a real file** — see §2.1 | The tracker does **not** assume it — it accepts any chunking and completes on range coverage. |
-| Gap between successive DT1 messages | **at least 20 ms** | Documentation-derived | Applies when sending to the XP-60; also informs `betweenChunkTimeout`. |
+| DT1 packet size **sent by the XP-60** | whole blocks in one message, observed up to **129 bytes** | **Hardware-verified 2026-09-04** | Settled in §2.1. The 128-byte rule governs data sent *to* the instrument. |
+| Gap between successive DT1 messages | **at least 20 ms** (XP-60 itself sends ~37-70 ms apart) | Documentation-derived; device-side gap hardware-observed 2026-09-04 | Applies when sending to the XP-60; also informs `betweenChunkTimeout`. |
 | Sending DT1 to the device | ≤ 128 data bytes per message, ≥ 20 ms apart | Documentation-derived | `xp60::transferDefaults()`; configurable via `TransferPacing`. |
 | RQ1 address/size | should use the starting addresses and sizes given in the Parameter Address Map | Documentation-derived | Arbitrary oversized reads are not a strong validation method; the Devices presets use documented blocks. |
 
-### 2.1 Open discrepancy — 129-byte DT1 payloads observed
+### 2.1 Settled — the XP-60 sends 129-byte DT1 payloads
 
 The MIDI Implementation states that data longer than 128 bytes is split into
 packets of 128 bytes or less. The golden fixture
@@ -83,28 +83,46 @@ packets of 128 bytes or less. The golden fixture
 block (`00 00 01 01`) in a single message. Its Patch Common messages are 73
 bytes, below the limit.
 
-Not yet established which of these is true:
+**Settled on hardware, 2026-09-04.** A physical XP-60 answering an RQ1 for the
+temporary Patch (`03 00 00 00`) replied with five DT1 messages: 73 bytes of
+Patch Common, then **129 bytes for each of the four Tone blocks**, each in a
+single message. Interpretation 1 is correct: the 128-byte rule governs data
+sent **to** the XP-60; the instrument itself transmits whole blocks. The golden
+fixture `tests/fixtures/xp60/user-bank-amal.syx` is faithful to real device
+output. Raw capture in
+[`HARDWARE_VALIDATION_XP60.md`](../HARDWARE_VALIDATION_XP60.md) § Hardware log
+2026-09-04.
 
-1. the 128-byte rule governs data sent **to** the XP-60, while the instrument
-   itself transmits whole blocks;
-2. the rule has a different scope than "DT1 payload length";
-3. the software that produced the file ignored the rule and the XP-60 accepted
-   it anyway.
+**Engineering stance, unchanged.** Receiving assumes nothing about chunking.
+Sending keeps the conservative 128-byte split
+(`Xp60PatchCodec::encodeToDataSets`): splitting a 129-byte block into 128 + 1
+delivers identical bytes to identical addresses, so there is no reason to relax
+it on the strength of what the device *transmits*. What the XP-60 *accepts* is
+a separate question and is still untested.
 
-**Engineering stance until this is settled.** Receiving already assumes
-nothing: `RolandRequestTracker` accepts any chunking and completes on address
-coverage, and the fixture test asserts the 129-byte messages parse. Sending
-keeps the conservative 128-byte split (`Xp60PatchCodec::encodeToDataSets`),
-because splitting a 129-byte block into 128 + 1 delivers identical bytes to
-identical addresses and cannot violate the documented rule.
+### 2.2 RQ1 size is an address span, not a payload byte count
 
-To settle it, the hardware session must record the payload sizes the XP-60
-sends when answering an RQ1 for one Tone block (`00 00 01 01`). The Devices
-screen's protocol log shows `bytes=` on every IN line.
+Roland block addresses are **padded**: a Patch Tone block occupies 129 bytes but
+the next Tone begins 0x200 address units later; a Performance Part holds 25
+bytes with the next beginning 0x80 later. An RQ1 whose size spans several
+blocks is therefore answered with only the populated blocks inside that span,
+and the payload received is smaller than the size requested.
+
+Observed 2026-09-04 with Roland's own published example
+(`F0 41 10 6A 11 01 00 00 00 00 00 1F 19 47 F7`, nominally 3993): 17 DT1
+replies totalling **466 payload bytes**, covering `01 00 00 00` plus the 16
+Performance Parts at `01 00 10 00`..`01 00 1F 00`, ending exactly at the
+requested span's end. Nothing was clipped; the gaps simply hold no data.
+
+**Consequence for `RolandRequestTracker`.** It currently treats
+`request.size().value()` as a count of payload bytes and tracks a contiguous
+byte-coverage array, so a multi-block read never completes and each block after
+the first is flagged as out-of-order. Completion must be modelled in address
+space over padded blocks. Recorded in the hardware log; not yet fixed.
 | First-response timeout | 1500 ms (project default, not a Roland figure) | Project choice | Adjustable; tune after hardware measurements. |
-| Response ordering | chunks in ascending address order | Unknown | Tracker records out-of-order arrivals as notes instead of failing. |
-| Whether the XP-60 answers an RQ1 spanning several regions | Unknown | Unknown | Keep diagnostic reads inside one region. |
-| Whether an RQ1 with size larger than the region is clipped or ignored | Unknown | Unknown | |
+| Response ordering | chunks in ascending address order | **Hardware-verified 2026-09-04** | Observed across 17 consecutive Performance replies. |
+| Whether the XP-60 answers an RQ1 spanning several regions | yes, returning only the populated blocks in the span | **Hardware-verified 2026-09-04** | See §2.2: the reply is sparse, so payload bytes < size requested. |
+| Whether an RQ1 with size larger than the region is clipped or ignored | answered, covering the span exactly, without padding the gaps | **Hardware-verified 2026-09-04** | Roland's own 3993 example returns 466 payload bytes. |
 | Device behaviour on a wrong device ID | Message ignored | Documentation-derived (Roland-wide) | Diagnostics will show a timeout. |
 
 ## 3. Address map (base addresses only)
