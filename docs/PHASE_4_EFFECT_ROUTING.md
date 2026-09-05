@@ -67,7 +67,8 @@ inspected table establishes a per-algorithm slot assignment or raw-to-display
 conversion. The display-table order alone is insufficient evidence to wire an
 editable semantic control. Raw parameters therefore remain explicitly raw.
 
-To resolve this in the deferred manual verification task:
+To resolve this in the deferred manual verification task (area 8 of
+[`DEVICE_ACCEPTANCE.md`](DEVICE_ACCEPTANCE.md)):
 
 1. Preserve a full before Patch capture and identify firmware, device ID,
    algorithm number/name and the front-panel parameter name.
@@ -101,3 +102,62 @@ Evidence row template:
 The header/glyph refinement is documented in `PHASE_4_REVALIDATION.md`.
 Hardware acceptance and EFX semantic mappings keep M2 open.
 M3 remains ordered after M2 acceptance.
+
+## Hardware observations 2026-09-04 — EFX algorithm switching
+
+Captured with `xp60studio_hardware_probe --watch` while the EFX algorithm was
+changed from the XP-60's front panel. Read-only; every value is what the
+instrument reported after a panel edit.
+
+### Changing the algorithm rewrites the EFX parameter bytes
+
+Step 5 of the procedure above asks whether changing the algorithm resets any
+parameter bytes. **It does**, observed on three consecutive changes:
+
+| EFX Type raw | Algorithm (our table) | Parameter bytes that changed |
+|---|---|---|
+| 0 → 4 | STEREO-EQ → SPECTRUM | 1, 3, 5, 6, 8, 9, 10 |
+| 4 → 5 | SPECTRUM → ENHANCER | 1, 2, 5 |
+| 5 → 9 | ENHANCER → LIMITER | 1, 2, 3, 4, 5, 8, 9, 10 |
+
+The instrument loads the new algorithm's own values into the shared twelve-byte
+parameter area. **A byte that did not change is not evidence that the new
+algorithm leaves that slot unused** — it may simply have held the same value
+before and after. Slot usage cannot be read off this table, and is not claimed.
+
+This matters for editing: any UI that keeps a per-algorithm parameter cache
+must expect the instrument to overwrite these bytes whenever the algorithm
+changes, and re-read rather than assume its cached values still apply.
+
+### Panel edits move exactly one documented byte
+
+Four separate single-control edits each moved exactly one byte, at an offset the
+transcribed Patch Common table already names:
+
+| Byte | Offset | Change |
+|---|---|---|
+| EFX Parameter 1 | 13 | 64 → 75 |
+| EFX Control Depth 2 | 32 | 63 → 74 |
+| Reverb Type | 39 | 3 → 7 |
+| Chorus Level | 33 | 127 → 101 |
+
+This confirms the Patch Common offsets are one-to-one with front-panel controls
+with no hidden coupling — turning one control did not disturb any other byte.
+
+**It does not identify which control each byte belongs to.** The operator did not
+record what was on the display for these edits, and the labels this project
+prints for them are its own table's, not the instrument's. Per the warning
+above, a changed byte is a correlation, not a proven slot assignment: the EFX
+slot mapping stays **Unverified**, and the evidence row template below is still
+unfilled.
+
+### What the next session needs
+
+For each algorithm under test, with the algorithm noted first:
+
+1. the **front-panel parameter name** as the XP-60 displays it;
+2. the **displayed value before and after**, not just the raw byte;
+3. both endpoints of its range, and for a nonlinear control every step.
+
+The capture side is now trivial — `--watch` names the byte the moment it moves.
+The missing half is what the instrument's screen says at the same instant.
