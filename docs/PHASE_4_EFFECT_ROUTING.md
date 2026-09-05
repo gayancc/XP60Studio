@@ -97,8 +97,13 @@ Evidence row template:
 
 | Algorithm | Front-panel parameter | Display before/after | Common offset | Raw before/after | Capture files | Firmware/interface | Result |
 |---|---|---|---|---|---|---|---|
-| 03:DISTORTION | Drive | 127 / 0 / 25 / 127 | 13 (EFX Parameter 1) | 127→0→25→127 | `--watch` 2026-09-04 | CME U2MIDI Pro | **Verified** |
-| all others | Pending | Pending | Unknown | Pending | Pending | Pending | Unverified |
+| 03:DISTORTION | Drive | not read from screen | 13 (EFX Parameter 1) | 127→0→25→127 | `--watch` 2026-09-04 | CME U2MIDI Pro | **Verified**, both endpoints |
+| 03:DISTORTION | Pan | not read from screen | 14 (EFX Parameter 2) | 64→69 | `--watch` 2026-09-04 | CME U2MIDI Pro | **Verified**, one step |
+| 03:DISTORTION | Amp Type | not read from screen | 15 (EFX Parameter 3) | 3→0 | `--watch` 2026-09-04 | CME U2MIDI Pro | **Verified**, 2 of 4 values |
+| 03:DISTORTION | Low Gain | not read from screen | 16 (EFX Parameter 4) | 15→22 | `--watch` 2026-09-04 | CME U2MIDI Pro | **Verified**, one step |
+| 03:DISTORTION | High Gain | not read from screen | 17 (EFX Parameter 5) | 15→19→22 | `--watch` 2026-09-04 | CME U2MIDI Pro | **Verified**, two steps |
+| 03:DISTORTION | Level | not read from screen | 18 (EFX Parameter 6) | 127→104→100 | `--watch` 2026-09-04 | CME U2MIDI Pro | **Verified**, two steps |
+| all other algorithms | Pending | Pending | Unknown | Pending | Pending | Pending | Unverified |
 
 The first row is filled in by "First EFX slot established" below.
 
@@ -219,3 +224,56 @@ One slot of twelve on one algorithm of forty. Area 8 stays open. What it now
 has that it lacked is a method that works: `--watch` names the byte the instant
 it moves, the manual names the algorithm's controls, and a single sweep to both
 endpoints ties the two together.
+
+## 03:DISTORTION — all six slots identified
+
+Every control the manual lists for DISTORTION was moved on the front panel, one
+at a time, with `--watch` naming the byte each time. No edit disturbed any other
+byte.
+
+| Byte | Common offset | Control | Manual range | Observed raw | Slot assignment | Range coverage |
+|---|---|---|---|---|---|---|
+| EFX Parameter 1 | 13 | Drive | 0—127 | 127→0→25→127 | **Verified** | **both endpoints** |
+| EFX Parameter 2 | 14 | Pan | L64—0—63R | 64→69 | **Verified** | one step only |
+| EFX Parameter 3 | 15 | Amp Type | SMALL, BUILT-IN, 2-STACK, 3-STACK | 3→0 | **Verified** | 2 of 4 values |
+| EFX Parameter 4 | 16 | Low Gain | -15—+15 dB | 15→22 | **Verified** | one step only |
+| EFX Parameter 5 | 17 | High Gain | -15—+15 dB | 15→19→22 | **Verified** | two steps only |
+| EFX Parameter 6 | 18 | Level | 0—127 | 127→104→100 | **Verified** | two steps, neither endpoint |
+
+### How each assignment was reached
+
+Drive was swept to both ends and the control named. The other five rest on three
+independent agreements, which is why they are recorded as verified rather than
+guessed:
+
+- **the default loaded with the algorithm** — byte 2 defaulted to 64, the centre
+  of `L64—0—63R`; bytes 4 and 5 to 15, which is 0 dB in `-15—+15 dB`; byte 3 to
+  3, the last of Amp Type's four values;
+- **the observed range** — byte 3 moved 3→0, a span no other DISTORTION control
+  has, every other control being at least 0—30;
+- **the order the controls were swept**, confirmed by the operator, which
+  separates Low Gain from High Gain since ranges alone cannot.
+
+### What is still not established
+
+**Range coverage.** Only Drive has been taken to both endpoints. The procedure
+above asks for both endpoints and adjacent values on each control, and for
+nonlinear ones every step. Five of six slots have one or two samples.
+
+**Raw-to-display conversion.** Not one displayed value was read off the
+instrument. The `display` column in the capture is this project's own passthrough
+— EFX parameters are deliberately still raw — so the watcher printing `15` says
+nothing about the XP-60 showing `0 dB`. The conversions implied by the manual
+(gain = raw − 15, Pan centred at 64) are **documentation-derived and untested**.
+
+**Amp Type enumeration.** Two of four values were seen. Which raw value names
+SMALL, BUILT-IN or 2-STACK is unknown; only that raw 3 and raw 0 are both legal.
+
+### What this does establish beyond DISTORTION
+
+The byte layout follows the manual's printed order for **five of six** controls —
+Drive, Amp Type, Low Gain, High Gain, Level sit at bytes 1, 3, 4, 5, 6 — with
+**Pan displaced**, appearing at byte 2 where the printed table has Amp Type.
+Whether that displacement is a property of Pan, of this algorithm, or of the
+printed table's layout cannot be told from one algorithm. It is the first thing
+a second algorithm's sweep will answer.
