@@ -113,12 +113,14 @@ RolandRequestTracker::DataSetMatch RolandRequestTracker::onDataSet(const roland:
         return result;
     }
 
-    // Expected next address is the first uncovered byte.
-    const auto firstUncovered = std::find(match->coverage.begin(), match->coverage.end(), false);
-    const auto expectedOffset = static_cast<std::uint32_t>(std::distance(match->coverage.begin(), firstUncovered));
-    if (*offset != expectedOffset) {
+    // A chunk starting behind the high-water mark went backwards, which is a
+    // real ordering anomaly. A forward jump is not: Roland block addresses are
+    // padded, so the gap between two blocks holds no data and never arrives.
+    if (*offset < match->coveredThroughBytes) {
+        match->sawChunkOutOfOrder = true;
         match->notes.push_back("chunk " + std::to_string(match->chunkCount) + " arrived at offset "
-                               + std::to_string(*offset) + ", expected " + std::to_string(expectedOffset));
+                               + std::to_string(*offset) + ", behind offset "
+                               + std::to_string(match->coveredThroughBytes) + " already received");
     }
 
     std::size_t overlapping = 0;
@@ -136,6 +138,11 @@ RolandRequestTracker::DataSetMatch RolandRequestTracker::onDataSet(const roland:
         match->notes.push_back("chunk " + std::to_string(match->chunkCount) + " overlapped "
                                + std::to_string(overlapping) + " already received byte(s)");
     }
+    // Narrowing is safe only because the range check above already rejected
+    // anything past expectedBytes; clamping keeps that explicit here so
+    // reordering the two blocks cannot silently reintroduce a truncating cast.
+    const auto chunkEnd = std::min<std::size_t>(*offset + data.size(), match->expectedBytes);
+    match->coveredThroughBytes = std::max(match->coveredThroughBytes, static_cast<std::uint32_t>(chunkEnd));
 
     if (match->isComplete()) {
         finish(*match, RequestState::Completed, now, {});
@@ -145,7 +152,9 @@ RolandRequestTracker::DataSetMatch RolandRequestTracker::onDataSet(const roland:
     } else {
         match->state = RequestState::Receiving;
         result.outcome = MatchOutcome::Accepted;
-        result.detail = std::to_string(match->receivedBytes) + " / " + std::to_string(match->expectedBytes) + " bytes";
+        result.detail = std::to_string(match->receivedBytes) + " bytes received, covered through "
+            + std::to_string(match->coveredThroughBytes) + " of " + std::to_string(match->expectedBytes)
+            + " address units";
     }
     return result;
 }
@@ -161,8 +170,9 @@ std::vector<RequestId> RolandRequestTracker::expire(TimePoint now)
         if (deadline && now >= *deadline) {
             const bool hadData = op.state == RequestState::Receiving;
             const std::string reason = hadData
-                ? "No further data after " + std::to_string(op.receivedBytes) + " of " + std::to_string(op.expectedBytes)
-                    + " bytes (" + std::to_string(m_timeouts.betweenChunks.count()) + " ms between chunks)"
+                ? "No further data after " + std::to_string(op.receivedBytes) + " bytes covering "
+                    + std::to_string(op.coveredThroughBytes) + " of " + std::to_string(op.expectedBytes)
+                    + " address units (" + std::to_string(m_timeouts.betweenChunks.count()) + " ms between chunks)"
                 : "No response within " + std::to_string(m_timeouts.firstResponse.count()) + " ms";
             finish(op, RequestState::TimedOut, now, reason);
             expired.push_back(op.id);

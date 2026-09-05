@@ -116,6 +116,111 @@ private slots:
         QCOMPARE(op->data[10], Byte(0x02));
     }
 
+    // Recorded from a physical XP-60 on 2026-09-04 (see docs/HARDWARE_VALIDATION_XP60.md).
+    // Roland's own published RQ1 example asks for a 3993-byte span at 01 00 00 00
+    // and is answered with 466 payload bytes: Performance Common, then the 16
+    // Parts at 01 00 10 00 .. 01 00 1F 00. Roland block addresses are padded, so
+    // the gaps between blocks hold no data and never arrive.
+    void paddedMultiBlockResponseCompletes()
+    {
+        RolandRequestTracker tracker(timeouts());
+        const RolandAddress address(0x01, 0, 0, 0);
+        const auto id = tracker.enqueue(rq1(address, 3993), at(0ms));
+        tracker.markSent(id, at(0ms));
+
+        QCOMPARE(tracker.onDataSet(dt1(address, 66, 0x01), at(32ms)).outcome,
+            RolandRequestTracker::MatchOutcome::Accepted);
+
+        // 16 Performance Parts, 25 bytes each, 128 address units apart.
+        for (int part = 0; part < 16; ++part) {
+            const auto partAddress = *address.plus(2048 + static_cast<std::uint64_t>(part) * 128);
+            const auto outcome = tracker.onDataSet(dt1(partAddress, 25, 0x02), at(69ms + part * 37ms)).outcome;
+            const auto expected = part == 15 ? RolandRequestTracker::MatchOutcome::Completed
+                                             : RolandRequestTracker::MatchOutcome::Accepted;
+            QCOMPARE(outcome, expected);
+        }
+
+        const auto* op = tracker.find(id);
+        QCOMPARE(op->state, RequestState::Completed);
+        QCOMPARE(op->chunkCount, 17u);
+        // Payload actually received, not the requested address span.
+        QCOMPARE(op->receivedBytes, 466u);
+        QCOMPARE(op->expectedBytes, 3993u);
+        // Padding gaps between blocks are normal Roland addressing, not anomalies.
+        QVERIFY(op->notes.empty());
+        QCOMPARE(op->data[0], Byte(0x01));
+        QCOMPARE(op->data[2048], Byte(0x02));
+    }
+
+    // A padded reply that stops short of the span end is not complete: the
+    // difference between "the gaps are padding" and "a block never arrived" is
+    // that the device's replies reached the end of what was asked for.
+    void paddedResponseStoppingShortDoesNotComplete()
+    {
+        RolandRequestTracker tracker(timeouts());
+        const RolandAddress address(0x03, 0, 0, 0);
+        const auto id = tracker.enqueue(rq1(address, 3072), at(0ms));
+        tracker.markSent(id, at(0ms));
+
+        tracker.onDataSet(dt1(address, 73, 0x01), at(35ms));
+        for (int tone = 0; tone < 4; ++tone) {
+            const auto toneAddress = *address.plus(2048 + static_cast<std::uint64_t>(tone) * 256);
+            QCOMPARE(tracker.onDataSet(dt1(toneAddress, 129, 0x02), at(106ms + tone * 70ms)).outcome,
+                RolandRequestTracker::MatchOutcome::Accepted);
+        }
+
+        const auto* op = tracker.find(id);
+        QCOMPARE(op->state, RequestState::Receiving);
+        QCOMPARE(op->receivedBytes, 589u);
+        QVERIFY(!op->isComplete());
+    }
+
+    // The padded-completion path must not fire once the device has gone
+    // backwards: a gap below the high-water mark may be data still in flight
+    // rather than Roland padding, so full byte coverage is required instead.
+    void paddedCompletionIsRefusedAfterAnOutOfOrderChunk()
+    {
+        RolandRequestTracker tracker(timeouts());
+        const RolandAddress address(0x01, 0, 0, 0);
+        const auto id = tracker.enqueue(rq1(address, 512), at(0ms));
+        tracker.markSent(id, at(0ms));
+
+        tracker.onDataSet(dt1(address, 10, 0x01), at(1ms));            // offset 0..9
+        tracker.onDataSet(dt1(*address.plus(256), 10, 0x02), at(2ms)); // jump forward
+        tracker.onDataSet(dt1(*address.plus(128), 10, 0x03), at(3ms)); // backwards: anomaly
+        QVERIFY(tracker.find(id)->sawChunkOutOfOrder);
+
+        // Reaching the end of the span must no longer be enough on its own.
+        const auto match = tracker.onDataSet(dt1(*address.plus(502), 10, 0x04), at(4ms));
+        QCOMPARE(match.outcome, RolandRequestTracker::MatchOutcome::Accepted);
+        const auto* op = tracker.find(id);
+        QCOMPARE(op->coveredThroughBytes, 512u);
+        QCOMPARE(op->expectedBytes, 512u);
+        QVERIFY(!op->isComplete());
+        QCOMPARE(op->state, RequestState::Receiving);
+    }
+
+    // A reply that never delivered the requested start address is missing its
+    // head, so padding rules do not apply however far forward it reaches.
+    void paddedCompletionIsRefusedWhenTheHeadNeverArrived()
+    {
+        RolandRequestTracker tracker(timeouts());
+        const RolandAddress address(0x01, 0, 0, 0);
+        const auto id = tracker.enqueue(rq1(address, 512), at(0ms));
+        tracker.markSent(id, at(0ms));
+
+        // Ascending throughout, but the first chunk starts past the request address.
+        tracker.onDataSet(dt1(*address.plus(128), 10, 0x01), at(1ms));
+        const auto match = tracker.onDataSet(dt1(*address.plus(502), 10, 0x02), at(2ms));
+
+        QCOMPARE(match.outcome, RolandRequestTracker::MatchOutcome::Accepted);
+        const auto* op = tracker.find(id);
+        QVERIFY(!op->sawChunkOutOfOrder);
+        QCOMPARE(op->coveredThroughBytes, 512u);
+        QVERIFY(!op->isComplete());
+        QCOMPARE(op->state, RequestState::Receiving);
+    }
+
     void overlappingChunkIsNotedNotFatal()
     {
         RolandRequestTracker tracker(timeouts());
