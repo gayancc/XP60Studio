@@ -27,6 +27,8 @@ add_library(xp60studio_xpmodel STATIC
   Xp60PatchCodec.cpp
   Xp60PatchDiff.h
   Xp60PatchDiff.cpp
+  Xp60WaveIdentifier.h
+  Xp60WaveIdentifier.cpp
   generated/Xp60PatchTables.h
   generated/Xp60PatchTables.cpp
 )

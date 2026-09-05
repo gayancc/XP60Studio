@@ -93,21 +93,53 @@ target_compile_definitions(tst_patch_diff
 
 xp60studio_add_test(tst_patch_transfer
   SOURCES tst_patch_transfer.cpp
-  LIBS xp60studio::services)
+  LIBS xp60studio::services xp60studio::simulation)
 target_compile_definitions(tst_patch_transfer
   PRIVATE XP60STUDIO_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/xp60")
 
 # Phase 4 — Patch Editor presentation
 xp60studio_add_test(tst_patch_routing
   SOURCES tst_patch_routing.cpp
-  LIBS xp60studio::services)
+  LIBS xp60studio::services xp60studio::simulation)
 target_compile_definitions(tst_patch_routing
   PRIVATE XP60STUDIO_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/xp60")
 
 xp60studio_add_test(tst_patch_editor
   SOURCES tst_patch_editor.cpp
-  LIBS xp60studio::presentation)
+  LIBS xp60studio::presentation xp60studio::simulation)
 target_compile_definitions(tst_patch_editor
+  PRIVATE XP60STUDIO_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/xp60")
+
+# Demo Mode simulation layer
+xp60studio_add_test(tst_simulation
+  SOURCES tst_simulation.cpp
+  LIBS xp60studio::simulation xp60studio::services)
+target_compile_definitions(tst_simulation
+  PRIVATE XP60STUDIO_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/xp60")
+
+# Phase 5 — librarian foundation
+xp60studio_add_test(tst_library_import
+  SOURCES tst_library_import.cpp
+  LIBS xp60studio::library)
+target_compile_definitions(tst_library_import
+  PRIVATE XP60STUDIO_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/xp60")
+
+xp60studio_add_test(tst_library_database
+  SOURCES tst_library_database.cpp
+  LIBS xp60studio::library)
+target_compile_definitions(tst_library_database
+  PRIVATE XP60STUDIO_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/xp60")
+
+xp60studio_add_test(tst_library_export
+  SOURCES tst_library_export.cpp
+  LIBS xp60studio::services)
+target_compile_definitions(tst_library_export
+  PRIVATE XP60STUDIO_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/xp60")
+
+xp60studio_add_test(tst_library_model
+  SOURCES tst_library_model.cpp
+  LIBS xp60studio::presentation)
+target_compile_definitions(tst_library_model
   PRIVATE XP60STUDIO_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/xp60")
 
 # The generated tables must match the protocol document they come from.
@@ -129,3 +161,7 @@ if(Python3_Interpreter_FOUND)
     COMMAND Python3::Interpreter ${CMAKE_SOURCE_DIR}/tools/capture_diff.py --self-test
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 endif()
+
+xp60studio_add_test(tst_wave_identifier
+  SOURCES tst_wave_identifier.cpp
+  LIBS xp60studio::xpmodel)
