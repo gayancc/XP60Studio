@@ -194,3 +194,33 @@ it cannot occur.
 the acceptance procedure — comparing displayed Roland names for several
 interior entries — is not done, so it remains unproven that identifier *n* names
 the wave the catalog calls *n*. The mapping is established; the naming is not.
+
+## Wave names confirmed against the display — 2026-09-04
+
+Step 3 of the acceptance procedure. Names read off the XP-60's own display and
+compared with the generated catalog:
+
+| Selection | XP-60 display | Catalog | Result |
+|---|---|---|---|
+| INT-A 001 | `Ac Paiano A` (as transcribed) | `Ac Piano1 A` | match, see note |
+| INT-B 001 | `Kalimba` | `Kalimba` | **exact** |
+| INT-B 193 | `DC` | `DC` | **exact** |
+
+`Kalimba` and `DC` match character for character. `DC` is the stronger of the
+two: it is the last wave of INT-B and an unusual name, so agreement at raw 192
+in group 2 could not plausibly be coincidence. Taken with the identifier
+evidence above, the mapping is now confirmed at both bank starts and at INT-B's
+end, in names as well as numbers.
+
+**Note on INT-A 001.** The transcription reads `Ac Paiano A` where the catalog
+has `Ac Piano1 A`: two letters transposed and the `1` absent. The transposition
+is plainly a typing slip. The missing `1` is recorded rather than assumed away —
+the catalog's neighbours are `Ac Piano1 B` and `Ac Piano1 C`, so a display
+reading `Ac Piano A` would mean the catalog carries a digit the instrument does
+not. It does not affect the mapping, which INT-B 001 and INT-B 193 establish
+exactly, and it is worth one glance the next time that page is open.
+
+Area 9 is closed for group type, group ID, zero-based number and name at the
+tested boundaries. Interior names beyond these three remain unsampled, and the
+448-entry catalog is not exhaustively verified — nor does this procedure ask it
+to be.
