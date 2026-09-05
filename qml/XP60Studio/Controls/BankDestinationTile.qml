@@ -37,6 +37,10 @@ Item {
 
     readonly property bool occupied: destination.occupied === true
     readonly property bool missing: destination.missing === true
+    // The same sound sits somewhere else in this bank. Worth seeing, never an
+    // error: filling several destinations from one Patch is a legitimate thing
+    // to do, so this is a quiet mark rather than a warning colour.
+    readonly property bool duplicate: destination.duplicate === true
 
     implicitHeight: 84
     opacity: dragging ? 0.35 : 1
@@ -138,12 +142,31 @@ Item {
 
             // Occupancy LED, mirroring the NUMBER button's.
             Rectangle {
+                id: occupancyLed
                 anchors { right: parent.right; top: parent.top; topMargin: 4 }
                 width: 6
                 height: 6
                 radius: 3
                 visible: root.occupied
                 color: root.missing ? Theme.error : Theme.live
+            }
+
+            // A second, hollow ring beside the LED: the same sound is in this
+            // bank twice. Deliberately not a colour a musician reads as wrong.
+            Rectangle {
+                objectName: "duplicateMark"
+                anchors { right: occupancyLed.left; rightMargin: 4; top: parent.top; topMargin: 4 }
+                width: 6
+                height: 6
+                radius: 3
+                visible: root.occupied && root.duplicate
+                color: "transparent"
+                border.width: 1
+                border.color: Theme.textSecondary
+                QQC.ToolTip.visible: hover.hovered
+                QQC.ToolTip.delay: 400
+                QQC.ToolTip.text: root.destination.duplicateNote ?? ""
+                HoverHandler { id: hover }
             }
 
             XpLabel {

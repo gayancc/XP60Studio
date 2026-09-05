@@ -58,6 +58,14 @@ RowLayout {
                 text: qsTr("SAVED")
                 tone: "success"
             }
+            // Reported, never acted on. A bank holding one sound twice may be
+            // exactly what was meant.
+            StatusPill {
+                objectName: "bankDuplicates"
+                visible: root.builder.duplicateCount > 0
+                text: qsTr("%n duplicate(s)", "", root.builder.duplicateCount)
+                tone: "info"
+            }
             StatusPill {
                 objectName: "bankMissing"
                 visible: root.builder.missingCount > 0

@@ -81,6 +81,7 @@ private slots:
     void fillingIsOneUndoStepAndAddsToWhatIsThere();
     void refusesToFillFromASourceThatIsNotThere();
 
+    void reportsDuplicateSoundsWithoutActingOnThem();
     void exportsEachPatchToTheDestinationItOccupies();
     void refusesToExportAnEmptyBank();
 
@@ -251,6 +252,76 @@ void TestBankBuilder::refusesToFillFromASourceThatIsNotThere()
     QVERIFY(!report.value(QStringLiteral("ok")).toBool());
     QCOMPARE(builder.occupiedCount(), 0);
     QVERIFY(!builder.modified());
+}
+
+// A bank holding the same sound twice is worth knowing about and is never an
+// error: filling four destinations from one Patch is a documented thing to do,
+// and keeping two copies of a sound is the musician's business. The surface
+// reports it and distinguishes the two ways it can happen.
+void TestBankBuilder::reportsDuplicateSoundsWithoutActingOnThem()
+{
+    ImportOptions options;
+    options.limit = 4;
+    const auto digest = importFixture(options);
+    QVERIFY(!digest.isEmpty());
+    // Import the same file again, so the library holds two rows per sound.
+    QVERIFY(!importFixture(options).isEmpty());
+
+    BankBuilderViewModel builder;
+    builder.setDatabase(&m_db);
+    const auto records = m_db.search({});
+    QCOMPARE(static_cast<int>(records.size()), 8);
+
+    // Find two rows that are different library Patches with the same parameters,
+    // and one that is neither.
+    std::int64_t first = 0;
+    std::int64_t twin = 0;
+    std::int64_t other = 0;
+    for (const auto& candidate : records) {
+        if (first == 0) {
+            first = candidate.id;
+            continue;
+        }
+        if (twin == 0 && candidate.fingerprint == records.front().fingerprint) {
+            twin = candidate.id;
+        } else if (other == 0 && !(candidate.fingerprint == records.front().fingerprint)) {
+            other = candidate.id;
+        }
+    }
+    QVERIFY(first > 0 && twin > 0 && other > 0);
+
+    QVERIFY(builder.placePatch(slotOf("A11"), first));
+    QCOMPARE(builder.duplicateCount(), 0);
+
+    // A different library row holding the same sound.
+    QVERIFY(builder.placePatch(slotOf("A12"), twin));
+    QCOMPARE(builder.duplicateCount(), 2);
+    const auto flagged = builder.destinationAt(slotOf("A12"));
+    QVERIFY(flagged.value(QStringLiteral("duplicate")).toBool());
+    QVERIFY2(flagged.value(QStringLiteral("duplicateNote")).toString().contains(QStringLiteral("another name")),
+             qPrintable(flagged.value(QStringLiteral("duplicateNote")).toString()));
+    // Both ends of the pair say so, not just the second one.
+    QVERIFY(builder.destinationAt(slotOf("A11")).value(QStringLiteral("duplicate")).toBool());
+
+    // A genuinely different sound is left alone.
+    QVERIFY(builder.placePatch(slotOf("A13"), other));
+    QCOMPARE(builder.duplicateCount(), 2);
+    QVERIFY(!builder.destinationAt(slotOf("A13")).value(QStringLiteral("duplicate")).toBool());
+
+    // The same library Patch in two destinations is the other kind of
+    // duplicate, and is named differently because it means something different.
+    QVERIFY(builder.placePatch(slotOf("A14"), other));
+    QCOMPARE(builder.duplicateCount(), 4);
+    QVERIFY(builder.destinationAt(slotOf("A14")).value(QStringLiteral("duplicateNote")).toString()
+                .contains(QStringLiteral("same Patch")));
+
+    // Nothing was acted on: every destination still holds what it was given.
+    QCOMPARE(builder.occupiedCount(), 4);
+    QCOMPARE(builder.patchIdAt(slotOf("A12")), twin);
+
+    // Clearing one end resolves the pair.
+    QVERIFY(builder.clearSlot(slotOf("A14")));
+    QCOMPARE(builder.duplicateCount(), 2);
 }
 
 // ---------------------------------------------------------------------------

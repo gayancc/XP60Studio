@@ -7,6 +7,7 @@
 
 #include <QDateTime>
 
+#include <algorithm>
 #include <chrono>
 
 namespace xp60studio::presentation {
@@ -226,6 +227,15 @@ QVariantMap BankBuilderViewModel::destinationMap(int slotIndex) const
     map.insert(QStringLiteral("sourceSlot"), toQt(content.sourceSlotLabel));
     map.insert(QStringLiteral("occupied"), !content.empty());
     map.insert(QStringLiteral("missing"), content.missing);
+    const int duplicateOf = static_cast<std::size_t>(slotIndex) < m_duplicateOf.size()
+        ? m_duplicateOf[static_cast<std::size_t>(slotIndex)]
+        : -1;
+    map.insert(QStringLiteral("duplicate"), duplicateOf >= 0);
+    map.insert(QStringLiteral("duplicateNote"), duplicateOf < 0
+        ? QString()
+        : (m_duplicateIsSameEntry[static_cast<std::size_t>(slotIndex)]
+               ? tr("The same Patch is also at %1").arg(panelLabelFor(duplicateOf))
+               : tr("The same sound, under another name, is also at %1").arg(panelLabelFor(duplicateOf))));
     map.insert(QStringLiteral("current"), slotIndex == currentSlotIndex());
     return map;
 }
@@ -1154,8 +1164,70 @@ void BankBuilderViewModel::reloadSavedBanks()
     emit savedBanksChanged();
 }
 
+// Which destinations hold a sound that also sits somewhere else in this bank.
+//
+// Two destinations can match for two quite different reasons, and the surface
+// says which: the *same library Patch* placed twice — a legitimate, documented
+// thing to do, since a bank is an arrangement of references — or two *different*
+// library Patches whose parameters are byte-identical, which usually means the
+// same sound was imported twice under two names. Neither is an error and
+// neither is ever acted on automatically.
+//
+// Matching is by stored fingerprint, so it compares the Patches the bank
+// actually references. A Patch being edited in the Editor is compared as the
+// library holds it, because that is what the bank would save and write.
+void BankBuilderViewModel::refreshDuplicates()
+{
+    const auto& arrangement = m_draft.destinations();
+    m_duplicateOf.assign(arrangement.size(), -1);
+    m_duplicateIsSameEntry.assign(arrangement.size(), false);
+    if (!m_database) {
+        return;
+    }
+
+    // Fingerprint -> the first destination that showed it.
+    std::map<library::PatchFingerprint, int> seen;
+    for (std::size_t index = 0; index < arrangement.size(); ++index) {
+        const auto patchId = arrangement[index].patchId;
+        if (patchId <= 0) {
+            continue;
+        }
+        auto cached = m_fingerprints.find(patchId);
+        if (cached == m_fingerprints.end()) {
+            const auto record = m_database->record(patchId);
+            if (!record) {
+                continue;
+            }
+            cached = m_fingerprints.emplace(patchId, record->fingerprint).first;
+        }
+        if (cached->second.isNull()) {
+            continue;
+        }
+        const auto found = seen.find(cached->second);
+        if (found == seen.end()) {
+            seen.emplace(cached->second, static_cast<int>(index));
+            continue;
+        }
+        m_duplicateOf[index] = found->second;
+        m_duplicateIsSameEntry[index] = arrangement[static_cast<std::size_t>(found->second)].patchId == patchId;
+        // The first destination in a group is a duplicate too — a musician
+        // looking at either one should see the relationship.
+        if (m_duplicateOf[static_cast<std::size_t>(found->second)] < 0) {
+            m_duplicateOf[static_cast<std::size_t>(found->second)] = static_cast<int>(index);
+            m_duplicateIsSameEntry[static_cast<std::size_t>(found->second)] = m_duplicateIsSameEntry[index];
+        }
+    }
+}
+
+int BankBuilderViewModel::duplicateCount() const
+{
+    return static_cast<int>(std::count_if(m_duplicateOf.begin(), m_duplicateOf.end(),
+                                          [](int other) { return other >= 0; }));
+}
+
 void BankBuilderViewModel::announceBankChange()
 {
+    refreshDuplicates();
     emit bankChanged();
     // What is at the selected destination decides whether it can be
     // auditioned, so the two always move together.

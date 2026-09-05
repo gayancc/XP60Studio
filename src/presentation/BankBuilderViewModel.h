@@ -1,6 +1,9 @@
 #pragma once
 
 #include "library/BankDraft.h"
+#include "library/PatchFingerprint.h"
+
+#include <map>
 #include "library/LibraryDatabase.h"
 #include "services/PatchTransfer.h"
 #include "services/PatchWorkspace.h"
@@ -82,6 +85,11 @@ class BankBuilderViewModel : public QObject
     Q_PROPERTY(int occupiedCount READ occupiedCount NOTIFY bankChanged)
     Q_PROPERTY(int emptyCount READ emptyCount NOTIFY bankChanged)
     Q_PROPERTY(int missingCount READ missingCount NOTIFY bankChanged)
+    // Destinations holding a sound that also sits somewhere else in this bank.
+    // Reported, never acted on: filling four destinations with one Patch is a
+    // legitimate thing to do, and so is keeping two copies of a sound. The
+    // musician decides whether it was meant.
+    Q_PROPERTY(int duplicateCount READ duplicateCount NOTIFY bankChanged)
     Q_PROPERTY(int slotCount READ slotCount CONSTANT)
     Q_PROPERTY(bool modified READ modified NOTIFY bankChanged)
     Q_PROPERTY(bool savedBefore READ savedBefore NOTIFY bankChanged)
@@ -226,6 +234,7 @@ public:
     [[nodiscard]] int occupiedCount() const { return m_draft.occupiedCount(); }
     [[nodiscard]] int emptyCount() const { return m_draft.emptyCount(); }
     [[nodiscard]] int missingCount() const;
+    [[nodiscard]] int duplicateCount() const;
     [[nodiscard]] int slotCount() const { return library::BankDraft::kSlotCount; }
     [[nodiscard]] bool modified() const { return m_draft.modified(); }
     [[nodiscard]] bool savedBefore() const { return m_draft.savedBankId().has_value(); }
@@ -347,6 +356,17 @@ private:
     [[nodiscard]] std::optional<library::BankSlotContent> contentFor(std::int64_t patchId) const;
     [[nodiscard]] std::vector<services::UserMemoryWrite::Destination> userWriteDestinations() const;
     void adoptFetchedBank();
+    void refreshDuplicates();
+    // Slot index -> the first destination holding the same sound, or -1. Kept
+    // as a projection of the arrangement, recomputed when it changes.
+    std::vector<int> m_duplicateOf;
+    // Whether that match is literally the same library row, as opposed to a
+    // different Patch whose parameters happen to be identical.
+    std::vector<bool> m_duplicateIsSameEntry;
+    // Fingerprints by library id. A stored Patch's fingerprint does not change
+    // while it sits in the library, so this is cached across edits rather than
+    // re-read from the database on every drag.
+    mutable std::map<std::int64_t, library::PatchFingerprint> m_fingerprints;
     // Recorded on Patches read from the instrument, so provenance says which
     // device answered. Set alongside the reader.
     std::optional<roland::RolandDeviceId> m_deviceIdForProvenance;

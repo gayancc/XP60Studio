@@ -308,6 +308,27 @@ those addresses are hardware-verified. That asymmetry is why every write is
 proved at runtime instead of trusted. See `PATCH_SYNCHRONIZATION.md` §3 U1 and
 `DEVICE_ACCEPTANCE.md` area 11.
 
+## Duplicates
+
+A destination whose sound also sits somewhere else in the bank carries a quiet
+hollow ring beside its occupancy LED, and the header counts them. Hovering the
+ring says which destination it matches and, importantly, *which kind* of
+duplicate it is:
+
+| Kind | What it means |
+|---|---|
+| "The same Patch is also at A35" | One library Patch placed in two destinations. Legitimate and documented — a bank is an arrangement of references, and the same Patch can fill four destinations. |
+| "The same sound, under another name, is also at A35" | Two *different* library Patches whose parameters are byte-identical. Usually the same sound imported twice. |
+
+Neither is an error and neither is ever acted on: the musician decides whether
+it was meant. The mark is deliberately not a warning colour for that reason.
+
+Matching is by the stored `library::PatchFingerprint`, so it compares the
+Patches the bank actually references — which is what the bank would save and
+write. Fingerprints are cached by library id, because a stored Patch's
+fingerprint does not change while it sits in the library, so a drag does not
+re-read the database 128 times.
+
 ## Persistence
 
 Library schema version **2** adds two tables. The migration is additive: every
