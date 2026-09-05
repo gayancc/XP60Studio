@@ -480,3 +480,66 @@ hardware verification. That guard now asserts the exact set of four verified
 regions instead, so promoting a region that was never read still fails the
 suite — verified by falsely promoting `user-performance` and watching the test
 fail.
+
+## Hardware log 2026-09-04 (continued) — step 8, the write round trip
+
+First writes to the instrument, run through `services::PatchTransfer` via
+`tests/tools/write_roundtrip_harness.cpp`. The harness implements no write of
+its own: it drives the same class the Devices screen drives, so arming, the
+safety snapshot and the read-back comparison all applied unchanged. Every write
+targeted the temporary Patch area `03 00 00 00`; permanent User memory is not
+reachable through that class.
+
+```text
+1. Fetching the temporary Patch
+   "Brass Fall 3", 5 of 5 blocks
+2. Arming            read verified: yes   armed: yes
+3. Writing the Patch back unchanged and verifying
+   state: Verified
+   Verified: the XP-60 read back exactly the patch that was sent (9 messages, all 589 bytes)
+   safety snapshot captured: yes
+```
+
+Verified 6 times out of 6. The safety snapshot restore also verifies. The Patch
+was written back unchanged, so the instrument's sound was never altered.
+
+Step 8 passes; `DEVICE_ACCEPTANCE.md` area 5 closes for the FETCH → DECODE →
+ENCODE → SEND → FETCH AGAIN → COMPARE loop. Step 8a, the deliberate mismatch
+check, still needs the front panel and is not done.
+
+### Defect this uncovered — the XP-60 cannot be pipelined
+
+The first attempt failed at the shipped defaults:
+
+```text
+fetch failed: Block read at 03 00 16 00 Timed out: No response within 1500 ms
+```
+
+Every one of the five blocks answers when requested on its own, so the block
+was not at fault. `DeviceSession::fetchPatch` queued all five RQ1s at once and
+`pumpSendQueue` spaced them only by `interMessageDelay`, so five requests
+reached the instrument in about 80 ms while it was still transmitting replies.
+It dropped the last one.
+
+Measured, with `interMessageDelay` swept and three runs at each value:
+
+| Delay | Result |
+|---|---|
+| 20 ms (former default) | 0 / 3 verified |
+| 25 ms | 0 / 3 |
+| 30 ms | 0 / 3 |
+| 33 ms | 3 / 3 |
+| 35, 37, 40, 50, 60, 150 ms | 3 / 3 |
+
+The cliff between 30 and 33 ms is explained by the wire rate: a 129-byte Tone
+block is 140 bytes of SysEx, and at the MIDI DIN rate of 31250 baud that takes
+about 45 ms to transmit — consistent with the 53 ms request-to-reply latency
+measured on every Tone block read.
+
+**Fix: serialise, do not tune the delay.** `fetchPatch` now issues one block
+read at a time, sending block *n+1* only once block *n* has completed. A delay
+large enough for a USB-MIDI cable is a property of the link rather than of the
+instrument, and the same figure would be wrong over Bluetooth — which matters
+here, since the WIDI Master path is still intended. Serialising is correct on
+any link and needs no tuning. With it, the round trip verifies 6 / 6 at the
+20 ms default.

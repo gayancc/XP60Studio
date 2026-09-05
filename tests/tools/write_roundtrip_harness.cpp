@@ -68,6 +68,8 @@ int main(int argc, char** argv)
     std::string portMatch = "U2MIDI";
     int deviceIdDisplay = 17;
     bool restoreAfter = false;
+    int pacingMs = -1;      // -1: leave the session default
+    int firstTimeoutMs = -1;
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
         if (arg == "--port" && i + 1 < argc)
@@ -76,8 +78,13 @@ int main(int argc, char** argv)
             deviceIdDisplay = std::stoi(argv[++i]);
         else if (arg == "--restore")
             restoreAfter = true;
+        else if (arg == "--pacing" && i + 1 < argc)
+            pacingMs = std::stoi(argv[++i]);
+        else if (arg == "--first-timeout" && i + 1 < argc)
+            firstTimeoutMs = std::stoi(argv[++i]);
         else if (arg == "--help") {
             std::cout << "Usage: xp60studio_write_roundtrip [--port <text>] [--device-id <n>] [--restore]\n"
+                      << "                                   [--pacing <ms>] [--first-timeout <ms>]\n"
                       << "Writes the temporary Patch back to itself and verifies the read-back.\n"
                       << "Permanent User memory is never a target.\n";
             return 0;
@@ -108,6 +115,16 @@ int main(int argc, char** argv)
         return 2;
     }
     session.setDeviceId(*deviceId);
+    if (pacingMs >= 0 || firstTimeoutMs > 0) {
+        auto pacing = session.pacing();
+        if (pacingMs >= 0)
+            pacing.interMessageDelay = std::chrono::milliseconds(pacingMs);
+        if (firstTimeoutMs > 0)
+            pacing.timeouts.firstResponse = std::chrono::milliseconds(firstTimeoutMs);
+        session.setPacing(pacing);
+        std::cout << "Pacing: " << pacing.interMessageDelay.count() << " ms between messages, "
+                  << pacing.timeouts.firstResponse.count() << " ms first-response timeout\n";
+    }
 
     if (!session.connectEndpoints(inputId, outputId)) {
         std::cerr << "Connect failed: " << session.lastError() << "\n";

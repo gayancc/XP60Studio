@@ -72,6 +72,7 @@ than guessing the command position. An earlier draft of this project recorded
 | DT1 packet size **sent by the XP-60** | whole blocks in one message, observed up to **129 bytes** | **Hardware-verified 2026-09-04** | Settled in §2.1. The 128-byte rule governs data sent *to* the instrument. |
 | Gap between successive DT1 messages | **at least 20 ms** (XP-60 itself sends ~37-70 ms apart) | Documentation-derived; device-side gap hardware-observed 2026-09-04 | Applies when sending to the XP-60; also informs `betweenChunkTimeout`. |
 | Sending DT1 to the device | ≤ 128 data bytes per message, ≥ 20 ms apart | Documentation-derived | `xp60::transferDefaults()`; configurable via `TransferPacing`. |
+| Requests may not be pipelined | send one RQ1 at a time and wait for its reply | **Hardware-verified 2026-09-04** | See §2.3. Requests arriving while the instrument is transmitting a reply are dropped. |
 | RQ1 address/size | should use the starting addresses and sizes given in the Parameter Address Map | Documentation-derived | Arbitrary oversized reads are not a strong validation method; the Devices presets use documented blocks. |
 
 ### 2.1 Settled — the XP-60 sends 129-byte DT1 payloads
@@ -220,3 +221,21 @@ parameters, which the Parameter Address Map defines over the whole MIDI note
 range (0..127, `C-1..G9`). The editor uses it to draw a keyboard at a readable
 size and to say when a range falls outside what the XP-60's own keys can play;
 it never clamps a value. Implemented as `xp60::keybed()`.
+
+
+### 2.3 The XP-60 does not answer pipelined requests
+
+Five block RQ1s queued together and spaced only by `interMessageDelay` cost the
+last block's reply: the instrument drops requests that arrive while it is still
+transmitting. Measured on a USB-MIDI cable, three runs per value, the whole
+Patch fetch failed at 20, 25 and 30 ms and succeeded from 33 ms upward.
+
+The cliff follows the wire rate rather than any Roland figure. A 129-byte Tone
+block is 140 bytes of SysEx; at the MIDI DIN rate of 31250 baud that is roughly
+45 ms of transmission, matching the 53 ms request-to-reply latency measured on
+every Tone block.
+
+`DeviceSession::fetchPatch` therefore issues block reads **serially**, waiting
+for each reply before sending the next, instead of relying on a delay. The safe
+delay is a property of the link — a different figure would apply over Bluetooth
+— while waiting for the reply is correct on any link.
