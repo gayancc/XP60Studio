@@ -1,5 +1,7 @@
 #pragma once
 
+#include "library/ExpansionProfile.h"
+#include "library/PatchCompatibility.h"
 #include "presentation/ToneViewModel.h"
 #include "presentation/WaveBrowserModel.h"
 #include "presentation/EditorParameterModel.h"
@@ -16,6 +18,7 @@
 #include <QVariantMap>
 
 #include <deque>
+#include <set>
 #include <memory>
 #include <optional>
 
@@ -65,6 +68,17 @@ class PatchEditorViewModel : public QObject
     Q_PROPERTY(int selectedTone READ selectedTone WRITE setSelectedTone NOTIFY selectedToneChanged)
     Q_PROPERTY(bool canUseSelectedWave READ canUseSelectedWave NOTIFY patchChanged)
     Q_PROPERTY(int enabledToneCount READ enabledToneCount NOTIFY patchChanged)
+
+    // Per-Tone compatibility with the declared instrument, and what the
+    // musician may do about it. Four entries in Tone order:
+    // {toneNumber, status, label, tone, needsAttention, kept}.
+    //
+    // `needsAttention` is what the Tone card acts on: a Tone whose wave lives
+    // on a board that is missing or unaccounted for, which the musician has not
+    // already dismissed. XP60Studio offers three ways out and takes none of
+    // them by itself — see the Q_INVOKABLEs below.
+    Q_PROPERTY(QVariantList toneCompatibility READ toneCompatibility NOTIFY compatibilityChanged)
+    Q_PROPERTY(int tonesNeedingAttention READ tonesNeedingAttention NOTIFY compatibilityChanged)
 
     // Signal flow
     Q_PROPERTY(QString structureText READ structureText NOTIFY patchChanged)
@@ -237,6 +251,39 @@ public:
     Q_INVOKABLE bool useWaveInTone(int toneNumber, const QString& bank, int displayNumber);
     // The browser's current selection applied to the currently selected Tone.
     Q_INVOKABLE bool useSelectedWaveInTone();
+
+    // ── Missing waves: three explicit ways out, and no fourth ───────────────
+    //
+    // A Tone pointing at a wave from a board this instrument does not have is
+    // shown, never fixed. XP60Studio has no table mapping an expansion wave to
+    // an internal one — such a mapping would be invented, and a Patch silently
+    // re-pointed at a wave nobody chose is worse than one that plainly does not
+    // sound. So there is no "auto-replace" anywhere in this class, and these
+    // three are the whole of what the workflow offers.
+
+    // Selects the Tone and asks the screen to open the Wave Browser, where the
+    // musician picks. Chooses nothing itself and changes no data; false when
+    // the Tone number is not 1..4.
+    Q_INVOKABLE bool findReplacementFor(int toneNumber);
+    // Turns the Tone's switch off — an ordinary, undoable edit, the same one
+    // the Tone card's own switch makes. The wave it points at is untouched, so
+    // this is reversible by turning it back on.
+    Q_INVOKABLE bool disableTone(int toneNumber);
+    // Dismisses the prompt for this Tone. Changes nothing at all: the Patch is
+    // exactly as it was, and it will still not sound on this instrument. The
+    // dismissal is per-Patch and is forgotten when another Patch is opened,
+    // because a different Patch's Tone 2 is a different question.
+    Q_INVOKABLE void keepToneAnyway(int toneNumber);
+    // Undoes a dismissal, so a musician who changed their mind is not stuck.
+    Q_INVOKABLE void reconsiderTone(int toneNumber);
+
+    [[nodiscard]] QVariantList toneCompatibility() const;
+    [[nodiscard]] int tonesNeedingAttention() const;
+
+    // The instrument the Patch is judged against. Optional: without it every
+    // expansion Tone reads as undecided.
+    void setExpansionProfile(const library::ExpansionProfile* profile);
+    Q_INVOKABLE void expansionProfileChanged();
     [[nodiscard]] bool canUseSelectedWave() const;
 
     [[nodiscard]] bool comparing() const noexcept { return m_comparing; }
@@ -274,6 +321,10 @@ signals:
     void envelopeChanged();
     void rangeChanged();
     void writeChanged();
+    void compatibilityChanged();
+    // The screen's cue to open the Wave Browser for `toneNumber`. Emitted only
+    // from findReplacementFor(); nothing in this class picks a wave.
+    void replacementRequested(int toneNumber);
 
 private:
     void adoptFetchedPatch();
@@ -296,6 +347,10 @@ private:
 
     services::DeviceSession& m_session;
     services::PatchWorkspace& m_workspace;
+    const library::ExpansionProfile* m_expansionProfile = nullptr;
+    // Tone numbers the musician chose to keep as they are. Cleared whenever the
+    // Patch on screen changes: the dismissal is about this Patch, not the slot.
+    std::set<int> m_keptTones;
     services::PatchTransfer* m_transfer = nullptr;
     services::PatchTransfer::State m_lastTransferState = services::PatchTransfer::State::Idle;
     std::vector<std::unique_ptr<ToneViewModel>> m_tones;

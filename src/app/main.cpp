@@ -203,6 +203,9 @@ int main(int argc, char* argv[])
     libraryModel.setExpansionProfile(&expansion.profile());
     bankSourceModel.setExpansionProfile(&expansion.profile());
     bankBuilder.setExpansionProfile(&expansion.profile());
+    editor.setExpansionProfile(&expansion.profile());
+    QObject::connect(&expansion, &xp60studio::presentation::ExpansionViewModel::profileChanged,
+                     &editor, &xp60studio::presentation::PatchEditorViewModel::expansionProfileChanged);
     QObject::connect(&expansion, &xp60studio::presentation::ExpansionViewModel::profileChanged,
                      &bankBuilder, &xp60studio::presentation::BankBuilderViewModel::expansionProfileChanged);
     QObject::connect(&expansion, &xp60studio::presentation::ExpansionViewModel::profileChanged,

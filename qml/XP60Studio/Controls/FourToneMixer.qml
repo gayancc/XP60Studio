@@ -31,7 +31,16 @@ GridLayout {
                 root.editor.selectedTone = modelData.toneNumber
                 root.toneActivated(modelData.toneNumber)
             }
+            compatibility: root.editor.toneCompatibility[modelData.toneNumber - 1] ?? ({})
             onBrowseWaves: root.browseWavesRequested(modelData.toneNumber)
+            // "Find replacement" opens the same browser the wave row opens: the
+            // musician picks, exactly as they would for any other Tone.
+            onFindReplacement: {
+                root.editor.findReplacementFor(modelData.toneNumber)
+                root.browseWavesRequested(modelData.toneNumber)
+            }
+            onDisableTone: root.editor.disableTone(modelData.toneNumber)
+            onKeepAnyway: root.editor.keepToneAnyway(modelData.toneNumber)
         }
     }
 

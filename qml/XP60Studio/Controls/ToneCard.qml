@@ -12,8 +12,16 @@ Rectangle {
 
     required property ToneViewModel tone
     property bool selected: false
+    // This Tone's entry from PatchEditorViewModel.toneCompatibility, or an
+    // empty map where no instrument has been declared and no verdict exists.
+    property var compatibility: ({})
     signal clicked()
     signal browseWaves()
+    // The three explicit ways out of a missing wave. XP60Studio offers them and
+    // takes none of them by itself; nothing here replaces a wave.
+    signal findReplacement()
+    signal disableTone()
+    signal keepAnyway()
 
     readonly property color toneColor: Theme.toneColor(tone.toneNumber)
     readonly property bool dimmed: !tone.enabled || !tone.audible
@@ -172,6 +180,66 @@ Rectangle {
                             implicitHeight: Metrics.iconSizeSm
                         }
                     }
+                }
+            }
+        }
+
+        // ── When the wave is on a board this instrument may not have ────────
+        //
+        // Shown, never fixed. There is no mapping from an expansion wave to an
+        // internal one that this project could write honestly, so the three
+        // buttons below are the whole of what is offered — and "Keep anyway"
+        // changes nothing at all, which is the point of naming it.
+        ColumnLayout {
+            objectName: "toneCompatibilityPrompt" + root.tone.toneNumber
+            Layout.fillWidth: true
+            spacing: Metrics.spacingXs
+            visible: root.compatibility.needsAttention === true
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: Metrics.spacingXs
+                StatusPill {
+                    text: root.compatibility.status === "expansion-missing" ? qsTr("BOARD MISSING")
+                                                                            : qsTr("BOARD UNKNOWN")
+                    tone: root.compatibility.tone ?? "warning"
+                    showDot: false
+                }
+                Item { Layout.fillWidth: true }
+            }
+            XpLabel {
+                Layout.fillWidth: true
+                text: root.compatibility.status === "expansion-missing"
+                      ? qsTr("This wave is on expansion wave group %1, which no board you have declared provides. It will not sound.").arg(root.compatibility.groupId)
+                      : qsTr("This wave is on expansion wave group %1. Declare your boards in the Expansion Manager and XP60Studio can say whether you have it.").arg(root.compatibility.groupId)
+                role: "caption"
+                muted: true
+                wrapMode: Text.WordWrap
+            }
+            Flow {
+                Layout.fillWidth: true
+                spacing: Metrics.spacingXs
+                XpButton {
+                    objectName: "toneFindReplacement" + root.tone.toneNumber
+                    text: qsTr("Find replacement")
+                    compact: true
+                    variant: "primary"
+                    onClicked: root.findReplacement()
+                }
+                XpButton {
+                    objectName: "toneDisable" + root.tone.toneNumber
+                    text: qsTr("Disable Tone")
+                    compact: true
+                    variant: "ghost"
+                    enabled: root.tone.enabled
+                    onClicked: root.disableTone()
+                }
+                XpButton {
+                    objectName: "toneKeepAnyway" + root.tone.toneNumber
+                    text: qsTr("Keep anyway")
+                    compact: true
+                    variant: "ghost"
+                    onClicked: root.keepAnyway()
                 }
             }
         }

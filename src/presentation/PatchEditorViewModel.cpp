@@ -44,6 +44,12 @@ PatchEditorViewModel::PatchEditorViewModel(services::DeviceSession& session, ser
     m_expertParameters = new EditorParameterModel(*this, true, this);
 
     connect(&m_workspace, &services::PatchWorkspace::changed, this, &PatchEditorViewModel::emitAll);
+    // A different Patch is a different set of questions, so nothing a musician
+    // dismissed about the last one carries over to this one.
+    connect(&m_workspace, &services::PatchWorkspace::originChanged, this, [this] {
+        m_keptTones.clear();
+        emit compatibilityChanged();
+    });
     connect(&m_workspace, &services::PatchWorkspace::syncChanged, this, &PatchEditorViewModel::emitAll);
     connect(&m_session, &services::DeviceSession::patchFetchChanged, this, &PatchEditorViewModel::adoptFetchedPatch);
     if (m_transfer) {
@@ -152,6 +158,7 @@ void PatchEditorViewModel::emitAll()
     emit envelopeChanged();
     emit rangeChanged();
     emit writeChanged();
+    emit compatibilityChanged();
 }
 
 void PatchEditorViewModel::setToneRaw(ToneIndex tone, ToneParameter parameter, int raw)
@@ -496,6 +503,119 @@ ToneIndex PatchEditorViewModel::selectedToneIndex() const
 int PatchEditorViewModel::enabledToneCount() const
 {
     return hasPatch() ? patch().enabledToneCount() : 0;
+}
+
+// ---------------------------------------------------------------------------
+// Missing waves
+//
+// The rule this section exists to hold: XP60Studio never replaces a wave the
+// musician did not choose. There is no mapping from an expansion wave to an
+// internal one that this project could write honestly, and a Patch quietly
+// re-pointed at a substitute is worse than one that plainly does not sound —
+// the musician would have no way to know their sound had been changed. So the
+// three actions below are the whole workflow, and none of them picks a wave.
+// ---------------------------------------------------------------------------
+
+QVariantList PatchEditorViewModel::toneCompatibility() const
+{
+    QVariantList list;
+    if (!hasPatch()) {
+        return list;
+    }
+    const auto profile = m_expansionProfile ? *m_expansionProfile : library::ExpansionProfile{};
+    const auto report = library::analysePatch(patch(), profile);
+    for (const auto& tone : report.tones) {
+        // A switched-off Tone keeps its expansion verdict — turning it back on
+        // is an ordinary edit and the board would still be missing — but it has
+        // nothing to sound either way, so it is not something to act on now.
+        // Disabling the Tone *is* one of the three resolutions.
+        const bool unresolved = tone.enabled
+            && (tone.status == library::ToneCompatibility::ExpansionMissing
+                || tone.status == library::ToneCompatibility::ExpansionUnknown);
+        const bool kept = m_keptTones.count(tone.toneNumber) > 0;
+        QVariantMap map;
+        map.insert(QStringLiteral("toneNumber"), tone.toneNumber);
+        map.insert(QStringLiteral("status"),
+                   QString::fromUtf8(library::toneCompatibilityName(tone.status).data(),
+                                     static_cast<qsizetype>(library::toneCompatibilityName(tone.status).size())));
+        map.insert(QStringLiteral("label"),
+                   QString::fromUtf8(library::toneCompatibilityLabel(tone.status).data(),
+                                     static_cast<qsizetype>(library::toneCompatibilityLabel(tone.status).size())));
+        map.insert(QStringLiteral("tone"),
+                   tone.status == library::ToneCompatibility::ExpansionMissing ? QStringLiteral("error")
+                   : tone.status == library::ToneCompatibility::ExpansionUnknown ? QStringLiteral("warning")
+                   : tone.status == library::ToneCompatibility::ExpansionAvailable ? QStringLiteral("success")
+                                                                                  : QStringLiteral("neutral"));
+        map.insert(QStringLiteral("groupId"), tone.waveGroupId ? *tone.waveGroupId : -1);
+        map.insert(QStringLiteral("enabled"), tone.enabled);
+        map.insert(QStringLiteral("kept"), kept);
+        map.insert(QStringLiteral("needsAttention"), unresolved && !kept);
+        list.append(map);
+    }
+    return list;
+}
+
+int PatchEditorViewModel::tonesNeedingAttention() const
+{
+    int count = 0;
+    for (const auto& entry : toneCompatibility()) {
+        if (entry.toMap().value(QStringLiteral("needsAttention")).toBool()) {
+            ++count;
+        }
+    }
+    return count;
+}
+
+bool PatchEditorViewModel::findReplacementFor(int toneNumber)
+{
+    if (!ToneIndex::fromNumber(toneNumber)) {
+        return false;
+    }
+    setSelectedTone(toneNumber);
+    // The screen opens the browser; the musician picks. Nothing is chosen here
+    // and no parameter moves until they use one.
+    emit replacementRequested(toneNumber);
+    return true;
+}
+
+bool PatchEditorViewModel::disableTone(int toneNumber)
+{
+    const auto tone = ToneIndex::fromNumber(toneNumber);
+    if (!tone || !hasPatch() || m_comparing) {
+        return false;
+    }
+    setToneRaw(*tone, ToneParameter::ToneSwitch, 0);
+    emit compatibilityChanged();
+    return true;
+}
+
+void PatchEditorViewModel::keepToneAnyway(int toneNumber)
+{
+    if (!ToneIndex::fromNumber(toneNumber) || !m_keptTones.insert(toneNumber).second) {
+        return;
+    }
+    emit compatibilityChanged();
+}
+
+void PatchEditorViewModel::reconsiderTone(int toneNumber)
+{
+    if (m_keptTones.erase(toneNumber) > 0) {
+        emit compatibilityChanged();
+    }
+}
+
+void PatchEditorViewModel::setExpansionProfile(const library::ExpansionProfile* profile)
+{
+    if (m_expansionProfile == profile) {
+        return;
+    }
+    m_expansionProfile = profile;
+    emit compatibilityChanged();
+}
+
+void PatchEditorViewModel::expansionProfileChanged()
+{
+    emit compatibilityChanged();
 }
 
 // ---------------------------------------------------------------------------

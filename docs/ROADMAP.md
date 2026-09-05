@@ -327,6 +327,26 @@ Deliverables:
 
 Never silently replace missing waves.
 
+Execution update (2026-09-05): built, with one deliverable refused on evidence.
+
+The EXP-A/B/C/D profile, per-Tone and per-Patch compatibility analysis, the
+Expansion Manager, Wave Browser integration, Library and Bank compatibility
+filters and warnings, and the Find Replacement / Disable Tone / Keep Anyway
+workflows are all in. See `design/EXPANSION_INTELLIGENCE.md`.
+
+**"Waveform-to-board mapping" is not built, and should not be.** A Tone names an
+expansion wave by Wave Group ID, and which board answers to which ID is not
+documented. The golden fixture uses groups 1, 5, 7, 14 and 97; `Sitar` on 14 fits
+SR-JV80-14 "Asia" beautifully, and then there is no SR-JV80-97. Writing the table
+anyway would make every verdict in this phase rest on a guess. Instead the
+musician declares their boards, XP60Studio can **learn** a group from a Patch
+fetched off their own instrument, and every verdict is three-valued so that
+"cannot tell" is sayable. `protocol/ROLAND_XP60_PROTOCOL_FACTS.md` §7 records the
+refusal; `DEVICE_ACCEPTANCE.md` area 15 records what would settle it.
+
+"SR-JV board metadata" is therefore whatever the musician calls their board,
+stored and never parsed for meaning.
+
 ---
 
 # Phase 8 — Complete XP-60 Editing

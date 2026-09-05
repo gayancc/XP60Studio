@@ -19,10 +19,14 @@
 #include "library/LibraryDatabase.h"
 #include "library/SyxImport.h"
 #include "presentation/ExpansionViewModel.h"
+#include "presentation/PatchEditorViewModel.h"
+#include "midi/LoopbackMidiTransport.h"
+#include "services/DeviceSession.h"
 #include "services/PatchWorkspace.h"
 #include "xpmodel/Xp60WaveIdentifier.h"
 
 #include <QFile>
+#include <QSignalSpy>
 #include <QSqlDatabase>
 #include <QTest>
 
@@ -78,6 +82,10 @@ private slots:
     void learnsAWaveGroupFromThePatchOnScreen();
     void refusesToLearnFromAnAmbiguousPatch();
     void theWaveBrowserNoteSeparatesTheTwoGaps();
+
+    // The three explicit ways out, and the absence of a fourth.
+    void offersThreeWaysOutOfAMissingWaveAndReplacesNothingItself();
+    void keepingAToneAnywayChangesNothingAndIsForgottenWithThePatch();
 
 private:
     std::vector<Xp60Patch> m_patches;
@@ -475,6 +483,128 @@ void TestExpansionCompatibility::theWaveBrowserNoteSeparatesTheTwoGaps()
     QVERIFY(declared.contains(QStringLiteral("no waveform-name list")));
     // EXP-B is empty and must not be listed as something the musician owns.
     QVERIFY(!declared.contains(QStringLiteral("EXP-B")));
+}
+
+// "Never silently replace missing waves" is the rule this test exists to hold.
+// The editor offers Find Replacement, Disable Tone and Keep Anyway; the first
+// only opens the browser, and none of the three points a Tone at a wave the
+// musician did not choose.
+void TestExpansionCompatibility::offersThreeWaysOutOfAMissingWaveAndReplacesNothingItself()
+{
+    // No hardware and no transfer: the workflow under test is entirely local,
+    // and none of its three actions is allowed to reach the instrument.
+    services::DeviceSession session(std::make_unique<midi::LoopbackMidiTransport>());
+    services::PatchWorkspace workspace;
+    presentation::PatchEditorViewModel editor(session, workspace);
+
+    library::ExpansionProfile profile;
+    editor.setExpansionProfile(&profile);
+
+    // A Patch needing a group, on an instrument with a board that answers for
+    // something else — so "missing" is sayable.
+    const auto& patch = patchUsingGroup(14);
+    workspace.adopt(patch, services::PatchOrigin::temporary());
+    QVERIFY(profile.setBoard(1, "something else", 3));
+    editor.expansionProfileChanged();
+
+    const int needing = editor.tonesNeedingAttention();
+    QVERIFY2(needing > 0, "this fixture Patch needs a board the profile does not provide");
+
+    int missingTone = 0;
+    for (const auto& entry : editor.toneCompatibility()) {
+        const auto map = entry.toMap();
+        if (map.value(QStringLiteral("needsAttention")).toBool()) {
+            missingTone = map.value(QStringLiteral("toneNumber")).toInt();
+            QCOMPARE(map.value(QStringLiteral("status")).toString(), QStringLiteral("expansion-missing"));
+            break;
+        }
+    }
+    QVERIFY(missingTone > 0);
+
+    // Find Replacement asks the screen to open the browser and touches nothing.
+    QSignalSpy requested(&editor, &presentation::PatchEditorViewModel::replacementRequested);
+    const auto before = workspace.working();
+    QVERIFY(editor.findReplacementFor(missingTone));
+    QCOMPARE(requested.count(), 1);
+    QCOMPARE(requested.first().first().toInt(), missingTone);
+    QCOMPARE(editor.selectedTone(), missingTone);
+    QVERIFY2(workspace.working() == before, "asking to browse must not change the Patch");
+    QVERIFY(!workspace.modified());
+    QCOMPARE(editor.tonesNeedingAttention(), needing);
+
+    // Disable Tone is an ordinary, undoable edit that leaves the wave alone.
+    QVERIFY(editor.disableTone(missingTone));
+    QVERIFY(workspace.modified());
+    const auto toneIndex = ToneIndex::fromNumber(missingTone).value();
+    QCOMPARE(workspace.working().wave(toneIndex).numberRaw, before.wave(toneIndex).numberRaw);
+    QCOMPARE(workspace.working().wave(toneIndex).groupId, before.wave(toneIndex).groupId);
+    QVERIFY(!workspace.working().toneEnabled(toneIndex));
+    // The prompt is resolved, but the verdict is not rewritten: turning the
+    // Tone back on is an ordinary edit and the board would still be missing, so
+    // the row keeps saying so.
+    QCOMPARE(editor.tonesNeedingAttention(), needing - 1);
+    for (const auto& entry : editor.toneCompatibility()) {
+        const auto map = entry.toMap();
+        if (map.value(QStringLiteral("toneNumber")).toInt() == missingTone) {
+            QCOMPARE(map.value(QStringLiteral("status")).toString(), QStringLiteral("expansion-missing"));
+            QVERIFY(!map.value(QStringLiteral("enabled")).toBool());
+            QVERIFY(!map.value(QStringLiteral("needsAttention")).toBool());
+            QVERIFY2(!map.value(QStringLiteral("kept")).toBool(), "disabling is not dismissing");
+        }
+    }
+    QVERIFY(workspace.canUndo());
+    workspace.undo();
+    QVERIFY(workspace.working().toneEnabled(toneIndex));
+}
+
+void TestExpansionCompatibility::keepingAToneAnywayChangesNothingAndIsForgottenWithThePatch()
+{
+    // No hardware and no transfer: the workflow under test is entirely local,
+    // and none of its three actions is allowed to reach the instrument.
+    services::DeviceSession session(std::make_unique<midi::LoopbackMidiTransport>());
+    services::PatchWorkspace workspace;
+    presentation::PatchEditorViewModel editor(session, workspace);
+    library::ExpansionProfile profile;
+    editor.setExpansionProfile(&profile);
+    QVERIFY(profile.setBoard(1, "something else", 3));
+    editor.expansionProfileChanged();
+
+    workspace.adopt(patchUsingGroup(14), services::PatchOrigin::temporary());
+    const int needing = editor.tonesNeedingAttention();
+    QVERIFY(needing > 0);
+
+    int toneNumber = 0;
+    for (const auto& entry : editor.toneCompatibility()) {
+        if (entry.toMap().value(QStringLiteral("needsAttention")).toBool()) {
+            toneNumber = entry.toMap().value(QStringLiteral("toneNumber")).toInt();
+            break;
+        }
+    }
+
+    const auto before = workspace.working();
+    editor.keepToneAnyway(toneNumber);
+    // The prompt is gone; the Patch is byte for byte what it was, and the
+    // verdict underneath is unchanged. Dismissing a warning is not fixing it.
+    QCOMPARE(editor.tonesNeedingAttention(), needing - 1);
+    QVERIFY(workspace.working() == before);
+    QVERIFY(!workspace.modified());
+    for (const auto& entry : editor.toneCompatibility()) {
+        const auto map = entry.toMap();
+        if (map.value(QStringLiteral("toneNumber")).toInt() == toneNumber) {
+            QVERIFY(map.value(QStringLiteral("kept")).toBool());
+            QCOMPARE(map.value(QStringLiteral("status")).toString(), QStringLiteral("expansion-missing"));
+        }
+    }
+
+    // Changing one's mind is allowed.
+    editor.reconsiderTone(toneNumber);
+    QCOMPARE(editor.tonesNeedingAttention(), needing);
+    editor.keepToneAnyway(toneNumber);
+
+    // A different Patch is a different question, so the dismissal does not
+    // follow the musician to it.
+    workspace.adopt(patchUsingGroup(14), services::PatchOrigin::library(7));
+    QCOMPARE(editor.tonesNeedingAttention(), needing);
 }
 
 QTEST_MAIN(TestExpansionCompatibility)
