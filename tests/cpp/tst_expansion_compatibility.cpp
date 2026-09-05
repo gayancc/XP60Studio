@@ -5,15 +5,17 @@
 // this analysis is to say so before the musician finds out on stage.
 //
 // The hard part is not the analysis, it is knowing when to keep quiet. Which
-// board a Wave Group ID denotes is not documented, and this project's own
-// evidence declines to settle it — the golden fixture's expansion references use
-// groups 1, 5, 7, 14 and 97, and 97 is not an SR-JV80 board number. So the
-// verdict is three-valued, and most of what is checked here is that "missing" is
-// only ever said when the musician has told us enough for it to be true.
+// board a Wave Group ID denotes is not documented by Roland. XP60Studio infers
+// it — the ID is taken to be the SR-JV80 catalogue number, which fits every
+// group the fixture uses — but an inference is not a report from the
+// instrument, and it says nothing about which boards are actually fitted. So the
+// verdict stays three-valued, and most of what is checked here is that "missing"
+// is only ever said when the musician has told us enough for it to be true.
 //
 // Everything runs over tests/fixtures/xp60/user-bank-amal.syx, a real XP-60 User
 // bank, whose 512 Tones include 192 real expansion references.
 
+#include "library/ExpansionBoardCatalog.h"
 #include "library/ExpansionProfile.h"
 #include "library/PatchCompatibility.h"
 #include "library/LibraryDatabase.h"
@@ -82,6 +84,11 @@ private slots:
     void learnsAWaveGroupFromThePatchOnScreen();
     void refusesToLearnFromAnAmbiguousPatch();
     void theWaveBrowserNoteSeparatesTheTwoGaps();
+
+    // The SR-JV80 catalogue, and the limits of the inference behind it.
+    void everyGroupTheFixtureUsesIsARealBoardNumber();
+    void namesABoardForAGroupWithoutClaimingItIsInstalled();
+    void pickingABoardFillsInItsGroupAndLearningStillOverridesIt();
 
     // The three explicit ways out, and the absence of a fourth.
     void offersThreeWaysOutOfAMissingWaveAndReplacesNothingItself();
@@ -325,8 +332,9 @@ void TestExpansionCompatibility::reportsWhatAWholeBankNeeds()
     const auto groups = library::requiredExpansionGroups(m_patches);
 
     // Measured from the fixture: 192 of its 512 Tones are expansion references,
-    // across exactly these five groups. Group 97 is the reason this project does
-    // not adopt "group ID is the SR-JV80 board number" — no such board exists.
+    // across exactly these five groups. Every one is a real SR-JV80 board
+    // number — 97 is Experience III — which is what supports reading a group as
+    // its board (ROLAND_XP60_PROTOCOL_FACTS.md §7).
     const std::set<int> expected{1, 5, 7, 14, 97};
     QCOMPARE(groups, expected);
 
@@ -605,6 +613,96 @@ void TestExpansionCompatibility::keepingAToneAnywayChangesNothingAndIsForgottenW
     // follow the musician to it.
     workspace.adopt(patchUsingGroup(14), services::PatchOrigin::library(7));
     QCOMPARE(editor.tonesNeedingAttention(), needing);
+}
+
+// ---------------------------------------------------------------------------
+// The SR-JV80 catalogue
+//
+// XP60Studio reads a Wave Group ID as the SR-JV80 board of that number. Roland
+// documents no such mapping, so it is an inference — but every group in real
+// user data is a real board number, and the boards' contents match the Patches
+// using them (ROLAND_XP60_PROTOCOL_FACTS.md §7).
+// ---------------------------------------------------------------------------
+
+void TestExpansionCompatibility::everyGroupTheFixtureUsesIsARealBoardNumber()
+{
+    const auto groups = library::requiredExpansionGroups(m_patches);
+    QVERIFY(!groups.empty());
+    for (const int group : groups) {
+        QVERIFY2(library::isKnownSrJv80Board(group),
+                 qPrintable(QStringLiteral("group %1 is not an SR-JV80 board number").arg(group)));
+    }
+
+    // The two the evidence rests hardest on, and the one that used to be
+    // mistaken for proof that the whole mapping was wrong.
+    QCOMPARE(QString::fromStdString(*library::srJv80BoardName(5)), QStringLiteral("SR-JV80-05 World"));
+    QCOMPARE(QString::fromStdString(*library::srJv80BoardName(14)), QStringLiteral("SR-JV80-14 Asia"));
+    QCOMPARE(QString::fromStdString(*library::srJv80BoardName(97)), QStringLiteral("SR-JV80-97 Experience III"));
+
+    // The series runs 01..19 and 96..99, which is why the field is 0..127 wide.
+    QVERIFY(library::isKnownSrJv80Board(1));
+    QVERIFY(library::isKnownSrJv80Board(19));
+    QVERIFY(library::isKnownSrJv80Board(96));
+    QVERIFY(library::isKnownSrJv80Board(99));
+    QVERIFY(!library::isKnownSrJv80Board(20));
+    QVERIFY(!library::isKnownSrJv80Board(0));
+    QVERIFY(!library::srJv80BoardName(42).has_value());
+}
+
+// Naming what a Patch asks for is not the same as saying the instrument has it.
+void TestExpansionCompatibility::namesABoardForAGroupWithoutClaimingItIsInstalled()
+{
+    // The group number leads; the board name is the inference resting on it.
+    QCOMPARE(QString::fromStdString(library::describeWaveGroup(14)),
+             QStringLiteral("wave group 14 (SR-JV80-14 Asia)"));
+    // A group no board carries is not an error — the musician's instrument is
+    // the authority, not this table.
+    QCOMPARE(QString::fromStdString(library::describeWaveGroup(42)), QStringLiteral("wave group 42"));
+
+    // Knowing the board's name changes no verdict: with nothing declared, a
+    // Patch needing group 14 is still undecided, not missing and not playable.
+    const auto report = library::analysePatch(patchUsingGroup(14), ExpansionProfile{});
+    QVERIFY(report.usesExpansion());
+    QVERIFY(report.undecided());
+    QVERIFY(report.missingGroups.empty());
+    // ...but the summary can now say which board it is asking for.
+    QVERIFY(QString::fromStdString(report.summary()).contains(QStringLiteral("SR-JV80-14 Asia")));
+}
+
+void TestExpansionCompatibility::pickingABoardFillsInItsGroupAndLearningStillOverridesIt()
+{
+    services::PatchWorkspace workspace;
+    presentation::ExpansionViewModel manager;
+    manager.setWorkspace(&workspace);
+
+    QVERIFY(!manager.knownBoards().isEmpty());
+    QCOMPARE(manager.knownBoards().first().toMap().value(QStringLiteral("number")).toInt(), 1);
+
+    // Choosing SR-JV80-14 records both its name and the group it is inferred to
+    // answer for, so the musician does not have to know the number.
+    QVERIFY(manager.declareBoard(2, 14));
+    QCOMPARE(QString::fromStdString(manager.profile().board(2).name), QStringLiteral("SR-JV80-14 Asia"));
+    QCOMPARE(manager.profile().board(2).waveGroupId.value(), 14);
+    QVERIFY(!manager.anyGroupUnknown());
+
+    // A number no board carries is refused rather than invented.
+    QVERIFY(!manager.declareBoard(3, 42));
+    QVERIFY(manager.profile().board(3).name.empty());
+
+    // The inference is a default, not a fact about this instrument: evidence
+    // from the musician's own XP-60 overrides it without argument.
+    workspace.adopt(patchUsingGroup(97), services::PatchOrigin::temporary());
+    QVERIFY(manager.declareBoard(1, 5));
+    QCOMPARE(manager.profile().board(1).waveGroupId.value(), 5);
+    QVERIFY(manager.learnFromCurrentPatch(1));
+    QCOMPARE(manager.profile().board(1).waveGroupId.value(), 97);
+    // ...and the name the catalogue supplied is left alone, because renaming
+    // the musician's board is not this class's business.
+    QCOMPARE(QString::fromStdString(manager.profile().board(1).name), QStringLiteral("SR-JV80-05 World"));
+
+    // A musician can also just say their board answers to something else.
+    QVERIFY(manager.setWaveGroup(2, 42));
+    QCOMPARE(manager.profile().board(2).waveGroupId.value(), 42);
 }
 
 QTEST_MAIN(TestExpansionCompatibility)

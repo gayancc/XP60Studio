@@ -15,20 +15,23 @@ namespace xp60studio::presentation {
 // The Expansion Manager: what is in this XP-60's four Wave Expansion slots, and
 // what that means for the Patch on screen.
 //
-// ── Why this screen asks instead of detecting ───────────────────────────────
+// ── Why this screen asks rather than detecting ──────────────────────────────
 //
-// A Tone names an expansion wave by Wave Group ID, and which board answers to
-// which ID is not documented — see `library::ExpansionProfile` and
-// `docs/protocol/ROLAND_XP60_PROTOCOL_FACTS.md` §7, where the obvious
-// "ID is the SR-JV80 board number" hypothesis is laid out and refused because
-// the golden fixture uses group 97 and no such board exists.
+// Nothing in the protocol reports which boards are fitted, so the musician says.
+// What XP60Studio brings is a catalogue and a way to check:
 //
-// So the musician tells XP60Studio what they own. What XP60Studio can do in
-// return is *learn* the group without anyone guessing: select a wave from a
-// known board in a Tone on the instrument's front panel, fetch the temporary
-// Patch, and read the group ID straight out of it. `learnFromCurrentPatch()` is
-// that — evidence from the user's own instrument rather than a table this
-// project could not honestly write.
+//  * `knownBoards` lists Roland's SR-JV80 series, and choosing one fills in the
+//    wave group its waves are inferred to carry — group ID is taken to be the
+//    board number (`library::ExpansionBoardCatalog`, and
+//    `docs/protocol/ROLAND_XP60_PROTOCOL_FACTS.md` §7 for the evidence and the
+//    limits of that inference).
+//  * `learnFromCurrentPatch` reads the group out of a Patch fetched from the
+//    musician's own instrument. Evidence beats the catalogue: if their board
+//    answers to a different number, Learn records that and this class believes
+//    it.
+//
+// The inference names things and saves typing. It never concludes that an
+// instrument has a board — that is only ever what the musician declared.
 class ExpansionViewModel : public QObject
 {
     Q_OBJECT
@@ -43,6 +46,12 @@ class ExpansionViewModel : public QObject
     Q_PROPERTY(QString advice READ advice NOTIFY profileChanged)
     // What the Wave Browser's Expansion tab can honestly say. See browserNote().
     Q_PROPERTY(QString browserNote READ browserNote NOTIFY profileChanged)
+    // Roland's SR-JV80 catalogue, for the "which board is this?" picker:
+    // {number, title, name, waveGroupId}. Choosing one fills in its wave group,
+    // because group ID is inferred to be the board number — an inference the
+    // musician can overrule and that Learn overrides. See
+    // docs/protocol/ROLAND_XP60_PROTOCOL_FACTS.md §7.
+    Q_PROPERTY(QVariantList knownBoards READ knownBoards CONSTANT)
 
     // The Patch currently being worked on, analysed against the profile above.
     // {usesExpansion, playable, undecided, summary, requiredGroups,
@@ -75,6 +84,17 @@ public:
     // musician has declared, so the tab reports the real state of this
     // instrument instead of a flat "unverified".
     [[nodiscard]] QString browserNote() const;
+    [[nodiscard]] QVariantList knownBoards() const;
+
+    // Declares that `slot` holds SR-JV80-`boardNumber`, filling in both the name
+    // and the wave group. Convenience over `setBoard`, not a different kind of
+    // claim: the group it writes is the same one the musician could type, and
+    // they remain free to change it afterwards.
+    Q_INVOKABLE bool declareBoard(int slot, int boardNumber);
+
+    // "wave group 14 (SR-JV80-14 Asia)" — the group number first, because that
+    // is what the Tone carries; the board name is the inference resting on it.
+    [[nodiscard]] Q_INVOKABLE QString describeGroup(int waveGroupId) const;
 
     [[nodiscard]] QVariantMap currentPatch() const;
     [[nodiscard]] QVariantList learnableGroups() const;

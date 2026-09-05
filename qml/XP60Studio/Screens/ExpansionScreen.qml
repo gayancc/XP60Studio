@@ -9,18 +9,17 @@ import XP60Studio.Presentation
 //
 // ── Why this screen asks rather than detects ─────────────────────────────────
 //
-// A Tone names an expansion wave by Wave Group ID, and which board answers to
-// which ID is not documented. This project looked: the golden fixture's
-// expansion references use groups 1, 5, 7, 14 and 97, and while a `Sitar` on
-// group 14 lines up with SR-JV80-14 "Asia", there is no SR-JV80-97 — so the
-// mapping that fits four groups fails on the fifth and is not encoded anywhere.
-// See docs/protocol/ROLAND_XP60_PROTOCOL_FACTS.md §7.
+// Nothing in the XP-60's protocol reports which boards are fitted, so the
+// musician says. The board list makes that quick: pick an SR-JV80 board and its
+// wave group is filled in, because a Tone's Wave Group ID is inferred to be the
+// board's catalogue number (docs/protocol/ROLAND_XP60_PROTOCOL_FACTS.md §7 sets
+// out the evidence, and the fact that Roland documents no such mapping).
 //
-// So the musician says what they own, and the screen is built to make the three
-// honest answers legible: a board is here and we know its waves, a board is here
-// and we do not yet, or nothing is here at all. **Learn** is the way out of the
-// middle state — select a wave from the board on the instrument, fetch the
-// Patch, and XP60Studio reads the group out of it rather than guessing.
+// The screen is built to make the three honest answers legible: a board is here
+// and we know its waves, a board is here and we do not yet, or nothing is here
+// at all. **Learn** is the way out of the middle state, and it outranks the
+// catalogue — select a wave from the board on the instrument, fetch the Patch,
+// and XP60Studio reads the group the instrument actually sent.
 FocusScope {
     id: root
 
@@ -112,11 +111,30 @@ FocusScope {
                             }
                         }
 
+                        // Pick a real SR-JV80 board and its wave group is filled
+                        // in with it. The free-text field below still works for
+                        // a board that is not in Roland's catalogue, or for a
+                        // musician who calls theirs something else.
+                        XpComboBox {
+                            objectName: "expansionSlotBoard" + slotCard.modelData.slot
+                            Layout.fillWidth: true
+                            Accessible.name: qsTr("Board in %1").arg(slotCard.modelData.label)
+                            textRole: "name"
+                            model: root.expansion.knownBoards
+                            currentIndex: -1
+                            displayText: slotCard.modelData.installed ? slotCard.modelData.name
+                                                                      : qsTr("Choose an SR-JV80 board…")
+                            onActivated: function (index) {
+                                root.expansion.declareBoard(slotCard.modelData.slot,
+                                                            root.expansion.knownBoards[index].number)
+                            }
+                        }
+
                         XpTextField {
                             objectName: "expansionSlotName" + slotCard.modelData.slot
                             Layout.fillWidth: true
                             text: slotCard.modelData.name
-                            placeholderText: qsTr("Empty — name the board to declare it")
+                            placeholderText: qsTr("…or name it yourself")
                             onEditingFinished: root.expansion.setBoard(slotCard.modelData.slot, text,
                                                                       slotCard.modelData.groupId)
                         }
@@ -220,8 +238,8 @@ FocusScope {
                         XpLabel {
                             visible: modelData.groupId >= 0
                             text: modelData.slot > 0
-                                  ? qsTr("group %1 · %2").arg(modelData.groupId).arg(modelData.slotLabel)
-                                  : qsTr("group %1").arg(modelData.groupId)
+                                  ? qsTr("%1 · %2").arg(root.expansion.describeGroup(modelData.groupId)).arg(modelData.slotLabel)
+                                  : root.expansion.describeGroup(modelData.groupId)
                             role: "caption"
                             muted: true
                         }

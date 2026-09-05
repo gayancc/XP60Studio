@@ -1,5 +1,7 @@
 #include "library/PatchCompatibility.h"
 
+#include "library/ExpansionBoardCatalog.h"
+
 #include "xpmodel/Xp60WaveIdentifier.h"
 
 #include <algorithm>
@@ -58,6 +60,10 @@ int PatchCompatibilityReport::unknownTones() const noexcept
 
 namespace {
 
+// Groups are named where a board of that number is known — "5 (SR-JV80-05
+// World)" reads better than "5" and is what a musician can act on. The number
+// leads, because it is the fact the Tone actually carries; the board name is the
+// inference resting on it (ROLAND_XP60_PROTOCOL_FACTS.md §7).
 std::string joinGroups(const std::set<int>& groups)
 {
     std::string out;
@@ -66,6 +72,9 @@ std::string joinGroups(const std::set<int>& groups)
             out += ", ";
         }
         out += std::to_string(group);
+        if (const auto board = srJv80BoardName(group)) {
+            out += " (" + *board + ")";
+        }
     }
     return out;
 }

@@ -13,20 +13,27 @@ instrument does not have has nothing to sound. A musician importing somebody
 else's bank wants to know which of those 128 Patches will actually work, and
 wants to know it before a gig rather than during one.
 
-The obstacle is not the analysis. It is that **XP60Studio cannot tell which board
-a Patch is asking for.**
+There are two separate obstacles, and keeping them apart is most of the design.
 
-A Tone names an expansion wave by **Wave Group ID**, which the Parameter Address
-Map gives as a plain 0..127 field with no stated meaning. Which board answers to
-which group is not documented anywhere this project has, and the project's own
-evidence declines to settle it. The golden fixture's 192 expansion references use
-groups **1, 5, 7, 14 and 97**. A Patch called `Sitar` on group 14 lines up with
-SR-JV80-14 "Asia" and `Ethno Pipes3` on group 5 with SR-JV80-05 "World" — a
-tempting pattern that then fails, because **there is no SR-JV80-97**. Slot
-indices would be 1–4, so it is not that either. The full argument, and the
-refusal, are in `../protocol/ROLAND_XP60_PROTOCOL_FACTS.md` §7.
+**What a Patch is asking for.** A Tone names an expansion wave by **Wave Group
+ID**, a plain 0..127 field the Parameter Address Map defines the width of and
+nothing else. XP60Studio reads that ID as the **SR-JV80 board of that number** —
+group 14 is SR-JV80-14 *Asia*. Roland documents no such mapping, so it is an
+inference, but a well-supported one: every group in real user data is a real
+board number, and the boards' contents match the Patches using them. The evidence
+and its limits are in `../protocol/ROLAND_XP60_PROTOCOL_FACTS.md` §7.
 
-So this phase is built around a gap rather than around a table.
+*(An earlier revision refused this mapping, on the false ground that the
+fixture's group 97 could not be a board number. The SR-JV80 series runs 01–19
+**and** 96–99; SR-JV80-97 is* Experience III*. The refusal was a mistake and has
+been corrected.)*
+
+**What the instrument actually has.** Nothing in the protocol reports which
+boards are fitted. No inference closes this one, and the catalogue above does not
+try: naming what a Patch wants says nothing about whether the musician owns it.
+
+So the compatibility verdict rests entirely on what the musician declared, and
+the catalogue's job is to make declaring it quick and to put names on numbers.
 
 ## 2. The three-valued verdict
 
@@ -52,10 +59,14 @@ clock, no Qt.
 
 ## 3. What the musician declares, and what XP60Studio learns
 
-`library::ExpansionProfile` holds four slots. Each board carries a name the
-musician chose (never parsed for meaning) and, optionally, the Wave Group ID it
-answers to. **"Installed, group not known" is a first-class state**, not a blank
-to be filled in with a plausible number.
+`library::ExpansionProfile` holds four slots. Each board carries a name and,
+optionally, the Wave Group ID it answers to. **"Installed, group not known" is a
+first-class state**, not a blank to be filled in with a plausible number.
+
+The quick path is `library::ExpansionBoardCatalog`: the musician picks an
+SR-JV80 board from Roland's list and its wave group is filled in with the board
+number. The field stays editable, because the catalogue is a default rather than
+a fact about *their* instrument.
 
 The Expansion Manager (`qml/…/Screens/ExpansionScreen.qml`,
 `presentation::ExpansionViewModel`) is where that is declared, and it offers one
@@ -69,6 +80,10 @@ a table this project could not honestly write.
 `learnFromCurrentPatch` **refuses an ambiguous Patch** — one whose Tones span two
 groups nothing already claims — rather than picking the first. A wrong
 association would make every later verdict wrong, silently.
+
+**Learn outranks the catalogue.** If a musician's board answers to a different
+number than the table predicts, the instrument is right and the table is wrong,
+and `setWaveGroup` lets them say so directly too.
 
 The profile is stored in the library database (schema 4, `expansion_slots`).
 
@@ -146,11 +161,16 @@ Two details that follow from taking the words seriously:
 
 ## 7. What is deliberately not built
 
-- **A Wave Group ID → board table.** Refused; see §1 and protocol facts §7.
-- **An expansion waveform catalog.** Not transcribed for any board.
+- **Treating the group → board inference as verified.** It is labelled as an
+  inference everywhere it appears, and both Learn and a manual edit override it.
+- **An expansion waveform catalog.** Roland publishes waveform lists per board
+  and none is transcribed here, so expansion waves still cannot be browsed or
+  assigned by name.
+- **Concluding an instrument has a board.** Naming what a Patch wants is not the
+  same claim, and no verdict rests on the catalogue.
 - **Detecting installed boards over MIDI.** No documented request for it.
 - **Automatic wave substitution.** See §6.
 
-Each of these is a place where XP60Studio says "cannot tell" instead of guessing.
-`DEVICE_ACCEPTANCE.md` area 15 records what evidence would settle the first, if a
-musician with a known board ever supplies it.
+`DEVICE_ACCEPTANCE.md` area 15 records what would confirm the mapping outright:
+install a known board, select one of its waves in a Tone from the front panel,
+and read the Tone back.

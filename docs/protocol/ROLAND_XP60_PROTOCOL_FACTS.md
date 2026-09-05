@@ -275,36 +275,77 @@ To move a row to *Hardware-verified*:
 | Wave Group Type | 0 = INT, 1 = `<PCM>` (JV-1080 only, ignored on receive), 2 = EXP | Documentation-derived | Parameter Address Map p.224 |
 | Wave Group ID field | one 7-bit byte, 0..127, display "same as raw" | Documentation-derived | Parameter Address Map p.224 |
 | Group type 0, group ID 1/2 | INT-A / INT-B | **Hardware-verified 2026-09-04** | Front-panel comparison, area 9 |
-| **Which board a Wave Group ID denotes** | — | **Unknown** | Roland states no mapping |
+| **Which board a Wave Group ID denotes** | the SR-JV80 board of that number | **Inferred** | see below |
 | Expansion slots | four, EXP-A..EXP-D, one SR-JV80 board each | Documentation-derived | Owner's Manual p.45 |
 | Panel selection of expansion waves | by slot group XP-A..XP-D | Documentation-derived | Owner's Manual p.45 |
 
-### Why "group ID is the SR-JV80 board number" is *not* adopted
+### "Group ID is the SR-JV80 board number" — adopted as an inference
 
-It is the obvious hypothesis and it is tempting, because part of the evidence
-fits beautifully. The golden fixture `user-bank-amal.syx` carries **192
-expansion references among its 512 Tones**, across groups **1, 5, 7, 14 and 97**,
-and the patch names line up with the SR-JV80 catalogue:
+**Correction (2026-09-05).** An earlier revision of this document refused this
+mapping, on the stated ground that the golden fixture uses group **97** and "the
+SR-JV80 series is numbered in the low tens, so 97 cannot be a board number".
 
-| Group | Example patch in the fixture | SR-JV80 board with that number |
+**That ground was false.** The SR-JV80 series is numbered **01–19 *and* 96–99**;
+the high numbers are the Japanese-market and compilation boards:
+
+| Number | Board |
+|---|---|
+| 96 | *World Collection: Latin* |
+| 97 | *Experience III* |
+| 98 | *Experience II* |
+| 99 | *Experience* |
+
+So SR-JV80-97 exists, the pattern does not fail on the fifth group, and the
+refusal rested on a mistake rather than on evidence.
+
+#### The evidence as it actually stands
+
+The fixture `user-bank-amal.syx` carries **192 expansion references among its 512
+Tones**, across groups **1, 5, 7, 14 and 97**. Every one of those is a real
+SR-JV80 board number, and the patch names sit where the boards' contents predict:
+
+| Group | Board of that number | Patches in the fixture using it |
 |---|---|---|
-| 5 | `Ethno Pipes3`, `Tramaloo` | -05 *World* |
-| 14 | `Sitar` | -14 *Asia* |
-| **97** | `*Poly Xpandr`, `*PromarsLead`, `*Tenor Solo` | **no such board** |
+| 1 | -01 *Pop* | `60s Organ x4`, `Accordian 2`, `Clarinet mp`, `Clav 1 x4`, `Dulcimer`, `Flute ALL` |
+| 5 | -05 *World* | `Cimbalom`, `Ethno Pipes3`, `Deepawali`, `Shnika`, `TAMIL*TONE`, `Theri Meri` |
+| 7 | -07 *Super Sound Set* | `Bandoneon1`, `Brass Fall 1..3`, `Bright TP`, `Flute live`, `Musette det2` |
+| 14 | -14 *Asia* | `Sitar` |
+| 97 | -97 *Experience III* | `*Poly Xpandr`, `*PromarsLead`, `*Tenor Solo` |
 
-The SR-JV80 series is numbered in the low tens; **97 cannot be a board number**,
-so the pattern that fits four groups fails on the fifth. Slot indices are ruled
-out too — those would be 1..4.
+Group 5's contents are unambiguously world instruments and group 14's single
+Patch is a sitar. Group 97's three Patches name Roland vintage synths (the
+*Promars* is one), and *Experience III* is a compilation whose sources include
+*Vintage Synth*. The 0..127 width of the field — rather than the 0..19 the
+low-numbered boards alone would need — is itself explained by 96–99 existing.
 
-Something else is going on that this project has not established, so no mapping
-is encoded anywhere. `xpmodel::expansionWave` carries the raw pair and resolves
-nothing; `library::ExpansionProfile` asks the musician which board answers to
-which group; and `library::PatchCompatibility` answers **Unknown** rather than
-"missing" whenever the profile is not complete enough for "missing" to be true.
+Nothing observed contradicts the mapping, and four independent name/theme
+matches support it.
 
-Settling it is a hardware task: install a known board, select one of its waves
-in a Tone from the front panel, and read the Tone back. Added to
-`DEVICE_ACCEPTANCE.md` as area 15.
+#### What this project does with it, and what it still will not do
+
+The mapping is **inferred, not documented**. Roland's Parameter Address Map
+defines the field's width and nothing about its meaning, and this project has
+seen one instrument's data. So it is used for **naming and convenience**, never
+as authority:
+
+- `library::srJv80BoardName` turns a group into a board name, so XP60Studio can
+  say "wave group 14 — SR-JV80-14 Asia" instead of a bare number, and so the
+  Expansion Manager can offer a list of real boards to pick from.
+- Picking a board from that list fills in its wave group. The field stays
+  editable, and **Learn** — reading the group out of a Patch fetched from the
+  musician's own instrument — still overrides it. Evidence from the instrument
+  outranks the inference.
+- **What is installed is still only ever what the musician declared.** The
+  mapping names what a Patch is asking for; it never concludes that an
+  instrument has a board. `library::PatchCompatibility` still answers **Unknown**
+  rather than "missing" whenever the profile is not complete enough for
+  "missing" to be true.
+
+Confirming it outright is still a hardware task: install a known board, select
+one of its waves in a Tone from the front panel, and read the Tone back —
+`DEVICE_ACCEPTANCE.md` area 15. Until then a musician who finds a board that
+answers to a different number can simply say so, and XP60Studio will believe
+them over its own table.
 
 ## Keybed
 

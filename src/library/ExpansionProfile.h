@@ -18,20 +18,20 @@ namespace xp60studio::library {
 //
 // ── Why the user declares this rather than the application detecting it ──────
 //
-// A Tone names an expansion wave by **Wave Group ID**, which the Parameter
-// Address Map gives as a plain 0..127 field with no stated meaning. Which board
-// answers to which group is not documented, and this project's own evidence
-// declines to settle it: the golden fixture's 192 expansion references use
-// groups 1, 5, 7, 14 and 97, and while a patch called `Sitar` on group 14 and
-// `Ethno Pipes3` on group 5 line up neatly with SR-JV80-14 "Asia" and
-// SR-JV80-05 "World", **97 is not an SR-JV80 board number** and breaks the
-// pattern. See `docs/protocol/ROLAND_XP60_PROTOCOL_FACTS.md` §7.
+// Nothing in the XP-60's protocol reports which boards are fitted, so this is
+// the musician's own knowledge, recorded.
 //
-// So XP60Studio does not guess. It asks: the musician names the board in each
-// slot, and — when they know it, or once XP60Studio has learned it from their
-// own instrument — which wave group that board answers to. A board whose group
-// is not yet known is a first-class state, not a blank to be filled in with a
-// plausible number.
+// XP60Studio can *name* what a Patch is asking for: a Tone identifies an
+// expansion wave by **Wave Group ID**, and that ID is inferred to be the
+// SR-JV80 board's catalogue number (`ExpansionBoardCatalog`, with the evidence
+// in `docs/protocol/ROLAND_XP60_PROTOCOL_FACTS.md` §7). That inference fills in
+// a wave group when a musician picks a board from the list, and nothing more.
+//
+// It is never authority over this type. A board whose group is not yet known is
+// a first-class state rather than a blank to fill with a plausible number, and a
+// group *learned* from the musician's own instrument overrides the catalogue —
+// if their board answers to a different number, that is the fact and the table
+// is wrong.
 struct ExpansionBoard
 {
     // 1..4, displayed as EXP-A..EXP-D.

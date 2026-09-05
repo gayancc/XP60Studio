@@ -13,6 +13,8 @@ add_library(xp60studio_library STATIC
   LibraryEntry.cpp
   BankDraft.h
   BankDraft.cpp
+  ExpansionBoardCatalog.h
+  ExpansionBoardCatalog.cpp
   ExpansionProfile.h
   ExpansionProfile.cpp
   PatchCompatibility.h

@@ -1,5 +1,6 @@
 #include "presentation/ExpansionViewModel.h"
 
+#include "library/ExpansionBoardCatalog.h"
 #include "xpmodel/Xp60WaveIdentifier.h"
 
 #include <set>
@@ -167,6 +168,37 @@ QString ExpansionViewModel::browserNote() const
                                   .arg(toQt(library::slotLabel(slot)), toQt(board.name)));
     }
     return tr("You have declared: %1. %2").arg(declared.join(QStringLiteral("; ")), noCatalog);
+}
+
+QVariantList ExpansionViewModel::knownBoards() const
+{
+    QVariantList list;
+    for (const auto& board : library::srJv80Boards()) {
+        const auto name = library::srJv80BoardName(board.number);
+        QVariantMap map;
+        map.insert(QStringLiteral("number"), board.number);
+        map.insert(QStringLiteral("title"), toQt(board.title));
+        map.insert(QStringLiteral("name"), name ? toQt(*name) : QString());
+        // The wave group choosing this board would record. Shown in the picker
+        // so the inference is visible rather than applied behind the musician.
+        map.insert(QStringLiteral("waveGroupId"), board.number);
+        list.append(map);
+    }
+    return list;
+}
+
+bool ExpansionViewModel::declareBoard(int slot, int boardNumber)
+{
+    const auto name = library::srJv80BoardName(boardNumber);
+    if (!name) {
+        return false;
+    }
+    return setBoard(slot, toQt(*name), boardNumber);
+}
+
+QString ExpansionViewModel::describeGroup(int waveGroupId) const
+{
+    return toQt(library::describeWaveGroup(waveGroupId));
 }
 
 bool ExpansionViewModel::setBoard(int slot, const QString& name, int waveGroupId)
