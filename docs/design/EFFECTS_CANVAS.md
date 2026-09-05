@@ -142,3 +142,40 @@ route value carries a name, a chip edits at full raw resolution, focus keeps the
 topology visible, isolation lights one path and explains it, and routing offers
 only destinations the XP-60 allows — including that `<OUTPUT-2>` and `MIX+REV`
 are never drop targets.
+
+
+## Gesture reliability
+
+Three defects made the first version feel unreliable. All three are structural,
+not cosmetic.
+
+**The ScrollView stole the gesture.** The canvas sits inside the editor
+ScrollView, so a vertical drag on a chip or a routing handle was taken by the
+Flickable a few pixels in: the value stopped tracking and the page scrolled
+instead. Every drag surface now sets `preventStealing`.
+
+**Delegates were destroyed mid-drag.** `routing()` returns a freshly built edge
+list on every patch change, so binding a Repeater straight to it recreated every
+rail and chip each time a value moved — including the chip under the pointer,
+which ended the gesture. Topology and state are now separate: `railModel`
+changes only when the *shape* of the routing changes, and delegates read live
+level and open state through `edgeState()`. Same information, stable item
+lifetimes.
+
+**Drops demanded precision.** The hit test required the pointer strictly inside
+a node rectangle, so a near miss silently failed. Destinations now have a
+tolerance margin, and a target is only given up once the pointer is clearly away
+from it, so a shaky hand near an edge does not flicker the drop in and out.
+
+Alongside those: a chip only begins adjusting past a small threshold, so a click
+can never nudge a send on its way to isolating a route; the drag line is a
+transformed rectangle rather than a repainted Canvas; the routing handle is 18 px
+with a full-size grab area and an arrow rather than another status dot; chips
+sharing a lane are separated so two values can never stack; and nodes and chips
+have hover states so it is obvious what responds.
+
+`tst_EffectsCanvas.qml` covers each of these: that drag surfaces refuse to hand
+the gesture over, that a click isolates without changing a value, that a real
+drag adjusts and leaves exactly one undo entry, that a drop near a destination
+still lands, that a cancelled drag writes nothing, and that no two chips overlap
+at any supported width.

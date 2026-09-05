@@ -35,9 +35,6 @@ set(XP60STUDIO_QML_FILES
   Controls/ToneMiniEnvelope.qml
   Controls/EnvelopeEditor.qml
   Controls/KeyboardStrip.qml
-  Controls/SignalFlowNode.qml
-  Controls/SignalFlowConnector.qml
-  Controls/EffectRoutingView.qml
   Controls/EffectsCanvas.qml
   Controls/EffectProcessorNode.qml
   Controls/EffectRouteChip.qml

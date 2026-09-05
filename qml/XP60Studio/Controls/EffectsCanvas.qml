@@ -40,6 +40,48 @@ Item {
 
     readonly property var routing: editor.routing
     readonly property var edges: routing.edges || []
+
+    // Topology and state are deliberately separated.
+    //
+    // The model rebuilds the whole edge list on every patch change, so binding
+    // a Repeater straight to it recreates every delegate each time a value
+    // moves -- which destroys the chip the user is mid-drag on and drops the
+    // gesture. `railModel` therefore changes only when the *shape* of the
+    // routing changes, and delegates read live level and open state through
+    // edgeState(). Same information, stable item lifetimes.
+    property var railModel: []
+    readonly property string topologySignature: {
+        var e = root.edges, parts = []
+        for (var i = 0; i < e.length; ++i)
+            parts.push(e[i].from + ">" + e[i].to + ":" + (e[i].parameterId || ""))
+        return parts.join("|")
+    }
+    onTopologySignatureChanged: root.rebuildRailModel()
+    Component.onCompleted: root.rebuildRailModel()
+
+    function rebuildRailModel() {
+        var e = root.edges, next = []
+        for (var i = 0; i < e.length; ++i)
+            next.push({ "from": e[i].from, "to": e[i].to, "parameterId": e[i].parameterId || "" })
+        root.railModel = next
+    }
+    // Live state for one edge of the stable model.
+    function edgeState(from, to) {
+        var e = root.edges
+        for (var i = 0; i < e.length; ++i)
+            if (e[i].from === from && e[i].to === to)
+                return e[i]
+        return null
+    }
+    function edgeOpen(from, to) {
+        var live = edgeState(from, to)
+        return live ? live.open : false
+    }
+    // Hit test for a canvas point, exposed here so it has one home and can be
+    // exercised without reaching into the internals.
+    function nodeAtPoint(px, py) {
+        return routingLayer.nodeAt(px, py)
+    }
     readonly property bool auditioning: editor.liveAudition
     readonly property color toneTint: Theme.toneColor(editor.selectedTone)
 
@@ -177,6 +219,11 @@ Item {
         if (index < 0) return ""
         return qsTr("%1 → %2").arg(p.name).arg(p.choices[index])
     }
+    function cancelRouting() {
+        root.dragFrom = ""
+        root.dragParameter = ""
+        root.dragTarget = ""
+    }
     function commitRouting() {
         var index = choiceIndexForNode(root.dragParameter, root.dragTarget)
         if (index >= 0) {
@@ -184,9 +231,7 @@ Item {
             root.editor.editEffect(root.dragParameter, index)
             root.editor.endEffectGesture()
         }
-        root.dragFrom = ""
-        root.dragParameter = ""
-        root.dragTarget = ""
+        cancelRouting()
     }
 
     // ── Micro-visualisation inputs ────────────────────────────────────────
@@ -365,22 +410,48 @@ Item {
             return Qt.point((pts[1].x + pts[2].x) / 2, pts[1].y)
         }
 
+        // Two chips on one lane must never sit on top of each other: a value
+        // hidden behind another value is the exact failure this redesign set
+        // out to remove. Chips sharing a lane are separated left to right, in
+        // lane order, and only as far as they actually need.
+        function chipX(edge, index, chipWidth) {
+            var here = chipPoint(railPoints(edge, index))
+            var x = here.x - chipWidth / 2
+            var edges = root.railModel
+            for (var i = 0; i < index; ++i) {
+                var other = edges[i]
+                if (!other.parameterId)
+                    continue
+                var there = chipPoint(railPoints(other, i))
+                // Same lane, within a chip width of each other.
+                if (Math.abs(there.y - here.y) > 6)
+                    continue
+                var otherX = chipX(other, i, chipWidth)
+                if (Math.abs(otherX - x) < chipWidth + Metrics.spacingXs)
+                    x = otherX + chipWidth + Metrics.spacingXs
+            }
+            return Math.max(0, Math.min(width - chipWidth, x))
+        }
+
         Repeater {
             id: rails
-            model: root.edges
+            model: root.railModel
             delegate: EffectSignalRail {
                 required property var modelData
                 required property int index
+                // Live level and open state, without the delegate itself being
+                // rebuilt when they change.
+                readonly property var live: root.edgeState(modelData.from, modelData.to)
                 anchors.fill: parent
                 objectName: "rail-" + modelData.from + "-" + modelData.to
                 points: stage.railPoints(modelData, index)
                 rail: root.railClass(modelData)
                 tint: root.railTint(modelData)
-                open: modelData.open
-                strength: root.levelFraction(modelData)
+                open: live ? live.open : false
+                strength: live ? root.levelFraction(live) : 0
                 isolated: root.isolatedRoute !== "" && modelData.parameterId === root.isolatedRoute
                 dimmed: root.edgeDimmed(modelData)
-                flowing: root.auditioning && modelData.open
+                flowing: root.auditioning && open
             }
         }
 
@@ -504,12 +575,18 @@ Item {
             anchors.fill: parent
             z: 30
 
+            // A few pixels of tolerance around each stage. Dropping is a
+            // gesture, not a precision task, and demanding the pointer be
+            // strictly inside the rectangle is what makes a drop feel like it
+            // failed for no reason.
+            readonly property int dropPad: 12
             function nodeAt(px, py) {
-                var ids = ["source", "efx", "chorus", "reverb", "mix", "direct"]
+                var ids = ["mix", "efx", "reverb", "direct", "chorus", "source"]
                 for (var i = 0; i < ids.length; ++i) {
                     var n = stage.nodeItem(ids[i])
-                    if (!n.visible) continue
-                    if (px >= n.x && px <= n.x + n.width && py >= n.y && py <= n.y + n.height)
+                    if (!n || !n.visible) continue
+                    if (px >= n.x - dropPad && px <= n.x + n.width + dropPad
+                        && py >= n.y - dropPad && py <= n.y + n.height + dropPad)
                         return ids[i]
                 }
                 return ""
@@ -534,37 +611,29 @@ Item {
                 }
             }
 
-            // The line being dragged.
-            Canvas {
-                id: dragCanvas
-                anchors.fill: parent
+            // The line being dragged. A rotated rectangle rather than a
+            // Canvas: repainting a Canvas on every mouse move is what made the
+            // drag feel like it was catching, and this is one transform.
+            Rectangle {
+                id: dragLine
                 visible: root.routingDrag
-                renderStrategy: Canvas.Cooperative
-                onPaint: {
-                    var ctx = getContext("2d")
-                    ctx.reset()
-                    if (!root.routingDrag) return
-                    var n = stage.nodeItem(root.dragFrom)
-                    ctx.strokeStyle = Theme.accent
-                    ctx.lineWidth = 2
-                    ctx.setLineDash([5, 4])
-                    ctx.beginPath()
-                    ctx.moveTo(n.x + n.width, n.y + n.height / 2)
-                    ctx.lineTo(root.dragPoint.x, root.dragPoint.y)
-                    ctx.stroke()
-                    ctx.setLineDash([])
-                }
-                // `parent` inside Connections is the Connections' scope, not
-                // the Canvas, so the repaint has to name the Canvas.
-                Connections {
-                    target: root
-                    function onDragPointChanged() { dragCanvas.requestPaint() }
-                    function onRoutingDragChanged() { dragCanvas.requestPaint() }
-                    function onDragTargetChanged() { dragCanvas.requestPaint() }
-                }
+                readonly property var origin: root.routingDrag ? stage.nodeItem(root.dragFrom) : null
+                readonly property real ox: origin ? origin.x + origin.width : 0
+                readonly property real oy: origin ? origin.y + origin.height / 2 : 0
+                x: ox
+                y: oy - height / 2
+                width: origin ? Math.hypot(root.dragPoint.x - ox, root.dragPoint.y - oy) : 0
+                height: 2
+                radius: 1
+                color: root.dragTarget !== "" ? Theme.success : Theme.accent
+                antialiasing: true
+                transformOrigin: Item.Left
+                rotation: origin ? Math.atan2(root.dragPoint.y - oy, root.dragPoint.x - ox) * 180 / Math.PI : 0
             }
 
-            // The grab handle itself.
+            // The grab handle. Deliberately larger than it looks: a small dot
+            // on a node edge is a frustrating target, so the visible ring is
+            // 18 px while the grab area is the shell-wide minimum hit target.
             Rectangle {
                 id: handle
                 objectName: "routingHandle"
@@ -574,36 +643,78 @@ Item {
                 visible: root.detailed && ownerNode !== null && parameterId !== ""
                          && (root.editor.effectValues[parameterId] || null) !== null
                          && !root.editor.comparing
-                width: 16; height: 16; radius: 8
+                width: 18; height: 18; radius: 9
                 x: ownerNode ? ownerNode.x + ownerNode.width - width / 2 : 0
                 y: ownerNode ? ownerNode.y + ownerNode.height / 2 - height / 2 : 0
-                color: root.routingDrag ? Theme.accent : Theme.surfaceRaised
+                color: root.routingDrag || grab.containsMouse ? Theme.accent : Theme.surfaceRaised
                 border.width: 2
                 border.color: Theme.accent
+                scale: root.routingDrag ? 1.25 : (grab.containsMouse ? 1.12 : 1.0)
+
+                Behavior on scale {
+                    enabled: !Motion.reducedMotion
+                    NumberAnimation { duration: Motion.durationFast; easing.type: Motion.easingStandard }
+                }
+                Behavior on color {
+                    enabled: !Motion.reducedMotion
+                    ColorAnimation { duration: Motion.durationFast }
+                }
+
+                // An arrow, so the handle reads as "drag me somewhere" rather
+                // than as another status dot.
+                XpIcon {
+                    anchors.centerIn: parent
+                    name: "arrow-right"
+                    width: 12; height: 12
+                    color: root.routingDrag || grab.containsMouse ? Theme.textOnAccent : Theme.accent
+                }
 
                 Accessible.role: Accessible.Button
                 Accessible.name: qsTr("Change destination")
 
                 MouseArea {
-                    anchors.fill: parent
-                    anchors.margins: -8
-                    cursorShape: Qt.CrossCursor
-                    onPressed: function(mouse) {
-                        root.dragFrom = handle.owner
-                        root.dragParameter = handle.parameterId
-                        var p = mapToItem(routingLayer, mouse.x, mouse.y)
-                        root.dragPoint = p
-                        root.dragTarget = ""
-                    }
-                    onPositionChanged: function(mouse) {
-                        if (!root.routingDrag) return
+                    id: grab
+                    anchors.centerIn: parent
+                    width: Metrics.hitTarget
+                    height: Metrics.hitTarget
+                    hoverEnabled: true
+                    cursorShape: root.routingDrag ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+                    // Same reason as the chips: the editor ScrollView would
+                    // otherwise take the gesture and scroll the page instead.
+                    preventStealing: true
+
+                    function updateTarget(mouse) {
                         var p = mapToItem(routingLayer, mouse.x, mouse.y)
                         root.dragPoint = p
                         var hit = routingLayer.nodeAt(p.x, p.y)
-                        root.dragTarget = root.isValidDestination(hit) ? hit : ""
+                        if (root.isValidDestination(hit)) {
+                            root.dragTarget = hit
+                            return
+                        }
+                        if (root.dragTarget === "")
+                            return
+                        // Sticky: a target is only given up once the pointer is
+                        // clearly away from it, so a shaky hand near an edge
+                        // does not flicker the drop in and out.
+                        var t = stage.nodeItem(root.dragTarget)
+                        var pad = 24
+                        if (p.x < t.x - pad || p.x > t.x + t.width + pad
+                            || p.y < t.y - pad || p.y > t.y + t.height + pad)
+                            root.dragTarget = ""
+                    }
+
+                    onPressed: function(mouse) {
+                        root.dragFrom = handle.owner
+                        root.dragParameter = handle.parameterId
+                        root.dragTarget = ""
+                        updateTarget(mouse)
+                    }
+                    onPositionChanged: function(mouse) {
+                        if (root.routingDrag)
+                            updateTarget(mouse)
                     }
                     onReleased: if (root.routingDrag) root.commitRouting()
-                    onCanceled: { root.dragFrom = ""; root.dragParameter = ""; root.dragTarget = "" }
+                    onCanceled: root.cancelRouting()
                 }
             }
 
@@ -635,7 +746,7 @@ Item {
         // One per addressable route, sitting on its own lane. These replace the
         // bare numbers that used to float beside the cables.
         Repeater {
-            model: root.edges
+            model: root.railModel
             delegate: EffectRouteChip {
                 required property var modelData
                 required property int index
@@ -645,12 +756,14 @@ Item {
                 parameterId: modelData.parameterId || ""
                 caption: root.railCaption(modelData)
                 tint: root.railTint(modelData)
-                open: modelData.open
+                open: root.edgeOpen(modelData.from, modelData.to)
                 isolated: root.isolatedRoute !== "" && modelData.parameterId === root.isolatedRoute
                 dimmed: root.edgeDimmed(modelData)
-                x: stage.chipPoint(stage.railPoints(modelData, index)).x - width / 2
+                x: stage.chipX(modelData, index, width)
                 y: stage.chipPoint(stage.railPoints(modelData, index)).y - height / 2
-                z: 10
+                // A chip being adjusted rises above its neighbours so the value
+                // bubble is never clipped by the chip next to it.
+                z: adjusting || isolated ? 20 : 10
                 onIsolateRequested: root.isolatedRoute =
                     root.isolatedRoute === modelData.parameterId ? "" : modelData.parameterId
                 onExactEntryRequested: {

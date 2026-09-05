@@ -240,6 +240,139 @@ TestCase {
         compare(canvas.nodeForChoice("MIX+REV"), "")
     }
 
+    // ── Gesture reliability ───────────────────────────────────────────────
+    // The canvas sits inside the editor ScrollView. Every drag surface has to
+    // hold its gesture, or the Flickable takes it partway through and the value
+    // stops tracking while the page scrolls.
+
+    function test_drag_surfaces_refuse_to_hand_the_gesture_to_the_scrollview() {
+        var canvas = makeCanvas()
+        canvas.focusedNode = "efx"
+        var handle = findChild(canvas, "routingHandle")
+        verify(handle.visible)
+        var grab = null
+        for (var i = 0; i < handle.children.length; ++i)
+            if (handle.children[i].preventStealing !== undefined)
+                grab = handle.children[i]
+        verify(grab, "the routing handle has a grab area")
+        compare(grab.preventStealing, true)
+        canvas.focusedNode = ""
+    }
+
+    function test_a_click_on_a_chip_isolates_without_nudging_the_value() {
+        var canvas = makeCanvas()
+        var chip = findChild(canvas, "chip-efx-mix")
+        if (!chip)
+            return
+        var before = chip.value
+        // A press and release with no travel must not change a send, however
+        // small the accidental movement.
+        mousePress(chip, chip.width / 2, chip.height / 2)
+        mouseMove(chip, chip.width / 2, chip.height / 2 - 1)
+        mouseRelease(chip, chip.width / 2, chip.height / 2 - 1)
+        compare(chip.value, before, "a click never nudges a send")
+        compare(canvas.isolatedRoute, chip.parameterId, "a click isolates the route")
+        verify(!chip.adjusting)
+        canvas.isolatedRoute = ""
+    }
+
+    function test_a_real_drag_adjusts_and_leaves_one_undo_entry() {
+        var canvas = makeCanvas()
+        var chip = findChild(canvas, "chip-efx-mix")
+        if (!chip)
+            return
+        var before = chip.value
+        mousePress(chip, chip.width / 2, chip.height / 2)
+        // Well past the threshold, downwards, so the value falls.
+        mouseMove(chip, chip.width / 2, chip.height / 2 + 40)
+        verify(chip.adjusting, "past the threshold the chip is adjusting")
+        mouseMove(chip, chip.width / 2, chip.height / 2 + 70)
+        mouseRelease(chip, chip.width / 2, chip.height / 2 + 70)
+        verify(!chip.adjusting)
+        verify(chip.value !== before, "the drag moved the value")
+        // One gesture, one undo, however many values it passed through.
+        testEditor.undo()
+        compare(testEditor.effectValues[chip.parameterId].value, before)
+        verify(!testEditor.modified)
+    }
+
+    function test_a_drop_is_forgiving_near_a_destination() {
+        var canvas = makeCanvas()
+        canvas.focusedNode = "efx"
+        canvas.dragFrom = "efx"
+        canvas.dragParameter = "common.efx_output_assign"
+
+        var mix = findChild(canvas, "canvasMix")
+        // Just outside the node rectangle: a drop there still lands, because
+        // dropping is a gesture rather than a precision task.
+        compare(canvas.nodeAtPoint(mix.x - 6, mix.y + mix.height / 2), "mix")
+        // Far away is still a miss.
+        compare(canvas.nodeAtPoint(mix.x - 260, mix.y + mix.height / 2), "")
+
+        canvas.cancelRouting()
+        compare(canvas.dragFrom, "")
+        compare(canvas.dragTarget, "")
+        canvas.focusedNode = ""
+    }
+
+    function test_a_cancelled_drag_leaves_no_state_behind() {
+        var canvas = makeCanvas()
+        canvas.focusedNode = "efx"
+        var pid = "common.efx_output_assign"
+        var before = testEditor.effectValues[pid].value
+        canvas.dragFrom = "efx"
+        canvas.dragParameter = pid
+        canvas.dragTarget = "mix"
+        canvas.cancelRouting()
+        // Cancelling writes nothing and clears everything.
+        compare(testEditor.effectValues[pid].value, before)
+        compare(canvas.dragFrom, "")
+        compare(canvas.dragParameter, "")
+        compare(canvas.dragTarget, "")
+        verify(!canvas.routingDrag)
+        canvas.focusedNode = ""
+    }
+
+    function test_two_values_never_sit_on_top_of_each_other() {
+        var canvas = makeCanvas()
+        var edges = testEditor.routing.edges
+        var chips = []
+        for (var i = 0; i < edges.length; ++i) {
+            if (!edges[i].parameterId)
+                continue
+            var c = findChild(canvas, "chip-" + edges[i].from + "-" + edges[i].to)
+            if (c && c.visible)
+                chips.push(c)
+        }
+        verify(chips.length > 1)
+        for (var a = 0; a < chips.length; ++a) {
+            for (var b = a + 1; b < chips.length; ++b) {
+                var overlapX = chips[a].x < chips[b].x + chips[b].width
+                               && chips[b].x < chips[a].x + chips[a].width
+                var overlapY = chips[a].y < chips[b].y + chips[b].height
+                               && chips[b].y < chips[a].y + chips[a].height
+                verify(!(overlapX && overlapY),
+                       "chips " + chips[a].caption + " and " + chips[b].caption + " overlap")
+            }
+        }
+    }
+
+    function test_chips_stay_inside_the_canvas_at_the_narrowest_width() {
+        var canvas = makeCanvas()
+        canvas.width = 760
+        waitForRendering(canvas)
+        var edges = testEditor.routing.edges
+        for (var i = 0; i < edges.length; ++i) {
+            if (!edges[i].parameterId)
+                continue
+            var c = findChild(canvas, "chip-" + edges[i].from + "-" + edges[i].to)
+            if (!c || !c.visible)
+                continue
+            verify(c.x >= 0, c.caption + " starts inside the canvas")
+            verify(c.x + c.width <= canvas.width + 1, c.caption + " ends inside the canvas")
+        }
+    }
+
     // ── Motion ────────────────────────────────────────────────────────────
 
     function test_pulse_only_travels_configured_paths_during_audition() {

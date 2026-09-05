@@ -48,7 +48,7 @@ Item {
 
     // Focus lifts the node rather than moving it, so the canvas keeps its
     // spatial memory through the transition.
-    scale: root.focused ? 1.06 : 1.0
+    scale: root.focused ? 1.06 : (hover.containsMouse ? 1.02 : 1.0)
     opacity: root.dimmed ? 0.28 : 1.0
     Behavior on scale {
         enabled: !Motion.reducedMotion
@@ -68,6 +68,7 @@ Item {
         radius: Metrics.radiusMd
         border.width: root.focused ? 2 : 1
         border.color: root.focused ? root.accentColor
+                     : hover.containsMouse ? root.accentColor
                      : root.active ? Theme.borderStrong : Theme.borderSubtle
 
         Behavior on border.color {
@@ -192,8 +193,10 @@ Item {
     }
 
     MouseArea {
+        id: hover
         anchors.fill: parent
         enabled: root.interactive
+        hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
         onClicked: {
             root.forceActiveFocus()

@@ -28,6 +28,9 @@ Item {
     signal isolateRequested()
     signal exactEntryRequested()
 
+    // True only while a drag is actually changing the value.
+    property bool adjusting: false
+
     readonly property var info: (editor && parameterId) ? (editor.effectValues[parameterId] || null) : null
     readonly property int value: info ? info.value : 0
     readonly property int minimum: info ? info.minimum : 0
@@ -68,10 +71,15 @@ Item {
         id: body
         anchors.fill: parent
         radius: Metrics.radiusPill
-        color: root.isolated ? Theme.surfaceRaised : Theme.surface
-        border.width: root.isolated || drag.active ? 2 : 1
-        border.color: root.isolated || drag.active ? root.tint
+        color: root.adjusting || drag.containsMouse ? Theme.surfaceHover
+             : root.isolated ? Theme.surfaceRaised : Theme.surface
+        border.width: root.isolated || root.adjusting ? 2 : 1
+        border.color: root.isolated || root.adjusting || drag.containsMouse ? root.tint
                      : root.open ? Theme.borderStrong : Theme.borderSubtle
+        Behavior on color {
+            enabled: !Motion.reducedMotion
+            ColorAnimation { duration: Motion.durationFast }
+        }
 
         RowLayout {
             id: layout
@@ -104,50 +112,80 @@ Item {
     MouseArea {
         id: drag
         anchors.fill: parent
+        anchors.margins: -3          // a little forgiveness around a small chip
         enabled: root.editable
-        cursorShape: Qt.SizeVerCursor
-        property bool active: false
+        hoverEnabled: true
+        cursorShape: pressed ? Qt.ClosedHandCursor : Qt.SizeVerCursor
+        // The canvas lives inside the editor's ScrollView. Without this the
+        // Flickable steals the gesture a few pixels in, the value stops
+        // tracking and the page scrolls instead -- which is exactly what a
+        // vertical drag on a chip must never do.
+        preventStealing: true
+
+        // Adjusting only begins past a small threshold, so a click can never
+        // nudge a send by a step on its way to isolating the route.
+        readonly property int threshold: 3
+        property bool armed: false      // pressed, not yet moved enough
+        property bool active: false     // actually adjusting
         property real anchorY: 0
         property int anchorValue: 0
 
+        function finish() {
+            if (active) {
+                // One gesture is one undo entry, however many values it passed
+                // through on the way.
+                root.editor.endEffectGesture()
+                root.adjusting = false
+            }
+            armed = false
+            active = false
+        }
+
         onPressed: function(mouse) {
             root.forceActiveFocus()
-            active = true
+            armed = true
+            active = false
             anchorY = mouse.y
             anchorValue = root.value
-            root.editor.beginEffectGesture()
         }
         onPositionChanged: function(mouse) {
-            if (!active)
+            if (!armed)
                 return
+            var travel = anchorY - mouse.y
+            if (!active) {
+                if (Math.abs(travel) < threshold)
+                    return
+                // Re-anchor at the threshold so the value does not jump by the
+                // slack the moment the drag is recognised.
+                anchorY = mouse.y + (travel > 0 ? threshold : -threshold)
+                travel = anchorY - mouse.y
+                active = true
+                root.adjusting = true
+                root.editor.beginEffectGesture()
+            }
             // Whole range over ~180 px, so a full sweep is one comfortable
-            // gesture while every raw step remains reachable.
+            // gesture while every raw step stays reachable.
             var span = root.maximum - root.minimum
-            var delta = Math.round(((anchorY - mouse.y) / 180) * span)
-            var next = Math.max(root.minimum, Math.min(root.maximum, anchorValue + delta))
+            var next = Math.max(root.minimum, Math.min(root.maximum,
+                                anchorValue + Math.round((travel / 180) * span)))
             if (next !== root.value)
                 root.editor.editEffect(root.parameterId, next)
         }
         onReleased: {
-            if (!active)
-                return
-            active = false
-            // One gesture is one undo entry, however many values it passed
-            // through on the way.
-            root.editor.endEffectGesture()
+            var wasAdjusting = active
+            finish()
+            // A press that never became a drag is a click: isolate the route.
+            if (!wasAdjusting)
+                root.isolateRequested()
         }
-        onCanceled: {
-            active = false
-            root.editor.endEffectGesture()
-        }
-        onClicked: if (!active) root.isolateRequested()
+        onCanceled: finish()
         onDoubleClicked: root.exactEntryRequested()
     }
 
     // Value bubble while dragging: the number the musician is actually setting,
     // large enough to read without looking away from the canvas.
     Rectangle {
-        visible: drag.active
+        visible: root.adjusting
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: parent.top
         anchors.bottomMargin: Metrics.spacingXs
@@ -184,6 +222,6 @@ Item {
         color: "transparent"
         border.width: 2
         border.color: Theme.focusRing
-        visible: root.activeFocus && !drag.active
+        visible: root.activeFocus && !root.adjusting
     }
 }
