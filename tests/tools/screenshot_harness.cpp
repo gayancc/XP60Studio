@@ -26,6 +26,7 @@
 #include "presentation/QmlRegistration.h"
 #include "services/DeviceSession.h"
 #include "services/PatchTransfer.h"
+#include "services/PatchWorkspace.h"
 
 #include <QFile>
 #include <QGuiApplication>
@@ -68,7 +69,8 @@ int main(int argc, char* argv[])
 
     xp60studio::services::PatchTransfer transfer(session);
     xp60studio::presentation::DevicesViewModel devices(session, &transfer);
-    xp60studio::presentation::PatchEditorViewModel editor(session, &transfer);
+    xp60studio::services::PatchWorkspace workspace;
+    xp60studio::presentation::PatchEditorViewModel editor(session, workspace, &transfer);
     xp60studio::presentation::AppShellViewModel shell(&devices);
 
     xp60studio::library::LibraryDatabase libraryDatabase;

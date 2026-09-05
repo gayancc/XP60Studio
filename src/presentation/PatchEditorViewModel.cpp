@@ -30,10 +30,11 @@ QString toQString(std::string_view text)
 
 } // namespace
 
-PatchEditorViewModel::PatchEditorViewModel(services::DeviceSession& session, services::PatchTransfer* transfer,
-                                           QObject* parent)
+PatchEditorViewModel::PatchEditorViewModel(services::DeviceSession& session, services::PatchWorkspace& workspace,
+                                           services::PatchTransfer* transfer, QObject* parent)
     : QObject(parent)
     , m_session(session)
+    , m_workspace(workspace)
     , m_transfer(transfer)
 {
     for (const auto tone : ToneIndex::all()) {
@@ -42,28 +43,52 @@ PatchEditorViewModel::PatchEditorViewModel(services::DeviceSession& session, ser
     m_sectionParameters = new EditorParameterModel(*this, false, this);
     m_expertParameters = new EditorParameterModel(*this, true, this);
 
+    connect(&m_workspace, &services::PatchWorkspace::changed, this, &PatchEditorViewModel::emitAll);
+    connect(&m_workspace, &services::PatchWorkspace::syncChanged, this, &PatchEditorViewModel::emitAll);
     connect(&m_session, &services::DeviceSession::patchFetchChanged, this, &PatchEditorViewModel::adoptFetchedPatch);
     if (m_transfer) {
         connect(m_transfer, &services::PatchTransfer::changed, this, [this] {
+            // The transfer is the only thing that knows what actually reached
+            // the instrument, so it is the only thing allowed to move the
+            // device half of the sync state.
             const auto state = m_transfer->state();
-            if (state == services::PatchTransfer::State::Verified && state != m_lastTransferState) {
-                m_hardware = m_transfer->readBack();
-            } else if (m_transfer->isBusy()
-                       || m_transfer->state() == services::PatchTransfer::State::Mismatch
-                       || m_transfer->state() == services::PatchTransfer::State::Failed
-                       || m_transfer->state() == services::PatchTransfer::State::Cancelled) {
-                m_hardware.reset();
+            if (state != m_lastTransferState) {
+                switch (state) {
+                case services::PatchTransfer::State::Verified:
+                    if (const auto& readBack = m_transfer->readBack()) {
+                        m_workspace.noteVerified(*readBack);
+                    }
+                    break;
+                case services::PatchTransfer::State::Sending:
+                case services::PatchTransfer::State::ReadingBack:
+                case services::PatchTransfer::State::Comparing:
+                case services::PatchTransfer::State::CapturingSafetySnapshot:
+                    m_workspace.noteSending();
+                    break;
+                case services::PatchTransfer::State::Mismatch:
+                case services::PatchTransfer::State::Failed:
+                case services::PatchTransfer::State::Cancelled:
+                    m_workspace.noteTransferFailed(QString::fromStdString(m_transfer->message()));
+                    break;
+                case services::PatchTransfer::State::Idle:
+                    break;
+                }
             }
             m_lastTransferState = state;
             emitAll();
         });
     }
-    const auto invalidateHardware = [this] {
-        m_hardware.reset();
+    // Connecting, disconnecting or re-addressing the instrument all mean the
+    // same thing: nothing previously verified about the temporary area can be
+    // relied on any more.
+    connect(&m_session, &services::DeviceSession::connectionStateChanged, this, [this] {
+        m_workspace.setConnected(m_session.connectionState() == services::DeviceSession::ConnectionState::Connected);
         emitAll();
-    };
-    connect(&m_session, &services::DeviceSession::connectionStateChanged, this, invalidateHardware);
-    connect(&m_session, &services::DeviceSession::deviceIdChanged, this, invalidateHardware);
+    });
+    connect(&m_session, &services::DeviceSession::deviceIdChanged, this, [this] {
+        m_workspace.markStale(tr("The device ID changed, so the XP-60's temporary Patch is unknown."));
+        emitAll();
+    });
 }
 
 // ---------------------------------------------------------------------------
@@ -78,12 +103,15 @@ void PatchEditorViewModel::adoptFetchedPatch()
         return;
     }
     // A freshly read Patch becomes the new A side; local edits start over.
-    m_original = fetch.patch;
     endEffectGesture();
-    m_current = fetch.patch;
-    m_hardware = fetch.patch;
-    m_undo.clear();
-    m_redo.clear();
+    const bool temporary = fetch.base == xpmodel::Xp60PatchLayout::temporaryPatchAddress();
+    m_workspace.adopt(*fetch.patch, temporary ? services::PatchOrigin::temporary()
+                                              : services::PatchOrigin{});
+    // A read *is* a verification of the temporary area: these are the bytes the
+    // instrument just gave us.
+    if (temporary) {
+        m_workspace.noteVerified(*fetch.patch);
+    }
     m_comparing = false;
     m_sourceText = fetch.base == xpmodel::Xp60PatchLayout::temporaryPatchAddress()
         ? QStringLiteral("Read from the XP-60 temporary area")
@@ -91,19 +119,20 @@ void PatchEditorViewModel::adoptFetchedPatch()
     emitAll();
 }
 
-void PatchEditorViewModel::pushUndo()
+// Applies `edited` as one undoable step under `label`, and re-renders. The
+// workspace decides whether it is a step at all: an edit that changes nothing
+// records no history and does not mark the Patch out of sync with the
+// instrument.
+bool PatchEditorViewModel::commitEdit(xpmodel::Xp60Patch edited, const QString& label)
 {
-    if (!m_applyingEffectGesture) endEffectGesture();
-    if (m_applyingEffectGesture && m_effectGestureHasUndo) return;
-    if (m_applyingEffectGesture) m_effectGestureHasUndo = true;
-    if (!m_current) {
-        return;
+    if (!m_applyingEffectGesture) {
+        endEffectGesture();
     }
-    m_undo.push_back(*m_current);
-    while (m_undo.size() > kUndoLimit) {
-        m_undo.pop_front();
+    if (!m_workspace.commit(std::move(edited), label)) {
+        return false;
     }
-    m_redo.clear();
+    emitAll();
+    return true;
 }
 
 void PatchEditorViewModel::emitAll()
@@ -120,7 +149,7 @@ void PatchEditorViewModel::emitAll()
 
 void PatchEditorViewModel::setToneRaw(ToneIndex tone, ToneParameter parameter, int raw)
 {
-    if (!m_current || m_comparing) {
+    if (!hasPatch() || m_comparing) {
         return;
     }
     if (patch().raw(tone, parameter) == raw) {
@@ -134,35 +163,31 @@ void PatchEditorViewModel::setToneRaw(ToneIndex tone, ToneParameter parameter, i
         || (parameter == ToneParameter::VelocityRangeUpper && raw < patch().raw(tone, ToneParameter::VelocityRangeLower))) {
         return;
     }
-    auto edited = *m_current;
+    auto edited = working();
     if (!edited.setRaw(tone, parameter, raw)) {
         return;
     }
-    pushUndo();
-    m_current = std::move(edited);
-    emitAll();
+    commitEdit(std::move(edited), tr("Edit Tone %1").arg(tone.number()));
 }
 
 void PatchEditorViewModel::setCommonRaw(CommonParameter parameter, int raw)
 {
-    if (!m_current || m_comparing) {
+    if (!hasPatch() || m_comparing) {
         return;
     }
     if (patch().raw(parameter) == raw) {
         return;
     }
-    auto edited = *m_current;
+    auto edited = working();
     if (!edited.setRaw(parameter, raw)) {
         return;
     }
-    pushUndo();
-    m_current = std::move(edited);
-    emitAll();
+    commitEdit(std::move(edited), tr("Edit Patch Common"));
 }
 
 bool PatchEditorViewModel::useWaveInTone(int toneNumber, const QString& bank, int displayNumber)
 {
-    if (!m_current || m_comparing) {
+    if (!hasPatch() || m_comparing) {
         return false;
     }
     const auto tone = ToneIndex::fromNumber(toneNumber);
@@ -181,24 +206,21 @@ bool PatchEditorViewModel::useWaveInTone(int toneNumber, const QString& bank, in
     // Build the whole change on a copy first. If any byte is refused the patch
     // and the undo history are left exactly as they were, rather than applying
     // a partial wave reference the instrument never had.
-    auto edited = *m_current;
+    auto edited = working();
     if (!edited.setRaw(*tone, ToneParameter::WaveGroupType, identifier->groupTypeRaw)
         || !edited.setRaw(*tone, ToneParameter::WaveGroupId, identifier->groupIdRaw)
         || !edited.setRaw(*tone, ToneParameter::WaveNumber, identifier->numberRaw)) {
         return false;
     }
-    if (edited == *m_current) {
-        return true; // already pointing at that wave; no history entry for a no-op
-    }
-    pushUndo();
-    m_current = std::move(edited);
-    emitAll();
+    // Three parameters move together or not at all, as one undo step. An edit
+    // that changes nothing is still a success: the Tone already points there.
+    commitEdit(std::move(edited), tr("Use %1 %2 in Tone %3").arg(bank).arg(displayNumber).arg(toneNumber));
     return true;
 }
 
 bool PatchEditorViewModel::canUseSelectedWave() const
 {
-    if (!m_current || m_comparing) {
+    if (!hasPatch() || m_comparing) {
         return false;
     }
     const auto selected = m_waves.selected();
@@ -253,7 +275,7 @@ xpmodel::Xp60Patch PatchEditorViewModel::auditionPatch() const
 
 void PatchEditorViewModel::queueAudition()
 {
-    if (liveAudition() && m_current) m_transfer->queueLivePreview(auditionPatch());
+    if (liveAudition() && hasPatch()) m_transfer->queueLivePreview(auditionPatch());
 }
 
 QString PatchEditorViewModel::auditionMessage() const
@@ -277,8 +299,8 @@ void PatchEditorViewModel::resetAuditionFlags()
 
 void PatchEditorViewModel::stopLiveAudition()
 {
-    if (!liveAudition() || liveStopping() || !m_current) return;
-    m_transfer->stopLivePreview(*m_current);
+    if (!liveAudition() || liveStopping() || !hasPatch()) return;
+    m_transfer->stopLivePreview(working());
     resetAuditionFlags();
 }
 
@@ -295,30 +317,32 @@ void PatchEditorViewModel::restoreBeforeAudition()
 
 QString PatchEditorViewModel::patchName() const
 {
-    if (!m_current) {
+    if (!hasPatch()) {
         return {};
     }
-    const auto& shown = m_comparing && m_original ? *m_original : *m_current;
+    const auto& shown = patch();
     return QString::fromStdString(shown.name().displayText());
 }
 
 void PatchEditorViewModel::setPatchName(const QString& name)
 {
-    if (!m_current || m_comparing) {
+    if (!hasPatch() || m_comparing) {
         return;
     }
     const auto value = xpmodel::PatchName::fromText(name.toStdString());
-    if (!value || *value == m_current->name()) {
+    if (!value || *value == working().name()) {
         return;
     }
-    pushUndo();
-    m_current->setName(*value);
-    emitAll();
+    auto edited = working();
+    edited.setName(*value);
+    // The rename reaches the Library row and every Bank destination showing this
+    // Patch through the workspace, not through a signal between screens.
+    commitEdit(std::move(edited), tr("Rename to %1").arg(name));
 }
 
 QString PatchEditorViewModel::locationText() const
 {
-    return m_current ? QStringLiteral("TEMPORARY PATCH") : QString();
+    return hasPatch() ? QStringLiteral("TEMPORARY PATCH") : QString();
 }
 
 QString PatchEditorViewModel::sourceText() const
@@ -328,38 +352,59 @@ QString PatchEditorViewModel::sourceText() const
 
 bool PatchEditorViewModel::modified() const
 {
-    return m_current && m_original && !(*m_current == *m_original);
+    return m_workspace.modified();
 }
 
-QString PatchEditorViewModel::stateBadgeText() const
+// Two indicators, never one. "Is my work kept?" and "does the instrument hold
+// what I am looking at?" are independent questions, and a single badge answering
+// both is how an editor ends up telling a musician their sound is saved when
+// what it means is sent. See docs/PATCH_SYNCHRONIZATION.md §4.
+QString PatchEditorViewModel::studioBadgeText() const
 {
-    if (!m_current) {
-        return QStringLiteral("NO PATCH");
-    }
-    if (liveAudition()) {
-        return m_hardware && *m_hardware == auditionPatch() && !writeBusy()
-            ? tr("LIVE · VERIFIED") : tr("LIVE · PENDING");
+    if (!hasPatch()) {
+        return {};
     }
     if (m_comparing) {
         return QStringLiteral("A · ORIGINAL");
     }
-    if (m_hardware && *m_hardware == *m_current) {
-        return QStringLiteral("ON XP-60");
-    }
-    return modified() ? QStringLiteral("MODIFIED") : QStringLiteral("LOCAL");
+    return QString::fromLatin1(services::studioStateLabel(m_workspace.studioState()).data(),
+                               static_cast<int>(services::studioStateLabel(m_workspace.studioState()).size()));
 }
 
-QString PatchEditorViewModel::stateBadgeTone() const
+QString PatchEditorViewModel::studioBadgeTone() const
 {
-    if (!m_current) {
-        return QStringLiteral("neutral");
-    }
-    if (liveAudition()) return stateBadgeText() == tr("LIVE · VERIFIED") ? QStringLiteral("success") : QStringLiteral("warning");
     if (m_comparing) {
         return QStringLiteral("info");
     }
-    return stateBadgeText() == QStringLiteral("ON XP-60") ? QStringLiteral("success")
-        : modified() ? QStringLiteral("warning") : QStringLiteral("neutral");
+    switch (m_workspace.studioState()) {
+    case services::StudioState::Edited:
+        return QStringLiteral("warning");
+    case services::StudioState::Saved:
+        return QStringLiteral("success");
+    case services::StudioState::Untracked:
+        return QStringLiteral("neutral");
+    }
+    return QStringLiteral("neutral");
+}
+
+QString PatchEditorViewModel::deviceBadgeText() const
+{
+    if (!hasPatch()) {
+        return {};
+    }
+    const auto label = services::deviceStateLabel(m_workspace.deviceState());
+    return QString::fromLatin1(label.data(), static_cast<int>(label.size()));
+}
+
+QString PatchEditorViewModel::deviceBadgeTone() const
+{
+    const auto tone = services::deviceStateTone(m_workspace.deviceState());
+    return QString::fromLatin1(tone.data(), static_cast<int>(tone.size()));
+}
+
+QString PatchEditorViewModel::deviceMessage() const
+{
+    return m_workspace.deviceMessage();
 }
 
 QString PatchEditorViewModel::emptyStateMessage() const
@@ -419,7 +464,7 @@ ToneIndex PatchEditorViewModel::selectedToneIndex() const
 
 int PatchEditorViewModel::enabledToneCount() const
 {
-    return m_current ? patch().enabledToneCount() : 0;
+    return hasPatch() ? patch().enabledToneCount() : 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -428,7 +473,7 @@ int PatchEditorViewModel::enabledToneCount() const
 
 QString PatchEditorViewModel::structureText() const
 {
-    if (!m_current) {
+    if (!hasPatch()) {
         return {};
     }
     return QStringLiteral("%1 / %2")
@@ -438,31 +483,31 @@ QString PatchEditorViewModel::structureText() const
 
 QString PatchEditorViewModel::mfxText() const
 {
-    if (m_current) {
+    if (hasPatch()) {
         if (const auto name = xpmodel::efxTypeName(patch().raw(CommonParameter::EfxType))) return toQString(*name);
     }
-    return m_current ? QStringLiteral("Type %1").arg(QString::fromStdString(patch().displayText(CommonParameter::EfxType)))
+    return hasPatch() ? QStringLiteral("Type %1").arg(QString::fromStdString(patch().displayText(CommonParameter::EfxType)))
                      : QString();
 }
 
 QString PatchEditorViewModel::chorusText() const
 {
-    return m_current ? QStringLiteral("Level %1").arg(patch().raw(CommonParameter::ChorusLevel)) : QString();
+    return hasPatch() ? QStringLiteral("Level %1").arg(patch().raw(CommonParameter::ChorusLevel)) : QString();
 }
 
 QString PatchEditorViewModel::reverbText() const
 {
-    return m_current ? QString::fromStdString(patch().displayText(CommonParameter::ReverbType)) : QString();
+    return hasPatch() ? QString::fromStdString(patch().displayText(CommonParameter::ReverbType)) : QString();
 }
 
 QString PatchEditorViewModel::outputText() const
 {
-    return m_current ? QStringLiteral("Level %1").arg(patch().raw(CommonParameter::PatchLevel)) : QString();
+    return hasPatch() ? QStringLiteral("Level %1").arg(patch().raw(CommonParameter::PatchLevel)) : QString();
 }
 
 QString PatchEditorViewModel::routingSummary() const
 {
-    if (!m_current) return {};
+    if (!hasPatch()) return {};
     const auto route = xpmodel::patchRouting(patch(), selectedToneIndex());
     if (!route.outputTone) return tr("Structure routing is unknown for this raw value.");
     const int type = route.structureType - 1;
@@ -488,7 +533,7 @@ QString PatchEditorViewModel::routingSummary() const
 
 QVariantMap PatchEditorViewModel::routing() const
 {
-    if (!m_current) return {};
+    if (!hasPatch()) return {};
     const auto route = xpmodel::patchRouting(patch(), selectedToneIndex());
     const auto nodeName = [](xpmodel::RoutingNode node) -> QString {
         switch (node) {
@@ -578,7 +623,7 @@ PatchEditorViewModel::EnvelopeParameters PatchEditorViewModel::envelopeParameter
 
 std::optional<xpmodel::Xp60Patch::Envelope> PatchEditorViewModel::currentEnvelope() const
 {
-    if (!m_current) {
+    if (!hasPatch()) {
         return std::nullopt;
     }
     const auto tone = selectedToneIndex();
@@ -601,7 +646,7 @@ bool PatchEditorViewModel::envelopeAvailable() const
 
 QString PatchEditorViewModel::envelopeTitle() const
 {
-    if (!m_current) {
+    if (!hasPatch()) {
         return {};
     }
     const auto envelope = currentEnvelope();
@@ -697,7 +742,7 @@ QVariantList PatchEditorViewModel::envelopeStages() const
 void PatchEditorViewModel::moveEnvelopePoint(int index, double x, double y)
 {
     const auto parameters = envelopeParameters();
-    if (!parameters.valid || !m_current || m_comparing) {
+    if (!parameters.valid || !hasPatch() || m_comparing) {
         return;
     }
     // Point 0 is the fixed origin; points 1..4 map to stages 0..3.
@@ -753,12 +798,12 @@ void PatchEditorViewModel::setEnvelopeStageRaw(int stageIndex, bool isLevel, int
 
 int PatchEditorViewModel::keyRangeLower() const
 {
-    return m_current ? patch().raw(selectedToneIndex(), ToneParameter::KeyboardRangeLower) : 0;
+    return hasPatch() ? patch().raw(selectedToneIndex(), ToneParameter::KeyboardRangeLower) : 0;
 }
 
 void PatchEditorViewModel::setKeyRangeLower(int value)
 {
-    if (!m_current) {
+    if (!hasPatch()) {
         return;
     }
     // Roland states Lower <= Upper; keep the pair coherent rather than
@@ -769,12 +814,12 @@ void PatchEditorViewModel::setKeyRangeLower(int value)
 
 int PatchEditorViewModel::keyRangeUpper() const
 {
-    return m_current ? patch().raw(selectedToneIndex(), ToneParameter::KeyboardRangeUpper) : 127;
+    return hasPatch() ? patch().raw(selectedToneIndex(), ToneParameter::KeyboardRangeUpper) : 127;
 }
 
 void PatchEditorViewModel::setKeyRangeUpper(int value)
 {
-    if (!m_current) {
+    if (!hasPatch()) {
         return;
     }
     setToneRaw(selectedToneIndex(), ToneParameter::KeyboardRangeUpper, std::clamp(value, keyRangeLower(), 127));
@@ -782,24 +827,24 @@ void PatchEditorViewModel::setKeyRangeUpper(int value)
 
 QString PatchEditorViewModel::keyRangeLowerText() const
 {
-    return m_current ? QString::fromStdString(patch().displayText(selectedToneIndex(), ToneParameter::KeyboardRangeLower))
+    return hasPatch() ? QString::fromStdString(patch().displayText(selectedToneIndex(), ToneParameter::KeyboardRangeLower))
                      : QString();
 }
 
 QString PatchEditorViewModel::keyRangeUpperText() const
 {
-    return m_current ? QString::fromStdString(patch().displayText(selectedToneIndex(), ToneParameter::KeyboardRangeUpper))
+    return hasPatch() ? QString::fromStdString(patch().displayText(selectedToneIndex(), ToneParameter::KeyboardRangeUpper))
                      : QString();
 }
 
 int PatchEditorViewModel::velocityLower() const
 {
-    return m_current ? patch().raw(selectedToneIndex(), ToneParameter::VelocityRangeLower) : 1;
+    return hasPatch() ? patch().raw(selectedToneIndex(), ToneParameter::VelocityRangeLower) : 1;
 }
 
 void PatchEditorViewModel::setVelocityLower(int value)
 {
-    if (!m_current) {
+    if (!hasPatch()) {
         return;
     }
     setToneRaw(selectedToneIndex(), ToneParameter::VelocityRangeLower, std::clamp(value, 1, velocityUpper()));
@@ -807,12 +852,12 @@ void PatchEditorViewModel::setVelocityLower(int value)
 
 int PatchEditorViewModel::velocityUpper() const
 {
-    return m_current ? patch().raw(selectedToneIndex(), ToneParameter::VelocityRangeUpper) : 127;
+    return hasPatch() ? patch().raw(selectedToneIndex(), ToneParameter::VelocityRangeUpper) : 127;
 }
 
 void PatchEditorViewModel::setVelocityUpper(int value)
 {
-    if (!m_current) {
+    if (!hasPatch()) {
         return;
     }
     setToneRaw(selectedToneIndex(), ToneParameter::VelocityRangeUpper, std::clamp(value, velocityLower(), 127));
@@ -840,7 +885,7 @@ int ceilToOctave(int note)
 int PatchEditorViewModel::keyboardWindowLower() const
 {
     const auto keys = xp60::keybed();
-    if (!m_current) {
+    if (!hasPatch()) {
         return keys.lowestNote;
     }
     return std::min(keys.lowestNote, floorToOctave(keyRangeLower()));
@@ -849,7 +894,7 @@ int PatchEditorViewModel::keyboardWindowLower() const
 int PatchEditorViewModel::keyboardWindowUpper() const
 {
     const auto keys = xp60::keybed();
-    if (!m_current) {
+    if (!hasPatch()) {
         return keys.highestNote;
     }
     return std::max(keys.highestNote, ceilToOctave(keyRangeUpper()));
@@ -857,7 +902,7 @@ int PatchEditorViewModel::keyboardWindowUpper() const
 
 bool PatchEditorViewModel::keyRangeExceedsKeybed() const
 {
-    if (!m_current) {
+    if (!hasPatch()) {
         return false;
     }
     const auto keys = xp60::keybed();
@@ -866,7 +911,7 @@ bool PatchEditorViewModel::keyRangeExceedsKeybed() const
 
 QString PatchEditorViewModel::keyRangeNote() const
 {
-    if (!m_current) {
+    if (!hasPatch()) {
         return {};
     }
     const auto keys = xp60::keybed();
@@ -886,7 +931,7 @@ QString PatchEditorViewModel::keyRangeNote() const
 QVariantList PatchEditorViewModel::toneSettings() const
 {
     QVariantList rows;
-    if (!m_current) {
+    if (!hasPatch()) {
         return rows;
     }
     const auto add = [&](CommonParameter parameter) {
@@ -911,7 +956,7 @@ QVariantList PatchEditorViewModel::toneSettings() const
 
 void PatchEditorViewModel::setToneSetting(const QString& parameterId, int raw)
 {
-    if (!m_current) {
+    if (!hasPatch()) {
         return;
     }
     const auto& table = xpmodel::Xp60PatchLayout::patchCommonTable();
@@ -929,7 +974,7 @@ void PatchEditorViewModel::setToneSetting(const QString& parameterId, int raw)
 void PatchEditorViewModel::setComparing(bool comparing)
 {
     endEffectGesture();
-    if (m_comparing == comparing || !m_original) {
+    if (m_comparing == comparing || !m_workspace.baseline()) {
         return;
     }
     m_comparing = comparing;
@@ -938,45 +983,44 @@ void PatchEditorViewModel::setComparing(bool comparing)
 
 QString PatchEditorViewModel::differenceSummary() const
 {
-    if (!m_current || !m_original) {
+    if (!hasPatch() || !m_workspace.baseline()) {
         return {};
     }
-    const auto diff = Xp60PatchDiff::compare(*m_original, *m_current);
+    const auto diff = Xp60PatchDiff::compare(*m_workspace.baseline(), working());
     return diff.identical() ? QStringLiteral("No local changes") : QString::fromStdString(diff.summary());
 }
 
 void PatchEditorViewModel::undo()
 {
     endEffectGesture();
-    if (!canUndo() || !m_current) {
+    if (m_comparing) {
         return;
     }
-    m_redo.push_back(*m_current);
-    m_current = m_undo.back();
-    m_undo.pop_back();
-    emitAll();
+    if (m_workspace.undo()) {
+        emitAll();
+    }
 }
 
 void PatchEditorViewModel::redo()
 {
     endEffectGesture();
-    if (!canRedo() || !m_current) {
+    if (m_comparing) {
         return;
     }
-    m_undo.push_back(*m_current);
-    m_current = m_redo.back();
-    m_redo.pop_back();
-    emitAll();
+    if (m_workspace.redo()) {
+        emitAll();
+    }
 }
 
 void PatchEditorViewModel::revertToOriginal()
 {
-    if (m_comparing || !m_original || !m_current || *m_current == *m_original) {
+    if (m_comparing) {
         return;
     }
-    pushUndo();
-    m_current = m_original;
-    emitAll();
+    endEffectGesture();
+    if (m_workspace.revert()) {
+        emitAll();
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -985,13 +1029,13 @@ void PatchEditorViewModel::revertToOriginal()
 
 bool PatchEditorViewModel::canWrite() const
 {
-    return m_transfer && m_current && !m_comparing && m_transfer->isArmed() && !m_transfer->isBusy()
+    return m_transfer && hasPatch() && !m_comparing && m_transfer->isArmed() && !m_transfer->isBusy()
         && !m_transfer->liveActive();
 }
 
 bool PatchEditorViewModel::canArmWrite() const
 {
-    return m_transfer && m_current && !m_comparing && m_transfer->canArm();
+    return m_transfer && hasPatch() && !m_comparing && m_transfer->canArm();
 }
 
 bool PatchEditorViewModel::writeArmed() const
@@ -1051,7 +1095,7 @@ void PatchEditorViewModel::disarmWrite()
 void PatchEditorViewModel::writeToDevice()
 {
     if (canWrite()) {
-        m_transfer->writeAndVerifyTemporaryPatch(*m_current);
+        m_transfer->writeAndVerifyTemporaryPatch(working());
     }
 }
 

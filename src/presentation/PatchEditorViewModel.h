@@ -5,6 +5,7 @@
 #include "presentation/EditorParameterModel.h"
 #include "services/DeviceSession.h"
 #include "services/PatchTransfer.h"
+#include "services/PatchWorkspace.h"
 #include "xpmodel/Xp60Patch.h"
 #include "xpmodel/Xp60PatchDiff.h"
 
@@ -22,9 +23,15 @@ namespace xp60studio::presentation {
 
 // The Patch Editor screen (mockup panel M2).
 //
-// Editing is local and non-destructive: the fetched Patch is kept as the A
+// Editing is local and non-destructive: the adopted Patch is kept as the A
 // (original) side, all changes apply to the working copy, and reaching the
 // instrument is a separate, explicit, verified action through PatchTransfer.
+//
+// The working copy is **not** owned here. It lives in services::PatchWorkspace,
+// which every screen showing the same Patch projects — so a rename made in this
+// editor reaches the Library row and the Bank Builder destination without any
+// signal passing between screens. This class is the Editor's view of that one
+// Patch, not a second copy of it.
 class PatchEditorViewModel : public QObject
 {
     Q_OBJECT
@@ -35,8 +42,14 @@ class PatchEditorViewModel : public QObject
     Q_PROPERTY(QString locationText READ locationText NOTIFY patchChanged)
     Q_PROPERTY(QString sourceText READ sourceText NOTIFY patchChanged)
     Q_PROPERTY(bool modified READ modified NOTIFY patchChanged)
-    Q_PROPERTY(QString stateBadgeText READ stateBadgeText NOTIFY patchChanged)
-    Q_PROPERTY(QString stateBadgeTone READ stateBadgeTone NOTIFY patchChanged)
+    // The two independent axes of §4: is my work kept, and does the instrument
+    // hold what I am looking at. Deliberately separate properties so no screen
+    // can collapse them back into one badge.
+    Q_PROPERTY(QString studioBadgeText READ studioBadgeText NOTIFY patchChanged)
+    Q_PROPERTY(QString studioBadgeTone READ studioBadgeTone NOTIFY patchChanged)
+    Q_PROPERTY(QString deviceBadgeText READ deviceBadgeText NOTIFY patchChanged)
+    Q_PROPERTY(QString deviceBadgeTone READ deviceBadgeTone NOTIFY patchChanged)
+    Q_PROPERTY(QString deviceMessage READ deviceMessage NOTIFY patchChanged)
     Q_PROPERTY(QString emptyStateMessage READ emptyStateMessage NOTIFY patchChanged)
 
     // Sections
@@ -129,12 +142,20 @@ public:
     EditorParameterModel* sectionParameters() const { return m_sectionParameters; }
     EditorParameterModel* expertParameters() const { return m_expertParameters; }
 
-    explicit PatchEditorViewModel(services::DeviceSession& session, services::PatchTransfer* transfer = nullptr,
-                                  QObject* parent = nullptr);
+    // The workspace must outlive the view model: it is the owner of the Patch
+    // being worked on, shared with every other screen showing it.
+    PatchEditorViewModel(services::DeviceSession& session, services::PatchWorkspace& workspace,
+                         services::PatchTransfer* transfer = nullptr, QObject* parent = nullptr);
 
     // Model access used by ToneViewModel -------------------------------------
-    [[nodiscard]] bool hasPatch() const noexcept { return m_current.has_value(); }
-    [[nodiscard]] const xpmodel::Xp60Patch& patch() const { return m_comparing && m_original ? *m_original : *m_current; }
+    [[nodiscard]] bool hasPatch() const noexcept { return m_workspace.hasPatch(); }
+    // The Patch on screen, which is the A side while comparing.
+    [[nodiscard]] const xpmodel::Xp60Patch& patch() const
+    {
+        return m_comparing && m_workspace.baseline() ? *m_workspace.baseline() : m_workspace.working();
+    }
+    // The Patch being edited, never the A side. Mutations copy this.
+    [[nodiscard]] const xpmodel::Xp60Patch& working() const { return m_workspace.working(); }
     void setToneRaw(xpmodel::ToneIndex tone, xpmodel::ToneParameter parameter, int raw);
     void setCommonRaw(xpmodel::CommonParameter parameter, int raw);
     [[nodiscard]] bool anyToneSoloed() const;
@@ -146,8 +167,11 @@ public:
     [[nodiscard]] QString locationText() const;
     [[nodiscard]] QString sourceText() const;
     [[nodiscard]] bool modified() const;
-    [[nodiscard]] QString stateBadgeText() const;
-    [[nodiscard]] QString stateBadgeTone() const;
+    [[nodiscard]] QString studioBadgeText() const;
+    [[nodiscard]] QString studioBadgeTone() const;
+    [[nodiscard]] QString deviceBadgeText() const;
+    [[nodiscard]] QString deviceBadgeTone() const;
+    [[nodiscard]] QString deviceMessage() const;
     [[nodiscard]] QString emptyStateMessage() const;
 
     [[nodiscard]] QStringList sectionNames() const;
@@ -217,8 +241,8 @@ public:
 
     [[nodiscard]] bool comparing() const noexcept { return m_comparing; }
     void setComparing(bool comparing);
-    [[nodiscard]] bool canUndo() const noexcept { return !m_comparing && !m_undo.empty(); }
-    [[nodiscard]] bool canRedo() const noexcept { return !m_comparing && !m_redo.empty(); }
+    [[nodiscard]] bool canUndo() const noexcept { return !m_comparing && m_workspace.canUndo(); }
+    [[nodiscard]] bool canRedo() const noexcept { return !m_comparing && m_workspace.canRedo(); }
     [[nodiscard]] QString differenceSummary() const;
     Q_INVOKABLE void undo();
     Q_INVOKABLE void redo();
@@ -253,7 +277,7 @@ signals:
 
 private:
     void adoptFetchedPatch();
-    void pushUndo();
+    bool commitEdit(xpmodel::Xp60Patch edited, const QString& label);
     void emitAll();
     xpmodel::Xp60Patch auditionPatch() const;
     void queueAudition();
@@ -271,14 +295,10 @@ private:
     [[nodiscard]] EnvelopeParameters envelopeParameters() const;
 
     services::DeviceSession& m_session;
+    services::PatchWorkspace& m_workspace;
     services::PatchTransfer* m_transfer = nullptr;
     services::PatchTransfer::State m_lastTransferState = services::PatchTransfer::State::Idle;
-    std::optional<xpmodel::Xp60Patch> m_original;
-    std::optional<xpmodel::Xp60Patch> m_current;
-    std::optional<xpmodel::Xp60Patch> m_hardware;
     std::vector<std::unique_ptr<ToneViewModel>> m_tones;
-    std::deque<xpmodel::Xp60Patch> m_undo;
-    std::deque<xpmodel::Xp60Patch> m_redo;
     int m_section = Sound;
     int m_disclosure = Design;
     EditorParameterModel* m_sectionParameters = nullptr;

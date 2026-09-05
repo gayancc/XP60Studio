@@ -20,11 +20,15 @@ void PatchEditorViewModel::setEffectPage(int page)
     emit effectPageChanged();
 }
 
+// A knob drag is one thing the user did, so it is one step back — not one per
+// pixel. The workspace owns that grouping now, which means it applies equally to
+// an effect knob here and to an envelope point being pulled elsewhere.
 void PatchEditorViewModel::beginEffectGesture()
 {
     if (!hasPatch() || comparing() || m_effectGesture) return;
     m_effectGesture = true;
     m_effectGestureHasUndo = false;
+    m_workspace.beginGesture();
 }
 
 void PatchEditorViewModel::endEffectGesture()
@@ -32,6 +36,7 @@ void PatchEditorViewModel::endEffectGesture()
     m_effectGesture = false;
     m_effectGestureHasUndo = false;
     m_applyingEffectGesture = false;
+    m_workspace.endGesture();
 }
 
 QVariantMap PatchEditorViewModel::effectValues() const
@@ -48,8 +53,11 @@ QVariantMap PatchEditorViewModel::effectValues() const
             const auto& block = common ? patch().common()
                 : patch().tone(xpmodel::ToneIndex::all()[std::size_t(route.outputTone - 1)]);
             const int value = block.rawAt(i);
-            const int original = !m_original ? value : common ? m_original->common().rawAt(i)
-                : m_original->tone(xpmodel::ToneIndex::all()[std::size_t(route.outputTone - 1)]).rawAt(i);
+            // The A side comes from the workspace, so "modified" here means the
+            // same thing it means everywhere else showing this Patch.
+            const auto& baseline = m_workspace.baseline();
+            const int original = !baseline ? value : common ? baseline->common().rawAt(i)
+                : baseline->tone(xpmodel::ToneIndex::all()[std::size_t(route.outputTone - 1)]).rawAt(i);
             QStringList choices;
             for (auto label : p.enumLabels) choices.append(text(label));
             // Unknown OUTPUT-2 is preserved on import, never offered as a Design destination.

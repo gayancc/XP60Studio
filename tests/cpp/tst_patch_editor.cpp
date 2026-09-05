@@ -6,6 +6,7 @@
 #include "xpmodel/Xp60Effects.h"
 #include "presentation/ToneViewModel.h"
 #include "services/PatchTransfer.h"
+#include "services/PatchWorkspace.h"
 
 #include <QSignalSpy>
 #include <QAbstractItemModelTester>
@@ -31,6 +32,7 @@ struct Fixture
     midi::LoopbackMidiTransport* transport = nullptr;
     std::unique_ptr<services::DeviceSession> session;
     std::unique_ptr<services::PatchTransfer> transfer;
+    services::PatchWorkspace workspace;
     std::unique_ptr<PatchEditorViewModel> editor;
     std::unique_ptr<FakeXp60> device;
     protocol::TimePoint now{std::chrono::duration_cast<protocol::Clock::duration>(1000ms)};
@@ -48,7 +50,7 @@ struct Fixture
         pacing.interMessageDelay = 0ms;
         session->setPacing(pacing);
         transfer = std::make_unique<services::PatchTransfer>(*session);
-        editor = std::make_unique<PatchEditorViewModel>(*session, transfer.get());
+        editor = std::make_unique<PatchEditorViewModel>(*session, workspace, transfer.get());
         device = std::make_unique<FakeXp60>(temporaryAreaWith(patchInTemporaryArea));
         session->connectEndpoints("in-1", "out-1");
     }
@@ -469,8 +471,10 @@ private slots:
     {
         Fixture f;
         QVERIFY(!f.editor->hasPatch());
-        QCOMPARE(f.editor->stateBadgeText(), QStringLiteral("NO PATCH"));
-        QCOMPARE(f.editor->stateBadgeTone(), QStringLiteral("neutral"));
+        // With no Patch there is nothing to say about either axis, so neither
+        // badge is shown rather than one saying "NO PATCH" twice.
+        QVERIFY(f.editor->studioBadgeText().isEmpty());
+        QVERIFY(f.editor->deviceBadgeText().isEmpty());
         QVERIFY(f.editor->emptyStateMessage().contains(QStringLiteral("Devices")));
         QVERIFY(f.editor->patchName().isEmpty());
         QCOMPARE(f.editor->enabledToneCount(), 0);
@@ -502,8 +506,12 @@ private slots:
         QCOMPARE(f.editor->locationText(), QStringLiteral("TEMPORARY PATCH"));
         QVERIFY(f.editor->sourceText().contains(QStringLiteral("temporary")));
         QVERIFY(!f.editor->modified());
-        QCOMPARE(f.editor->stateBadgeText(), QStringLiteral("ON XP-60"));
-        QCOMPARE(f.editor->stateBadgeTone(), QStringLiteral("success"));
+        // A read from the temporary area is itself a verification of it — these
+        // are the bytes the instrument just sent — but it does not put the Patch
+        // in the library, and the two badges say exactly that.
+        QCOMPARE(f.editor->deviceBadgeText(), QStringLiteral("XP TEMP"));
+        QCOMPARE(f.editor->deviceBadgeTone(), QStringLiteral("success"));
+        QCOMPARE(f.editor->studioBadgeText(), QStringLiteral("NOT IN LIBRARY"));
         QCOMPARE(f.editor->differenceSummary(), QStringLiteral("No local changes"));
         QCOMPARE(f.editor->enabledToneCount(), expected.enabledToneCount());
         QVERIFY(!f.editor->canUndo());
@@ -573,8 +581,12 @@ private slots:
         QCOMPARE(card->level(), target);
         QCOMPARE(f.editor->patch().raw(ToneIndex::tone2(), ToneParameter::ToneLevel), target);
         QVERIFY(f.editor->modified());
-        QCOMPARE(f.editor->stateBadgeText(), QStringLiteral("MODIFIED"));
-        QCOMPARE(f.editor->stateBadgeTone(), QStringLiteral("warning"));
+        // Unkept work outranks provenance: the urgent thing about an edited
+        // Patch read from the instrument is that the edit is held nowhere.
+        QCOMPARE(f.editor->studioBadgeText(), QStringLiteral("EDITED"));
+        QCOMPARE(f.editor->studioBadgeTone(), QStringLiteral("warning"));
+        // ...and the instrument no longer holds what is on screen.
+        QCOMPARE(f.editor->deviceBadgeText(), QStringLiteral("NOT SENT"));
         QVERIFY(f.editor->canUndo());
         // The summary counts differences per block; Xp60PatchDiff::describe()
         // is what names individual parameters.
@@ -950,7 +962,7 @@ private slots:
         QCOMPARE(f.editor->patchName(), QStringLiteral("Edited"));
 
         f.editor->setComparing(true);
-        QCOMPARE(f.editor->stateBadgeText(), QStringLiteral("A · ORIGINAL"));
+        QCOMPARE(f.editor->studioBadgeText(), QStringLiteral("A · ORIGINAL"));
         QCOMPARE(f.editor->patchName(), originalName);
         QCOMPARE(f.tone(1)->level(), original.raw(ToneIndex::tone1(), ToneParameter::ToneLevel));
         QVERIFY(f.editor->patch() == original);
@@ -1022,13 +1034,16 @@ private slots:
         QCOMPARE(patchFrom(f.device->memory(), kTemp).raw(ToneIndex::tone1(), ToneParameter::ToneLevel), 64);
         QCOMPARE(f.tone(1)->level(), 64);
         QVERIFY(f.editor->canUndo());
-        QCOMPARE(f.editor->stateBadgeText(), QStringLiteral("ON XP-60"));
+        QCOMPARE(f.editor->deviceBadgeText(), QStringLiteral("XP TEMP"));
         f.editor->setComparing(true);
         QVERIFY(f.editor->patch() == original);
         f.editor->setComparing(false);
         f.editor->undo();
         QVERIFY(f.editor->patch() == original);
-        QCOMPARE(f.editor->stateBadgeText(), QStringLiteral("LOCAL"));
+        // Undoing is a local edit like any other, so the instrument — which
+        // still holds the written version — is no longer in step.
+        QCOMPARE(f.editor->studioBadgeText(), QStringLiteral("NOT IN LIBRARY"));
+        QCOMPARE(f.editor->deviceBadgeText(), QStringLiteral("NOT SENT"));
     }
 
     void aWriteThatDoesNotTakeIsReportedAsAMismatch()
@@ -1057,7 +1072,10 @@ private slots:
         const auto original = f.editor->patch();
         f.session->disconnectEndpoints();
         QVERIFY(f.editor->patch() == original);
-        QCOMPARE(f.editor->stateBadgeText(), QStringLiteral("LOCAL"));
+        // Editing continues with no instrument attached, and no claim about the
+        // XP-60 survives the disconnection.
+        QCOMPARE(f.editor->deviceBadgeText(), QStringLiteral("OFFLINE"));
+        QCOMPARE(f.editor->studioBadgeText(), QStringLiteral("NOT IN LIBRARY"));
     }
 
     void editorCanCancelAWriteWithoutLosingLocalEdits()

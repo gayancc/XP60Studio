@@ -738,6 +738,42 @@ void DeviceSession::updatePatchFetch()
 // Receiving
 // ---------------------------------------------------------------------------
 
+// Bank Select and Program Change arriving on MIDI IN mean a Patch was selected
+// somewhere upstream — most often on the XP-60's own front panel, which
+// transmits both unless the Tx Program Change / Tx Bank Select switches are OFF
+// (Owner's Manual p.218-219).
+//
+// That matters far beyond diagnostics. Selecting a Patch on the instrument
+// *replaces the temporary area* (Owner's Manual p.45), so every belief the
+// application holds about what the XP-60 is currently sounding becomes worthless
+// at that instant. Watching for these two messages is the only way to learn it
+// without polling, and it costs no traffic at all.
+//
+// This reports the observation as a fact and stops there. Whether it invalidates
+// anything is the workspace's decision, not the transport's.
+void DeviceSession::noticePatchSelection(midi::MidiByteSpan bytes)
+{
+    if (bytes.size() < 2) {
+        return;
+    }
+    const auto status = static_cast<unsigned>(bytes[0]);
+    const int channel = static_cast<int>(status & 0x0FU) + 1;
+
+    if ((status & 0xF0U) == 0xC0U) { // Program Change
+        emit patchSelectionObserved(channel, static_cast<int>(bytes[1]) + 1);
+        return;
+    }
+    if ((status & 0xF0U) == 0xB0U && bytes.size() >= 3) { // Control Change
+        const auto controller = static_cast<unsigned>(bytes[1]);
+        // 0 = Bank Select MSB, 32 = LSB. A bank select alone does not change the
+        // sound — the instrument acts on it at the following Program Change —
+        // but it is part of the same selection and is reported the same way.
+        if (controller == 0U || controller == 32U) {
+            emit patchSelectionObserved(channel, -1);
+        }
+    }
+}
+
 void DeviceSession::handleIncomingMessage(midi::MidiBytes bytes)
 {
     ++m_statistics.messagesIn;
@@ -748,6 +784,7 @@ void DeviceSession::handleIncomingMessage(midi::MidiBytes bytes)
 
     if (!midi::isCompleteSysEx(span)) {
         appendLog(diagnostics::logRawMidi(LogDirection::In, span, inputName(), wall));
+        noticePatchSelection(span);
         emit statisticsChanged();
         return;
     }

@@ -15,6 +15,7 @@
 #include "services/LibraryExportService.h"
 #include "services/LibraryImportService.h"
 #include "presentation/PatchEditorViewModel.h"
+#include "services/PatchWorkspace.h"
 #include "presentation/QmlRegistration.h"
 #include "services/DeviceSession.h"
 #include "services/PatchTransfer.h"
@@ -103,8 +104,8 @@ public slots:
         m_shell = std::make_unique<xp60studio::presentation::AppShellViewModel>(m_devices.get());
 
         m_editorStack = std::make_unique<Stack>();
-        m_editor = std::make_unique<xp60studio::presentation::PatchEditorViewModel>(*m_editorStack->session,
-                                                                                    m_editorStack->transfer.get());
+        m_editor = std::make_unique<xp60studio::presentation::PatchEditorViewModel>(
+            *m_editorStack->session, m_workspace, m_editorStack->transfer.get());
         m_fake = std::make_unique<xp60studio::testsupport::FakeXp60>(xp60studio::testsupport::temporaryAreaWith(4));
         m_editorStack->session->connectEndpoints("in-1", "out-1");
         reloadPatch();
@@ -175,6 +176,7 @@ private:
     std::unique_ptr<Stack> m_editorStack;
     std::unique_ptr<xp60studio::presentation::DevicesViewModel> m_devices;
     std::unique_ptr<xp60studio::presentation::AppShellViewModel> m_shell;
+    xp60studio::services::PatchWorkspace m_workspace;
     std::unique_ptr<xp60studio::presentation::PatchEditorViewModel> m_editor;
     std::unique_ptr<xp60studio::testsupport::FakeXp60> m_fake;
     std::unique_ptr<xp60studio::library::LibraryDatabase> m_library;

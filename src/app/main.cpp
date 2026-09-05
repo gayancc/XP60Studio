@@ -18,6 +18,7 @@
 #include "services/LibraryImportService.h"
 #include "presentation/DevicesViewModel.h"
 #include "presentation/PatchEditorViewModel.h"
+#include "services/PatchWorkspace.h"
 #include "presentation/QmlRegistration.h"
 #include "services/DeviceSession.h"
 #include "services/PatchTransfer.h"
@@ -120,7 +121,25 @@ int main(int argc, char* argv[])
     if (!demoMode) {
         devices.useConnectionSettings(&connectionSettings);
     }
-    xp60studio::presentation::PatchEditorViewModel editor(session, &transfer);
+    // One working Patch, shared by every screen that can show it. Created before
+    // the view models because they hold a reference to it, and outliving them
+    // because it is the thing they project.
+    xp60studio::services::PatchWorkspace workspace;
+    xp60studio::presentation::PatchEditorViewModel editor(session, workspace, &transfer);
+
+    // The XP-60 transmits Bank Select and Program Change when a Patch is chosen
+    // on its front panel, and choosing a Patch replaces the temporary area
+    // (Owner's Manual p.45, p.218-219). That is the most likely way for the
+    // application and the instrument to fall out of step, and the only way to
+    // notice it without polling.
+    QObject::connect(&session, &xp60studio::services::DeviceSession::patchSelectionObserved, &workspace,
+                     [&workspace](int channel, int program) {
+                         workspace.markStale(program > 0
+                             ? QObject::tr("The XP-60 selected Patch %1 on channel %2, so its temporary Patch is no "
+                                           "longer the one shown here.").arg(program).arg(channel)
+                             : QObject::tr("The XP-60 selected another bank on channel %1, so its temporary Patch is "
+                                           "no longer the one shown here.").arg(channel));
+                     });
     xp60studio::presentation::AppShellViewModel shell(&devices);
     shell.setDemoMode(demoMode);
 

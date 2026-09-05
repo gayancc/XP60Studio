@@ -191,6 +191,15 @@ signals:
     void statisticsChanged();
     void patchFetchChanged();
     void dataSetBatchFinished(quint64 batchId, bool ok, const QString& error);
+    // A Bank Select or Program Change arrived on MIDI IN, so a Patch was
+    // selected upstream — typically on the XP-60's own front panel, which
+    // transmits both (Owner's Manual p.218-219). `program` is 1-128, or -1 for a
+    // Bank Select with no Program Change yet.
+    //
+    // Selecting a Patch replaces the instrument's temporary area (Owner's Manual
+    // p.45), so a listener that believed it knew what the XP-60 held no longer
+    // does. Reported as an observation; acting on it is the listener's business.
+    void patchSelectionObserved(int channel, int program);
 
 private:
     struct Outgoing
@@ -211,6 +220,7 @@ private:
     void finishDataSetBatch(DataSetBatchId id, bool ok, std::string error);
 
     void handleIncomingMessage(midi::MidiBytes bytes);
+    void noticePatchSelection(midi::MidiByteSpan bytes);
     void updatePatchFetch();
     bool requestNextPatchBlock();
     void handleTransportError(midi::TransportError error);

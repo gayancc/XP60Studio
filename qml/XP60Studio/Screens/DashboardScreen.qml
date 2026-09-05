@@ -107,9 +107,9 @@ FocusScope {
                             Item { Layout.fillWidth: true }
                             StatusPill {
                                 objectName: "dashboardPatchState"
-                                visible: root.hasPatch && root.editor.stateBadgeText.length > 0
-                                text: root.editor.stateBadgeText
-                                tone: root.editor.stateBadgeTone
+                                visible: root.hasPatch && root.editor.studioBadgeText.length > 0
+                                text: root.editor.studioBadgeText
+                                tone: root.editor.studioBadgeTone
                                 showDot: false
                             }
                         }

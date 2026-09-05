@@ -17,6 +17,8 @@
 // genuine parameter data.
 
 #include "library/SyxImport.h"
+#include "midi/LoopbackMidiTransport.h"
+#include "services/DeviceSession.h"
 #include "services/PatchWorkspace.h"
 #include "xpmodel/Xp60Patch.h"
 #include "xpmodel/Xp60PatchLayout.h"
@@ -24,6 +26,9 @@
 #include <QFile>
 #include <QSignalSpy>
 #include <QTest>
+
+#include <array>
+#include <memory>
 
 using namespace xp60studio;
 using services::DeviceState;
@@ -75,6 +80,10 @@ private slots:
     void aPanelPatchChangeInvalidatesEveryClaimAboutTheInstrument();
     void disconnectingClearsTheDeviceStateAndReconnectingDoesNotRestoreIt();
     void aFailedTransferForcesAWholePatchResend();
+
+    // The wire
+    void aProgramChangeOnTheWireIsReportedAsAPatchSelection();
+    void theInstrumentSelectingAPatchGoesStraightThroughToStale();
 
     // Safety
     void theWorkspaceHasNoPathToPermanentUserMemory();
@@ -210,12 +219,14 @@ void TestPatchWorkspace::savingDoesNotTransmitAndTransmittingDoesNotSave()
 
     workspace.edit(QStringLiteral("Edit"), [](Xp60Patch& p) { p.common().setRawAt(kEfxParam1, 42); });
     QCOMPARE(workspace.deviceState(), DeviceState::NotSent);
+    // Unkept work outranks provenance: edited beats "never in the library".
+    QCOMPARE(workspace.studioState(), StudioState::Edited);
 
     // Sending changes nothing about storage.
     workspace.noteSending();
     workspace.noteSent(workspace.working());
     QCOMPARE(workspace.deviceState(), DeviceState::Assumed);
-    QCOMPARE(workspace.studioState(), StudioState::Untracked);
+    QCOMPARE(workspace.studioState(), StudioState::Edited);
 
     // Saving changes nothing about the instrument.
     workspace.markSaved(99);
@@ -330,6 +341,82 @@ void TestPatchWorkspace::aFailedTransferForcesAWholePatchResend()
     // is a mixture nobody recorded.
     QVERIFY(!workspace.sendBaseline().has_value());
     QCOMPARE(workspace.deviceMessage(), QStringLiteral("Timed out"));
+}
+
+// ---------------------------------------------------------------------------
+// The wire: noticing that the instrument changed Patch by itself
+// ---------------------------------------------------------------------------
+
+// The XP-60 transmits Bank Select and Program Change when a Patch is chosen on
+// its front panel (Owner's Manual p.218-219), and choosing a Patch replaces the
+// temporary area (p.45). Watching MIDI IN for those two messages is therefore a
+// free, passive way to learn that our copy of that area is worthless.
+void TestPatchWorkspace::aProgramChangeOnTheWireIsReportedAsAPatchSelection()
+{
+    auto loopback = std::make_unique<midi::LoopbackMidiTransport>();
+    loopback->addInput("in-1", "XP-60 IN");
+    loopback->addOutput("out-1", "XP-60 OUT");
+    auto* transport = loopback.get();
+    services::DeviceSession session(std::move(loopback));
+    QVERIFY(session.connectEndpoints("in-1", "out-1"));
+
+    QSignalSpy observed(&session, &services::DeviceSession::patchSelectionObserved);
+
+    // Program Change, channel 1, program 8 (transmitted as 0x07).
+    const std::array<midi::Byte, 2> programChange{0xC0, 0x07};
+    transport->injectIncoming(midi::MidiByteSpan(programChange.data(), programChange.size()));
+    QTRY_COMPARE(observed.count(), 1);
+    QCOMPARE(observed.at(0).at(0).toInt(), 1);
+    QCOMPARE(observed.at(0).at(1).toInt(), 8);
+
+    // Bank Select MSB is part of the same selection; it is reported with no
+    // program, because the instrument acts on it at the following Program
+    // Change rather than immediately.
+    const std::array<midi::Byte, 3> bankSelect{0xB2, 0x00, 0x51};
+    transport->injectIncoming(midi::MidiByteSpan(bankSelect.data(), bankSelect.size()));
+    QTRY_COMPARE(observed.count(), 2);
+    QCOMPARE(observed.at(1).at(0).toInt(), 3);
+    QCOMPARE(observed.at(1).at(1).toInt(), -1);
+
+    // An ordinary Control Change is not a patch selection and must not be
+    // reported as one, or every modulation wheel movement would invalidate the
+    // session.
+    const std::array<midi::Byte, 3> modulation{0xB0, 0x01, 0x40};
+    transport->injectIncoming(midi::MidiByteSpan(modulation.data(), modulation.size()));
+    const std::array<midi::Byte, 3> noteOn{0x90, 0x3C, 0x64};
+    transport->injectIncoming(midi::MidiByteSpan(noteOn.data(), noteOn.size()));
+    QTest::qWait(20);
+    QCOMPARE(observed.count(), 2);
+}
+
+void TestPatchWorkspace::theInstrumentSelectingAPatchGoesStraightThroughToStale()
+{
+    auto loopback = std::make_unique<midi::LoopbackMidiTransport>();
+    loopback->addInput("in-1", "XP-60 IN");
+    loopback->addOutput("out-1", "XP-60 OUT");
+    auto* transport = loopback.get();
+    services::DeviceSession session(std::move(loopback));
+    QVERIFY(session.connectEndpoints("in-1", "out-1"));
+
+    PatchWorkspace workspace;
+    workspace.setConnected(true);
+    workspace.adopt(patchAt(0), PatchOrigin::library(1));
+    workspace.noteVerified(workspace.working());
+    QCOMPARE(workspace.deviceState(), DeviceState::InSync);
+
+    // This is the whole chain the application relies on, wired as it is in
+    // main.cpp: the panel is pressed, the instrument announces it, and the
+    // application stops claiming to know what the XP-60 is sounding.
+    QObject::connect(&session, &services::DeviceSession::patchSelectionObserved, &workspace,
+                     [&workspace](int, int) {
+                         workspace.markStale(QStringLiteral("The XP-60 selected another Patch"));
+                     });
+
+    const std::array<midi::Byte, 2> programChange{0xC0, 0x00};
+    transport->injectIncoming(midi::MidiByteSpan(programChange.data(), programChange.size()));
+
+    QTRY_COMPARE(workspace.deviceState(), DeviceState::Stale);
+    QVERIFY(!workspace.deviceBaseline().has_value());
 }
 
 // ---------------------------------------------------------------------------

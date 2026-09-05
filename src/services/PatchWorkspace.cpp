@@ -197,13 +197,16 @@ bool PatchWorkspace::modified() const
 
 StudioState PatchWorkspace::studioState() const noexcept
 {
-    if (m_origin.kind != PatchOrigin::Kind::LibraryEntry) {
-        // Nothing in the library backs it, so there is nothing it could be a
-        // modified version of. Saying "unsaved" would imply a row that does not
-        // exist.
-        return StudioState::Untracked;
+    // Unkept work outranks provenance. A Patch read from the instrument has no
+    // library row, but once it has been edited the urgent thing to say is that
+    // the changes are held nowhere — not that it was never in the library.
+    if (modified()) {
+        return StudioState::Edited;
     }
-    return modified() ? StudioState::Edited : StudioState::Saved;
+    // Unmodified: now the question is whether anything backs it at all. Saying
+    // "saved" for a Patch with no library row would name a row that does not
+    // exist.
+    return m_origin.kind == PatchOrigin::Kind::LibraryEntry ? StudioState::Saved : StudioState::Untracked;
 }
 
 void PatchWorkspace::markSaved(std::int64_t libraryId)

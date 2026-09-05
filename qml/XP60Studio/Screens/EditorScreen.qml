@@ -98,10 +98,25 @@ Item {
                         RowLayout {
                             spacing: Metrics.spacingSm
                             XpLabel { text: root.editor.locationText; role: "overline"; secondary: true }
+                            // Two indicators, never one. "Is my work kept?" and
+                            // "does the XP-60 hold what I am looking at?" are
+                            // independent questions — a Patch can be saved here
+                            // and absent from the instrument, or auditioning on
+                            // the instrument and never saved. One badge
+                            // answering both is how an editor ends up saying
+                            // "saved" when it means "sent".
                             StatusPill {
                                 objectName: "patchStateBadge"
-                                text: root.editor.stateBadgeText
-                                tone: root.editor.stateBadgeTone
+                                visible: root.editor.studioBadgeText.length > 0
+                                text: root.editor.studioBadgeText
+                                tone: root.editor.studioBadgeTone
+                                showDot: false
+                            }
+                            StatusPill {
+                                objectName: "patchDeviceBadge"
+                                visible: root.editor.deviceBadgeText.length > 0
+                                text: root.editor.deviceBadgeText
+                                tone: root.editor.deviceBadgeTone
                                 showDot: false
                             }
                         }
@@ -112,7 +127,14 @@ Item {
                             Layout.fillWidth: true
                         }
                         XpLabel {
-                            text: root.editor.differenceSummary + " · " + root.editor.sourceText
+                            objectName: "patchContextLine"
+                            // The device message earns the line when there is
+                            // one: "the XP-60 selected another Patch" is the
+                            // thing a musician most needs to read, and it says
+                            // why the badge beside it went quiet.
+                            text: root.editor.deviceMessage.length > 0
+                                  ? root.editor.deviceMessage
+                                  : root.editor.differenceSummary + " · " + root.editor.sourceText
                             role: "caption"
                             muted: true
                             elide: Text.ElideRight
