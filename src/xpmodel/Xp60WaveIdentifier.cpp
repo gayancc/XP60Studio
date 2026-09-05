@@ -57,4 +57,17 @@ std::optional<WaveSelection> decodeWave(int groupTypeRaw, int groupIdRaw, int nu
     return WaveSelection{*bank, numberRaw + 1};
 }
 
+std::optional<ExpansionWaveReference> expansionWave(int groupTypeRaw, int groupIdRaw, int numberRaw) noexcept
+{
+    if (groupTypeRaw != kExpansionWaveGroupTypeRaw) {
+        return std::nullopt;
+    }
+    // The documented field widths: group ID is one 7-bit byte, the wave number
+    // two nibbles. Anything outside them did not come from an XP-60.
+    if (groupIdRaw < 0 || groupIdRaw > 127 || numberRaw < 0 || numberRaw > 254) {
+        return std::nullopt;
+    }
+    return ExpansionWaveReference{groupIdRaw, numberRaw};
+}
+
 } // namespace xp60studio::xpmodel

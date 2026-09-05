@@ -22,10 +22,14 @@ namespace xp60studio::xpmodel {
 //   * INT-B 193 is selectable and reads raw 192, and its name reads "DC" on
 //     both the instrument and in the catalog.
 //
-// Expansion waves are deliberately not representable. Group type 2 (EXP) was
-// found on 61 of 512 references in User memory across group IDs 1, 5, 7 and 18;
-// which board each ID denotes is unknown, so those references are preserved
-// byte-for-byte elsewhere and never resolved here.
+// Expansion waves are representable but never *resolved*. Group type 2 (EXP)
+// names a wave on an SR-JV80 Wave Expansion Board, and the Parameter Address Map
+// gives Wave Group ID as a plain 0..127 field with no stated meaning, so which
+// board an ID denotes is **unknown**. See
+// docs/protocol/ROLAND_XP60_PROTOCOL_FACTS.md §7 for the evidence, including why
+// the obvious "group ID is the SR-JV80 board number" hypothesis is *not*
+// adopted. An expansion reference is therefore carried as the raw pair it is,
+// and what board answers to a group is something the user tells XP60Studio.
 enum class InternalWaveBank {
     IntA,
     IntB,
@@ -33,6 +37,9 @@ enum class InternalWaveBank {
 
 // Raw byte values, as the instrument reports them.
 inline constexpr int kInternalWaveGroupTypeRaw = 0; // "INT"
+// Group type 1 is Roland's `<PCM>`, which the Parameter Address Map marks as a
+// JV-1080 value the XP-60/XP-80 ignores on receive.
+inline constexpr int kExpansionWaveGroupTypeRaw = 2; // "EXP"
 inline constexpr int kIntAGroupIdRaw = 1;
 inline constexpr int kIntBGroupIdRaw = 2;
 
@@ -75,6 +82,25 @@ struct WaveIdentifier
 
 // "INT-A" / "INT-B" exactly; nothing else, and no case folding.
 [[nodiscard]] std::optional<InternalWaveBank> internalWaveBankFromLabel(std::string_view label) noexcept;
+
+// A wave on a Wave Expansion Board, as the Tone bytes carry it.
+//
+// Deliberately just the two raw numbers. XP60Studio does not know which board a
+// group ID denotes and must not pretend to: what it can do is tell a musician
+// "this Tone needs expansion group 5" and let them say which of their boards
+// that is (library::ExpansionProfile).
+struct ExpansionWaveReference
+{
+    int groupIdRaw = 0;
+    int numberRaw = 0;
+
+    friend bool operator==(const ExpansionWaveReference&, const ExpansionWaveReference&) noexcept = default;
+};
+
+// The expansion reference a raw triple names, or nullopt when it is not an
+// expansion wave. Never guesses a board.
+[[nodiscard]] std::optional<ExpansionWaveReference> expansionWave(int groupTypeRaw, int groupIdRaw,
+                                                                  int numberRaw) noexcept;
 
 // Selection -> bytes, and bytes -> selection. Both refuse anything outside the
 // bank rather than clamping: a number the instrument cannot select is a caller

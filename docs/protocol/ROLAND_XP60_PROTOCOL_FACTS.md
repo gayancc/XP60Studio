@@ -268,6 +268,44 @@ To move a row to *Hardware-verified*:
 3. Change the status here and, when a constant is involved, change the
    `VerificationStatus` in `src/xp60/Xp60Device.cpp` in the same commit.
 
+## 7. Wave Expansion Boards — what a Wave Group ID means
+
+| Fact | Value | Status | Source |
+|---|---|---|---|
+| Wave Group Type | 0 = INT, 1 = `<PCM>` (JV-1080 only, ignored on receive), 2 = EXP | Documentation-derived | Parameter Address Map p.224 |
+| Wave Group ID field | one 7-bit byte, 0..127, display "same as raw" | Documentation-derived | Parameter Address Map p.224 |
+| Group type 0, group ID 1/2 | INT-A / INT-B | **Hardware-verified 2026-09-04** | Front-panel comparison, area 9 |
+| **Which board a Wave Group ID denotes** | — | **Unknown** | Roland states no mapping |
+| Expansion slots | four, EXP-A..EXP-D, one SR-JV80 board each | Documentation-derived | Owner's Manual p.45 |
+| Panel selection of expansion waves | by slot group XP-A..XP-D | Documentation-derived | Owner's Manual p.45 |
+
+### Why "group ID is the SR-JV80 board number" is *not* adopted
+
+It is the obvious hypothesis and it is tempting, because part of the evidence
+fits beautifully. The golden fixture `user-bank-amal.syx` carries **192
+expansion references among its 512 Tones**, across groups **1, 5, 7, 14 and 97**,
+and the patch names line up with the SR-JV80 catalogue:
+
+| Group | Example patch in the fixture | SR-JV80 board with that number |
+|---|---|---|
+| 5 | `Ethno Pipes3`, `Tramaloo` | -05 *World* |
+| 14 | `Sitar` | -14 *Asia* |
+| **97** | `*Poly Xpandr`, `*PromarsLead`, `*Tenor Solo` | **no such board** |
+
+The SR-JV80 series is numbered in the low tens; **97 cannot be a board number**,
+so the pattern that fits four groups fails on the fifth. Slot indices are ruled
+out too — those would be 1..4.
+
+Something else is going on that this project has not established, so no mapping
+is encoded anywhere. `xpmodel::expansionWave` carries the raw pair and resolves
+nothing; `library::ExpansionProfile` asks the musician which board answers to
+which group; and `library::PatchCompatibility` answers **Unknown** rather than
+"missing" whenever the profile is not complete enough for "missing" to be true.
+
+Settling it is a hardware task: install a known board, select one of its waves
+in a Tone from the front panel, and read the Tone back. Added to
+`DEVICE_ACCEPTANCE.md` as area 15.
+
 ## Keybed
 
 | Fact | Value | Status | Source |
