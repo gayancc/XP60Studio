@@ -54,7 +54,65 @@ private slots:
     void fillingManyDestinationsIsOneUndoStep();
     void refusesAFillThatIsNotWhollyLegal();
     void clearingSeveralDestinationsIsOneUndoStep();
+    void sectionsNameRunsOfDestinationsAndNeverOverlap();
 };
+
+// A 128-slot bank is a lot of undifferentiated boxes; sections are how a
+// musician says "pianos at the front, pads after them". They are labels, not
+// arrangement: adding or removing one moves no Patch.
+void TestBankDraft::sectionsNameRunsOfDestinationsAndNeverOverlap()
+{
+    BankDraft draft;
+    draft.assign(slotOf("A11"), patch(1, "GrandPiano"));
+
+    QVERIFY(draft.addSection("Pianos", slotOf("A11"), slotOf("A18")));
+    QVERIFY(draft.sectionAt(slotOf("A11")) != nullptr);
+    QCOMPARE(draft.sectionAt(slotOf("A14"))->name, std::string{"Pianos"});
+    QVERIFY(draft.sectionAt(slotOf("A21")) == nullptr);
+
+    // A destination in two sections would make the rail lie about where it is.
+    QVERIFY(!draft.addSection("Overlapping", slotOf("A15"), slotOf("A25")));
+    QCOMPARE(static_cast<int>(draft.sections().size()), 1);
+
+    // A section that starts after the first one is fine, and the rail is kept
+    // in destination order however it was built.
+    QVERIFY(draft.addSection("Bass", slotOf("B11"), slotOf("B18")));
+    QVERIFY(draft.addSection("Pads", slotOf("A21"), slotOf("A88")));
+    QCOMPARE(static_cast<int>(draft.sections().size()), 3);
+    QCOMPARE(draft.sections()[0].name, std::string{"Pianos"});
+    QCOMPARE(draft.sections()[1].name, std::string{"Pads"});
+    QCOMPARE(draft.sections()[2].name, std::string{"Bass"});
+
+    // Nonsense is refused rather than clamped into range.
+    QVERIFY(!draft.addSection("", 0, 1));
+    QVERIFY(!draft.addSection("Backwards", slotOf("B88"), slotOf("B11")));
+    QVERIFY(!draft.addSection("Off the end", 120, 200));
+
+    // Sections are part of the arrangement's history: undo takes one back...
+    QVERIFY(draft.undo());
+    QCOMPARE(static_cast<int>(draft.sections().size()), 2);
+    QVERIFY(draft.redo());
+    QCOMPARE(static_cast<int>(draft.sections().size()), 3);
+
+    QVERIFY(draft.renameSection(slotOf("A11"), "Acoustic pianos"));
+    QCOMPARE(draft.sectionAt(slotOf("A11"))->name, std::string{"Acoustic pianos"});
+    QVERIFY(!draft.renameSection(slotOf("A11"), ""));
+    QVERIFY(!draft.renameSection(slotOf("A14"), "Not a section start"));
+
+    // ...and removing one is a label change, not an arrangement change.
+    const int occupied = draft.occupiedCount();
+    QVERIFY(draft.removeSection(slotOf("A11")));
+    QCOMPARE(static_cast<int>(draft.sections().size()), 2);
+    QCOMPARE(draft.occupiedCount(), occupied);
+    QCOMPARE(draft.slot(slotOf("A11")).patchId, std::int64_t{1});
+    QVERIFY(!draft.removeSection(slotOf("A11")));
+
+    // Loading a stored rail drops anything unusable rather than refusing, so a
+    // saved bank always opens.
+    draft.setSections({{"Good", 0, 7}, {"", 8, 9}, {"Overlaps", 4, 12}, {"Backwards", 40, 20}});
+    QCOMPARE(static_cast<int>(draft.sections().size()), 1);
+    QCOMPARE(draft.sections()[0].name, std::string{"Good"});
+}
 
 // A multi-selection cleared destination by destination would take as many undo
 // presses to put back, which is not what the user did.

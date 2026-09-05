@@ -82,6 +82,18 @@ constexpr const char* kSchemaStatements[] = {
     "  PRIMARY KEY (bank_id, slot_index)"
     ")",
     "CREATE INDEX IF NOT EXISTS idx_bank_slots_patch ON bank_slots(patch_id)",
+    // Schema version 3 -- the section rail.
+    //
+    // A musician's own grouping of a bank's 128 destinations ("pianos at the
+    // front, pads after them"). It is XP60Studio's organisation: it changes no
+    // address, is never transmitted, and is deleted with its bank.
+    "CREATE TABLE IF NOT EXISTS bank_sections ("
+    "  bank_id    INTEGER NOT NULL REFERENCES banks(id) ON DELETE CASCADE,"
+    "  first_slot INTEGER NOT NULL,"
+    "  last_slot  INTEGER NOT NULL,"
+    "  name       TEXT    NOT NULL,"
+    "  PRIMARY KEY (bank_id, first_slot)"
+    ")",
 };
 
 QString toQt(const std::string& text)
@@ -788,7 +800,8 @@ std::chrono::system_clock::time_point fromEpochSeconds(std::int64_t seconds)
 } // namespace
 
 std::optional<std::int64_t> LibraryDatabase::saveBank(const std::string& name,
-    const std::vector<BankSlotContent>& destinations, std::optional<std::int64_t> existingId)
+    const std::vector<BankSlotContent>& destinations, std::optional<std::int64_t> existingId,
+    const std::vector<BankSection>& sections)
 {
     if (!isOpen()) {
         m_lastError = QStringLiteral("The library is not open.");
@@ -839,6 +852,11 @@ std::optional<std::int64_t> LibraryDatabase::saveBank(const std::string& name,
         if (!sql.exec()) {
             return fail(sql.lastError().text());
         }
+        sql.prepare(QStringLiteral("DELETE FROM bank_sections WHERE bank_id = ?"));
+        sql.addBindValue(QVariant::fromValue<qlonglong>(bankId));
+        if (!sql.exec()) {
+            return fail(sql.lastError().text());
+        }
     } else {
         sql.prepare(QStringLiteral("INSERT INTO banks (name, created_at, updated_at) VALUES (?, ?, ?)"));
         sql.addBindValue(toQt(name));
@@ -868,6 +886,21 @@ std::optional<std::int64_t> LibraryDatabase::saveBank(const std::string& name,
         sql.addBindValue(toQt(content.patchName));
         sql.addBindValue(toQt(content.sourceName));
         sql.addBindValue(toQt(content.sourceSlotLabel));
+        if (!sql.exec()) {
+            return fail(sql.lastError().text());
+        }
+    }
+
+    for (const auto& section : sections) {
+        if (section.name.empty()) {
+            continue;
+        }
+        sql.prepare(QStringLiteral(
+            "INSERT INTO bank_sections (bank_id, first_slot, last_slot, name) VALUES (?, ?, ?, ?)"));
+        sql.addBindValue(QVariant::fromValue<qlonglong>(bankId));
+        sql.addBindValue(section.firstSlot);
+        sql.addBindValue(section.lastSlot);
+        sql.addBindValue(toQt(section.name));
         if (!sql.exec()) {
             return fail(sql.lastError().text());
         }
@@ -964,6 +997,23 @@ std::optional<SavedBank> LibraryDatabase::loadBank(std::int64_t id) const
         ++bank.record.occupiedCount;
         bank.destinations[static_cast<std::size_t>(index)] = std::move(content);
     }
+
+    auto sectionQuery = m_d->query();
+    sectionQuery.prepare(QStringLiteral("SELECT first_slot, last_slot, name FROM bank_sections "
+                                        "WHERE bank_id = ? ORDER BY first_slot"));
+    sectionQuery.addBindValue(QVariant::fromValue<qlonglong>(id));
+    if (!sectionQuery.exec()) {
+        m_lastError = sectionQuery.lastError().text();
+        return std::nullopt;
+    }
+    while (sectionQuery.next()) {
+        BankSection section;
+        section.firstSlot = sectionQuery.value(0).toInt();
+        section.lastSlot = sectionQuery.value(1).toInt();
+        section.name = fromQt(sectionQuery.value(2).toString());
+        bank.sections.push_back(std::move(section));
+    }
+
     m_lastError.clear();
     return bank;
 }

@@ -103,6 +103,10 @@ struct SavedBank
     SavedBankRecord record;
     // Always BankDraft::kSlotCount entries, in slot order.
     std::vector<BankSlotContent> destinations;
+    // The musician's own grouping of those destinations. XP60Studio's
+    // organisation, saved with the bank and carried nowhere near the
+    // instrument.
+    std::vector<BankSection> sections;
 };
 
 // The persistent local library.
@@ -133,7 +137,7 @@ public:
     // 2 added the `banks` / `bank_slots` tables. The migration is additive —
     // no existing row is touched — so opening a version 1 library simply
     // creates the two new tables and stamps the new version.
-    static constexpr int kSchemaVersion = 2;
+    static constexpr int kSchemaVersion = 3;
     // Passed as the path to keep the whole library in memory (tests).
     static constexpr const char* kInMemoryPath = ":memory:";
 
@@ -198,7 +202,8 @@ public:
     // `destinations` shorter than 128 is padded with empty destinations; longer is
     // refused. Returns the bank's id.
     [[nodiscard]] std::optional<std::int64_t> saveBank(const std::string& name,
-        const std::vector<BankSlotContent>& destinations, std::optional<std::int64_t> existingId = std::nullopt);
+        const std::vector<BankSlotContent>& destinations, std::optional<std::int64_t> existingId = std::nullopt,
+        const std::vector<BankSection>& sections = {});
     [[nodiscard]] std::vector<SavedBankRecord> banks() const;
     [[nodiscard]] std::optional<SavedBank> loadBank(std::int64_t id) const;
     [[nodiscard]] bool removeBank(std::int64_t id);

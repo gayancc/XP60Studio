@@ -83,6 +83,7 @@ private slots:
 
     void reportsDuplicateSoundsWithoutActingOnThem();
     void marksSeveralDestinationsAndClearsThemAsOneStep();
+    void namesTheMarkedSetAsASection();
     void comparesTwoDestinationsAgainstEachOther();
     void exportsEachPatchToTheDestinationItOccupies();
     void refusesToExportAnEmptyBank();
@@ -324,6 +325,69 @@ void TestBankBuilder::reportsDuplicateSoundsWithoutActingOnThem()
     // Clearing one end resolves the pair.
     QVERIFY(builder.clearSlot(slotOf("A14")));
     QCOMPARE(builder.duplicateCount(), 2);
+}
+
+// Marking the destinations that belong together and then saying what they are is
+// the natural way to build a rail, so the two features meet here.
+void TestBankBuilder::namesTheMarkedSetAsASection()
+{
+    QVERIFY(!importFixture().isEmpty());
+    BankBuilderViewModel builder;
+    builder.setDatabase(&m_db);
+    const auto records = m_db.search({});
+    for (int i = 0; i < 8; ++i) {
+        QVERIFY(builder.placePatch(i, records[static_cast<std::size_t>(i)].id));
+    }
+
+    builder.selectSlot(0);
+    builder.selectRangeTo(7);
+    QCOMPARE(builder.selectionCount(), 8);
+    QVERIFY(builder.addSection(QStringLiteral("Pianos")));
+
+    // Naming a set consumes it: the marks have served their purpose.
+    QCOMPARE(builder.selectionCount(), 0);
+    const auto sections = builder.sections();
+    QCOMPARE(sections.size(), 1);
+    const auto section = sections.first().toMap();
+    QCOMPARE(section.value(QStringLiteral("name")).toString(), QStringLiteral("Pianos"));
+    QCOMPARE(section.value(QStringLiteral("firstLabel")).toString(), QStringLiteral("A11"));
+    QCOMPARE(section.value(QStringLiteral("lastLabel")).toString(), QStringLiteral("A18"));
+    QCOMPARE(section.value(QStringLiteral("count")).toInt(), 8);
+    QCOMPARE(section.value(QStringLiteral("occupied")).toInt(), 8);
+    QVERIFY(section.value(QStringLiteral("current")).toBool());
+
+    // The panel and its destinations know which section they are in.
+    builder.selectSlot(3);
+    QCOMPARE(builder.currentSectionName(), QStringLiteral("Pianos"));
+    QCOMPARE(builder.destinationAt(3).value(QStringLiteral("sectionName")).toString(), QStringLiteral("Pianos"));
+    builder.selectSlot(64);
+    QVERIFY(builder.currentSectionName().isEmpty());
+
+    // An empty name and an overlapping range are both refused, and say so.
+    QVERIFY(!builder.addSection(QStringLiteral("   ")));
+    QVERIFY(!builder.addSectionForRange(QStringLiteral("Overlaps"), 4, 12));
+
+    // With nothing marked, a section names the destination the panel is on.
+    builder.selectSlot(64);
+    QVERIFY(builder.addSection(QStringLiteral("Set list")));
+    QCOMPARE(builder.sections().size(), 2);
+
+    // Removing one is a label change: every Patch stays where it was.
+    const int occupied = builder.occupiedCount();
+    QVERIFY(builder.removeSection(0));
+    QCOMPARE(builder.sections().size(), 1);
+    QCOMPARE(builder.occupiedCount(), occupied);
+
+    // And the rail survives a save and reload with the bank.
+    QVERIFY(builder.saveAsNewBank(QStringLiteral("Railed")));
+    const auto saved = builder.savedBanks();
+    QCOMPARE(saved.size(), 1);
+    builder.newEmptyBank(QStringLiteral("Fresh"));
+    QCOMPARE(builder.sections().size(), 0);
+    QVERIFY(builder.loadBank(saved.first().toMap().value(QStringLiteral("id")).toLongLong()));
+    QCOMPARE(builder.sections().size(), 1);
+    QCOMPARE(builder.sections().first().toMap().value(QStringLiteral("name")).toString(),
+             QStringLiteral("Set list"));
 }
 
 // A marked set, kept deliberately separate from the panel's own selection: the

@@ -500,6 +500,55 @@ FocusScope {
                     preview: root.dropPreview
                 }
 
+                // The section rail: the musician's own grouping of the 128
+                // destinations. XP60Studio's organisation, saved with the bank,
+                // never sent to the instrument — it changes no address.
+                Flow {
+                    objectName: "bankSectionRail"
+                    Layout.fillWidth: true
+                    spacing: Metrics.spacingXs
+                    visible: root.builder.sections.length > 0 || root.builder.selectionCount > 0
+
+                    Repeater {
+                        model: root.builder.sections
+                        delegate: XpButton {
+                            required property var modelData
+                            objectName: "bankSection" + modelData.firstSlot
+                            text: qsTr("%1 · %2–%3 · %4/%5")
+                                  .arg(modelData.name).arg(modelData.firstLabel).arg(modelData.lastLabel)
+                                  .arg(modelData.occupied).arg(modelData.count)
+                            compact: true
+                            variant: modelData.current ? "primary" : "ghost"
+                            QQC.ToolTip.visible: hovered
+                            QQC.ToolTip.delay: 400
+                            QQC.ToolTip.text: qsTr("Go to the start of this section. Right-click to remove it — the Patches in it are not touched.")
+                            onClicked: root.builder.selectSlot(modelData.firstSlot)
+                            TapHandler {
+                                acceptedButtons: Qt.RightButton
+                                onTapped: root.builder.removeSection(modelData.firstSlot)
+                            }
+                        }
+                    }
+
+                    // Naming the marked set is the natural way to make one: mark
+                    // the destinations that belong together, then say what they
+                    // are.
+                    XpButton {
+                        objectName: "bankAddSection"
+                        text: root.builder.selectionCount > 0
+                              ? qsTr("Name these %n destination(s)…", "", root.builder.selectionCount)
+                              : qsTr("Name a section…")
+                        iconName: "plus"
+                        compact: true
+                        variant: "ghost"
+                        onClicked: {
+                            sectionName.text = ""
+                            sectionDialog.open()
+                            sectionName.forceActiveFocus()
+                        }
+                    }
+                }
+
                 // The mini comparison inspector. Only present while comparing,
                 // so it costs nothing the rest of the time.
                 XpCard {
@@ -1044,6 +1093,43 @@ FocusScope {
                   : qsTr("This clears all 128 destinations. Every Patch stays in the library.")
             role: "body"
             wrapMode: Text.WordWrap
+        }
+    }
+
+    QQC.Dialog {
+        id: sectionDialog
+        objectName: "bankSectionDialog"
+        anchors.centerIn: parent
+        modal: true
+        title: qsTr("Name a section")
+        standardButtons: QQC.Dialog.Ok | QQC.Dialog.Cancel
+        onAccepted: root.builder.addSection(sectionName.text)
+
+        background: Rectangle {
+            color: Theme.surface
+            radius: Metrics.radiusMd
+            border.width: 1
+            border.color: Theme.borderStrong
+        }
+
+        ColumnLayout {
+            spacing: Metrics.spacingSm
+            XpLabel {
+                Layout.preferredWidth: 360
+                text: root.builder.selectionCount > 0
+                      ? qsTr("Names the destinations you have marked. Sections are XP60Studio's own grouping: they change no address and are never sent to the instrument.")
+                      : qsTr("Names the destination the panel is on. Mark several first to name a range. Sections are XP60Studio's own grouping: they change no address and are never sent to the instrument.")
+                role: "caption"
+                muted: true
+                wrapMode: Text.WordWrap
+            }
+            XpTextField {
+                id: sectionName
+                objectName: "bankSectionName"
+                Layout.fillWidth: true
+                placeholderText: qsTr("Pianos, Pads, Set list…")
+                onAccepted: sectionDialog.accept()
+            }
         }
     }
 

@@ -338,6 +338,44 @@ write. Fingerprints are cached by library id, because a stored Patch's
 fingerprint does not change while it sits in the library, so a drag does not
 re-read the database 128 times.
 
+## The section rail
+
+A 128-slot bank is a lot of undifferentiated boxes. A musician building one
+thinks in groups — pianos at the front, pads after them, the set list at the end
+— and the instrument gives them no way to say so, because the XP-60 knows only
+USER:001–128.
+
+Sections are **XP60Studio's own organisation**: a named run of destinations,
+saved with the bank and carried nowhere near the instrument. They change no
+address, appear in no `.syx`, and are never transmitted.
+
+Naming the marked set is the way one is made — mark the destinations that belong
+together, then say what they are — and naming a set consumes it, because the
+marks have served their purpose. With nothing marked, a section names the
+destination the panel is on. A rail chip shows the name, its range in panel
+labels and how full it is; clicking goes to its start and right-clicking removes
+it. Removing a section is a label change: every Patch stays where it was.
+
+Sections **never overlap**, so "which section is this destination in" has exactly
+one answer and the rail cannot lie about where something is. An overlapping range
+is refused rather than trimmed. They are part of the arrangement's history, so
+undo walks them like any other edit.
+
+### Persistence — schema version 3
+
+```sql
+bank_sections (bank_id -> banks ON DELETE CASCADE,
+               first_slot, last_slot, name,
+               PRIMARY KEY (bank_id, first_slot))
+```
+
+Additive, like version 2 before it: every statement is `CREATE TABLE IF NOT
+EXISTS`, so an older library gains the table, touches no existing row and stamps
+the new version. A bank saved before version 3 has no rail and opens cleanly.
+Loading drops any stored section that is unusable — empty name, inverted or
+out-of-range span, overlapping its predecessor — rather than refusing, because a
+saved bank must always open.
+
 ## Multi-selection
 
 A **marked set**, deliberately separate from the panel's own selection. The

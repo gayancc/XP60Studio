@@ -63,6 +63,7 @@ private slots:
     void listsBanksWithTheirOccupancy();
     void groupsTheLibraryBySource();
     void migratesAVersionOneLibraryForward();
+    void savesAndReloadsTheSectionRail();
 
 private:
     [[nodiscard]] std::vector<std::int64_t> importFixture();
@@ -308,6 +309,54 @@ void TestBankStore::listsBanksWithTheirOccupancy()
     }
     QCOMPARE(five_count, 5);
     QCOMPARE(empty_count, 0);
+}
+
+// Sections are XP60Studio's own organisation of a bank. They are saved with it,
+// deleted with it, and never go near the instrument.
+void TestBankStore::savesAndReloadsTheSectionRail()
+{
+    const auto ids = importFixture();
+    QVERIFY(ids.size() >= 2);
+
+    std::vector<BankSlotContent> arrangement(BankDraft::kSlotCount);
+    BankSlotContent content;
+    content.patchId = ids[0];
+    content.patchName = "GrandPiano";
+    arrangement[static_cast<std::size_t>(slotOf("A11"))] = content;
+
+    const std::vector<library::BankSection> sections{
+        {"Pianos", slotOf("A11"), slotOf("A18")},
+        {"Pads", slotOf("A21"), slotOf("A88")},
+    };
+
+    const auto bankId = m_db.saveBank("Live Band Bank", arrangement, std::nullopt, sections);
+    QVERIFY2(bankId.has_value(), qPrintable(m_db.lastError()));
+
+    const auto loaded = m_db.loadBank(*bankId);
+    QVERIFY2(loaded.has_value(), qPrintable(m_db.lastError()));
+    QCOMPARE(static_cast<int>(loaded->sections.size()), 2);
+    QCOMPARE(QString::fromStdString(loaded->sections[0].name), QStringLiteral("Pianos"));
+    QCOMPARE(loaded->sections[0].firstSlot, slotOf("A11"));
+    QCOMPARE(loaded->sections[0].lastSlot, slotOf("A18"));
+    QCOMPARE(QString::fromStdString(loaded->sections[1].name), QStringLiteral("Pads"));
+
+    // Saving over the bank replaces its rail rather than accumulating one.
+    const std::vector<library::BankSection> fewer{{"Everything", 0, 127}};
+    QVERIFY(m_db.saveBank("Live Band Bank", arrangement, bankId, fewer).has_value());
+    const auto again = m_db.loadBank(*bankId);
+    QVERIFY(again.has_value());
+    QCOMPARE(static_cast<int>(again->sections.size()), 1);
+    QCOMPARE(QString::fromStdString(again->sections[0].name), QStringLiteral("Everything"));
+
+    // A bank with no rail loads cleanly, which is what every bank saved before
+    // schema 3 looks like.
+    const auto plain = m_db.saveBank("No rail", arrangement);
+    QVERIFY(plain.has_value());
+    QVERIFY(m_db.loadBank(*plain)->sections.empty());
+
+    // The rail goes with the bank, and the Patches stay.
+    QVERIFY(m_db.removeBank(*bankId));
+    QCOMPARE(static_cast<int>(m_db.search({}).size()), static_cast<int>(ids.size()));
 }
 
 void TestBankStore::groupsTheLibraryBySource()

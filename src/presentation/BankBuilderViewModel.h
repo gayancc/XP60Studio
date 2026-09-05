@@ -143,6 +143,14 @@ class BankBuilderViewModel : public QObject
     Q_PROPERTY(int bankFetchCompleted READ bankFetchCompleted NOTIFY bankFetchChanged)
     Q_PROPERTY(int bankFetchTotal READ bankFetchTotal NOTIFY bankFetchChanged)
 
+    // Sections ----------------------------------------------------------------
+    // The musician's own grouping of the 128 destinations. XP60Studio's
+    // organisation, saved with the bank, never transmitted.
+    // Each entry: {name, firstSlot, lastSlot, firstLabel, lastLabel, count,
+    //              occupied, current}
+    Q_PROPERTY(QVariantList sections READ sections NOTIFY bankChanged)
+    Q_PROPERTY(QString currentSectionName READ currentSectionName NOTIFY bankChanged)
+
     // Multi-selection ---------------------------------------------------------
     // A marked set, deliberately separate from the panel's own selection: the
     // panel always names exactly one destination, as the instrument does, and
@@ -233,6 +241,16 @@ public:
     Q_INVOKABLE void clearComparison();
 
     // Multi-selection --------------------------------------------------------
+    [[nodiscard]] QVariantList sections() const;
+    [[nodiscard]] QString currentSectionName() const;
+    // Names the marked set's range, or the current destination when nothing is
+    // marked. Refused for an empty name or a range overlapping a section that
+    // already exists — a destination in two sections would make the rail lie.
+    Q_INVOKABLE bool addSection(const QString& name);
+    Q_INVOKABLE bool addSectionForRange(const QString& name, int firstSlot, int lastSlot);
+    Q_INVOKABLE bool renameSection(int firstSlot, const QString& name);
+    Q_INVOKABLE bool removeSection(int firstSlot);
+
     [[nodiscard]] int selectionCount() const noexcept { return static_cast<int>(m_selection.size()); }
     [[nodiscard]] QVariantList selectedSlots() const;
     [[nodiscard]] Q_INVOKABLE bool isSelected(int slotIndex) const;

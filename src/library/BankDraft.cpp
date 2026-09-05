@@ -194,9 +194,96 @@ bool BankDraft::clearAll()
     return true;
 }
 
+const BankSection* BankDraft::sectionAt(int slotIndex) const
+{
+    const auto found = std::find_if(m_sections.begin(), m_sections.end(),
+                                    [slotIndex](const BankSection& section) { return section.contains(slotIndex); });
+    return found == m_sections.end() ? nullptr : &*found;
+}
+
+bool BankDraft::addSection(std::string name, int firstSlot, int lastSlot)
+{
+    if (name.empty() || !xpmodel::Xp60BankLocation::isValidSlotIndex(firstSlot)
+        || !xpmodel::Xp60BankLocation::isValidSlotIndex(lastSlot) || lastSlot < firstSlot) {
+        return false;
+    }
+    const BankSection candidate{std::move(name), firstSlot, lastSlot};
+    // A destination in two sections would make the rail lie about where it is.
+    if (std::any_of(m_sections.begin(), m_sections.end(),
+                    [&candidate](const BankSection& existing) { return existing.overlaps(candidate); })) {
+        return false;
+    }
+    const std::string label = "Add section " + candidate.name;
+    pushUndo(label);
+    m_sections.push_back(candidate);
+    std::sort(m_sections.begin(), m_sections.end(),
+              [](const BankSection& a, const BankSection& b) { return a.firstSlot < b.firstSlot; });
+    m_modified = true;
+    m_lastActionLabel = label;
+    return true;
+}
+
+bool BankDraft::renameSection(int firstSlot, std::string name)
+{
+    if (name.empty()) {
+        return false;
+    }
+    const auto found = std::find_if(m_sections.begin(), m_sections.end(),
+                                    [firstSlot](const BankSection& s) { return s.firstSlot == firstSlot; });
+    if (found == m_sections.end() || found->name == name) {
+        return false;
+    }
+    const std::string label = "Rename section " + found->name + " to " + name;
+    pushUndo(label);
+    // pushUndo captured the old state, so the iterator is still valid here.
+    std::find_if(m_sections.begin(), m_sections.end(),
+                 [firstSlot](const BankSection& s) { return s.firstSlot == firstSlot; })
+        ->name = std::move(name);
+    m_modified = true;
+    m_lastActionLabel = label;
+    return true;
+}
+
+bool BankDraft::removeSection(int firstSlot)
+{
+    const auto found = std::find_if(m_sections.begin(), m_sections.end(),
+                                    [firstSlot](const BankSection& s) { return s.firstSlot == firstSlot; });
+    if (found == m_sections.end()) {
+        return false;
+    }
+    const std::string label = "Remove section " + found->name;
+    pushUndo(label);
+    m_sections.erase(std::find_if(m_sections.begin(), m_sections.end(),
+                                  [firstSlot](const BankSection& s) { return s.firstSlot == firstSlot; }));
+    m_modified = true;
+    m_lastActionLabel = label;
+    return true;
+}
+
+void BankDraft::setSections(std::vector<BankSection> sections)
+{
+    // A stored bank must still open, so anything unusable is dropped rather
+    // than refusing the whole load.
+    std::sort(sections.begin(), sections.end(),
+              [](const BankSection& a, const BankSection& b) { return a.firstSlot < b.firstSlot; });
+    m_sections.clear();
+    for (auto& section : sections) {
+        if (section.name.empty() || !xpmodel::Xp60BankLocation::isValidSlotIndex(section.firstSlot)
+            || !xpmodel::Xp60BankLocation::isValidSlotIndex(section.lastSlot)
+            || section.lastSlot < section.firstSlot) {
+            continue;
+        }
+        if (!m_sections.empty() && m_sections.back().overlaps(section)) {
+            continue;
+        }
+        m_sections.push_back(std::move(section));
+    }
+}
+
 void BankDraft::reset(std::string name, std::vector<BankSlotContent> contents)
 {
     m_name = std::move(name);
+    m_sections.clear();
     contents.resize(static_cast<std::size_t>(kSlotCount));
     m_slots = std::move(contents);
     m_undo.clear();
@@ -256,13 +343,14 @@ void BankDraft::detachFromSavedBank()
 
 BankDraft::Snapshot BankDraft::capture(std::string label) const
 {
-    return Snapshot{m_name, m_slots, m_occupied, m_modified, std::move(label)};
+    return Snapshot{m_name, m_slots, m_sections, m_occupied, m_modified, std::move(label)};
 }
 
 void BankDraft::restore(Snapshot snapshot)
 {
     m_name = std::move(snapshot.name);
     m_slots = std::move(snapshot.destinations);
+    m_sections = std::move(snapshot.sections);
     m_occupied = snapshot.occupied;
     m_modified = snapshot.modified;
 }

@@ -243,6 +243,8 @@ QVariantMap BankBuilderViewModel::destinationMap(int slotIndex) const
                : tr("The same sound, under another name, is also at %1").arg(panelLabelFor(duplicateOf))));
     map.insert(QStringLiteral("current"), slotIndex == currentSlotIndex());
     map.insert(QStringLiteral("selected"), m_selection.count(slotIndex) > 0);
+    const auto* section = m_draft.sectionAt(slotIndex);
+    map.insert(QStringLiteral("sectionName"), section ? toQt(section->name) : QString());
     return map;
 }
 
@@ -783,6 +785,92 @@ void BankBuilderViewModel::adoptFetchedBank()
 }
 
 // ---------------------------------------------------------------------------
+// Sections
+// ---------------------------------------------------------------------------
+
+QVariantList BankBuilderViewModel::sections() const
+{
+    QVariantList list;
+    const auto& arrangement = m_draft.destinations();
+    const int current = currentSlotIndex();
+    for (const auto& section : m_draft.sections()) {
+        int occupied = 0;
+        for (int index = section.firstSlot; index <= section.lastSlot; ++index) {
+            if (!arrangement[static_cast<std::size_t>(index)].empty()) {
+                ++occupied;
+            }
+        }
+        QVariantMap map;
+        map.insert(QStringLiteral("name"), toQt(section.name));
+        map.insert(QStringLiteral("firstSlot"), section.firstSlot);
+        map.insert(QStringLiteral("lastSlot"), section.lastSlot);
+        map.insert(QStringLiteral("firstLabel"), panelLabelFor(section.firstSlot));
+        map.insert(QStringLiteral("lastLabel"), panelLabelFor(section.lastSlot));
+        map.insert(QStringLiteral("count"), section.slotCount());
+        map.insert(QStringLiteral("occupied"), occupied);
+        map.insert(QStringLiteral("current"), section.contains(current));
+        list.append(map);
+    }
+    return list;
+}
+
+QString BankBuilderViewModel::currentSectionName() const
+{
+    const auto* section = m_draft.sectionAt(currentSlotIndex());
+    return section ? toQt(section->name) : QString();
+}
+
+bool BankBuilderViewModel::addSection(const QString& name)
+{
+    // The marked set is the natural range to name: a musician selects the
+    // destinations that belong together and then says what they are.
+    if (!m_selection.empty()) {
+        return addSectionForRange(name, *m_selection.begin(), *m_selection.rbegin());
+    }
+    return addSectionForRange(name, currentSlotIndex(), currentSlotIndex());
+}
+
+bool BankBuilderViewModel::addSectionForRange(const QString& name, int firstSlot, int lastSlot)
+{
+    if (name.trimmed().isEmpty()) {
+        reportError(tr("A section needs a name."));
+        return false;
+    }
+    if (!m_draft.addSection(name.trimmed().toStdString(), std::min(firstSlot, lastSlot),
+                            std::max(firstSlot, lastSlot))) {
+        reportError(tr("%1 to %2 overlaps a section that already exists, or is not a destination range.")
+                        .arg(panelLabelFor(std::min(firstSlot, lastSlot)), panelLabelFor(std::max(firstSlot, lastSlot))));
+        return false;
+    }
+    clearSelection();
+    reportAction(toQt(m_draft.lastActionLabel()), QStringLiteral("success"));
+    announceBankChange();
+    return true;
+}
+
+bool BankBuilderViewModel::renameSection(int firstSlot, const QString& name)
+{
+    if (!m_draft.renameSection(firstSlot, name.trimmed().toStdString())) {
+        return false;
+    }
+    reportAction(toQt(m_draft.lastActionLabel()), QStringLiteral("info"));
+    announceBankChange();
+    return true;
+}
+
+bool BankBuilderViewModel::removeSection(int firstSlot)
+{
+    if (!m_draft.removeSection(firstSlot)) {
+        return false;
+    }
+    // Removing a section changes no destination: it is a label, not an
+    // arrangement.
+    reportAction(toQt(m_draft.lastActionLabel()), QStringLiteral("neutral"));
+    announceBankChange();
+    return true;
+}
+
+// ---------------------------------------------------------------------------
 // Multi-selection
 // ---------------------------------------------------------------------------
 
@@ -1150,7 +1238,8 @@ bool BankBuilderViewModel::saveAsNewBank(const QString& name)
         reportError(tr("Give the bank a name before saving it."));
         return false;
     }
-    const auto id = m_database->saveBank(trimmed.toStdString(), m_draft.destinations());
+    const auto id = m_database->saveBank(trimmed.toStdString(), m_draft.destinations(), std::nullopt,
+                                        m_draft.sections());
     if (!id) {
         reportError(m_database->lastError());
         return false;
@@ -1177,7 +1266,7 @@ bool BankBuilderViewModel::saveBank()
     if (!existing) {
         return saveAsNewBank(bankName());
     }
-    const auto id = m_database->saveBank(m_draft.name(), m_draft.destinations(), existing);
+    const auto id = m_database->saveBank(m_draft.name(), m_draft.destinations(), existing, m_draft.sections());
     if (!id) {
         reportError(m_database->lastError());
         return false;
@@ -1303,6 +1392,7 @@ bool BankBuilderViewModel::loadBank(qint64 bankId)
         return false;
     }
     m_draft.reset(bank->record.name, bank->destinations);
+    m_draft.setSections(bank->sections);
     m_draft.markSaved(bank->record.id);
     m_subgroup = 0;
     m_bank = 1;

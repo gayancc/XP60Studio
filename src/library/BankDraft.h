@@ -40,6 +40,33 @@ struct BankSlotContent
     friend bool operator==(const BankSlotContent&, const BankSlotContent&) noexcept = default;
 };
 
+// A named run of destinations inside a bank.
+//
+// A 128-slot bank is a lot of undifferentiated boxes. A musician building one
+// thinks in groups — "pianos at the front, pads after them, the set list at the
+// end" — and the instrument gives them no way to say so, because the XP-60 knows
+// only USER:001..128. Sections are XP60Studio's own organisation, saved with the
+// bank and carried nowhere near the instrument: they change no address and are
+// never transmitted.
+struct BankSection
+{
+    std::string name;
+    int firstSlot = 0; // 0..127, inclusive
+    int lastSlot = 0;  // 0..127, inclusive
+
+    [[nodiscard]] bool contains(int slotIndex) const noexcept
+    {
+        return slotIndex >= firstSlot && slotIndex <= lastSlot;
+    }
+    [[nodiscard]] bool overlaps(const BankSection& other) const noexcept
+    {
+        return firstSlot <= other.lastSlot && other.firstSlot <= lastSlot;
+    }
+    [[nodiscard]] int slotCount() const noexcept { return lastSlot - firstSlot + 1; }
+
+    friend bool operator==(const BankSection&, const BankSection&) noexcept = default;
+};
+
 // A 128-Patch User bank being built.
 //
 // The draft owns the arrangement and its history. It knows nothing about
@@ -106,6 +133,23 @@ public:
     // be nothing to move.
     bool moveOrSwap(int from, int to);
     bool clearAll();
+
+    // Sections ----------------------------------------------------------------
+    // Kept sorted by first destination and never overlapping, so "which section
+    // is this destination in" has exactly one answer.
+    [[nodiscard]] const std::vector<BankSection>& sections() const noexcept { return m_sections; }
+    // The section containing `slotIndex`, or nullptr.
+    [[nodiscard]] const BankSection* sectionAt(int slotIndex) const;
+    // Adds a section. Refused for an empty name, an out-of-range or inverted
+    // range, or a range that overlaps an existing section — a destination in two
+    // sections would make the rail lie about where it is. One undo step.
+    bool addSection(std::string name, int firstSlot, int lastSlot);
+    bool renameSection(int firstSlot, std::string name);
+    bool removeSection(int firstSlot);
+    // Replaces the whole set, for loading a saved bank. Overlapping or invalid
+    // entries are dropped rather than refused, because a stored bank must still
+    // open. Does not touch history.
+    void setSections(std::vector<BankSection> sections);
     // Every destination filled by `contents` in slot order. Used when a saved
     // bank is loaded; clears history because the previous draft is gone.
     void reset(std::string name, std::vector<BankSlotContent> contents);
@@ -141,6 +185,7 @@ private:
     {
         std::string name;
         std::vector<BankSlotContent> destinations;
+        std::vector<BankSection> sections;
         int occupied = 0;
         bool modified = false;
         // What the edit that produced the *next* state did.
@@ -154,6 +199,7 @@ private:
 
     std::string m_name;
     std::vector<BankSlotContent> m_slots;
+    std::vector<BankSection> m_sections;
     int m_occupied = 0;
     bool m_modified = false;
     std::optional<std::int64_t> m_savedBankId;

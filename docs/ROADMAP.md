@@ -270,10 +270,13 @@ Mismatch inspection and retry are in: a run stops at the destination that did
 not take, names User Memory Protect as the likely cause, and can be resumed from
 there with the backup intact.
 
-Still open in this phase: the user-defined section rail, and the screenshot
-review against the master mockup (the review needs the QML screenshot harness,
-which does not run on the Qt 6.4 available in the current development
-container — the project baseline is 6.11).
+The user-defined section rail is in as well, with schema version 3 carrying it.
+
+Everything in this phase is implemented except the **screenshot review against
+the master mockup**, which needs the QML screenshot harness. That harness does
+not run on the Qt 6.4 available in the current development container — the
+screens use `Layout.horizontalStretchFactor`, which is Qt 6.5+, and the project
+baseline is 6.11 — so the review is owed from a build on the baseline Qt.
 
 Goal: make the 128-slot User Patch bank easy and safe to engineer.
 
