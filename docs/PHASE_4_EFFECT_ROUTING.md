@@ -97,7 +97,10 @@ Evidence row template:
 
 | Algorithm | Front-panel parameter | Display before/after | Common offset | Raw before/after | Capture files | Firmware/interface | Result |
 |---|---|---|---|---|---|---|---|
-| Pending | Pending | Pending | Unknown | Pending | Pending | Pending | Unverified |
+| 03:DISTORTION | Drive | 127 / 0 / 25 / 127 | 13 (EFX Parameter 1) | 127→0→25→127 | `--watch` 2026-09-04 | CME U2MIDI Pro | **Verified** |
+| all others | Pending | Pending | Unknown | Pending | Pending | Pending | Unverified |
+
+The first row is filled in by "First EFX slot established" below.
 
 The header/glyph refinement is documented in `PHASE_4_REVALIDATION.md`.
 Hardware acceptance and EFX semantic mappings keep M2 open.
@@ -161,3 +164,58 @@ For each algorithm under test, with the algorithm noted first:
 
 The capture side is now trivial — `--watch` names the byte the moment it moves.
 The missing half is what the instrument's screen says at the same instant.
+
+## First EFX slot established — 03:DISTORTION Drive
+
+### Evidence
+
+| Algorithm | Front-panel parameter | Display before/after | Common offset | Raw before/after | Capture files | Firmware/interface | Result |
+|---|---|---|---|---|---|---|---|
+| 03:DISTORTION (EFX Type raw 2) | Drive | 127 / 0 / 25 / 127 | 13 (EFX Parameter 1) | 127→0, 0→25, 25→127 | `--watch` capture 2026-09-04 | not recorded / CME U2MIDI Pro USB-MIDI | **Verified** |
+
+Both endpoints of the documented 0—127 range were reached on the instrument,
+plus an interior value, and no other byte moved during any of the three edits.
+
+### Supporting structure
+
+Switching EFX Type from raw 3 (04:PHASER) to raw 2 (03:DISTORTION) rewrote
+**exactly parameter bytes 1 through 6** and nothing beyond. The manual lists
+**six** controls for DISTORTION — Drive, Amp Type, Low Gain, High Gain, Pan,
+Level — so the count of bytes the algorithm claims matches the count of controls
+it exposes.
+
+### The byte order is not the display order
+
+The values loaded when DISTORTION was selected were:
+
+| Byte | 1 | 2 | 3 | 4 | 5 | 6 |
+|---|---|---|---|---|---|---|
+| raw | 127 | 64 | 3 | 15 | 15 | 127 |
+
+Taking the manual's display order literally would make byte 2 **Amp Type**,
+which has four values (SMALL, BUILT-IN, 2-STACK, 3-STACK). A raw 64 cannot be
+one of them. **Position in the printed table therefore does not give the byte
+index**, which is what this document suspected and now has a concrete
+counter-example for.
+
+The remaining values are suggestive without being evidence: 64 is the centre of
+`L64—0—63R`, and 15 is 0 dB in a `-15—+15 dB` range, so bytes 2, 4 and 5 look
+like Pan, Low Gain and High Gain. **They are recorded as unverified guesses, not
+mappings**, and each still needs its own panel sweep.
+
+### Reference — EFX controls per algorithm
+
+`docs/XP60-References/XP-60_80_OM.pdf` p.199 (PDF page 201) lists the controls
+and displayed ranges for every algorithm. The scan carries no text layer; the
+page renders legibly with PyMuPDF at 110 dpi if it needs to be read again.
+Algorithms 01-11 appear there, the rest on the following pages. That table is
+**documentation-derived**: it names the controls and their displayed ranges, and
+says nothing about which byte carries which, which is exactly the gap the sweeps
+above close one slot at a time.
+
+### Status
+
+One slot of twelve on one algorithm of forty. Area 8 stays open. What it now
+has that it lacked is a method that works: `--watch` names the byte the instant
+it moves, the manual names the algorithm's controls, and a single sweep to both
+endpoints ties the two together.
