@@ -307,9 +307,12 @@ exports is accepted by the instrument — is area 10 of
 
 ## Remaining in this phase
 
-1. **Import and export from the Library screen** — the service and the export
-   are implemented and tested, but no on-screen action calls them yet, so the
-   screen is currently read-and-organise only. This is the next step.
+1. ~~**Import and export from the Library screen**~~ **Done 2026-09-05.**
+   `LibraryTransferViewModel` owns the import and export services so QML never
+   touches a service, a file path or a Roland option struct, and the screen has
+   Import / Export actions with a `LibraryTransferCard` for progress and
+   results. `LibraryExportService` is new: `library::exportEntries` performs no
+   file I/O by design, and something had to own the write.
 2. **M1 Dashboard**, last, once there is real data behind its summaries.
 3. ~~Area 10 of [`DEVICE_ACCEPTANCE.md`](DEVICE_ACCEPTANCE.md): confirm on the
    instrument that an exported `.syx` is accepted and reproduces its Patches.~~
@@ -321,3 +324,47 @@ exports is accepted by the instrument — is area 10 of
    deliberately not part of it.
 4. Screenshot review of the Library screen against the master mockup, per
    `design/UI_ACCEPTANCE_CRITERIA.md`.
+
+
+## Import and export in the UI — 2026-09-05
+
+The librarian's two remaining verbs are on the screen. What the design had to
+get right is less the buttons than what happens after them.
+
+**Export writes what the screen says it shows.** The action's label is
+"Export all" or "Export 12 shown", never a bare "Export", and it uses
+`LibraryListModel::filteredIds()` — the whole filtered set from the database,
+not the pages fetched so far — so a filtered export cannot quietly be a
+whole-library one or a partial one. With nothing visible the action is
+disabled rather than writing an empty file.
+
+**Import progress is counted in files, not bytes.** A file is the unit that
+either lands or does not, so "2 of 7 files" is what is actually known; a byte
+percentage would overstate it. Cancelling says plainly that files already
+imported stay imported, because that is what the service does.
+
+**The result stays until dismissed.** An import can report duplicates, partial
+Patches and rejected messages, and those are the things worth reading slowly. A
+toast would take them away mid-sentence. Per-file detail is collapsed by
+default — the headline answers "did it work", the list answers "what happened
+to each file", and usually the first is enough.
+
+**Duplicates are labelled as kept.** The card says the Patches were imported
+anyway and nothing was discarded, because a count alone reads as "skipped" and
+silently dropping an import is the data loss `AGENTS.md` forbids.
+
+**An export that changed something is a warning, not a success.** Notes from
+`exportEntries` — a Patch re-addressed, a device ID substituted — are carried
+into the result and shown, rather than being folded into a green tick.
+
+The screen keeps working without a transfer view model, which is what the
+screenshot harness gets: read-and-organise exactly as before.
+
+### Fixed while here
+
+`LibraryScreen`'s results column set `Layout.preferredWidth` from
+`parent.width`, so the layout sized the child while the child read the parent
+back. Qt Quick Layouts reported a recursive rearrange and abandoned the pass,
+which shows up as jitter when anything above changes height — the new transfer
+card made it reproducible. Replaced with `Layout.horizontalStretchFactor`,
+which expresses the same 60/40 split without the cycle.

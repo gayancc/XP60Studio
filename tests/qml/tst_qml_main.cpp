@@ -2,12 +2,22 @@
 
 #include "midi/LoopbackMidiTransport.h"
 #include "presentation/AppShellViewModel.h"
+#include <QTemporaryDir>
+#include <QUrl>
+
+#include "library/LibraryDatabase.h"
+#include "library/SyxImport.h"
 #include "presentation/DevicesViewModel.h"
+#include "presentation/LibraryListModel.h"
+#include "presentation/LibraryTransferViewModel.h"
+#include "services/LibraryExportService.h"
+#include "services/LibraryImportService.h"
 #include "presentation/PatchEditorViewModel.h"
 #include "presentation/QmlRegistration.h"
 #include "services/DeviceSession.h"
 #include "services/PatchTransfer.h"
 
+#include <QFile>
 #include <QQmlContext>
 #include <QQmlEngine>
 #include <QQuickStyle>
@@ -64,6 +74,16 @@ public:
     }
     Q_INVOKABLE void pumpEditor() { pump(*m_editorStack); }
 
+    // A writable path for tests that need a real file. Kept in the harness so
+    // no test invents a location of its own, and cleaned up with the harness.
+    Q_INVOKABLE QUrl temporaryFileUrl(const QString& name)
+    {
+        if (!m_scratch) {
+            m_scratch = std::make_unique<QTemporaryDir>();
+        }
+        return QUrl::fromLocalFile(m_scratch->filePath(name));
+    }
+
 public slots:
     void applicationAvailable()
     {
@@ -87,6 +107,31 @@ public slots:
         m_editorStack->session->connectEndpoints("in-1", "out-1");
         reloadPatch();
 
+        // A real library, in memory, holding the golden fixture's 128 patches,
+        // so the Library screen is exercised against real names and real
+        // provenance rather than invented rows.
+        m_library = std::make_unique<xp60studio::library::LibraryDatabase>();
+        if (m_library->open(QString::fromLatin1(xp60studio::library::LibraryDatabase::kInMemoryPath))) {
+            QFile fixture(QStringLiteral(XP60STUDIO_FIXTURE_DIR "/user-bank-amal.syx"));
+            if (fixture.open(QIODevice::ReadOnly)) {
+                const QByteArray bytes = fixture.readAll();
+                const auto* begin = reinterpret_cast<const xp60studio::roland::Byte*>(bytes.constData());
+                xp60studio::library::SyxImportOptions options;
+                options.sourceName = "user-bank-amal.syx";
+                const auto imported = xp60studio::library::importSyxStream(
+                    xp60studio::roland::ByteSpan(begin, static_cast<std::size_t>(bytes.size())), options);
+                (void)m_library->insertAll(imported.entries);
+            }
+        }
+        m_libraryModel = std::make_unique<xp60studio::presentation::LibraryListModel>();
+        m_libraryModel->setDatabase(m_library.get());
+
+        m_libraryImport = std::make_unique<xp60studio::services::LibraryImportService>(*m_library);
+        m_libraryExport = std::make_unique<xp60studio::services::LibraryExportService>(*m_library);
+        m_libraryTransfer = std::make_unique<xp60studio::presentation::LibraryTransferViewModel>(
+            *m_libraryImport, *m_libraryExport);
+        engine->rootContext()->setContextProperty(QStringLiteral("testLibrary"), m_libraryModel.get());
+        engine->rootContext()->setContextProperty(QStringLiteral("testLibraryTransfer"), m_libraryTransfer.get());
         engine->rootContext()->setContextProperty(QStringLiteral("testDevices"), m_devices.get());
         engine->rootContext()->setContextProperty(QStringLiteral("testShell"), m_shell.get());
         engine->rootContext()->setContextProperty(QStringLiteral("testEditor"), m_editor.get());
@@ -117,6 +162,12 @@ private:
     std::unique_ptr<xp60studio::presentation::AppShellViewModel> m_shell;
     std::unique_ptr<xp60studio::presentation::PatchEditorViewModel> m_editor;
     std::unique_ptr<xp60studio::testsupport::FakeXp60> m_fake;
+    std::unique_ptr<xp60studio::library::LibraryDatabase> m_library;
+    std::unique_ptr<xp60studio::presentation::LibraryListModel> m_libraryModel;
+    std::unique_ptr<xp60studio::services::LibraryImportService> m_libraryImport;
+    std::unique_ptr<xp60studio::services::LibraryExportService> m_libraryExport;
+    std::unique_ptr<xp60studio::presentation::LibraryTransferViewModel> m_libraryTransfer;
+    std::unique_ptr<QTemporaryDir> m_scratch;
 };
 
 QUICK_TEST_MAIN_WITH_SETUP(xp60studio_qml, Setup)
