@@ -38,6 +38,11 @@ set(XP60STUDIO_QML_FILES
   Controls/SignalFlowNode.qml
   Controls/SignalFlowConnector.qml
   Controls/EffectRoutingView.qml
+  Controls/EffectsCanvas.qml
+  Controls/EffectProcessorNode.qml
+  Controls/EffectRouteChip.qml
+  Controls/EffectSignalRail.qml
+  Controls/EffectMicroViz.qml
   Controls/EffectsWorkbench.qml
   Controls/EffectParameterControl.qml
   Controls/EffectChoiceControl.qml

@@ -214,36 +214,43 @@ TestCase {
         verify(p.y + envelope.height <= screen.height, "Full envelope graph fits inside the desktop viewport")
     }
 
-    function test_routing_changes_with_output_and_fits_minimum_width() {
+    function test_canvas_follows_output_assign_and_fits_minimum_width() {
         var screen = createTemporaryObject(screenComponent, testCase,
                                            { width: Metrics.windowMinWidth - Metrics.railWidth })
         testEditor.section = 4
         testEditor.sectionParameters.group = 3
         testEditor.sectionParameters.edit("tone.output_assign", 1, 2)
-        var routing = findChild(screen, "effectRoutingView")
-        verify(routing)
+        var canvas = findChild(screen, "effectsCanvas")
+        verify(canvas)
         waitForRendering(screen)
         // Paired structures may route through Tone 2, so use the displayed owner.
         var owner = testEditor.routing.outputTone
         testEditor.selectedTone = owner
         testEditor.sectionParameters.edit("tone.output_assign", owner, 2)
-        tryVerify(function() { return findChild(routing, "route-source-direct") !== null })
-        verify(!findChild(routing, "route-source-chorus"))
-        var direct = findChild(routing, "routingDirect")
+
+        // The topology the C++ model reports is what the canvas draws.
+        tryVerify(function() { return findChild(canvas, "rail-source-direct") !== null })
+        verify(!findChild(canvas, "rail-source-chorus"))
+        var direct = findChild(canvas, "canvasDirect")
         verify(direct.visible)
-        verify(direct.highlighted)
-        var mix = findChild(routing, "routingMix")
-        verify(!mix.highlighted)
-        for (var name of ["structureNode", "routingEfx", "routingChorus", "routingReverb", "routingMix", "routingDirect"]) {
-            var node = findChild(routing, name)
-            var pos = node.mapToItem(routing, 0, 0)
+        verify(direct.active)
+        // Mix is off the path when everything goes direct, and says so rather
+        // than merely fading.
+        var mix = findChild(canvas, "canvasMix")
+        verify(!mix.active)
+
+        // Every stage stays inside the canvas at the narrowest supported width.
+        for (var name of ["canvasSource", "canvasEfx", "canvasChorus", "canvasReverb", "canvasMix", "canvasDirect"]) {
+            var node = findChild(canvas, name)
+            var pos = node.mapToItem(canvas, 0, 0)
             verify(pos.x >= 0)
-            verify(pos.x + node.width <= routing.width + 1)
-            verify(pos.y + node.height <= routing.implicitHeight)
+            verify(pos.x + node.width <= canvas.width + 1)
+            verify(pos.y + node.height <= canvas.implicitHeight)
         }
+
         testEditor.sectionParameters.edit("tone.output_assign", owner, 0)
-        tryVerify(function() { return findChild(routing, "route-source-mix") !== null })
-        verify(!findChild(routing, "route-source-direct"))
+        tryVerify(function() { return findChild(canvas, "rail-source-mix") !== null })
+        verify(!findChild(canvas, "rail-source-direct"))
         verify(!direct.visible)
     }
 

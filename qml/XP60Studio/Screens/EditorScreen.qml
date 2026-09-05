@@ -330,9 +330,9 @@ Item {
                     Component.onCompleted: Qt.callLater(requestPaint)
                 }
 
-                EffectRoutingView {
+                EffectsCanvas {
                     id: routingView
-                    objectName: "effectRoutingView"
+                    objectName: "effectsCanvas"
                     anchors { left: parent.left; right: parent.right; top: parent.top }
                     editor: root.editor
                 }

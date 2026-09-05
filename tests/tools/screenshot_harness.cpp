@@ -16,6 +16,9 @@
 #include "presentation/AppShellViewModel.h"
 #include "presentation/DevicesViewModel.h"
 #include "presentation/LibraryListModel.h"
+#include "presentation/LibraryTransferViewModel.h"
+#include "services/LibraryExportService.h"
+#include "services/LibraryImportService.h"
 #include "presentation/PatchEditorViewModel.h"
 #include "presentation/QmlRegistration.h"
 #include "services/DeviceSession.h"
@@ -94,11 +97,18 @@ int main(int argc, char* argv[])
 
     QQmlApplicationEngine engine;
     engine.addImportPath(QStringLiteral("qrc:/qt/qml"));
+    // Main.qml requires every view model the shell binds. The harness has to
+    // supply them all or the engine refuses to load the scene, which is how
+    // this capture tool notices a new required property.
+    xp60studio::services::LibraryImportService libraryImport(libraryDatabase);
+    xp60studio::services::LibraryExportService libraryExport(libraryDatabase);
+    xp60studio::presentation::LibraryTransferViewModel libraryTransfer(libraryImport, libraryExport);
     engine.setInitialProperties({
         {QStringLiteral("shell"), QVariant::fromValue(&shell)},
         {QStringLiteral("devices"), QVariant::fromValue(&devices)},
         {QStringLiteral("editor"), QVariant::fromValue(&editor)},
         {QStringLiteral("library"), QVariant::fromValue(&libraryModel)},
+        {QStringLiteral("libraryTransfer"), QVariant::fromValue(&libraryTransfer)},
     });
     engine.load(QUrl(QStringLiteral("qrc:/qt/qml/XP60Studio/Main.qml")));
     if (engine.rootObjects().isEmpty()) {
@@ -172,6 +182,24 @@ int main(int argc, char* argv[])
     if (!shell.navigate(screenId)) {
         qWarning("Screen '%s' is not available", qPrintable(screenId));
         return 3;
+    }
+
+    // Canvas states are worth capturing: Overview is only half of what the
+    // effects surface does, and a focused or isolated capture is the only way
+    // to review the other half without a live session.
+    if (qEnvironmentVariableIsSet("XP60STUDIO_SHOT_CANVAS_FOCUS")
+        || qEnvironmentVariableIsSet("XP60STUDIO_SHOT_CANVAS_ROUTE")) {
+        QTimer::singleShot(400, &app, [&] {
+            auto* canvas = window->findChild<QQuickItem*>(QStringLiteral("effectsCanvas"));
+            if (!canvas) {
+                qWarning("Effects canvas not found");
+                return;
+            }
+            if (qEnvironmentVariableIsSet("XP60STUDIO_SHOT_CANVAS_FOCUS"))
+                canvas->setProperty("focusedNode", qEnvironmentVariable("XP60STUDIO_SHOT_CANVAS_FOCUS"));
+            if (qEnvironmentVariableIsSet("XP60STUDIO_SHOT_CANVAS_ROUTE"))
+                canvas->setProperty("isolatedRoute", qEnvironmentVariable("XP60STUDIO_SHOT_CANVAS_ROUTE"));
+        });
     }
 
     int exitCode = 0;
