@@ -165,3 +165,7 @@ endif()
 xp60studio_add_test(tst_wave_identifier
   SOURCES tst_wave_identifier.cpp
   LIBS xp60studio::xpmodel)
+
+xp60studio_add_test(tst_library_export_service
+  SOURCES tst_library_export_service.cpp
+  LIBS xp60studio::services)

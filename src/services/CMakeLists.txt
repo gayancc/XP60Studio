@@ -3,6 +3,10 @@ add_library(xp60studio_services STATIC
   DeviceSession.cpp
   PatchTransfer.h
   PatchTransfer.cpp
+  LibraryImportService.h
+  LibraryImportService.cpp
+  LibraryExportService.h
+  LibraryExportService.cpp
 )
 add_library(xp60studio::services ALIAS xp60studio_services)
 target_include_directories(xp60studio_services PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)
@@ -16,6 +20,7 @@ target_link_libraries(xp60studio_services
     xp60studio::protocol
     xp60studio::diagnostics
     xp60studio::xpmodel
+    xp60studio::library
 )
 set_target_properties(xp60studio_services PROPERTIES AUTOMOC ON)
 xp60studio_apply_warnings(xp60studio_services)
