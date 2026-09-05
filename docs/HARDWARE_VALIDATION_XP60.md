@@ -368,3 +368,47 @@ produce, so it is one of the spot checks the display comparison must cover.
   XP-60): same clean timeout with the cabling hint.
 
 Endpoint loss during a transfer (unplugging mid-read) is still untested.
+
+### Full parameter verification — 2026-09-04
+
+`xp60studio_hardware_probe --verify` decodes a whole Patch and applies two
+checks that do not need the front panel:
+
+1. every documented parameter decodes inside its documented range;
+2. re-encoding the decoded Patch reproduces the device's bytes exactly.
+
+Check 2 is the strong one: a byte-exact round trip proves nothing was dropped,
+truncated, reordered or silently normalised anywhere in decode or encode. It is
+the precondition for the area 5 write round trip — a codec that cannot
+reproduce what it read must never be allowed to write.
+
+Seven distinct Patches, spanning the temporary area and the full range of User
+memory (stride `00 01 00 00`, USER:001 through USER:128):
+
+| Patch base | Decoded name | Tones on | Parameters | Out of range | Re-encode |
+|---|---|---|---|---|---|
+| `03 00 00 00` (temporary) | `Childlike` | 4 | 584 | 0 | byte-exact |
+| `11 00 00 00` USER:001 | `Strins` | 4 | 584 | 0 | byte-exact |
+| `11 01 00 00` USER:002 | `C-Z  Flute` | 1 | 584 | 0 | byte-exact |
+| `11 07 00 00` USER:008 | `Fantasia JV` | 4 | 584 | 0 | byte-exact |
+| `11 20 00 00` USER:033 | `Doos` | 1 | 584 | 0 | byte-exact |
+| `11 40 00 00` USER:065 | `Strings` | 4 | 584 | 0 | byte-exact |
+| `11 7F 00 00` USER:128 | `Jimmee Dee` | 4 | 584 | 0 | byte-exact |
+
+Every block reported **Complete** coverage — Patch Common 73 of 73 bytes
+described by 72 parameters, each Tone 129 of 129 described by 128 — so no byte
+the instrument sent falls outside the transcribed tables. 584 parameters is the
+figure step 7a expects.
+
+`11 7F 00 00` answering confirms `kUserPatchStride` and the 128-Patch User
+bank; `11 00 20 00` and `12 00 00 00` correctly returned nothing, so the device
+does not answer arbitrary addresses.
+
+**What is still not established.** All of this is structural. That a byte
+decodes in range and round-trips says nothing about whether the parameter it is
+labelled with is the parameter the XP-60 means by it. The decoded names are
+corroborating evidence — `Fantasia JV`, `Strings`, `C-Z  Flute` and
+`Jimmee Dee` read like genuine Roland Patch names rather than misaligned bytes —
+but corroboration is not the display comparison that area 4 requires. Parameter
+*meaning* remains unverified until values are read off the instrument's own
+edit pages.

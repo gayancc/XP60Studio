@@ -65,6 +65,8 @@ struct Options
     std::chrono::milliseconds quietTimeout = xp60::transferDefaults().betweenChunkTimeout;
     std::string savePath;
     bool decodePatch = false;
+    bool verifyParameters = false;
+    bool listParameters = false;
 };
 
 void usage()
@@ -81,6 +83,8 @@ void usage()
               << "  --quiet <ms>        wait for further packets after one arrives (default 1000)\n"
               << "  --save <file.syx>   append every received reply to a binary .syx capture\n"
               << "  --patch             fetch the whole temporary Patch and decode it\n"
+              << "  --verify            verify every parameter and round-trip the bytes (implies --patch)\n"
+              << "  --list-parameters   with --verify, print every parameter, not only the failures\n"
               << "  --list-presets      print the available safe read presets and exit\n"
               << "\nOnly RQ1 (read) messages are ever transmitted.\n";
 }
@@ -140,6 +144,104 @@ void reportDecodedPatch(const std::vector<Reply>& replies, const roland::RolandA
         std::cout << "      notes: " << result.describe() << "\n";
 }
 
+// Full parameter verification against the bytes the instrument sent.
+//
+// Two independent checks, neither of which needs the front panel:
+//   1. every documented parameter decodes inside its documented range;
+//   2. re-encoding the decoded Patch reproduces the device's bytes exactly.
+// Check 2 is the strong one: it proves no parameter was dropped, truncated,
+// mis-ordered or silently normalised anywhere in the decode. What it cannot
+// prove is that a parameter *means* what the table says; that still requires
+// comparing values with the XP-60's own edit pages.
+bool verifyAllParameters(const std::vector<Reply>& replies, const roland::RolandAddress& patchBase, bool listAll)
+{
+    xpmodel::MemoryImage image;
+    for (const auto& reply : replies) {
+        const auto decoded =
+            roland::decodeRolandSysEx(roland::ByteSpan(reply.bytes.data(), reply.bytes.size()), xp60::modelId());
+        if (decoded.ok())
+            image.addDataSet(*decoded.message);
+    }
+
+    const auto result = xpmodel::Xp60PatchCodec::decode(image, patchBase);
+    if (!result.ok()) {
+        std::cout << "  parameter verification FAILED: patch did not decode\n    " << result.describe() << "\n";
+        return false;
+    }
+    const auto& patch = *result.patch;
+
+    struct BlockRef
+    {
+        std::string name;
+        const xpmodel::BlockValues* values;
+    };
+    std::vector<BlockRef> blocks{{"Patch Common", &patch.common()}};
+    for (const auto tone : xpmodel::ToneIndex::all())
+        blocks.push_back({"Tone " + std::to_string(tone.number()), &patch.tone(tone)});
+
+    std::size_t total = 0;
+    std::size_t outOfRange = 0;
+    for (const auto& block : blocks) {
+        const auto& table = block.values->table();
+        const auto parameters = table.parameters();
+        std::cout << "  " << block.name << ": " << parameters.size() << " parameters, "
+                  << table.describedByteCount() << " of " << table.blockSize() << " bytes described ("
+                  << xpmodel::tableCompletenessName(table.completeness()) << ")\n";
+        for (std::size_t i = 0; i < parameters.size(); ++i) {
+            const auto& descriptor = parameters[i];
+            const auto raw = block.values->rawAt(i);
+            ++total;
+            const bool inRange = descriptor.isRawInRange(raw);
+            if (!inRange)
+                ++outOfRange;
+            if (listAll || !inRange) {
+                std::cout << "    " << (inRange ? "  " : "!!") << " " << descriptor.id << "  raw=" << raw;
+                const auto label = block.values->label(descriptor.id);
+                if (label)
+                    std::cout << "  \"" << *label << "\"";
+                else if (const auto shown = block.values->display(descriptor.id))
+                    std::cout << "  display=" << *shown;
+                if (!inRange)
+                    std::cout << "   OUTSIDE documented range " << descriptor.rawMin << ".." << descriptor.rawMax;
+                std::cout << "\n";
+            }
+        }
+    }
+
+    // Byte-exact round trip against what the device actually sent.
+    const auto reencoded = xpmodel::Xp60PatchCodec::blockBytes(patch);
+    const std::array<std::uint32_t, 5> offsets{0, xpmodel::Xp60PatchLayout::toneOffset(xpmodel::ToneIndex::tone1()),
+        xpmodel::Xp60PatchLayout::toneOffset(xpmodel::ToneIndex::tone2()),
+        xpmodel::Xp60PatchLayout::toneOffset(xpmodel::ToneIndex::tone3()),
+        xpmodel::Xp60PatchLayout::toneOffset(xpmodel::ToneIndex::tone4())};
+
+    std::size_t mismatches = 0;
+    for (std::size_t block = 0; block < reencoded.size(); ++block) {
+        const auto blockAddress = patchBase.plus(offsets[block]);
+        if (!blockAddress)
+            continue;
+        const auto original = image.read(*blockAddress, static_cast<std::uint32_t>(reencoded[block].size()));
+        if (!original) {
+            std::cout << "  round trip: " << blocks[block].name << " not fully present in the capture\n";
+            ++mismatches;
+            continue;
+        }
+        for (std::size_t i = 0; i < original->size(); ++i) {
+            if ((*original)[i] != reencoded[block][i]) {
+                ++mismatches;
+                std::cout << "  round trip MISMATCH in " << blocks[block].name << " at byte " << i << ": device sent "
+                          << roland::toHex((*original)[i]) << ", re-encode produced "
+                          << roland::toHex(reencoded[block][i]) << "\n";
+            }
+        }
+    }
+
+    std::cout << "\n  parameters decoded: " << total << "\n";
+    std::cout << "  outside documented range: " << outOfRange << "\n";
+    std::cout << "  re-encode reproduces the device's bytes: " << (mismatches == 0 ? "YES, exactly" : "NO") << "\n";
+    return mismatches == 0 && outOfRange == 0;
+}
+
 const xp60::SafeReadPreset* findPreset(std::string_view id)
 {
     for (const auto& candidate : xp60::safeReadPresets()) {
@@ -158,10 +260,20 @@ int runProbe(const Options& options)
     roland::RolandSize size;
     std::string label;
     if (options.decodePatch) {
-        // The documented Patch span: Common plus the four padded Tone blocks.
-        address = roland::RolandAddress(0x03, 0x00, 0x00, 0x00);
+        // A whole Patch: Common plus the four padded Tone blocks. The base
+        // defaults to the temporary area; an explicit --address reads a Patch
+        // elsewhere in memory, such as a permanent User Patch. Read-only either
+        // way, so the size is always the documented span.
+        const auto base = options.addressHex.empty() ? std::optional(roland::RolandAddress(0x03, 0x00, 0x00, 0x00))
+                                                     : roland::RolandAddress::parseHex(options.addressHex);
+        if (!base) {
+            std::cerr << "Cannot parse address '" << options.addressHex << "' as four 7-bit bytes.\n";
+            return 2;
+        }
+        address = *base;
         size = roland::RolandSize::fromValue(xpmodel::Xp60PatchLayout::patchSpan()).value();
-        label = "temporary Patch, whole (span " + std::to_string(xpmodel::Xp60PatchLayout::patchSpan()) + ")";
+        label = "whole Patch at " + address.toHexString() + " (span "
+            + std::to_string(xpmodel::Xp60PatchLayout::patchSpan()) + ")";
     } else if (!options.addressHex.empty() || !options.sizeHex.empty()) {
         if (options.addressHex.empty() || options.sizeHex.empty()) {
             std::cerr << "--address and --size must be given together.\n";
@@ -357,6 +469,8 @@ int runProbe(const Options& options)
         }
         if (options.decodePatch)
             reportDecodedPatch(collected, address);
+        if (options.verifyParameters && !verifyAllParameters(collected, address, options.listParameters))
+            ++failures;
         std::cout << "\n";
     }
 
@@ -410,6 +524,11 @@ int main(int argc, char** argv)
             options.quietTimeout = std::chrono::milliseconds(std::stoi(next("--quiet")));
         } else if (arg == "--patch") {
             options.decodePatch = true;
+        } else if (arg == "--verify") {
+            options.decodePatch = true;
+            options.verifyParameters = true;
+        } else if (arg == "--list-parameters") {
+            options.listParameters = true;
         } else if (arg == "--save") {
             options.savePath = next("--save");
         } else {
