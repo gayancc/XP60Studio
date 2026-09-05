@@ -154,6 +154,12 @@ int main(int argc, char* argv[])
         // Section selection is independent of catalog browsing.
         editor.setSection(qEnvironmentVariableIntValue("XP60STUDIO_SHOT_SECTION"));
     }
+    if (qEnvironmentVariableIsSet("XP60STUDIO_SHOT_EFFECT_PAGE"))
+        editor.setEffectPage(qEnvironmentVariableIntValue("XP60STUDIO_SHOT_EFFECT_PAGE"));
+    if (qEnvironmentVariableIsSet("XP60STUDIO_SHOT_EFX"))
+        editor.editEffect(QStringLiteral("common.efx_type"), qEnvironmentVariableIntValue("XP60STUDIO_SHOT_EFX"));
+    if (qEnvironmentVariableIsSet("XP60STUDIO_SHOT_REVERB"))
+        editor.editEffect(QStringLiteral("common.reverb_type"), qEnvironmentVariableIntValue("XP60STUDIO_SHOT_REVERB"));
     if (qEnvironmentVariableIsSet("XP60STUDIO_SHOT_WAVES")) {
         auto* button = window->findChild<QObject*>(QStringLiteral("browseWavesButton"));
         if (button) QMetaObject::invokeMethod(button, "clicked");

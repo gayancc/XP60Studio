@@ -61,6 +61,9 @@ class PatchEditorViewModel : public QObject
     Q_PROPERTY(QString outputText READ outputText NOTIFY patchChanged)
     Q_PROPERTY(QString routingSummary READ routingSummary NOTIFY patchChanged)
     Q_PROPERTY(QVariantMap routing READ routing NOTIFY patchChanged)
+    Q_PROPERTY(QVariantMap effectValues READ effectValues NOTIFY patchChanged)
+    Q_PROPERTY(QVariantList effectAlgorithms READ effectAlgorithms CONSTANT)
+    Q_PROPERTY(int effectPage READ effectPage WRITE setEffectPage NOTIFY effectPageChanged)
 
     // Envelope of the selected Tone, for the section in view
     Q_PROPERTY(bool envelopeAvailable READ envelopeAvailable NOTIFY envelopeChanged)
@@ -163,6 +166,13 @@ public:
     [[nodiscard]] QString outputText() const;
     [[nodiscard]] QString routingSummary() const;
     [[nodiscard]] QVariantMap routing() const;
+    QVariantMap effectValues() const;
+    QVariantList effectAlgorithms() const;
+    int effectPage() const { return m_effectPage; }
+    void setEffectPage(int page);
+    Q_INVOKABLE void editEffect(const QString& id, int value);
+    Q_INVOKABLE void beginEffectGesture();
+    Q_INVOKABLE void endEffectGesture();
 
     [[nodiscard]] bool envelopeAvailable() const;
     [[nodiscard]] QString envelopeTitle() const;
@@ -233,6 +243,7 @@ public:
 
 signals:
     void patchChanged();
+    void effectPageChanged();
     void sectionChanged();
     void disclosureChanged();
     void selectedToneChanged();
@@ -275,6 +286,10 @@ private:
     EditorParameterModel* m_expertParameters = nullptr;
     int m_selectedTone = 1;
     bool m_comparing = false;
+    int m_effectPage = 0;
+    bool m_effectGesture = false;
+    bool m_effectGestureHasUndo = false;
+    bool m_applyingEffectGesture = false;
     QString m_sourceText;
 };
 

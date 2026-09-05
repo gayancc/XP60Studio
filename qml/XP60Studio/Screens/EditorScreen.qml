@@ -562,16 +562,13 @@ Item {
                 }
             }
 
-            EditorParameterPanel {
-                objectName: "effectsParameterPanel"
+            EffectsWorkbench {
+                objectName: "effectsWorkbench"
                 visible: root.editor.disclosure === 1 && root.editor.section === 4
                 Layout.fillWidth: true
                 Layout.leftMargin: Metrics.screenPadding
                 Layout.rightMargin: Metrics.screenPadding
                 editor: root.editor
-                parameters: root.editor.sectionParameters
-                title: qsTr("EFFECTS & ROUTING")
-                note: qsTr("EFX types follow Roland's 40-effect list. The 12 effect-specific slots remain raw until their byte mappings and units are verified. Chorus and Reverb follow the parameter map.")
             }
 
             // Motion / LFO — visual shape first, exact panel secondary
@@ -866,7 +863,7 @@ Item {
 
             // Design/Expert still expose exact Tone settings when not in Play
             XpCard {
-                visible: root.editor.disclosure === 1
+                visible: root.editor.disclosure === 1 && root.editor.section !== 4
                 Layout.fillWidth: true
                 Layout.leftMargin: Metrics.screenPadding
                 Layout.rightMargin: Metrics.screenPadding
