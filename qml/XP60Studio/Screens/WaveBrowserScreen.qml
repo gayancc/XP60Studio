@@ -4,11 +4,20 @@ import QtQuick.Layouts
 import XP60Studio
 import XP60Studio.Presentation
 
-// M3 catalog workspace — visual exploration; assignment awaits hardware mapping.
+// M3 catalog workspace. Assignment is live: the bank/number to SysEx mapping
+// was established on a physical XP-60 (DEVICE_ACCEPTANCE.md area 9), so a
+// selected wave can be pointed at a Tone. The edit is local and undoable; it
+// reaches the instrument only through the editor's usual write paths.
 FocusScope {
     id: root
     required property WaveBrowserModel catalog
+    // Optional: without it the browser stays read-only, which is what the
+    // screenshot harness and any catalog-only context get.
+    property var editor: null
     signal closed()
+    signal waveUsed()
+
+    readonly property bool canUse: root.editor !== null && root.editor.canUseSelectedWave
     readonly property bool wide: width >= 1040
     onVisibleChanged: if (visible) search.forceActiveFocus()
     Keys.onEscapePressed: root.closed()
@@ -26,7 +35,11 @@ FocusScope {
                 XpLabel { text: qsTr("WAVE BROWSER"); role: "overline"; color: Theme.accentText }
                 XpLabel { text: qsTr("Find the source of your sound"); role: "title"; Layout.fillWidth: true; elide: Text.ElideRight }
             }
-            StatusPill { text: qsTr("CATALOG ONLY"); tone: "info"; showDot: false }
+            StatusPill {
+                text: root.editor ? qsTr("ASSIGNABLE") : qsTr("CATALOG ONLY")
+                tone: root.editor ? "accent" : "info"
+                showDot: false
+            }
             XpButton { objectName: "closeWaveBrowser"; text: qsTr("Back to Editor"); onClicked: root.closed() }
         }
 
@@ -187,9 +200,31 @@ FocusScope {
                         text: qsTr("Browse with mouse or arrow keys. Names and bank numbering come from Roland’s waveform list.")
                         wrapMode: Text.WordWrap; role: "caption"; secondary: true
                     }
+                    XpButton {
+                        objectName: "useWaveInTone"
+                        visible: root.editor !== null
+                        enabled: root.canUse
+                        Layout.fillWidth: true
+                        variant: "primary"
+                        text: root.editor
+                              ? qsTr("Use in Tone %1").arg(root.editor.selectedTone)
+                              : qsTr("Use in Tone")
+                        Accessible.name: text
+                        onClicked: {
+                            if (root.editor.useSelectedWaveInTone())
+                                root.waveUsed()
+                        }
+                    }
+                    XpLabel {
+                        visible: root.editor !== null
+                        Layout.fillWidth: true
+                        text: qsTr("Points Tone %1 at this wave as one undoable edit. Nothing is sent to the XP-60 until you write or audition.")
+                              .arg(root.editor ? root.editor.selectedTone : 1)
+                        wrapMode: Text.WordWrap; role: "caption"; secondary: true
+                    }
                     XpLabel {
                         Layout.fillWidth: true
-                        text: qsTr("Audio preview unavailable. Wave assignment awaits XP-60 bank-mapping validation.")
+                        text: qsTr("Audio preview unavailable. Expansion waves cannot be assigned: their bank identifiers are not established.")
                         wrapMode: Text.WordWrap; role: "caption"; color: Theme.warning
                     }
                 }

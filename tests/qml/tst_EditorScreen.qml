@@ -55,7 +55,7 @@ TestCase {
         testEditor.expertParameters.search = ""
     }
 
-    function test_wave_browser_is_read_only_and_keyboard_accessible() {
+    function test_browsing_waves_never_modifies_the_patch_and_is_keyboard_accessible() {
         var screen = createTemporaryObject(screenComponent, testCase)
         testEditor.waves.query = ""
         testEditor.waves.sourceFilter = 0
@@ -75,6 +75,45 @@ TestCase {
         keyClick(Qt.Key_Escape)
         verify(!screen.browsingWaves)
         tryCompare(findChild(screen, "browseWavesButton"), "activeFocus", true)
+        testEditor.waves.query = ""
+    }
+
+    // Use in Tone. The bank/number to SysEx mapping this depends on is hardware
+    // evidence from DEVICE_ACCEPTANCE.md area 9, not documentation.
+    function test_use_in_tone_assigns_the_selected_wave_as_one_undoable_edit() {
+        var screen = createTemporaryObject(screenComponent, testCase)
+        testEditor.revertToOriginal()
+        testEditor.waves.query = ""
+        testEditor.waves.sourceFilter = 0
+        testEditor.selectedTone = 2
+
+        mouseClick(findChild(screen, "browseWavesButton"))
+        verify(screen.browsingWaves)
+
+        var useButton = findChild(screen, "useWaveInTone")
+        verify(useButton !== null)
+        // The disabled-with-no-selection case is asserted in the C++ tests,
+        // which get a fresh fixture. Every QML test here shares one editor and
+        // a selection cannot be cleared once made, so it is not reproducible
+        // from this side.
+
+        testEditor.waves.query = "Kalimba"
+        compare(testEditor.waves.count, 1)
+        testEditor.waves.selectRow(0)
+        compare(testEditor.waves.selected.bank, "INT-B")
+        compare(testEditor.waves.selected.number, 1)
+        tryCompare(useButton, "enabled", true)
+        compare(useButton.text, "Use in Tone 2")
+
+        mouseClick(useButton)
+        // The browser closes once a wave has been used, returning to the editor.
+        tryCompare(screen, "browsingWaves", false)
+        verify(testEditor.modified)
+
+        // One edit: a single undo takes the whole wave reference back.
+        testEditor.undo()
+        verify(!testEditor.modified)
+
         testEditor.waves.query = ""
     }
 

@@ -224,3 +224,36 @@ Area 9 is closed for group type, group ID, zero-based number and name at the
 tested boundaries. Interior names beyond these three remain unsampled, and the
 448-entry catalog is not exhaustively verified — nor does this procedure ask it
 to be.
+
+
+## Use in Tone — implemented 2026-09-04
+
+Step 4 of the acceptance procedure ("after mapping is evidenced, implement Use
+in Tone") is done. `PatchEditorViewModel::useWaveInTone` points a Tone at a
+catalog wave as **one atomic local edit**: Wave Group Type, Group ID and Number
+move together, so a single undo takes all three back rather than unwinding a
+wave reference a byte at a time. The change is built on a copy and committed
+only once every byte is accepted, so a refusal leaves the patch and the undo
+history untouched.
+
+It refuses rather than clamps. A bank other than INT-A or INT-B, or a number
+outside that bank, changes nothing — moving 194 quietly to 193 would point the
+Tone at a wave nobody asked for.
+
+Nothing is transmitted. The edit reaches the instrument through the existing
+armed write and live audition paths, so A/B comparison and the armed
+live-update behaviour apply to it exactly as to any other edit.
+
+The Wave Browser's **Use in Tone** button names the target Tone and is disabled
+until a wave is selected. The screen's "CATALOG ONLY" pill becomes
+"ASSIGNABLE" when an editor is attached; without one it stays read-only, which
+is what the screenshot harness gets.
+
+**Expansion waves remain unassignable**, and the screen says so. Their bank
+identifiers are not established — 61 EXP references were found in User memory
+across group IDs 1, 5, 7 and 18, and which board each denotes is unknown — so
+`encodeWave` refuses them rather than guessing.
+
+Remaining for M3: bank-boundary behaviour is covered by the mapping tests, but
+preserving an unmapped expansion reference through an edit-and-write cycle on
+the instrument is not yet exercised end to end.

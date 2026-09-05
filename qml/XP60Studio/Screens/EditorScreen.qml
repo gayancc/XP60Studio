@@ -19,6 +19,8 @@ Item {
         anchors.fill: parent
         visible: root.browsingWaves
         catalog: root.editor.waves
+        editor: root.editor
+        onWaveUsed: root.browsingWaves = false
         onClosed: {
             root.browsingWaves = false
             browseWavesButton.forceActiveFocus()
@@ -33,7 +35,7 @@ Item {
     XpEmptyState {
         anchors.fill: parent
         visible: !root.editor.hasPatch && !root.browsingWaves
-        glyph: "♪"
+        iconName: "editor"
         title: qsTr("No Patch loaded")
         message: root.editor.emptyStateMessage
     }
@@ -74,19 +76,20 @@ Item {
                         id: browseWavesButton
                         objectName: "browseWavesButton"
                         text: qsTr("Waves")
+                        iconName: "search"
                         onClicked: {
                             root.browsingWaves = true
                         }
                     }
 
-                    Rectangle {
-                        implicitWidth: badge.implicitWidth + 2 * Metrics.spacingMd
-                        implicitHeight: 28
-                        radius: Metrics.radiusSm
-                        color: Theme.surfaceRaised
-                        border.width: 1
-                        border.color: Theme.borderStrong
-                        XpLabel { id: badge; anchors.centerIn: parent; text: qsTr("PATCH EDITOR"); role: "overline" }
+                    // A badge, not a button. This was a rounded rectangle with
+                    // the same fill, border, radius and height as the "Waves"
+                    // button beside it, so a static label read as the second
+                    // half of a pair of controls.
+                    StatusPill {
+                        text: qsTr("Patch editor")
+                        tone: "accent"
+                        showDot: false
                     }
 
                     ColumnLayout {
@@ -625,7 +628,7 @@ Item {
                                 Layout.fillWidth: true
                                 spacing: Metrics.spacingMd
                                 ColumnLayout {
-                                    XpLabel { text: qsTr("Rate"); role: "overline"; secondary: true }
+                                    XpLabel { text: qsTr("Rate"); role: "label"; secondary: true }
                                     XpKnob {
                                         from: 0; to: 127
                                         value: {
@@ -645,7 +648,7 @@ Item {
                                     }
                                 }
                                 ColumnLayout {
-                                    XpLabel { text: qsTr("Delay"); role: "overline"; secondary: true }
+                                    XpLabel { text: qsTr("Delay"); role: "label"; secondary: true }
                                     XpKnob {
                                         from: 0; to: 127
                                         value: {
@@ -692,7 +695,7 @@ Item {
                                 Layout.fillWidth: true
                                 spacing: Metrics.spacingMd
                                 ColumnLayout {
-                                    XpLabel { text: qsTr("Rate"); role: "overline"; secondary: true }
+                                    XpLabel { text: qsTr("Rate"); role: "label"; secondary: true }
                                     XpKnob {
                                         from: 0; to: 127
                                         value: {
@@ -712,7 +715,7 @@ Item {
                                     }
                                 }
                                 ColumnLayout {
-                                    XpLabel { text: qsTr("Delay"); role: "overline"; secondary: true }
+                                    XpLabel { text: qsTr("Delay"); role: "label"; secondary: true }
                                     XpKnob {
                                         from: 0; to: 127
                                         value: {
