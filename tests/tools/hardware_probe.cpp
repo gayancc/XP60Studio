@@ -6,6 +6,7 @@
 #include "xp60/Xp60Device.h"
 #include "xpmodel/MemoryImage.h"
 #include "xpmodel/Xp60PatchCodec.h"
+#include "xpmodel/Xp60PatchDiff.h"
 #include "xpmodel/Xp60PatchLayout.h"
 
 #include <chrono>
@@ -15,6 +16,7 @@
 #include <iostream>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <thread>
@@ -67,6 +69,8 @@ struct Options
     bool decodePatch = false;
     bool verifyParameters = false;
     bool listParameters = false;
+    int watchIntervalMs = 0;   // >0 enables watch mode
+    int watchSeconds = 0;      // 0 = until interrupted
 };
 
 void usage()
@@ -85,6 +89,7 @@ void usage()
               << "  --patch             fetch the whole temporary Patch and decode it\n"
               << "  --verify            verify every parameter and round-trip the bytes (implies --patch)\n"
               << "  --list-parameters   with --verify, print every parameter, not only the failures\n"
+              << "  --watch [ms]        poll the Patch and name every parameter that changes (default 700)\n"
               << "  --list-presets      print the available safe read presets and exit\n"
               << "\nOnly RQ1 (read) messages are ever transmitted.\n";
 }
@@ -242,6 +247,24 @@ bool verifyAllParameters(const std::vector<Reply>& replies, const roland::Roland
     return mismatches == 0 && outOfRange == 0;
 }
 
+// Decodes the collected replies into a Patch, or nullopt when the capture is
+// incomplete. Shared by the reporting and watch paths.
+std::optional<xpmodel::Xp60Patch> decodePatchFrom(const std::vector<Reply>& replies,
+    const roland::RolandAddress& patchBase)
+{
+    xpmodel::MemoryImage image;
+    for (const auto& reply : replies) {
+        const auto decoded =
+            roland::decodeRolandSysEx(roland::ByteSpan(reply.bytes.data(), reply.bytes.size()), xp60::modelId());
+        if (decoded.ok())
+            image.addDataSet(*decoded.message);
+    }
+    auto result = xpmodel::Xp60PatchCodec::decode(image, patchBase);
+    if (!result.ok())
+        return std::nullopt;
+    return std::move(result.patch);
+}
+
 const xp60::SafeReadPreset* findPreset(std::string_view id)
 {
     for (const auto& candidate : xp60::safeReadPresets()) {
@@ -374,6 +397,77 @@ int runProbe(const Options& options)
     const auto request =
         roland::RolandSysExMessage::dataRequest(*deviceId, xp60::modelId(), address, size);
     const auto requestBytes = request.encode();
+
+    // Sends the RQ1 once and collects replies until the device goes quiet.
+    const auto exchangeOnce = [&]() -> std::vector<Reply> {
+        {
+            std::lock_guard<std::mutex> lock(state->mutex);
+            state->replies.clear();
+            state->requestSentAt = Clock::now();
+        }
+        if (transport.sendSysEx(midi::MidiByteSpan(requestBytes.data(), requestBytes.size())).failed())
+            return {};
+        std::unique_lock<std::mutex> lock(state->mutex);
+        if (state->arrived.wait_for(lock, options.firstTimeout, [&] { return !state->replies.empty(); })) {
+            while (true) {
+                const auto seen = state->replies.size();
+                if (!state->arrived.wait_for(lock, options.quietTimeout, [&] { return state->replies.size() > seen; }))
+                    break;
+            }
+        }
+        return state->replies;
+    };
+
+    // Watch mode: poll the Patch and name every parameter that moves.
+    //
+    // This is the capture-pair workflow of DEVICE_ACCEPTANCE.md areas 8 and 9
+    // turned into one continuous run. Instead of taking a before capture,
+    // changing a value, taking an after capture and diffing the two by hand for
+    // every parameter under test, the instrument is polled and each change is
+    // reported as it happens, named by the same parameter tables that generate
+    // the C++ code. Read-only: every poll is an RQ1.
+    if (options.watchIntervalMs > 0) {
+        // Unbuffered: the operator reads this live while turning knobs, and it
+        // is usually redirected to a log at the same time.
+        std::cout << std::unitbuf;
+        std::cout << "Watching " << label << " every " << options.watchIntervalMs
+                  << " ms. Change values on the XP-60; each change is named below.\n"
+                  << "Read-only (RQ1 only). Press Ctrl+C to stop.\n\n";
+        std::optional<xpmodel::Xp60Patch> previous;
+        const auto watchDeadline = options.watchSeconds > 0
+            ? std::optional(Clock::now() + std::chrono::seconds(options.watchSeconds))
+            : std::nullopt;
+        while (!watchDeadline || Clock::now() < *watchDeadline) {
+            const auto replies = exchangeOnce();
+            auto current = decodePatchFrom(replies, address);
+            if (!current) {
+                std::cout << "  (incomplete capture, retrying)\n";
+                std::this_thread::sleep_for(std::chrono::milliseconds(options.watchIntervalMs));
+                continue;
+            }
+            if (!previous) {
+                std::cout << "baseline: \"" << current->name().displayText() << "\"\n";
+            } else {
+                const auto diff = xpmodel::Xp60PatchDiff::compare(*previous, *current);
+                if (!diff.identical()) {
+                    std::cout << "--- " << diff.summary() << "\n";
+                    for (const auto& d : diff.differences()) {
+                        std::cout << "  " << d.block << "  " << d.parameterName << " (" << d.parameterId << ")\n"
+                                  << "      raw " << d.leftRaw << " -> " << d.rightRaw << "   display \"" << d.leftText
+                                  << "\" -> \"" << d.rightText << "\"\n"
+                                  << "      block offset " << d.blockOffset << ", patch offset " << d.patchOffset
+                                  << "\n";
+                    }
+                    std::cout << std::flush;
+                }
+            }
+            previous = std::move(current);
+            std::this_thread::sleep_for(std::chrono::milliseconds(options.watchIntervalMs));
+        }
+        std::cout << "\nWatch finished.\n";
+        transport.closeAll();
+        return 0;
+    }
 
     int failures = 0;
     for (int attempt = 1; attempt <= options.repeat; ++attempt) {
@@ -522,6 +616,11 @@ int main(int argc, char** argv)
             options.firstTimeout = std::chrono::milliseconds(std::stoi(next("--timeout")));
         } else if (arg == "--quiet") {
             options.quietTimeout = std::chrono::milliseconds(std::stoi(next("--quiet")));
+        } else if (arg == "--watch-for") {
+            options.watchSeconds = std::stoi(next("--watch-for"));
+        } else if (arg == "--watch") {
+            options.decodePatch = true;
+            options.watchIntervalMs = (i + 1 < argc && argv[i + 1][0] != '-') ? std::stoi(next("--watch")) : 700;
         } else if (arg == "--patch") {
             options.decodePatch = true;
         } else if (arg == "--verify") {

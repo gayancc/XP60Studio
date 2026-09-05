@@ -63,6 +63,20 @@ prints the DT1 payload sizes each capture used — which is the observation area
 tools/capture_diff.py before.syx after.syx --markdown
 ```
 
+For the panel-driven areas (8 and 9), `xp60studio_hardware_probe --watch` turns
+the same before/after workflow into one continuous run. It polls the temporary
+Patch and names every parameter that moves as it moves, resolved through the
+same tables that generate the C++ code:
+
+```bash
+xp60studio_hardware_probe --in U2MIDI --out U2MIDI --watch 700
+```
+
+That removes the capture/change/capture/diff cycle per value, which matters
+because areas 8 and 9 need many values each. It is read-only: every poll is an
+RQ1. A changed byte is still only a correlation — what makes it evidence is the
+procedure in the owning document, not the fact that the tool named it.
+
 A changed byte is a correlation, not a proven mapping. The procedures in areas
 8 and 9 are what turn one into evidence.
 
