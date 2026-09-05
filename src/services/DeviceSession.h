@@ -101,6 +101,12 @@ public:
         std::string message;                        // human readable outcome
         std::optional<xpmodel::Xp60Patch> patch;    // present when Completed
         std::string decodeReport;                   // warnings / errors from the codec
+        // The exact DT1 messages the instrument sent for this Patch, in arrival
+        // order. Preserved so a Patch read from the device can be stored with
+        // the bytes that actually arrived rather than a re-encoding of them
+        // (ARCHITECTURE.md §12, "original raw SysEx preservation") -- which is
+        // what makes a device read a real backup.
+        roland::ByteVector originalSysEx;
     };
 
     using SteadyClock = std::function<protocol::TimePoint()>;

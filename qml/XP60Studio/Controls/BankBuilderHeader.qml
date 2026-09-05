@@ -28,6 +28,7 @@ RowLayout {
     signal saveAsRequested()
     signal exportRequested()
     signal writeToUserRequested()
+    signal fetchBankRequested()
 
     spacing: Metrics.spacingSm
 
@@ -137,6 +138,22 @@ RowLayout {
                           ? qsTr("Write %n destination(s) to a .syx file, addressed to the User slots they occupy here", "", root.builder.occupiedCount)
                           : qsTr("This bank has no Patches in it yet")
         onClicked: root.exportRequested()
+    }
+
+    // Read-only, and the thing to do before the destructive one beside it:
+    // take what is on the keyboard into the library first.
+    XpButton {
+        objectName: "bankFetchFromDevice"
+        text: qsTr("Read XP-60 bank")
+        iconName: "midi-in"
+        compact: true
+        variant: "ghost"
+        visible: root.builder.canFetchBank || root.builder.bankFetchBusy
+        enabled: root.builder.canFetchBank
+        QQC.ToolTip.visible: hovered
+        QQC.ToolTip.delay: 400
+        QQC.ToolTip.text: qsTr("Reads all 128 Patches out of the XP-60's USER memory into the library and arranges them here at the slots they came from. Read-only: nothing is written to the instrument. It takes a couple of minutes.")
+        onClicked: root.fetchBankRequested()
     }
 
     // The destructive one. Deliberately last, deliberately two presses (arm,

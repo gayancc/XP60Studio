@@ -19,6 +19,7 @@
 #include "presentation/DevicesViewModel.h"
 #include "presentation/PatchEditorViewModel.h"
 #include "services/PatchWorkspace.h"
+#include "services/UserBankRead.h"
 #include "services/UserMemoryWrite.h"
 #include "presentation/QmlRegistration.h"
 #include "services/DeviceSession.h"
@@ -127,6 +128,8 @@ int main(int argc, char* argv[])
     // because it is the thing they project.
     xp60studio::services::PatchWorkspace workspace;
     xp60studio::services::UserMemoryWrite userMemoryWrite(session);
+    // Read-only: RQ1 alone, so a whole-bank backup cannot alter the instrument.
+    xp60studio::services::UserBankRead userBankRead(session);
     xp60studio::presentation::PatchEditorViewModel editor(session, workspace, &transfer);
 
     // The XP-60 transmits Bank Select and Program Change when a Patch is chosen
@@ -184,12 +187,20 @@ int main(int argc, char* argv[])
     // permanent USER memory. A separate service from the audition transfer, with
     // its own arming, so neither can stand in for the other.
     bankBuilder.setUserMemoryWrite(&userMemoryWrite);
+    bankBuilder.setUserBankRead(&userBankRead);
 
     xp60studio::services::LibraryImportService libraryImport(libraryDatabase);
     xp60studio::services::LibraryExportService libraryExport(libraryDatabase);
     xp60studio::presentation::LibraryTransferViewModel libraryTransfer(libraryImport, libraryExport);
     // An import writes rows behind the list model's back, so it has to re-read
     // rather than keep showing counts from before the import.
+    QObject::connect(&bankBuilder, &xp60studio::presentation::BankBuilderViewModel::libraryChanged,
+                     &libraryModel, &xp60studio::presentation::LibraryListModel::refresh);
+    QObject::connect(&bankBuilder, &xp60studio::presentation::BankBuilderViewModel::libraryChanged,
+                     &bankSourceModel, &xp60studio::presentation::LibraryListModel::refresh);
+    QObject::connect(&bankBuilder, &xp60studio::presentation::BankBuilderViewModel::libraryChanged,
+                     &dashboard, &xp60studio::presentation::DashboardViewModel::refresh);
+
     QObject::connect(&libraryTransfer, &xp60studio::presentation::LibraryTransferViewModel::libraryChanged,
                      &libraryModel, &xp60studio::presentation::LibraryListModel::refresh);
     QObject::connect(&libraryTransfer, &xp60studio::presentation::LibraryTransferViewModel::libraryChanged,

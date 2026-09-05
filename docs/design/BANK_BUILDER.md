@@ -263,6 +263,51 @@ destination each Patch came from is already on its tile.
 An empty bank is refused rather than written, and the action is disabled while
 the bank has nothing in it.
 
+## Getting a bank on and off the keyboard
+
+The file half of this is above. This is the instrument half, and the two halves
+are deliberately asymmetric: reading is free and safe, writing is armed,
+confirmed and reversible.
+
+### Read XP-60 bank — `services::UserBankRead`
+
+RQ1 only. RQ1 cannot modify device memory, so a whole-bank read is safe to run
+against an instrument whatever else is going on, and the class has no send path
+at all.
+
+All 128 USER Patches come into the library as **one source bank** — provenance
+`FetchedFromDevice`, the User number each came from, and the **exact DT1 bytes
+the instrument sent** rather than a re-encoding of them — and the draft is
+arranged from them at the slots they occupied, as one undo step. So a musician
+can take what is on their keyboard, search it, rearrange it, export it as a
+`.syx`, and put it back.
+
+Patches are read one at a time because the XP-60 drops requests that arrive
+while it is transmitting (§2.3, hardware-verified). A full bank is roughly 640
+block reads at ~53 ms, so it takes a couple of minutes; the operation reports
+progress and can be stopped, and a stopped or failed run keeps everything it
+read, because a partial backup is worth having.
+
+### Write to XP-60 USER — `services::UserMemoryWrite`
+
+The point of building a bank. Also the only destructive thing the application
+does, so:
+
+| Rule | Why |
+|---|---|
+| A **separate service** from `PatchTransfer`, with its own arming | `PatchTransfer` hard-codes `03 00 00 00` and cannot be pointed at USER memory; this class must be handed a slot number and cannot write the temporary area. Arming one authorises nothing in the other. |
+| **Two presses** (Arm, then Write) behind a confirmation naming the range | The XP-60's own front panel makes a Write a separate, destination-chosen, confirmed act (Owner's Manual p.46). This mirrors it. |
+| **Every destination is read before it is written** | The previous Patch is always in hand, so `restore()` — *Put back what was there* — can undo the whole run, most recent first, verifying each. |
+| **Every write is read back and compared** | A destination that reads back unchanged is reported as a mismatch naming **User Memory Protect**, which is what that setting looks like from the wire. It can never be reported as success. |
+| A **partly illegal plan writes nothing** | Two Patches at one slot, or a slot outside 1–128, refuses the whole run rather than leaving permanent memory half rewritten. |
+| **Empty destinations are skipped, not erased** | Whether a gap in a bank means "wipe whatever the instrument holds there" is not this application's decision. A destination whose Patch was deleted from the library is skipped too, and counted. |
+| Stopping lands **between** Patches | Stopping inside one would leave a destination holding a mixture of two sounds. |
+
+The write direction into `11 nn 00 00` is documentation-derived; reads from
+those addresses are hardware-verified. That asymmetry is why every write is
+proved at runtime instead of trusted. See `PATCH_SYNCHRONIZATION.md` §3 U1 and
+`DEVICE_ACCEPTANCE.md` area 11.
+
 ## Persistence
 
 Library schema version **2** adds two tables. The migration is additive: every

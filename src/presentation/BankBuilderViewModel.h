@@ -4,6 +4,7 @@
 #include "library/LibraryDatabase.h"
 #include "services/PatchTransfer.h"
 #include "services/PatchWorkspace.h"
+#include "services/UserBankRead.h"
 #include "services/UserMemoryWrite.h"
 
 #include <QObject>
@@ -122,6 +123,16 @@ class BankBuilderViewModel : public QObject
     Q_PROPERTY(int userWriteTotal READ userWriteTotal NOTIFY userWriteChanged)
     Q_PROPERTY(bool canRestoreUserMemory READ canRestoreUserMemory NOTIFY userWriteChanged)
 
+    // Reading the instrument's USER bank ------------------------------------
+    // Read-only, and the backup that makes writing safe to offer: the whole
+    // 128-Patch bank comes into the library as one source and is arranged here
+    // at the slots it was read from.
+    Q_PROPERTY(bool canFetchBank READ canFetchBank NOTIFY bankFetchChanged)
+    Q_PROPERTY(bool bankFetchBusy READ bankFetchBusy NOTIFY bankFetchChanged)
+    Q_PROPERTY(QString bankFetchMessage READ bankFetchMessage NOTIFY bankFetchChanged)
+    Q_PROPERTY(int bankFetchCompleted READ bankFetchCompleted NOTIFY bankFetchChanged)
+    Q_PROPERTY(int bankFetchTotal READ bankFetchTotal NOTIFY bankFetchChanged)
+
     // Saved banks: {id, name, occupied, missing, updated}
     Q_PROPERTY(QVariantList savedBanks READ savedBanks NOTIFY savedBanksChanged)
     // Import sources, so the source library can be opened one bank at a time:
@@ -168,6 +179,19 @@ public:
     Q_INVOKABLE bool writeBankToUserMemory();
     Q_INVOKABLE bool restoreUserMemory();
     Q_INVOKABLE void cancelUserWrite();
+
+    // Optional. Without it the bank cannot be read off the instrument.
+    void setUserBankRead(services::UserBankRead* reader);
+    [[nodiscard]] bool canFetchBank() const;
+    [[nodiscard]] bool bankFetchBusy() const;
+    [[nodiscard]] QString bankFetchMessage() const;
+    [[nodiscard]] int bankFetchCompleted() const;
+    [[nodiscard]] int bankFetchTotal() const;
+    // Reads all 128 USER Patches into the library as one source and arranges
+    // them here at the slots they came from. Nothing is written to the
+    // instrument; this is RQ1 only.
+    Q_INVOKABLE bool fetchBankFromDevice();
+    Q_INVOKABLE void cancelBankFetch();
 
     // Opens the Patch at `slotIndex` in the Editor by adopting it into the
     // shared workspace. False when the destination is empty or its Patch is no
@@ -313,11 +337,19 @@ Q_SIGNALS:
     void savedBanksChanged();
     void auditionChanged();
     void userWriteChanged();
+    void bankFetchChanged();
+    // A device read added Patches, so any library model showing this database
+    // needs to re-read.
+    void libraryChanged();
     void errorOccurred(const QString& message);
 
 private:
     [[nodiscard]] std::optional<library::BankSlotContent> contentFor(std::int64_t patchId) const;
     [[nodiscard]] std::vector<services::UserMemoryWrite::Destination> userWriteDestinations() const;
+    void adoptFetchedBank();
+    // Recorded on Patches read from the instrument, so provenance says which
+    // device answered. Set alongside the reader.
+    std::optional<roland::RolandDeviceId> m_deviceIdForProvenance;
     [[nodiscard]] QVariantMap destinationMap(int slotIndex) const;
     void reportAction(const QString& text, const QString& tone);
     void reportError(const QString& message);
@@ -328,6 +360,7 @@ private:
     services::PatchTransfer* m_transfer = nullptr;
     services::PatchWorkspace* m_workspace = nullptr;
     services::UserMemoryWrite* m_userWrite = nullptr;
+    services::UserBankRead* m_bankRead = nullptr;
     library::BankDraft m_draft;
 
     int m_subgroup = 0;

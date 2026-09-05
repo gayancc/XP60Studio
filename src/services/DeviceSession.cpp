@@ -829,6 +829,13 @@ void DeviceSession::handleIncomingMessage(midi::MidiBytes bytes)
         case protocol::RolandRequestTracker::MatchOutcome::Accepted:
             break;
         }
+        // Keep the bytes of every DT1 that belongs to the Patch fetch in
+        // progress, exactly as they arrived.
+        if (match.requestId && m_patchFetch.state == PatchFetchState::InProgress
+            && std::find(m_patchFetch.requests.begin(), m_patchFetch.requests.end(), *match.requestId)
+                != m_patchFetch.requests.end()) {
+            m_patchFetch.originalSysEx.insert(m_patchFetch.originalSysEx.end(), rspan.begin(), rspan.end());
+        }
         auto entry = diagnostics::logRolandMessage(LogDirection::In, message, inputName(), requestId, wall);
         entry.detail = detail;
         appendLog(std::move(entry));

@@ -338,6 +338,9 @@ FocusScope {
             savedBanksOpen: banksDrawer.visible
             onExportRequested: exportDialog.open()
             onWriteToUserRequested: userWriteConfirm.open()
+            onFetchBankRequested: root.builder.modified || root.builder.occupiedCount > 0
+                                  ? fetchConfirm.open()
+                                  : root.builder.fetchBankFromDevice()
             onSavedBanksToggled: banksDrawer.visible = !banksDrawer.visible
             onNewBankRequested: root.builder.occupiedCount > 0 || root.builder.modified
                                 ? discardConfirm.open()
@@ -357,6 +360,7 @@ FocusScope {
             objectName: "bankUserWriteCard"
             Layout.fillWidth: true
             visible: root.builder.userWriteBusy || root.builder.userWriteMessage.length > 0
+                     || root.builder.bankFetchBusy
             padding: Metrics.spacingMd
 
             RowLayout {
@@ -365,20 +369,23 @@ FocusScope {
 
                 StatusPill {
                     objectName: "bankUserWriteState"
-                    text: root.builder.userWriteState
-                    tone: root.builder.userWriteTone
+                    text: root.builder.bankFetchBusy ? qsTr("Reading") : root.builder.userWriteState
+                    tone: root.builder.bankFetchBusy ? "info" : root.builder.userWriteTone
                 }
                 XpLabel {
                     objectName: "bankUserWriteMessage"
                     Layout.fillWidth: true
-                    text: root.builder.userWriteMessage
+                    text: root.builder.bankFetchBusy ? root.builder.bankFetchMessage
+                                                     : root.builder.userWriteMessage
                     role: "caption"
                     wrapMode: Text.WordWrap
                 }
                 XpLabel {
                     objectName: "bankUserWriteProgress"
-                    visible: root.builder.userWriteTotal > 0
-                    text: qsTr("%1 / %2").arg(root.builder.userWriteCompleted).arg(root.builder.userWriteTotal)
+                    visible: root.builder.userWriteTotal > 0 || root.builder.bankFetchBusy
+                    text: root.builder.bankFetchBusy
+                          ? qsTr("%1 / %2").arg(root.builder.bankFetchCompleted).arg(root.builder.bankFetchTotal)
+                          : qsTr("%1 / %2").arg(root.builder.userWriteCompleted).arg(root.builder.userWriteTotal)
                     role: "caption"
                     muted: true
                 }
@@ -387,8 +394,9 @@ FocusScope {
                     text: qsTr("Stop")
                     compact: true
                     variant: "danger"
-                    visible: root.builder.userWriteBusy
-                    onClicked: root.builder.cancelUserWrite()
+                    visible: root.builder.userWriteBusy || root.builder.bankFetchBusy
+                    onClicked: root.builder.bankFetchBusy ? root.builder.cancelBankFetch()
+                                                          : root.builder.cancelUserWrite()
                 }
                 // The undo for a destructive operation. Available because every
                 // destination was read before it was written.
@@ -397,7 +405,8 @@ FocusScope {
                     text: qsTr("Put back what was there")
                     compact: true
                     variant: "ghost"
-                    visible: !root.builder.userWriteBusy && root.builder.canRestoreUserMemory
+                    visible: !root.builder.userWriteBusy && !root.builder.bankFetchBusy
+                             && root.builder.canRestoreUserMemory
                     onClicked: root.builder.restoreUserMemory()
                 }
             }
@@ -880,6 +889,32 @@ FocusScope {
                   ? qsTr("This arrangement has unsaved changes. Starting a new bank clears all 128 "
                          + "destinations. Every Patch stays in the library.")
                   : qsTr("This clears all 128 destinations. Every Patch stays in the library.")
+            role: "body"
+            wrapMode: Text.WordWrap
+        }
+    }
+
+    // Reading replaces the arrangement on screen, so it asks first when there
+    // is something to lose. It never touches the instrument.
+    QQC.Dialog {
+        id: fetchConfirm
+        objectName: "bankFetchDialog"
+        anchors.centerIn: parent
+        modal: true
+        title: qsTr("Read the XP-60's bank into this workspace?")
+        standardButtons: QQC.Dialog.Yes | QQC.Dialog.Cancel
+        onAccepted: root.builder.fetchBankFromDevice()
+
+        background: Rectangle {
+            color: Theme.surface
+            radius: Metrics.radiusMd
+            border.width: 1
+            border.color: Theme.borderStrong
+        }
+
+        XpLabel {
+            width: 420
+            text: qsTr("All 128 Patches are read into the library as one source and arranged here at the slots they came from, replacing what this workspace currently shows. It is one undo step, nothing is written to the instrument, and no Patch already in the library is changed.")
             role: "body"
             wrapMode: Text.WordWrap
         }

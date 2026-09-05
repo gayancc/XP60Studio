@@ -1,5 +1,6 @@
 #include "presentation/BankBuilderViewModel.h"
 
+#include "library/LibraryEntry.h"
 #include "library/PatchProvenance.h"
 #include "xpmodel/Xp60BankLocation.h"
 #include "xpmodel/Xp60PatchCodec.h"
@@ -599,6 +600,147 @@ void BankBuilderViewModel::cancelUserWrite()
     if (m_userWrite) {
         m_userWrite->cancel();
     }
+}
+
+// ---------------------------------------------------------------------------
+// Reading the instrument's USER bank
+// ---------------------------------------------------------------------------
+
+void BankBuilderViewModel::setUserBankRead(services::UserBankRead* reader)
+{
+    if (m_bankRead == reader) {
+        return;
+    }
+    if (m_bankRead) {
+        disconnect(m_bankRead, nullptr, this, nullptr);
+    }
+    m_bankRead = reader;
+    if (m_bankRead) {
+        connect(m_bankRead, &services::UserBankRead::changed, this, &BankBuilderViewModel::bankFetchChanged);
+        connect(m_bankRead, &services::UserBankRead::progressed, this,
+                [this] { emit bankFetchChanged(); });
+        connect(m_bankRead, &services::UserBankRead::finished, this,
+                [this](bool) { adoptFetchedBank(); });
+    }
+    emit bankFetchChanged();
+}
+
+bool BankBuilderViewModel::canFetchBank() const
+{
+    return m_bankRead && !m_bankRead->isBusy() && m_database != nullptr;
+}
+
+bool BankBuilderViewModel::bankFetchBusy() const
+{
+    return m_bankRead && m_bankRead->isBusy();
+}
+
+QString BankBuilderViewModel::bankFetchMessage() const
+{
+    if (!m_bankRead) {
+        return tr("Connect an XP-60 on the Devices screen to read its USER bank.");
+    }
+    return m_bankRead->message();
+}
+
+int BankBuilderViewModel::bankFetchCompleted() const
+{
+    return m_bankRead ? static_cast<int>(m_bankRead->completed()) : 0;
+}
+
+int BankBuilderViewModel::bankFetchTotal() const
+{
+    return m_bankRead ? static_cast<int>(m_bankRead->total()) : 0;
+}
+
+bool BankBuilderViewModel::fetchBankFromDevice()
+{
+    if (!canFetchBank()) {
+        reportError(tr("No XP-60 is connected, or the library is not open."));
+        return false;
+    }
+    if (!m_bankRead->readWholeBank()) {
+        reportError(m_bankRead->message());
+        return false;
+    }
+    reportAction(tr("Reading the XP-60's USER bank. This is read-only and takes a couple of minutes."),
+                 QStringLiteral("info"));
+    return true;
+}
+
+void BankBuilderViewModel::cancelBankFetch()
+{
+    if (m_bankRead) {
+        m_bankRead->cancel();
+    }
+}
+
+// Everything the read got becomes one source bank in the library, and the draft
+// is arranged from it. A cancelled or failed run still lands what it read: a
+// partial backup is worth having, and dropping it would be the data loss
+// AGENTS.md forbids.
+void BankBuilderViewModel::adoptFetchedBank()
+{
+    if (!m_bankRead || !m_database) {
+        return;
+    }
+    const auto& patches = m_bankRead->readPatches();
+    if (patches.empty()) {
+        emit bankFetchChanged();
+        return;
+    }
+
+    const auto now = std::chrono::system_clock::now();
+    const auto sourceName = tr("XP-60 USER bank %1")
+                                .arg(QDateTime::fromSecsSinceEpoch(
+                                         std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch())
+                                             .count())
+                                         .toString(QStringLiteral("yyyy-MM-dd HH:mm")))
+                                .toStdString();
+
+    std::vector<library::LibraryEntry> entries;
+    entries.reserve(patches.size());
+    for (const auto& slot : patches) {
+        library::PatchProvenance provenance;
+        provenance.origin = library::PatchOrigin::FetchedFromDevice;
+        provenance.sourceName = sourceName;
+        provenance.userNumber = slot.userNumber;
+        provenance.deviceId = m_deviceIdForProvenance;
+        provenance.importedAt = now;
+        if (const auto address = xpmodel::Xp60PatchLayout::userPatchAddress(slot.userNumber)) {
+            provenance.address = *address;
+        }
+        entries.emplace_back(slot.patch, slot.originalSysEx, provenance);
+    }
+
+    const auto ids = m_database->insertAll(entries);
+    if (!ids) {
+        reportError(m_database->lastError());
+        return;
+    }
+
+    // Arrange the draft at the slots the Patches were read from, as one undo
+    // step, so the musician sees their instrument's bank as it is.
+    std::vector<std::pair<int, library::BankSlotContent>> placements;
+    placements.reserve(ids->size());
+    for (std::size_t i = 0; i < ids->size() && i < patches.size(); ++i) {
+        library::BankSlotContent content;
+        content.patchId = (*ids)[i];
+        content.patchName = patches[i].patch.name().displayText();
+        content.sourceName = sourceName;
+        content.sourceSlotLabel = QStringLiteral("USER:%1")
+                                      .arg(patches[i].userNumber, 3, 10, QLatin1Char('0'))
+                                      .toStdString();
+        placements.emplace_back(patches[i].userNumber - 1, std::move(content));
+    }
+    const QString label = tr("Read %n Patch(es) from the XP-60", "", static_cast<int>(placements.size()));
+    m_draft.assignAll(placements, label.toStdString());
+
+    reloadSavedBanks();
+    reportAction(label, QStringLiteral("success"));
+    emit libraryChanged();
+    emit bankFetchChanged();
+    announceBankChange();
 }
 
 bool BankBuilderViewModel::editSlot(int slotIndex)

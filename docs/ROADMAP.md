@@ -251,14 +251,18 @@ Do not add fake Dashboard actions for future phases.
 # Phase 6 — Bank Management
 
 Execution update (2026-09-05): the 128-slot workspace, its panel interaction,
-drag/keyboard operation, undo/redo, saved banks and audition are in, and bank
-`.syx` import/export now closes the file half — a source bank can be arranged
-into the target bank at the User slots it was read from, and a built bank can
-be written back with each Patch addressed to the destination it occupies. See
-`design/BANK_BUILDER.md`. Bank fetch/send to the instrument, transfer pacing
-controls, read-back verification and mismatch inspection remain open: writing
-permanent User memory is deferred to the connected session tracked by
-`DEVICE_ACCEPTANCE.md`, and no hardware behaviour is promoted meanwhile.
+drag/keyboard operation, undo/redo, saved banks and audition are in; bank `.syx`
+import/export closes the file half; and the instrument half is now closed too.
+A bank can be **read** off the XP-60 (`services::UserBankRead`, RQ1 only, whole
+bank into the library as one source and arranged at the slots it came from) and
+**written** into its permanent USER memory (`services::UserMemoryWrite`, armed
+separately, every destination read before it is written, every write verified by
+read-back, and Put back what was there as the undo). See
+`design/BANK_BUILDER.md` and `PATCH_SYNCHRONIZATION.md` §7.
+
+Still open in this phase: multi-select, duplicate warnings where the data
+exists, the mini comparison inspector, the user-defined section rail, mismatch
+retry, and the screenshot review against the master mockup.
 
 Goal: make the 128-slot User Patch bank easy and safe to engineer.
 
