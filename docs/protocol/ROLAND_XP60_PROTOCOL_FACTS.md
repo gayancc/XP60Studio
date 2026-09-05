@@ -97,9 +97,13 @@ output. Raw capture in
 **Engineering stance, unchanged.** Receiving assumes nothing about chunking.
 Sending keeps the conservative 128-byte split
 (`Xp60PatchCodec::encodeToDataSets`): splitting a 129-byte block into 128 + 1
-delivers identical bytes to identical addresses, so there is no reason to relax
-it on the strength of what the device *transmits*. What the XP-60 *accepts* is
-a separate question and is still untested.
+delivers identical bytes to identical addresses.
+
+**What the XP-60 accepts is now also verified (2026-09-04).** An exported `.syx`
+carrying each Tone block as 128 + 1 was sent to the instrument and the Patch
+read back equalled the one exported, four times out of four. The asymmetry is
+real and both halves are hardware-verified: the XP-60 transmits a whole
+129-byte block in one message and accepts the same block split at 128.
 
 ### 2.2 RQ1 size is an address span, not a payload byte count
 

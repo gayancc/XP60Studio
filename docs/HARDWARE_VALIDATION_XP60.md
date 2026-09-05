@@ -568,3 +568,59 @@ codec that could not reproduce an arbitrary Patch from the instrument has no
 business exporting or writing one. It remains structural — it says nothing
 about whether a parameter *means* what its table says, which only the panel
 comparisons of area 4 and area 8 can establish.
+
+## Hardware log 2026-09-04 (continued) — area 10, librarian export
+
+`tests/tools/export_roundtrip_harness.cpp` runs the Phase 5 acceptance against
+the instrument: fetch the temporary Patch, build a library entry, export it
+with `library::exportEntries`, send the exported file back and compare.
+
+```text
+1. Fetching the temporary Patch
+   "Childlike", 644 bytes of original SysEx captured
+2. Exporting as .syx through library::exportEntries
+   1 patch, 9 messages, 688 bytes
+3. Validating every message in the export before sending
+   9 DT1 message(s), all inside the temporary Patch area
+4. Sending the exported file to the instrument   sent
+5. Reading the Patch back and comparing   "Childlike"
+
+EXPORT ROUND TRIP VERIFIED
+```
+
+Verified 4 times out of 4. The export is produced by the same code the Library
+screen will call; nothing about the file is assembled by the harness.
+
+**Safety.** The harness sends nothing it has not first decoded and checked. Each
+message in the exported file must be a DT1 whose whole payload lies inside the
+temporary Patch span; a non-DT1 message, an address outside that span, or bytes
+that fail to decode abort the run before anything is transmitted. Validating
+the file rather than trusting the exporter is the point: permanent User memory
+stays unreachable even if the exporter were wrong.
+
+### The XP-60 accepts a 128 + 1 split Tone block
+
+The exported file's structure:
+
+| Address | Payload |
+|---|---|
+| `03 00 00 00` | 73 (Patch Common) |
+| `03 00 10 00` | 128 |
+| `03 00 11 00` | 1 |
+| `03 00 12 00` | 128 |
+| `03 00 13 00` | 1 |
+| `03 00 14 00` | 128 |
+| `03 00 15 00` | 1 |
+| `03 00 16 00` | 128 |
+| `03 00 17 00` | 1 |
+
+Nine messages, 688 bytes, against the 644 bytes and five messages the
+instrument sent. `Xp60PatchCodec::encodeToDataSets` splits each 129-byte Tone
+block into 128 + 1 to stay inside the documented limit, and **the instrument
+accepted every one and reproduced the Patch exactly**.
+
+This settles the second half of `ROLAND_XP60_PROTOCOL_FACTS.md` §2.1. The
+XP-60 *sends* a whole 129-byte block in one message, and *accepts* the same
+block split at 128 — so the conservative sending-side chunking is not merely
+safe by argument, it is verified. The asymmetry is real and both halves are now
+hardware-verified.

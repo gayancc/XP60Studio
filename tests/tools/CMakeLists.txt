@@ -5,6 +5,7 @@ target_link_libraries(xp60studio_screenshot PRIVATE
   Qt6::Quick
   Qt6::QuickControls2
   xp60studio::presentation
+  xp60studio::simulation
   xp60studio_ui
 )
 set_target_properties(xp60studio_screenshot PROPERTIES AUTOMOC ON WIN32_EXECUTABLE FALSE)
@@ -33,3 +34,14 @@ target_link_libraries(xp60studio_write_roundtrip PRIVATE
   xp60studio::services
   xp60studio::xpmodel)
 set_target_properties(xp60studio_write_roundtrip PROPERTIES AUTOMOC ON WIN32_EXECUTABLE FALSE)
+
+# Area 10: an exported .syx sent back to a physical XP-60. Validates every
+# message against the temporary Patch area before transmitting.
+qt_add_executable(xp60studio_export_roundtrip export_roundtrip_harness.cpp)
+target_link_libraries(xp60studio_export_roundtrip PRIVATE
+  Qt6::Core
+  xp60studio::library
+  xp60studio::midi_libremidi
+  xp60studio::services
+  xp60studio::xpmodel)
+set_target_properties(xp60studio_export_roundtrip PROPERTIES AUTOMOC ON WIN32_EXECUTABLE FALSE)
