@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls as QQC
 import QtQuick.Layouts
 import XP60Studio
 
@@ -7,6 +8,15 @@ import XP60Studio
 Item {
     id: root
     required property var editor
+    property string selectedRoute: ""
+    QQC.Popup {
+        id: routePopup
+        x: Math.max(0, Math.min(root.width - width, root.width / 2 - width / 2)); y: root.height / 2
+        width: 190; padding: Metrics.cardPadding
+        background: Rectangle { color: Theme.surfaceRaised; radius: Metrics.radiusMd; border.color: Theme.borderStrong }
+        contentItem: EffectParameterControl { editor: root.editor; parameterId: root.selectedRoute }
+        onClosed: root.editor.endEffectGesture()
+    }
     // Keep the envelope/ranges close to the mixer; Effects and Expert expose
     // the larger routing view with exact send readouts.
     readonly property bool detailed: editor.section === 4 || editor.disclosure === 2
@@ -105,6 +115,10 @@ Item {
                          : modelData.from === "efx" ? Theme.tone4
                          : modelData.from === "chorus" ? Theme.tone2 : Theme.tone3
                 label: root.detailed ? modelData.level : ""
+                amount: Number(modelData.level) / 127
+                interactive: root.detailed && (modelData.parameterId || "").length > 0
+                description: (root.editor.effectValues[modelData.parameterId] || {}).name || ""
+                onActivated: { root.selectedRoute = modelData.parameterId; routePopup.open() }
                 labelPosition: points.length === 2
                     ? Qt.point((points[0].x + points[1].x) / 2, points[0].y)
                     : Qt.point((points[1].x + points[2].x) / 2, points[1].y)
@@ -123,6 +137,7 @@ Item {
             onActivated: {
                 root.editor.disclosure = 1
                 root.editor.section = 4
+                root.editor.effectPage = 0
             }
         }
         SignalFlowNode {
@@ -134,10 +149,11 @@ Item {
             detailLines: root.detailed ? 2 : 1
             highlighted: diagram.active("efx"); accentColor: Theme.tone4
             interactive: true
-            selected: root.editor.disclosure === 1 && root.editor.section === 4
+            selected: root.editor.disclosure === 1 && root.editor.section === 4 && root.editor.effectPage === 1
             onActivated: {
                 root.editor.disclosure = 1
                 root.editor.section = 4
+                root.editor.effectPage = 1
             }
         }
         SignalFlowNode {
@@ -147,12 +163,14 @@ Item {
             y: Metrics.spacingLg
             width: root.nodeWidth; height: root.rowHeight
             title: qsTr("CHORUS"); detail: root.editor.chorusText
+            selected: root.editor.section === 4 && root.editor.effectPage === 3
             detailLines: root.detailed ? 2 : 1
             highlighted: diagram.active("chorus"); accentColor: Theme.tone2
             interactive: true
             onActivated: {
                 root.editor.disclosure = 1
                 root.editor.section = 4
+                root.editor.effectPage = 3
             }
         }
         SignalFlowNode {
@@ -162,12 +180,14 @@ Item {
             y: Metrics.spacingLg
             width: root.nodeWidth; height: root.rowHeight
             title: qsTr("REVERB"); detail: root.editor.reverbText
+            selected: root.editor.section === 4 && root.editor.effectPage === 4
             detailLines: root.detailed ? 2 : 1
             highlighted: diagram.active("reverb"); accentColor: Theme.tone3
             interactive: true
             onActivated: {
                 root.editor.disclosure = 1
                 root.editor.section = 4
+                root.editor.effectPage = 4
             }
         }
         SignalFlowNode {
@@ -202,7 +222,7 @@ Item {
         visible: root.detailed
         y: diagram.y + diagram.height + Metrics.spacingXs
         width: parent.width
-        text: qsTr("Configured sends · XP values · dashed = zero path. Tone and system effect switches are not shown.")
+        text: qsTr("Configured sends · click a route value to adjust · dashed = zero send or inactive upstream. Tone and system effect switches are not shown.")
         role: "caption"; secondary: true; wrapMode: Text.WordWrap
     }
 }

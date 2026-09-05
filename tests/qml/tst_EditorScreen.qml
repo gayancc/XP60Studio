@@ -329,13 +329,12 @@ TestCase {
         shape.activated(3)
         compare(shape.currentIndex, 3)
         testEditor.section = 4
-        var effects = findChild(screen, "effectsParameterPanel")
+        var effects = findChild(screen, "effectsWorkbench")
         verify(effects.visible)
-        tryVerify(function() { return findChild(effects, "parameter-common.efx_type") !== null })
-        verify(effects.note.indexOf("slots remain raw") >= 0)
-        var effect = findChild(findChild(effects, "parameter-common.efx_type"), "parameterChoice")
-        compare(effect.count, 40)
-        effect.activated(39)
+        testEditor.effectPage = 1
+        compare(effects.algorithms.length, 40)
+        effects.browserOpen = true
+        findChild(effects, "algorithm-39").clicked()
         compare(testEditor.mfxText, "CHORUS/FLANGER")
     }
 

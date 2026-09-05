@@ -33,6 +33,11 @@ set(XP60STUDIO_QML_FILES
   Controls/SignalFlowNode.qml
   Controls/SignalFlowConnector.qml
   Controls/EffectRoutingView.qml
+  Controls/EffectsWorkbench.qml
+  Controls/EffectParameterControl.qml
+  Controls/EffectChoiceControl.qml
+  Controls/EffectRouteSelector.qml
+  Controls/EffectParameterGraph.qml
   Controls/FourToneMixer.qml
   Controls/LfoShapeSelector.qml
   Controls/LfoPreview.qml
