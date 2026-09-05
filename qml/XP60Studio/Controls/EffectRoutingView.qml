@@ -30,6 +30,8 @@ Item {
     readonly property real rowHeight: detailed ? Metrics.controlHeightSm * 2 : Metrics.controlHeightLg
     readonly property real mainY: rowHeight + (detailed ? Metrics.spacingXl : Metrics.spacingMd) + Metrics.spacingLg
     readonly property real directY: mainY + rowHeight + Metrics.spacingXl + Metrics.spacingMd
+    readonly property real upperLaneY: Math.max(Metrics.spacingXs, mainY - Metrics.spacingMd)
+    readonly property real lowerLaneY: mainY + rowHeight + Metrics.spacingMd
     implicitHeight: diagram.y + diagram.height + (detailed ? Metrics.spacingXs + legend.implicitHeight : 0)
 
     Accessible.role: Accessible.Grouping
@@ -56,8 +58,8 @@ Item {
         id: diagram
         y: root.detailed ? heading.height + Metrics.spacingSm : 0
         width: parent.width
-        height: root.showAlternateOutput ? root.directY + root.rowHeight
-                : root.mainY + root.rowHeight + Metrics.spacingXl + Metrics.spacingXs
+        height: root.showAlternateOutput ? root.directY + root.rowHeight + Metrics.spacingMd
+                : root.mainY + root.rowHeight + 2 * Metrics.spacingXl
 
         function node(id) {
             switch (id) {
@@ -75,7 +77,7 @@ Item {
                 if (edges[i].open && (edges[i].from === id || edges[i].to === id)) return true
             return false
         }
-        function path(edge) {
+        function path(edge, edgeIndex) {
             var a = node(edge.from), b = node(edge.to)
             var start = Qt.point(a.x + a.width, a.y + a.height / 2)
             var end = Qt.point(b.x, b.y + b.height / 2)
@@ -85,37 +87,41 @@ Item {
                 var top = edge.from === "source"
                 start = Qt.point(a.x + a.width * (edge.to === "chorus" ? 0.3 : 0.7), top ? a.y : a.y + a.height)
                 end = Qt.point(b.x + b.width * (top ? 0.35 : 0.65), top ? b.y : b.y + b.height)
-                var lane = top ? Metrics.spacingMd : root.mainY + root.rowHeight + Metrics.spacingMd
-                if (edge.to === "reverb") lane += top ? -Metrics.spacingSm : Metrics.spacingSm
+                var lane = top ? root.upperLaneY - (edgeIndex % 3) * Metrics.spacingSm
+                              : root.lowerLaneY + (edgeIndex % 3) * Metrics.spacingSm
                 return [start, Qt.point(start.x, lane), Qt.point(end.x, lane), end]
             }
             if (edge.to === "mix") {
                 var lower = edge.from === "source" || edge.from === "efx"
-                var laneY = edge.from === "source" ? root.mainY + root.rowHeight + Metrics.spacingXl
-                          : edge.from === "efx" ? root.mainY + root.rowHeight + Metrics.spacingSm
-                          : edge.from === "chorus" ? root.rowHeight + Metrics.spacingLg + Metrics.spacingSm : root.rowHeight + 2 * Metrics.spacingLg
+                var laneY = root.lowerLaneY + (edgeIndex % 5) * Metrics.spacingSm
                 start = Qt.point(a.x + a.width * 0.85, a.y + a.height)
                 end = Qt.point(b.x + b.width * (edge.from === "source" || edge.from === "chorus" ? 0.3 : 0.7),
                                lower ? b.y + b.height : b.y)
                 return [start, Qt.point(start.x, laneY), Qt.point(end.x, laneY), end]
             }
             start = Qt.point(a.x + a.width / 2, a.y + a.height)
-            return [start, Qt.point(start.x, end.y), end]
+            return [start, Qt.point(start.x, root.lowerLaneY + (edgeIndex % 4) * Metrics.spacingSm),
+                    Qt.point(end.x, root.lowerLaneY + (edgeIndex % 4) * Metrics.spacingSm), end]
         }
         Repeater {
             model: root.routing.edges || []
             delegate: SignalFlowConnector {
                 required property var modelData
+                required property int index
                 anchors.fill: parent
                 objectName: "route-" + modelData.from + "-" + modelData.to
-                points: diagram.path(modelData)
+                points: diagram.path(modelData, index)
                 open: modelData.open
                 lineColor: modelData.to === "unknown" ? Theme.warning
                          : modelData.from === "source" ? Theme.toneColor(root.editor.selectedTone)
                          : modelData.from === "efx" ? Theme.tone4
                          : modelData.from === "chorus" ? Theme.tone2 : Theme.tone3
                 label: root.detailed ? modelData.level : ""
-                amount: Number(modelData.level) / 127
+                labelPrefix: root.detailed && modelData.parameterId ? "SEND" : ""
+                labelColor: lineColor
+                emphasized: modelData.open && ((modelData.from === "source" && modelData.to === "efx")
+                                               || (modelData.from === "chorus" && modelData.to === "reverb"))
+                baseLineWidth: 1.05
                 interactive: root.detailed && (modelData.parameterId || "").length > 0
                 description: (root.editor.effectValues[modelData.parameterId] || {}).name || ""
                 onActivated: { root.selectedRoute = modelData.parameterId; routePopup.open() }

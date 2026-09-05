@@ -9,6 +9,10 @@ Canvas {
     property var points: [Qt.point(0, height / 2), Qt.point(width, height / 2)]
     property bool open: true
     property string label: ""
+    property string labelPrefix: ""
+    property color labelColor: lineColor
+    property real baseLineWidth: 1.1
+    property bool emphasized: false
     property point labelPosition: Qt.point(width / 2, height / 2)
     property bool interactive: false
     property string description: ""
@@ -28,8 +32,8 @@ Canvas {
         if (points.length < 2) return
         ctx.strokeStyle = lineColor
         ctx.fillStyle = lineColor
-        ctx.globalAlpha = open ? 0.85 : 0.35
-        ctx.lineWidth = open ? (amount < 0 ? 1.5 : 1 + 3 * amount) : 1
+        ctx.globalAlpha = open ? (emphasized ? 0.88 : 0.58) : 0.24
+        ctx.lineWidth = open ? (emphasized ? baseLineWidth + 0.45 : baseLineWidth) : 0.8
         ctx.setLineDash(open ? [] : [3, 4])
         ctx.beginPath()
         ctx.moveTo(points[0].x, points[0].y)
@@ -50,16 +54,18 @@ Canvas {
         visible: root.label.length > 0
         x: root.labelPosition.x - width / 2
         y: root.labelPosition.y - height / 2
-        width: readout.implicitWidth + Metrics.spacingXs
-        height: readout.implicitHeight
-        color: Theme.surface
+        width: readout.implicitWidth + 2 * Metrics.spacingXs
+        height: readout.implicitHeight + Metrics.spacingXs
+        radius: Metrics.radiusSm
+        color: root.open ? Theme.surfaceRaised : Theme.surfaceSunken
+        border.width: 1
+        border.color: activeFocus ? Theme.focusRing : Qt.rgba(root.labelColor.r, root.labelColor.g, root.labelColor.b, root.open ? 0.3 : 0.12)
+        z: 2
         activeFocusOnTab: root.interactive
         Accessible.role: Accessible.Button
         Accessible.name: root.description
         Keys.onReturnPressed: if (root.interactive) root.activated()
         Keys.onSpacePressed: if (root.interactive) root.activated()
-        border.color: activeFocus ? Theme.focusRing : "transparent"
-        border.width: 1
         MouseArea {
             id: routeMouse
             anchors { fill: parent; margins: -4 }
@@ -72,9 +78,10 @@ Canvas {
         XpLabel {
             id: readout
             anchors.centerIn: parent
-            text: root.label
+            text: root.labelPrefix.length > 0 ? root.labelPrefix + "  " + root.label : root.label
             role: "caption"
-            color: root.open ? root.lineColor : Theme.textMuted
+            color: root.open ? root.labelColor : Theme.textMuted
+            font.weight: root.emphasized ? Typography.weightMedium : Typography.weightRegular
         }
     }
 }
