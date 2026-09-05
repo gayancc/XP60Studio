@@ -412,3 +412,30 @@ corroborating evidence — `Fantasia JV`, `Strings`, `C-Z  Flute` and
 but corroboration is not the display comparison that area 4 requires. Parameter
 *meaning* remains unverified until values are read off the instrument's own
 edit pages.
+
+### Step 3 closed — decoded name matches the XP-60 display
+
+Captured and compared with the instrument's display in the same moment
+(2026-09-04). Display read `Childlike`; the device transmitted:
+
+```text
+F0 41 10 6A 12 03 00 00 00 43 68 69 6C 64 6C 69 6B 65 20 20 20 14 F7
+                           C  h  i  l  d  l  i  k  e  sp sp sp
+```
+
+Twelve characters including the three trailing spaces, each its own ASCII
+byte, so the comparison is exact rather than an interpretation. Step 3 passes.
+
+**Weight of this check.** The name is 12 consecutive ASCII bytes at offset 0 of
+Patch Common, so it survives almost any offset error further into the Patch. It
+confirms addressing, framing and the start of the block; it is not evidence
+about the numeric parameter tables. The spot checks in step 7a — reading
+individual values off the instrument's own edit pages — remain the only test of
+parameter *meaning*, and are still outstanding.
+
+Values awaiting comparison, from the same capture of `Childlike`:
+
+| Parameter | XP60Studio decoded | XP-60 edit page | Result |
+|---|---|---|---|
+| Tone 1 Cutoff Frequency | 127 | | not yet read |
+| Tone 1 Wave number | INT group 1, #36 | | not yet read |
