@@ -109,6 +109,13 @@ Evidence row template:
 | 02:OVER-DRIVE | Low Gain | not read from screen | 16 (EFX Parameter 4) | 15→23 | `--watch` 2026-09-04 | CME U2MIDI Pro | **Verified**, one step |
 | 02:OVER-DRIVE | High Gain | not read from screen | 17 (EFX Parameter 5) | 15→24→29 | `--watch` 2026-09-04 | CME U2MIDI Pro | **Verified**, two steps |
 | 02:OVER-DRIVE | Level | not read from screen | 18 (EFX Parameter 6) | 127→106→101→100 | `--watch` 2026-09-04 | CME U2MIDI Pro | **Verified**, no endpoint |
+| 04:PHASER | Manual | not read from screen | 13 (EFX Parameter 1) | 30→11→0 | `--watch` 2026-09-04 | CME U2MIDI Pro | **Verified**, low end reached |
+| 04:PHASER | Rate | not read from screen | 14 (EFX Parameter 2) | 19→50 | `--watch` 2026-09-04 | CME U2MIDI Pro | **Verified**, one step |
+| 04:PHASER | Depth | not read from screen | 15 (EFX Parameter 3) | 64→41 | `--watch` 2026-09-04 | CME U2MIDI Pro | **Verified**, one step |
+| 04:PHASER | Resonance | not read from screen | 16 (EFX Parameter 4) | 0→25 | `--watch` 2026-09-04 | CME U2MIDI Pro | **Verified**, one step |
+| 04:PHASER | Mix | not read from screen | 17 (EFX Parameter 5) | 127→102 | `--watch` 2026-09-04 | CME U2MIDI Pro | **Verified**, one step |
+| 04:PHASER | Pan | not read from screen | 18 (EFX Parameter 6) | 64→87 | `--watch` 2026-09-04 | CME U2MIDI Pro | **Verified**, one step |
+| 04:PHASER | Level | — | 19 (EFX Parameter 7) | inferred from default 127, not swept | — | — | **Unverified** |
 | all other algorithms | Pending | Pending | Unknown | Pending | Pending | Pending | Unverified |
 
 The first row is filled in by "First EFX slot established" below.
@@ -326,3 +333,60 @@ Drive reached 100 from 127 and Level 100 from 127; neither touched an endpoint
 this time. Amp Type has now been seen at raw 0 and raw 3 across both algorithms,
 still two of its four values. No displayed value was read off the instrument in
 this pass either, so the raw-to-display conversions remain untested.
+
+## 04:PHASER — the slot of a control is per-algorithm, not global
+
+Selected with the watcher already running, so the `EFX Type` change is in the
+capture (raw 0 → 3). Six of its seven controls were swept in the manual's
+printed order, confirmed by the operator.
+
+| Byte | Common offset | Control | Default loaded | Observed raw |
+|---|---|---|---|---|
+| EFX Parameter 1 | 13 | Manual | 30 | 30→11→0 |
+| EFX Parameter 2 | 14 | Rate | 19 | 19→50 |
+| EFX Parameter 3 | 15 | Depth | 64 | 64→41 |
+| EFX Parameter 4 | 16 | Resonance | 0 | 0→25 |
+| EFX Parameter 5 | 17 | Mix | 127 | 127→102 |
+| EFX Parameter 6 | 18 | **Pan** | 64 | 64→87 |
+| EFX Parameter 7 | 19 | Level | 127 | not swept |
+
+### The question is answered: layout is per-algorithm
+
+**Pan is byte 6 here and byte 2 in DISTORTION and OVER-DRIVE.** A control does
+not occupy a fixed slot across algorithms, so explanation 1 in the OVER-DRIVE
+section is dead. Each algorithm orders its own parameter area, and the mapping
+must be established per algorithm.
+
+Byte 2 being Pan in DISTORTION does not rest on the sweep order alone: it
+loaded a default of 64, the centre of `L64—0—63R`, and the only other candidate
+for that slot in the printed list is Amp Type, which has four values. So the
+disagreement between the two algorithms is real rather than an artefact of how
+the controls were swept.
+
+Note what PHASER does agree with: its byte order **is** the printed order,
+Manual through Level, with Pan sixth in both. DISTORTION's is not. So the
+printed order is sometimes the byte order and sometimes not, which is worse
+than either rule holding — it means the table cannot be trusted for any
+algorithm that has not been swept.
+
+### Correction — bytes rewritten do not count an algorithm's controls
+
+The DISTORTION section above notes that switching to it rewrote exactly bytes
+1-6, matching its six controls, and offers that as supporting structure. **That
+inference does not hold.** Switching STEREO-EQ → PHASER rewrote bytes **1-10**,
+while PHASER exposes seven controls. The instrument writes beyond the slots an
+algorithm uses, so the count of bytes that move on a switch says nothing about
+how many the new algorithm claims. The DISTORTION observation was a
+coincidence of the two algorithms involved, not evidence.
+
+The slot assignments themselves are unaffected: they rest on the individual
+sweeps, not on that count.
+
+### Scope consequence
+
+With the layout per-algorithm, area 8 is 40 algorithms of sweeps, several with
+ten or more controls, and the nonlinear ones (rates, frequencies, delay times)
+needing every step rather than two endpoints. Three algorithms are mapped. The
+remaining 37 are a substantial session of their own, and the alternative —
+shipping with EFX parameters explicitly raw, which is what the code does
+today — remains honest and is not blocked by this.
