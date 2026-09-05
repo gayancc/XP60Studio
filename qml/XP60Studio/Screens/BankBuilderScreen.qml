@@ -469,6 +469,82 @@ FocusScope {
                     preview: root.dropPreview
                 }
 
+                // The mini comparison inspector. Only present while comparing,
+                // so it costs nothing the rest of the time.
+                XpCard {
+                    objectName: "bankComparison"
+                    Layout.fillWidth: true
+                    visible: root.builder.comparing
+                    padding: Metrics.spacingSm
+
+                    ColumnLayout {
+                        anchors.fill: parent
+                        spacing: 2
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: Metrics.spacingSm
+                            XpLabel {
+                                text: qsTr("%1 vs %2")
+                                      .arg(root.builder.comparison.pinnedLabel ?? "")
+                                      .arg(root.builder.comparison.otherLabel ?? "")
+                                role: "overline"
+                                color: Theme.accentText
+                            }
+                            StatusPill {
+                                objectName: "bankComparisonVerdict"
+                                visible: root.builder.comparison.identical !== undefined
+                                text: root.builder.comparison.identical ? qsTr("IDENTICAL")
+                                                                        : qsTr("%n difference(s)", "", root.builder.comparison.total ?? 0)
+                                tone: root.builder.comparison.identical ? "info" : "neutral"
+                                showDot: false
+                            }
+                            Item { Layout.fillWidth: true }
+                            XpButton {
+                                text: qsTr("Stop")
+                                compact: true
+                                variant: "ghost"
+                                onClicked: root.builder.clearComparison()
+                            }
+                        }
+
+                        XpLabel {
+                            objectName: "bankComparisonSummary"
+                            Layout.fillWidth: true
+                            text: root.builder.comparison.summary ?? ""
+                            role: "caption"
+                            muted: true
+                            wrapMode: Text.WordWrap
+                        }
+
+                        Repeater {
+                            model: root.builder.comparison.differences ?? []
+                            delegate: RowLayout {
+                                required property var modelData
+                                Layout.fillWidth: true
+                                spacing: Metrics.spacingSm
+                                XpLabel {
+                                    text: modelData.block + " · " + modelData.name
+                                    role: "caption"
+                                    Layout.fillWidth: true
+                                    elide: Text.ElideRight
+                                }
+                                XpLabel { text: modelData.left; role: "caption"; muted: true }
+                                XpLabel { text: "→"; role: "caption"; muted: true }
+                                XpLabel { text: modelData.right; role: "caption" }
+                            }
+                        }
+
+                        XpLabel {
+                            visible: (root.builder.comparison.total ?? 0) > (root.builder.comparison.shown ?? 0)
+                            text: qsTr("…and %1 more")
+                                  .arg((root.builder.comparison.total ?? 0) - (root.builder.comparison.shown ?? 0))
+                            role: "caption"
+                            muted: true
+                        }
+                    }
+                }
+
                 // What just happened, and the audition the hardware allows.
                 RowLayout {
                     Layout.fillWidth: true
@@ -481,6 +557,23 @@ FocusScope {
                         tone: root.builder.lastActionTone
                     }
                     Item { Layout.fillWidth: true }
+                    // Pin one destination, then walk the panel: the right side
+                    // of a comparison is always whatever the panel names, so
+                    // there is no second selection model to keep in step.
+                    XpButton {
+                        objectName: "bankCompare"
+                        text: root.builder.comparing ? qsTr("Comparing") : qsTr("Compare")
+                        iconName: "compare"
+                        compact: true
+                        variant: root.builder.comparing ? "primary" : "ghost"
+                        enabled: root.builder.currentOccupied || root.builder.comparing
+                        QQC.ToolTip.visible: hovered
+                        QQC.ToolTip.delay: 400
+                        QQC.ToolTip.text: root.builder.comparing
+                                          ? qsTr("Select another destination to compare with the pinned one. Press again to stop comparing.")
+                                          : qsTr("Pin this destination, then select another to see exactly how the two differ.")
+                        onClicked: root.builder.pinCurrentForComparison()
+                    }
                     XpButton {
                         objectName: "bankEdit"
                         text: qsTr("Edit patch")

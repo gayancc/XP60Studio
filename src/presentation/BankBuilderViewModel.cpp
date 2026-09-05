@@ -4,6 +4,7 @@
 #include "library/PatchProvenance.h"
 #include "xpmodel/Xp60BankLocation.h"
 #include "xpmodel/Xp60PatchCodec.h"
+#include "xpmodel/Xp60PatchDiff.h"
 
 #include <QDateTime>
 
@@ -92,6 +93,7 @@ void BankBuilderViewModel::selectSubgroup(int subgroup)
     emit selectionChanged();
     emit bankChanged();
     emit auditionChanged();
+    emit comparisonChanged();
 }
 
 void BankBuilderViewModel::selectBank(int bank)
@@ -103,6 +105,7 @@ void BankBuilderViewModel::selectBank(int bank)
     emit selectionChanged();
     emit bankChanged();
     emit auditionChanged();
+    emit comparisonChanged();
 }
 
 void BankBuilderViewModel::selectNumber(int number)
@@ -114,6 +117,7 @@ void BankBuilderViewModel::selectNumber(int number)
     emit selectionChanged();
     emit bankChanged();
     emit auditionChanged();
+    emit comparisonChanged();
 }
 
 void BankBuilderViewModel::selectSlot(int slotIndex)
@@ -131,6 +135,7 @@ void BankBuilderViewModel::selectSlot(int slotIndex)
     emit selectionChanged();
     emit bankChanged();
     emit auditionChanged();
+    emit comparisonChanged();
 }
 
 // ---------------------------------------------------------------------------
@@ -751,6 +756,110 @@ void BankBuilderViewModel::adoptFetchedBank()
     emit libraryChanged();
     emit bankFetchChanged();
     announceBankChange();
+}
+
+// ---------------------------------------------------------------------------
+// Comparing two destinations
+// ---------------------------------------------------------------------------
+//
+// The right side is always the destination the panel currently names, so a
+// comparison is done by pinning one and then walking the panel — which is how
+// the instrument is operated anyway, and avoids a second selection model.
+
+bool BankBuilderViewModel::pinForComparison(int slotIndex)
+{
+    if (!Xp60BankLocation::isValidSlotIndex(slotIndex)) {
+        return false;
+    }
+    if (m_pinnedSlot == slotIndex) {
+        clearComparison();
+        return true;
+    }
+    if (m_draft.slot(slotIndex).patchId <= 0) {
+        reportError(tr("There is nothing at %1 to compare.").arg(panelLabelFor(slotIndex)));
+        return false;
+    }
+    m_pinnedSlot = slotIndex;
+    reportAction(tr("Comparing against %1 — select another destination").arg(panelLabelFor(slotIndex)),
+                 QStringLiteral("info"));
+    emit comparisonChanged();
+    return true;
+}
+
+bool BankBuilderViewModel::pinCurrentForComparison()
+{
+    return pinForComparison(currentSlotIndex());
+}
+
+void BankBuilderViewModel::clearComparison()
+{
+    if (m_pinnedSlot < 0) {
+        return;
+    }
+    m_pinnedSlot = -1;
+    emit comparisonChanged();
+}
+
+QVariantMap BankBuilderViewModel::comparison() const
+{
+    QVariantMap result;
+    if (m_pinnedSlot < 0 || !m_database) {
+        return result;
+    }
+    const int otherSlot = currentSlotIndex();
+    const auto& pinned = m_draft.slot(m_pinnedSlot);
+    const auto& other = m_draft.slot(otherSlot);
+
+    result.insert(QStringLiteral("pinnedLabel"), panelLabelFor(m_pinnedSlot));
+    result.insert(QStringLiteral("pinnedName"), toQt(pinned.patchName));
+    result.insert(QStringLiteral("otherLabel"), panelLabelFor(otherSlot));
+    result.insert(QStringLiteral("otherName"), toQt(other.patchName));
+    result.insert(QStringLiteral("samePatch"), pinned.patchId > 0 && pinned.patchId == other.patchId);
+
+    if (otherSlot == m_pinnedSlot) {
+        result.insert(QStringLiteral("summary"),
+                      tr("Select another destination to compare with %1.").arg(panelLabelFor(m_pinnedSlot)));
+        return result;
+    }
+    if (other.patchId <= 0) {
+        result.insert(QStringLiteral("summary"),
+                      tr("%1 is empty, so there is nothing to compare.").arg(panelLabelFor(otherSlot)));
+        return result;
+    }
+
+    const auto left = m_database->loadEntry(pinned.patchId);
+    const auto right = m_database->loadEntry(other.patchId);
+    if (!left || !right) {
+        result.insert(QStringLiteral("summary"),
+                      tr("One of these Patches is no longer in the library."));
+        return result;
+    }
+
+    const auto diff = xpmodel::Xp60PatchDiff::compare(left->patch(), right->patch());
+    result.insert(QStringLiteral("identical"), diff.identical());
+    result.insert(QStringLiteral("total"), static_cast<int>(diff.count()));
+    result.insert(QStringLiteral("summary"), diff.identical()
+        ? tr("Identical — every parameter matches, so these are the same sound under two entries.")
+        : toQt(diff.summary()));
+
+    // A bounded list: the question a bank asks is "are these the same, and
+    // roughly how do they differ", not "show me 584 rows".
+    constexpr int kShown = 12;
+    QVariantList differences;
+    for (const auto& difference : diff.differences()) {
+        if (differences.size() >= kShown) {
+            break;
+        }
+        QVariantMap entry;
+        entry.insert(QStringLiteral("block"), toQt(difference.block));
+        entry.insert(QStringLiteral("name"), toQt(difference.parameterName));
+        entry.insert(QStringLiteral("left"), toQt(difference.leftText));
+        entry.insert(QStringLiteral("right"), toQt(difference.rightText));
+        differences.append(entry);
+    }
+    result.insert(QStringLiteral("differences"), differences);
+    result.insert(QStringLiteral("shown"), static_cast<int>(differences.size()));
+    return result;
 }
 
 bool BankBuilderViewModel::editSlot(int slotIndex)

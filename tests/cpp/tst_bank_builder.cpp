@@ -82,6 +82,7 @@ private slots:
     void refusesToFillFromASourceThatIsNotThere();
 
     void reportsDuplicateSoundsWithoutActingOnThem();
+    void comparesTwoDestinationsAgainstEachOther();
     void exportsEachPatchToTheDestinationItOccupies();
     void refusesToExportAnEmptyBank();
 
@@ -322,6 +323,85 @@ void TestBankBuilder::reportsDuplicateSoundsWithoutActingOnThem()
     // Clearing one end resolves the pair.
     QVERIFY(builder.clearSlot(slotOf("A14")));
     QCOMPARE(builder.duplicateCount(), 2);
+}
+
+// The question the duplicate marks make people ask: are these two really the
+// same sound, and if not, how do they differ?
+void TestBankBuilder::comparesTwoDestinationsAgainstEachOther()
+{
+    ImportOptions options;
+    options.limit = 3;
+    QVERIFY(!importFixture(options).isEmpty());
+    QVERIFY(!importFixture(options).isEmpty()); // the same three sounds again
+
+    BankBuilderViewModel builder;
+    builder.setDatabase(&m_db);
+    const auto records = m_db.search({});
+    QCOMPARE(static_cast<int>(records.size()), 6);
+
+    std::int64_t first = records.front().id;
+    std::int64_t twin = 0;
+    std::int64_t different = 0;
+    for (const auto& candidate : records) {
+        if (candidate.id == first) {
+            continue;
+        }
+        if (twin == 0 && candidate.fingerprint == records.front().fingerprint) {
+            twin = candidate.id;
+        } else if (different == 0 && !(candidate.fingerprint == records.front().fingerprint)) {
+            different = candidate.id;
+        }
+    }
+    QVERIFY(twin > 0 && different > 0);
+
+    QVERIFY(builder.placePatch(slotOf("A11"), first));
+    QVERIFY(builder.placePatch(slotOf("A12"), twin));
+    QVERIFY(builder.placePatch(slotOf("A13"), different));
+
+    QVERIFY(!builder.comparing());
+    QVERIFY(builder.pinForComparison(slotOf("A11")));
+    QVERIFY(builder.comparing());
+
+    // With the panel still on the pinned destination there is nothing to
+    // compare against, and it says so rather than reporting "identical".
+    builder.selectSlot(slotOf("A11"));
+    QVERIFY(builder.comparison().value(QStringLiteral("summary")).toString()
+                .contains(QStringLiteral("Select another")));
+
+    // Two different library rows holding the same sound: identical.
+    builder.selectSlot(slotOf("A12"));
+    auto view = builder.comparison();
+    QCOMPARE(view.value(QStringLiteral("pinnedLabel")).toString(), QStringLiteral("A11"));
+    QCOMPARE(view.value(QStringLiteral("otherLabel")).toString(), QStringLiteral("A12"));
+    QVERIFY(view.value(QStringLiteral("identical")).toBool());
+    QVERIFY(!view.value(QStringLiteral("samePatch")).toBool());
+    QCOMPARE(view.value(QStringLiteral("total")).toInt(), 0);
+
+    // A genuinely different sound: differences, named and bounded.
+    builder.selectSlot(slotOf("A13"));
+    view = builder.comparison();
+    QVERIFY(!view.value(QStringLiteral("identical")).toBool());
+    QVERIFY(view.value(QStringLiteral("total")).toInt() > 0);
+    const auto differences = view.value(QStringLiteral("differences")).toList();
+    QVERIFY(!differences.isEmpty());
+    QVERIFY2(differences.size() <= 12, "the list is bounded; a bank asks how, not all 584 rows");
+    const auto row = differences.first().toMap();
+    QVERIFY(!row.value(QStringLiteral("name")).toString().isEmpty());
+    QVERIFY(!row.value(QStringLiteral("block")).toString().isEmpty());
+
+    // An empty destination is not a comparison.
+    builder.selectSlot(slotOf("B88"));
+    QVERIFY(builder.comparison().value(QStringLiteral("summary")).toString()
+                .contains(QStringLiteral("empty")));
+
+    // Pinning the pinned destination again clears it.
+    QVERIFY(builder.pinForComparison(slotOf("A11")));
+    QVERIFY(!builder.comparing());
+    QVERIFY(builder.comparison().isEmpty());
+
+    // An empty destination cannot be pinned in the first place.
+    QVERIFY(!builder.pinForComparison(slotOf("B88")));
+    QVERIFY(!builder.comparing());
 }
 
 // ---------------------------------------------------------------------------

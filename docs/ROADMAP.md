@@ -260,8 +260,10 @@ separately, every destination read before it is written, every write verified by
 read-back, and Put back what was there as the undo). See
 `design/BANK_BUILDER.md` and `PATCH_SYNCHRONIZATION.md` §7.
 
-Still open in this phase: multi-select, duplicate warnings where the data
-exists, the mini comparison inspector, the user-defined section rail, mismatch
+Duplicate warnings and the mini comparison inspector are in too — both built on
+`library::PatchFingerprint` and `xpmodel::Xp60PatchDiff`, which already existed.
+
+Still open in this phase: multi-select, the user-defined section rail, mismatch
 retry, and the screenshot review against the master mockup.
 
 Goal: make the 128-slot User Patch bank easy and safe to engineer.

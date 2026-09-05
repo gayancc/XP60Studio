@@ -141,6 +141,13 @@ class BankBuilderViewModel : public QObject
     Q_PROPERTY(int bankFetchCompleted READ bankFetchCompleted NOTIFY bankFetchChanged)
     Q_PROPERTY(int bankFetchTotal READ bankFetchTotal NOTIFY bankFetchChanged)
 
+    // Comparing two destinations ---------------------------------------------
+    // A bank is where "are these two really the same sound?" gets asked, and
+    // the duplicate marks make people ask it. Pinning one destination and
+    // selecting another shows exactly what differs.
+    Q_PROPERTY(bool comparing READ comparing NOTIFY comparisonChanged)
+    Q_PROPERTY(QVariantMap comparison READ comparison NOTIFY comparisonChanged)
+
     // Saved banks: {id, name, occupied, missing, updated}
     Q_PROPERTY(QVariantList savedBanks READ savedBanks NOTIFY savedBanksChanged)
     // Import sources, so the source library can be opened one bank at a time:
@@ -200,6 +207,17 @@ public:
     // instrument; this is RQ1 only.
     Q_INVOKABLE bool fetchBankFromDevice();
     Q_INVOKABLE void cancelBankFetch();
+
+    // Comparison -------------------------------------------------------------
+    [[nodiscard]] bool comparing() const noexcept { return m_pinnedSlot >= 0; }
+    // {pinnedLabel, pinnedName, otherLabel, otherName, identical, summary,
+    //  differences: [{name, block, left, right}], shown, total}
+    [[nodiscard]] QVariantMap comparison() const;
+    // Pins `slotIndex` as the left side. Pinning the destination already
+    // pinned clears the comparison.
+    Q_INVOKABLE bool pinForComparison(int slotIndex);
+    Q_INVOKABLE bool pinCurrentForComparison();
+    Q_INVOKABLE void clearComparison();
 
     // Opens the Patch at `slotIndex` in the Editor by adopting it into the
     // shared workspace. False when the destination is empty or its Patch is no
@@ -347,6 +365,7 @@ Q_SIGNALS:
     void auditionChanged();
     void userWriteChanged();
     void bankFetchChanged();
+    void comparisonChanged();
     // A device read added Patches, so any library model showing this database
     // needs to re-read.
     void libraryChanged();
@@ -367,6 +386,10 @@ private:
     // while it sits in the library, so this is cached across edits rather than
     // re-read from the database on every drag.
     mutable std::map<std::int64_t, library::PatchFingerprint> m_fingerprints;
+    // The left side of a comparison, or -1. The right side is always whichever
+    // destination the panel currently names, so comparing is done by walking
+    // the panel rather than by picking from a list.
+    int m_pinnedSlot = -1;
     // Recorded on Patches read from the instrument, so provenance says which
     // device answered. Set alongside the reader.
     std::optional<roland::RolandDeviceId> m_deviceIdForProvenance;

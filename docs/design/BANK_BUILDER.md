@@ -329,6 +329,25 @@ write. Fingerprints are cached by library id, because a stored Patch's
 fingerprint does not change while it sits in the library, so a drag does not
 re-read the database 128 times.
 
+## Comparing two destinations
+
+The duplicate marks make people ask "are these two really the same sound?", so
+the answer is one press away. **Compare** pins the selected destination; the
+right-hand side is then always whatever the panel names, so a comparison is made
+by walking the panel — which is how the instrument is operated anyway, and
+avoids a second selection model that could fall out of step with the first.
+
+The inspector says whether the two are identical and, when they are not, lists
+the first twelve differing parameters with each side's display text. The list is
+deliberately bounded: the question a bank asks is *are these the same, and
+roughly how do they differ*, not *show me all 584 rows*. `Xp60PatchDiff` does
+the comparison, so it is the same diff the Editor's A/B and the transfer's
+read-back verification use.
+
+Pinning the pinned destination again stops comparing. An empty destination
+cannot be pinned, and selecting an empty one while comparing says so rather than
+reporting "identical".
+
 ## Persistence
 
 Library schema version **2** adds two tables. The migration is additive: every
