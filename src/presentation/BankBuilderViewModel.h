@@ -131,6 +131,7 @@ class BankBuilderViewModel : public QObject
     Q_PROPERTY(int userWriteCompleted READ userWriteCompleted NOTIFY userWriteChanged)
     Q_PROPERTY(int userWriteTotal READ userWriteTotal NOTIFY userWriteChanged)
     Q_PROPERTY(bool canRestoreUserMemory READ canRestoreUserMemory NOTIFY userWriteChanged)
+    Q_PROPERTY(bool canRetryUserWrite READ canRetryUserWrite NOTIFY userWriteChanged)
 
     // Reading the instrument's USER bank ------------------------------------
     // Read-only, and the backup that makes writing safe to offer: the whole
@@ -192,6 +193,7 @@ public:
     [[nodiscard]] int userWriteCompleted() const;
     [[nodiscard]] int userWriteTotal() const;
     [[nodiscard]] bool canRestoreUserMemory() const;
+    [[nodiscard]] bool canRetryUserWrite() const;
 
     Q_INVOKABLE bool armUserWrite();
     Q_INVOKABLE void disarmUserWrite();
@@ -201,6 +203,9 @@ public:
     // application's decision to make.
     Q_INVOKABLE bool writeBankToUserMemory();
     Q_INVOKABLE bool restoreUserMemory();
+    // Writes the destinations the last run did not get to. Needs arming, like
+    // any other write.
+    Q_INVOKABLE bool retryUserWrite();
     Q_INVOKABLE void cancelUserWrite();
 
     // Optional. Without it the bank cannot be read off the instrument.

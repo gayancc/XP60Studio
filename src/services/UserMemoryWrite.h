@@ -116,6 +116,15 @@ public:
     // Puts back every Patch this run overwrote, most recent first. Only
     // available once a run has finished and only while the snapshots are held.
     bool restore();
+    // The destinations of the last run that were not written and verified: the
+    // one that failed or mismatched, and everything after it.
+    [[nodiscard]] std::vector<Destination> unwritten() const;
+    [[nodiscard]] bool canRetry() const;
+    // Writes those again, **keeping** the snapshots already taken so the whole
+    // run — the part that succeeded before the failure included — can still be
+    // put back. Needs arming, like any other write: a retry is the same
+    // destructive act as the attempt it repeats.
+    bool retry();
     // Stops at the next safe point. Destinations already written stay written —
     // and their snapshots stay held, so `restore()` can still undo them.
     void cancel();

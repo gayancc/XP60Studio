@@ -361,6 +361,49 @@ bool UserMemoryWrite::restore()
     return true;
 }
 
+std::vector<UserMemoryWrite::Destination> UserMemoryWrite::unwritten() const
+{
+    // m_index is the destination that was being worked on when the run ended;
+    // everything from there on was never written and verified. During a restore
+    // the destinations are snapshots being put back, which are not a pending
+    // write, so there is nothing to retry.
+    if (m_restoring || m_index >= m_destinations.size()) {
+        return {};
+    }
+    return std::vector<Destination>(m_destinations.begin() + static_cast<std::ptrdiff_t>(m_index),
+                                    m_destinations.end());
+}
+
+bool UserMemoryWrite::canRetry() const
+{
+    return !isBusy() && !unwritten().empty()
+        && m_session.connectionState() == DeviceSession::ConnectionState::Connected;
+}
+
+bool UserMemoryWrite::retry()
+{
+    if (!canRetry()) {
+        return false;
+    }
+    if (!m_armed) {
+        setState(State::Failed, tr("Writing to USER memory must be armed first."));
+        return false;
+    }
+    auto remaining = unwritten();
+    // Deliberately not clearing m_snapshots: the destinations written before
+    // the failure are still overwritten, and losing their backup because the
+    // user pressed Retry would be the worst possible moment to lose it.
+    m_destinations = std::move(remaining);
+    m_index = 0;
+    m_completed = 0;
+    m_cancelRequested = false;
+    m_restoring = false;
+    m_readBack.reset();
+    m_armed = false;
+    beginNextDestination();
+    return true;
+}
+
 void UserMemoryWrite::cancel()
 {
     if (!isBusy()) {
@@ -383,7 +426,18 @@ void UserMemoryWrite::onPatchFetchChanged()
 
     if (m_awaiting == Awaiting::Snapshot) {
         if (fetch.state == DeviceSession::PatchFetchState::Completed && fetch.patch) {
-            m_snapshots.push_back(Destination{current().userNumber, *fetch.patch});
+            // Keep the *first* snapshot of a destination. A retry re-reads a
+            // destination this run has already touched, and if the earlier
+            // attempt had written part of it, the second read would capture
+            // that half-written state — so restoring would put back something
+            // the instrument never held before the run began.
+            const auto existing = std::find_if(m_snapshots.begin(), m_snapshots.end(),
+                                               [number = current().userNumber](const Destination& snapshot) {
+                                                   return snapshot.userNumber == number;
+                                               });
+            if (existing == m_snapshots.end()) {
+                m_snapshots.push_back(Destination{current().userNumber, *fetch.patch});
+            }
             m_awaiting = Awaiting::Nothing;
             sendCurrent();
         } else if (fetch.state == DeviceSession::PatchFetchState::Failed) {

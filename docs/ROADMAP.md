@@ -266,8 +266,14 @@ Duplicate warnings and the mini comparison inspector are in too — both built o
 Multi-select is in: a marked set kept separate from the panel's own selection,
 with `Space`/`Delete`/`Escape` and a bulk clear that is one undo step.
 
-Still open in this phase: the user-defined section rail, mismatch retry, and the
-screenshot review against the master mockup.
+Mismatch inspection and retry are in: a run stops at the destination that did
+not take, names User Memory Protect as the likely cause, and can be resumed from
+there with the backup intact.
+
+Still open in this phase: the user-defined section rail, and the screenshot
+review against the master mockup (the review needs the QML screenshot harness,
+which does not run on the Qt 6.4 available in the current development
+container — the project baseline is 6.11).
 
 Goal: make the 128-slot User Patch bank easy and safe to engineer.
 

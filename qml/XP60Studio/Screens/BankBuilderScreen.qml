@@ -410,6 +410,25 @@ FocusScope {
                     onClicked: root.builder.bankFetchBusy ? root.builder.cancelBankFetch()
                                                           : root.builder.cancelUserWrite()
                 }
+                // A mismatch usually means User Memory Protect is ON. Turning
+                // it off and pressing Retry continues from where it stopped,
+                // and the backup of what was already written is kept.
+                XpButton {
+                    objectName: "bankUserWriteRetry"
+                    text: qsTr("Retry the rest")
+                    compact: true
+                    variant: "danger"
+                    visible: !root.builder.userWriteBusy && !root.builder.bankFetchBusy
+                             && root.builder.canRetryUserWrite
+                    enabled: root.builder.userWriteArmed
+                    QQC.ToolTip.visible: hovered
+                    QQC.ToolTip.delay: 400
+                    QQC.ToolTip.text: root.builder.userWriteArmed
+                                      ? qsTr("Writes the destinations the run did not get to.")
+                                      : qsTr("Arm again first — a retry overwrites USER memory just as the first attempt would have.")
+                    onClicked: root.builder.retryUserWrite()
+                }
+
                 // The undo for a destructive operation. Available because every
                 // destination was read before it was written.
                 XpButton {

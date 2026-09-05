@@ -31,6 +31,7 @@
 #include <QSignalSpy>
 #include <QtTest>
 
+#include <algorithm>
 #include <chrono>
 #include <memory>
 
@@ -117,6 +118,7 @@ private slots:
     void writesAWholeArrangementInOrder();
     void anInstrumentThatRefusesTheWriteIsReportedAsAMismatch();
     void restorePutsBackEveryPatchTheRunOverwrote();
+    void retryContinuesFromTheDestinationThatFailed();
     void aPartlyIllegalPlanWritesNothingAtAll();
     void armingIsRequiredSeparateAndSpentByOneRun();
     void theWritePlanNamesWhatItWillOverwrite();
@@ -247,6 +249,76 @@ void TestUserMemoryWrite::restorePutsBackEveryPatchTheRunOverwrote()
     QCOMPARE(f.writer->state(), State::Completed);
     for (std::size_t i = 0; i < targets.size(); ++i) {
         QVERIFY2(f.inUserSlot(targets[i]) == before[i], "the Patch that was there is back");
+    }
+}
+
+// A mismatch is most likely User Memory Protect being ON. The musician turns it
+// off and presses Retry, which must continue from where the run stopped and must
+// not lose the backup of what was already written.
+void TestUserMemoryWrite::retryContinuesFromTheDestinationThatFailed()
+{
+    Fixture f;
+    const std::vector<int> targets{80, 81, 82};
+    std::vector<Xp60Patch> before;
+    std::vector<UserMemoryWrite::Destination> plan;
+    for (std::size_t i = 0; i < targets.size(); ++i) {
+        before.push_back(f.inUserSlot(targets[i]));
+        plan.push_back({targets[i], f.inUserSlot(static_cast<int>(i) + 1)});
+    }
+
+    QVERIFY(f.writer->arm());
+    QVERIFY(f.writer->write(plan));
+    // Let the first destination land, then have the instrument refuse.
+    for (int i = 0; i < 4000 && f.writer->completed() < 1; ++i) {
+        QCoreApplication::processEvents();
+        const auto replies = f.device->exchange(*f.transport);
+        for (const auto& reply : replies) {
+            const auto bytes = reply.encode();
+            f.transport->injectIncoming(midi::MidiByteSpan(bytes.data(), bytes.size()));
+        }
+        QCoreApplication::processEvents();
+    }
+    QCOMPARE(f.writer->completed(), std::size_t{1});
+    f.device->setAcceptWrites(false);
+    f.pump();
+
+    QCOMPARE(f.writer->state(), State::Mismatch);
+    QVERIFY(f.inUserSlot(targets[0]) == plan[0].patch); // the one that landed
+    QVERIFY(f.inUserSlot(targets[1]) == before[1]);     // the one that was refused
+    QCOMPARE(f.writer->unwritten().size(), std::size_t{2});
+    QVERIFY(f.writer->canRetry());
+
+    // Retrying is a destructive write like any other, so it needs arming again.
+    QVERIFY(!f.writer->retry());
+    QVERIFY(f.writer->arm());
+
+    // The instrument stops refusing — Protect turned off — and the rest lands.
+    f.device->setAcceptWrites(true);
+    QVERIFY(f.writer->retry());
+    f.pump();
+
+    QCOMPARE(f.writer->state(), State::Completed);
+    for (std::size_t i = 0; i < targets.size(); ++i) {
+        QVERIFY(f.inUserSlot(targets[i]) == plan[i].patch);
+    }
+    // And the backup still covers the whole run, including the destination
+    // written before the failure — losing that on Retry would be the worst
+    // possible moment to lose it. One snapshot per destination, and it is the
+    // *first* read: a retry must not overwrite the original with whatever the
+    // failed attempt left behind.
+    QCOMPARE(f.writer->snapshots().size(), std::size_t{3});
+    for (std::size_t i = 0; i < targets.size(); ++i) {
+        const auto snapshot = std::find_if(f.writer->snapshots().begin(), f.writer->snapshots().end(),
+                                           [&](const UserMemoryWrite::Destination& d) {
+                                               return d.userNumber == targets[i];
+                                           });
+        QVERIFY(snapshot != f.writer->snapshots().end());
+        QVERIFY(snapshot->patch == before[i]);
+    }
+    QVERIFY(f.writer->restore());
+    f.pump();
+    for (std::size_t i = 0; i < targets.size(); ++i) {
+        QVERIFY2(f.inUserSlot(targets[i]) == before[i], "every Patch the run overwrote is back");
     }
 }
 

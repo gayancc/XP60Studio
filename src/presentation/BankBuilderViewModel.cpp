@@ -602,6 +602,29 @@ bool BankBuilderViewModel::writeBankToUserMemory()
     return true;
 }
 
+bool BankBuilderViewModel::canRetryUserWrite() const
+{
+    return m_userWrite && m_userWrite->canRetry();
+}
+
+bool BankBuilderViewModel::retryUserWrite()
+{
+    if (!m_userWrite) {
+        return false;
+    }
+    if (!m_userWrite->isArmed()) {
+        reportError(tr("Arm the write again before retrying — a retry overwrites USER memory just as the first "
+                       "attempt would have."));
+        return false;
+    }
+    if (!m_userWrite->retry()) {
+        reportError(m_userWrite->message());
+        return false;
+    }
+    reportAction(tr("Retrying the destinations that were not written"), QStringLiteral("info"));
+    return true;
+}
+
 bool BankBuilderViewModel::restoreUserMemory()
 {
     if (!m_userWrite || !m_userWrite->restore()) {

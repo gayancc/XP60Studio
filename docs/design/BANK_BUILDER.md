@@ -303,6 +303,15 @@ does, so:
 | **Empty destinations are skipped, not erased** | Whether a gap in a bank means "wipe whatever the instrument holds there" is not this application's decision. A destination whose Patch was deleted from the library is skipped too, and counted. |
 | Stopping lands **between** Patches | Stopping inside one would leave a destination holding a mixture of two sounds. |
 
+**Mismatch and retry.** A mismatch is most likely User Memory Protect being ON,
+so the run stops there rather than ploughing on, and *Retry the rest* continues
+from the destination that failed once the musician has turned Protect off. A
+retry needs arming again, because it overwrites USER memory just as the first
+attempt would have. The snapshots taken before the failure are kept, and a
+destination re-read during a retry keeps its **first** snapshot — if the earlier
+attempt had written part of it, the second read would capture that half-written
+state and restoring would put back something the instrument never held.
+
 The write direction into `11 nn 00 00` is documentation-derived; reads from
 those addresses are hardware-verified. That asymmetry is why every write is
 proved at runtime instead of trusted. See `PATCH_SYNCHRONIZATION.md` §3 U1 and
