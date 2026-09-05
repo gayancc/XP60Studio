@@ -69,6 +69,34 @@ struct Fixture
         }
     }
 
+    // Drives the fixture until `done` holds, or gives up after `limit`.
+    //
+    // Live audition is paced by real timers, so a fixed QTest::qWait is a bet
+    // that the timer fires within it. That bet loses under load -- the whole
+    // suite running in parallel was enough to make
+    // liveAuditionRestoresSnapshotWhileKeepingLocalEdits fail once while
+    // passing in isolation. Waiting on the condition keeps what the test
+    // asserts while removing the dependency on how long the machine took.
+    template <typename Predicate>
+    bool pumpUntilTrue(Predicate done, std::chrono::milliseconds limit = std::chrono::seconds(5))
+    {
+        const auto deadline = std::chrono::steady_clock::now() + limit;
+        while (!done()) {
+            if (std::chrono::steady_clock::now() > deadline) {
+                return false;
+            }
+            QCoreApplication::processEvents();
+            const auto replies = device->exchange(*transport);
+            for (const auto& reply : replies) {
+                const auto bytes = reply.encode();
+                transport->injectIncoming(midi::MidiByteSpan(bytes.data(), bytes.size()));
+            }
+            QCoreApplication::processEvents();
+            QTest::qWait(5);
+        }
+        return true;
+    }
+
     void pumpUntil(services::PatchTransfer::State target, int rounds = 40)
     {
         for (int i = 0; i < rounds && transfer->state() != target; ++i) {
@@ -176,8 +204,9 @@ private slots:
         f.tone(2)->setSolo(true);
         f.tone(3)->setMute(true);
         QVERIFY(f.editor->patch() == current);
-        QTest::qWait(150);
-        f.pump();
+        QVERIFY(f.pumpUntilTrue([&] {
+            return !patchFrom(f.device->memory(), temporaryPatchAddress()).toneEnabled(ToneIndex::tone1());
+        }));
         auto received = patchFrom(f.device->memory(), temporaryPatchAddress());
         QVERIFY(!received.toneEnabled(ToneIndex::tone1()));
         QVERIFY(received.toneEnabled(ToneIndex::tone2()));
@@ -186,14 +215,10 @@ private slots:
         f.tone(2)->setSolo(false);
         f.tone(3)->setMute(false);
         f.editor->setComparing(true);
-        QTest::qWait(150);
-        f.pump();
-        QVERIFY(patchFrom(f.device->memory(), temporaryPatchAddress()) == before);
+        QVERIFY(f.pumpUntilTrue(
+            [&] { return patchFrom(f.device->memory(), temporaryPatchAddress()) == before; }));
         f.editor->stopLiveAudition();
-        QTest::qWait(150);
-        f.pump();
-        QTest::qWait(150);
-        QVERIFY(!f.editor->liveAudition());
+        QVERIFY(f.pumpUntilTrue([&] { return !f.editor->liveAudition(); }));
         QVERIFY(!f.editor->comparing());
         QVERIFY(f.editor->patch() == current);
         QVERIFY(patchFrom(f.device->memory(), temporaryPatchAddress()) == current);
@@ -210,10 +235,7 @@ private slots:
         f.editor->startLiveAudition();
         f.pump();
         f.editor->restoreBeforeAudition();
-        QTest::qWait(150);
-        f.pump();
-        QTest::qWait(150);
-        QVERIFY(!f.editor->liveAudition());
+        QVERIFY(f.pumpUntilTrue([&] { return !f.editor->liveAudition(); }));
         QVERIFY(f.editor->patch() == edited);
         QVERIFY(patchFrom(f.device->memory(), temporaryPatchAddress()) == original);
         QVERIFY(f.editor->modified());
