@@ -189,7 +189,7 @@ confirms them.
 
 | Region | Base address | Temporary? | Status | Notes |
 |---|---|---|---|---|
-| System | `00 00 00 00` | no | Documentation-derived | |
+| System | `00 00 00 00` | no | Documentation-derived | Common at `00 00`, then **seventeen** Scale Tune blocks: one per Performance Part at `10 00`…`1F 00` and one for Patch mode at `20 00`. Transcribed in [`XP60_SYSTEM_PARAMETER_MAP.md`](XP60_SYSTEM_PARAMETER_MAP.md). |
 | Temporary Performance | `01 00 00 00` | yes | Documentation-derived | |
 | Temporary Patch, Performance mode Part 1 | `02 00 00 00` | yes | Documentation-derived | Parts 2–16 at `02 01 00 00` … `02 0F 00 00`. |
 | Temporary Rhythm Setup | `02 09 00 00` | yes | Documentation-derived | Performance mode Part 10 (Roland terminology: Rhythm Setup). |
@@ -229,11 +229,12 @@ All presets are RQ1 (read-only). None writes to the instrument.
 - **Identity Request** (`F0 7E dev 06 01 F7`). Whether the XP-60 answers a
   Universal Identity Request is unknown; it is a candidate for the hardware
   session because it would give a documentation-independent model check.
-- **The System tables.** Patch, Performance and Rhythm Setup are transcribed
-  (`XP60_PATCH_PARAMETER_MAP.md`, `XP60_PERFORMANCE_PARAMETER_MAP.md`,
-  `XP60_RHYTHM_PARAMETER_MAP.md`). System Common (§1-1) and its Scale Tune
-  (§1-1-2) are the last untranscribed tables; their total sizes read from the
-  same appendix are `00 00 00 60` and `00 00 00 0C`.
+- **Nothing, for the Parameter Address Map.** All four regions are now
+  transcribed: `XP60_PATCH_PARAMETER_MAP.md`,
+  `XP60_PERFORMANCE_PARAMETER_MAP.md`, `XP60_RHYTHM_PARAMETER_MAP.md` and
+  `XP60_SYSTEM_PARAMETER_MAP.md`. Three of the four are cross-checked against
+  the golden fixture; the System tables are not, because a User bank dump
+  carries no System data — see `DEVICE_ACCEPTANCE.md` area 19.
 
 ## 5.1 What the golden fixture corroborates
 

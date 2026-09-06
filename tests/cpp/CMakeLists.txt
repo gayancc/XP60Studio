@@ -101,6 +101,10 @@ xp60studio_add_test(tst_xp60_performance
 target_compile_definitions(tst_xp60_performance
   PRIVATE XP60STUDIO_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/xp60")
 
+xp60studio_add_test(tst_xp60_system
+  SOURCES tst_xp60_system.cpp
+  LIBS xp60studio::xpmodel)
+
 xp60studio_add_test(tst_xp60_rhythm
   SOURCES tst_xp60_rhythm.cpp
   LIBS xp60studio::xpmodel)
@@ -229,6 +233,9 @@ if(Python3_Interpreter_FOUND)
   # transcribed Parameter Address Map; its self-test fails if that drifts.
   add_test(NAME tst_performance_tables_current
     COMMAND Python3::Interpreter ${CMAKE_SOURCE_DIR}/tools/generate_performance_tables.py --check
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+  add_test(NAME tst_system_tables_current
+    COMMAND Python3::Interpreter ${CMAKE_SOURCE_DIR}/tools/generate_system_tables.py --check
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
   add_test(NAME tst_rhythm_tables_current
     COMMAND Python3::Interpreter ${CMAKE_SOURCE_DIR}/tools/generate_rhythm_tables.py --check

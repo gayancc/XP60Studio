@@ -403,9 +403,24 @@ offset *is* its MIDI key number — Key# 35 at `23 00` because 0x23 is 35. Both
 User Rhythm Setups in the golden fixture decode with no range warnings and all
 128 Notes round-trip byte for byte. The Rhythm *editor* is not built yet.
 
-Still to come in this phase: the Rhythm editor on top of those tables, System
-data (§1-1 untranscribed), persistent USER Performance write, snapshots and
-restore workflows, and the shared transfer/verification UI.
+**System Common and Scale Tune are transcribed too**
+(`protocol/XP60_SYSTEM_PARAMETER_MAP.md`), which completes the Parameter Address
+Map: all four regions are now machine-checkable sources with generated tables.
+Two things that document turned up worth knowing — there are **seventeen** Scale
+Tune blocks (one per Performance Part plus one for Patch mode), not the single
+global one it would be easy to assume; and several rows print an enumeration
+that is *not* one label per raw value (the controller assignments name 64
+selectable CCs across a 97-value field), so those carry no labels rather than
+mis-naming every value.
+
+The System tables are the least corroborated of the four: the golden fixture is
+a User bank dump and carries no System data, so there is no local cross-check.
+`DEVICE_ACCEPTANCE.md` area 19 is what would settle them, and nothing ships on
+them yet.
+
+Still to come in this phase: the Rhythm and System editors on top of those
+tables, persistent USER Performance write, snapshots and restore workflows, and
+the shared transfer/verification UI.
 
 Hardware verification for everything Phase 8 has built so far is open as
 `DEVICE_ACCEPTANCE.md` areas 16–18.
