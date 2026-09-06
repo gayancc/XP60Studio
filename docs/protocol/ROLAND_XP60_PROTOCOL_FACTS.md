@@ -202,7 +202,7 @@ confirms them.
 | Patch Tone size | `00 00 01 01` (129 bytes) | Documentation-derived, corroborated by the golden fixture | Parameter Address Map p.225; 512 blocks of exactly 129 bytes in the fixture. |
 | Tone 1–4 offsets within a Patch | `10 00`, `12 00`, `14 00`, `16 00` | Documentation-derived, corroborated by the golden fixture | Parameter Address Map p.223; every patch in the fixture uses exactly these four offsets. |
 | User Performance layout | Common 66 bytes at `10 nn 00 00`, 16 Parts of 25 bytes at `10 nn 10 00`…`10 nn 1F 00` | Documentation-derived | Parameter Address Map §1-2, §1-2-1, §1-2-2, transcribed in [`XP60_PERFORMANCE_PARAMETER_MAP.md`](XP60_PERFORMANCE_PARAMETER_MAP.md). Roland's total sizes (`00 00 00 42`, `00 00 00 19`) match the fixture's block sizes exactly, and all 32 Performances and 512 Parts in it obey every declared range. |
-| User Rhythm Setup layout | Common 12 bytes at `10 4n 00 00`, 64 Notes of 58 bytes at `10 4n 23 00`…`10 4n 62 00` | **Observed in the fixture only** — §1-4 is not transcribed | Phase 8. Note offsets `23`..`62` are MIDI notes 35..98. This settles the two block shapes previously recorded here as unexplained. |
+| User Rhythm Setup layout | Common 12 bytes at `10 4n 00 00`, 64 Notes of 58 bytes at `10 4n 23 00`…`10 4n 62 00` | Documentation-derived | Parameter Address Map §1-4, transcribed in [`XP60_RHYTHM_PARAMETER_MAP.md`](XP60_RHYTHM_PARAMETER_MAP.md). Roland's totals (`00 00 00 0C`, `00 00 00 3A`) match the fixture's block sizes, and a Note's offset is its MIDI note number: Key# 35 at `23 00` because 0x23 is 35. |
 | Patch Common size, Tone offsets/sizes (XP-60) | — | Unknown | Phase 2 work; JV-1080 values must not be copied without confirmation. |
 
 ## 4. Safe read presets used by the Devices screen
@@ -229,12 +229,11 @@ All presets are RQ1 (read-only). None writes to the instrument.
 - **Identity Request** (`F0 7E dev 06 01 F7`). Whether the XP-60 answers a
   Universal Identity Request is unknown; it is a candidate for the hardware
   session because it would give a documentation-independent model check.
-- **The Rhythm Setup and System tables.** The Patch tables live in
-  `XP60_PATCH_PARAMETER_MAP.md` and the Performance tables in
-  `XP60_PERFORMANCE_PARAMETER_MAP.md`. Rhythm Setup (§1-4) and System Common
-  (§1-1) are the two still untranscribed; their total sizes read from the same
-  appendix are System Common `00 00 00 60`, Scale Tune `00 00 00 0C`, and the
-  Rhythm block sizes are recorded in §3 as observed rather than transcribed.
+- **The System tables.** Patch, Performance and Rhythm Setup are transcribed
+  (`XP60_PATCH_PARAMETER_MAP.md`, `XP60_PERFORMANCE_PARAMETER_MAP.md`,
+  `XP60_RHYTHM_PARAMETER_MAP.md`). System Common (§1-1) and its Scale Tune
+  (§1-1-2) are the last untranscribed tables; their total sizes read from the
+  same appendix are `00 00 00 60` and `00 00 00 0C`.
 
 ## 5.1 What the golden fixture corroborates
 

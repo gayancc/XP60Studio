@@ -397,9 +397,18 @@ needs the read-before-write, verify-by-read-back and restore machinery
 `services::UserMemoryWrite` provides for Patches. Keeping the two apart by
 address is `PATCH_SYNCHRONIZATION.md` §7.
 
-Still to come in this phase: persistent USER Performance write, the Rhythm
-editor (§1-4 untranscribed), System data (§1-1 untranscribed), snapshots and
+**Rhythm Setup is transcribed** (`protocol/XP60_RHYTHM_PARAMETER_MAP.md`) and
+generated the same way: Common is 12 bytes of name, a Note is 58, and a Note's
+offset *is* its MIDI key number — Key# 35 at `23 00` because 0x23 is 35. Both
+User Rhythm Setups in the golden fixture decode with no range warnings and all
+128 Notes round-trip byte for byte. The Rhythm *editor* is not built yet.
+
+Still to come in this phase: the Rhythm editor on top of those tables, System
+data (§1-1 untranscribed), persistent USER Performance write, snapshots and
 restore workflows, and the shared transfer/verification UI.
+
+Hardware verification for everything Phase 8 has built so far is open as
+`DEVICE_ACCEPTANCE.md` areas 16–18.
 
 At the end of this phase XP60Studio should cover the major practical capabilities expected from a mature XP-60 editor.
 

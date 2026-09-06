@@ -5,7 +5,9 @@
 # Patch Tone by tools/generate_patch_tables.py from
 # docs/protocol/XP60_PATCH_PARAMETER_MAP.md, Performance Common and Performance
 # Part by tools/generate_performance_tables.py from
-# docs/protocol/XP60_PERFORMANCE_PARAMETER_MAP.md. Do not edit them by hand.
+# docs/protocol/XP60_PERFORMANCE_PARAMETER_MAP.md, and Rhythm Common and Rhythm
+# Note by tools/generate_rhythm_tables.py from
+# docs/protocol/XP60_RHYTHM_PARAMETER_MAP.md. Do not edit them by hand.
 add_library(xp60studio_xpmodel STATIC
   ParameterDescriptor.h
   ParameterDescriptor.cpp
@@ -37,6 +39,8 @@ add_library(xp60studio_xpmodel STATIC
   generated/Xp60PatchTables.cpp
   generated/Xp60PerformanceTables.h
   generated/Xp60PerformanceTables.cpp
+  generated/Xp60RhythmTables.h
+  generated/Xp60RhythmTables.cpp
   Xp60PerformanceLayout.h
   Xp60PerformanceLayout.cpp
   Xp60Performance.h
