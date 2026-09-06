@@ -61,6 +61,7 @@ set(XP60STUDIO_QML_FILES
   Controls/WaveResultRow.qml
   Controls/WaveAvailabilityBadge.qml
   Controls/LibraryResultRow.qml
+  Controls/PerformancePartStrip.qml
   Controls/LibraryDetailsPanel.qml
   Controls/XpHardwareButton.qml
   Controls/BankPanelDisplay.qml
@@ -80,6 +81,7 @@ set(XP60STUDIO_QML_FILES
   Screens/LibraryScreen.qml
   Screens/BankBuilderScreen.qml
   Screens/ExpansionScreen.qml
+  Screens/PerformanceScreen.qml
   Screens/UnavailableScreen.qml
 )
 

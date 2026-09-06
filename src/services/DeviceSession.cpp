@@ -5,6 +5,7 @@
 #include "xp60/Xp60Device.h"
 #include "xpmodel/MemoryImage.h"
 #include "xpmodel/Xp60PatchLayout.h"
+#include "xpmodel/Xp60PerformanceLayout.h"
 
 #include <QMetaObject>
 #include <QtConcurrent/QtConcurrentRun>
@@ -552,27 +553,57 @@ bool DeviceSession::fetchTemporaryPatch(PatchFetchPurpose purpose)
 
 bool DeviceSession::fetchPatch(const roland::RolandAddress& patchBase, PatchFetchPurpose purpose)
 {
+    std::vector<BlockRequest> plan;
+    for (const auto& request : xpmodel::Xp60PatchLayout::fetchPlan(patchBase)) {
+        plan.push_back(BlockRequest{std::string(request.block.name), request.address, request.size});
+    }
+    return startBlockFetch(FetchKind::Patch, purpose, patchBase, std::move(plan), "patch");
+}
+
+bool DeviceSession::fetchPerformance(const roland::RolandAddress& base, PatchFetchPurpose purpose)
+{
+    std::vector<BlockRequest> plan;
+    for (const auto& request : xpmodel::Xp60PerformanceLayout::fetchPlan(base)) {
+        plan.push_back(BlockRequest{std::string(request.block.name), request.address, request.size});
+    }
+    return startBlockFetch(FetchKind::Performance, purpose, base, std::move(plan), "performance");
+}
+
+bool DeviceSession::fetchTemporaryPerformance(PatchFetchPurpose purpose)
+{
+    return fetchPerformance(xpmodel::Xp60PerformanceLayout::temporaryPerformanceAddress(), purpose);
+}
+
+// Starts a block fetch of either kind. Patches and Performances differ only in
+// the plan and in how the assembled image is decoded; the request machinery
+// below is identical, and having one copy of it means the pacing lesson learned
+// on hardware applies to both.
+bool DeviceSession::startBlockFetch(FetchKind kind, PatchFetchPurpose purpose, const roland::RolandAddress& base,
+                                    std::vector<BlockRequest> plan, std::string_view what)
+{
+    const std::string label(what);
     if (m_state != ConnectionState::Connected) {
-        logSystem(LogKind::Operation, LogSeverity::Warning, "Cannot fetch patch: not connected");
+        logSystem(LogKind::Operation, LogSeverity::Warning, "Cannot fetch " + label + ": not connected");
         return false;
     }
     if (m_patchFetch.state == PatchFetchState::InProgress) {
-        logSystem(LogKind::Operation, LogSeverity::Warning, "A patch fetch is already in progress");
+        logSystem(LogKind::Operation, LogSeverity::Warning, "A fetch is already in progress");
         return false;
     }
-    const auto plan = xpmodel::Xp60PatchLayout::fetchPlan(patchBase);
     if (plan.empty()) {
-        logSystem(LogKind::Operation, LogSeverity::Error, "Cannot fetch patch: address overflow at " + patchBase.toHexString());
+        logSystem(LogKind::Operation, LogSeverity::Error,
+                  "Cannot fetch " + label + ": address overflow at " + base.toHexString());
         return false;
     }
 
     m_patchFetch = PatchFetchStatus{};
+    m_patchFetch.kind = kind;
     m_patchFetch.purpose = purpose;
     m_patchFetch.state = PatchFetchState::InProgress;
-    m_patchFetch.base = patchBase;
+    m_patchFetch.base = base;
     m_patchFetch.totalBlocks = plan.size();
-    m_patchFetch.message = "Reading " + std::to_string(plan.size()) + " blocks from " + patchBase.toHexString();
-    m_patchFetchPlan = plan;
+    m_patchFetch.message = "Reading " + std::to_string(plan.size()) + " blocks from " + base.toHexString();
+    m_patchFetchPlan = std::move(plan);
 
     // Block reads are issued one at a time, each sent only after the previous
     // block's reply has completed.
@@ -588,11 +619,12 @@ bool DeviceSession::fetchPatch(const roland::RolandAddress& patchBase, PatchFetc
     // Waiting for each reply is used rather than a larger delay because the
     // safe delay is a property of the link, not of the instrument -- the
     // measured cliff sat between 30 and 33 ms on a USB-MIDI cable and would
-    // differ again over Bluetooth. Serialising is correct on any link.
+    // differ again over Bluetooth. Serialising is correct on any link. A
+    // Performance is seventeen blocks rather than five, so this matters more.
     if (!requestNextPatchBlock()) {
         return false;
     }
-    logSystem(LogKind::Operation, LogSeverity::Info, "Patch fetch started: " + m_patchFetch.message);
+    logSystem(LogKind::Operation, LogSeverity::Info, "Fetch started: " + m_patchFetch.message);
     emit patchFetchChanged();
     return true;
 }
@@ -613,7 +645,7 @@ bool DeviceSession::requestNextPatchBlock()
     if (!id.isValid()) {
         m_patchFetch.state = PatchFetchState::Failed;
         m_patchFetch.message = m_lastError.empty()
-            ? "Could not queue the request for " + std::string(request.block.name)
+            ? "Could not queue the request for " + request.name
             : m_lastError;
         for (const auto other : m_patchFetch.requests) {
             const auto* op = m_tracker.find(other);
@@ -714,6 +746,32 @@ void DeviceSession::updatePatchFetch()
         const auto* op = m_tracker.find(id);
         image.write(op->request.address(), op->data);
     }
+
+    // The only place the two kinds diverge.
+    if (m_patchFetch.kind == FetchKind::Performance) {
+        auto decoded = xpmodel::Xp60PerformanceCodec::decode(image, m_patchFetch.base);
+        m_patchFetch.decodeReport = decoded.describe();
+        if (!decoded.ok()) {
+            m_patchFetch.state = PatchFetchState::Failed;
+            m_patchFetch.message = "All blocks received but the performance did not decode ("
+                + std::to_string(decoded.errorCount()) + " error(s))";
+            logSystem(LogKind::Operation, LogSeverity::Error,
+                      "Performance fetch failed: " + m_patchFetch.message, m_patchFetch.decodeReport);
+        } else {
+            m_patchFetch.state = PatchFetchState::Completed;
+            m_patchFetch.performance = std::move(decoded.performance);
+            m_patchFetch.message = "Performance decoded: " + m_patchFetch.performance->summary();
+            if (decoded.hasWarnings()) {
+                m_patchFetch.message +=
+                    " (" + std::to_string(decoded.issues.size()) + " out-of-range value(s), kept verbatim)";
+            }
+            logSystem(LogKind::Operation, decoded.hasWarnings() ? LogSeverity::Warning : LogSeverity::Info,
+                      "Performance fetch complete: " + m_patchFetch.message, m_patchFetch.decodeReport);
+        }
+        emit patchFetchChanged();
+        return;
+    }
+
     auto decoded = xpmodel::Xp60PatchCodec::decode(image, m_patchFetch.base);
     m_patchFetch.decodeReport = decoded.describe();
     if (!decoded.ok()) {

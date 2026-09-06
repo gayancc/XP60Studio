@@ -101,6 +101,12 @@ xp60studio_add_test(tst_xp60_performance
 target_compile_definitions(tst_xp60_performance
   PRIVATE XP60STUDIO_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/xp60")
 
+xp60studio_add_test(tst_performance_editor
+  SOURCES tst_performance_editor.cpp
+  LIBS xp60studio::presentation)
+target_compile_definitions(tst_performance_editor
+  PRIVATE XP60STUDIO_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/xp60")
+
 xp60studio_add_test(tst_patch_diff
   SOURCES tst_patch_diff.cpp
   LIBS xp60studio::xpmodel)

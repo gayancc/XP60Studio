@@ -27,6 +27,8 @@ add_library(xp60studio_presentation STATIC
   Xp60WaveCatalog.generated.h
   PatchEditorViewModel.h
   PatchEditorViewModel.cpp
+  PerformanceViewModel.h
+  PerformanceViewModel.cpp
   PatchEffectsPresentation.cpp
   DevicesViewModel.h
   DevicesViewModel.cpp

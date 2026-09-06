@@ -11,6 +11,7 @@
 #include "roland/RolandSize.h"
 #include "roland/RolandSysExMessage.h"
 #include "xpmodel/Xp60PatchCodec.h"
+#include "xpmodel/Xp60PerformanceCodec.h"
 
 #include <QObject>
 #include <QTimer>
@@ -90,16 +91,34 @@ public:
 
     enum class PatchFetchPurpose { Editing, Transfer };
 
+    // What a block fetch is reading. The state machine underneath is the same
+    // either way — a list of (address, size) reads issued one at a time — and
+    // only the plan that builds it and the decode at the end differ.
+    enum class FetchKind { Patch, Performance };
+
+    // One block read of a fetch plan, layout-agnostic.
+    struct BlockRequest
+    {
+        std::string name;               // "Patch Common", "Part 1", ...
+        roland::RolandAddress address;
+        roland::RolandSize size;
+    };
+
     struct PatchFetchStatus
     {
         PatchFetchState state = PatchFetchState::Idle;
+        FetchKind kind = FetchKind::Patch;
         PatchFetchPurpose purpose = PatchFetchPurpose::Editing;
         roland::RolandAddress base;
         std::vector<protocol::RequestId> requests;  // one per block, layout order
         std::size_t completedBlocks = 0;
         std::size_t totalBlocks = 0;
         std::string message;                        // human readable outcome
-        std::optional<xpmodel::Xp60Patch> patch;    // present when Completed
+        // Present when Completed, according to `kind`. A Patch fetch leaves
+        // `performance` empty and vice versa, so a reader that only understands
+        // one kind sees nothing rather than the wrong thing.
+        std::optional<xpmodel::Xp60Patch> patch;
+        std::optional<xpmodel::Xp60Performance> performance;
         std::string decodeReport;                   // warnings / errors from the codec
         // The exact DT1 messages the instrument sent for this Patch, in arrival
         // order. Preserved so a Patch read from the device can be stored with
@@ -169,6 +188,14 @@ public:
 
     bool fetchPatch(const roland::RolandAddress& patchBase, PatchFetchPurpose purpose = PatchFetchPurpose::Editing);
     bool fetchTemporaryPatch(PatchFetchPurpose purpose = PatchFetchPurpose::Editing);
+
+    // Performance fetch ---------------------------------------------------------
+    // Issues the RQ1s of Xp60PerformanceLayout::fetchPlan(base): seventeen
+    // blocks, read one at a time for the same reason a Patch's five are.
+    // Shares the fetch slot with fetchPatch(), so only one may run at a time.
+    bool fetchPerformance(const roland::RolandAddress& base,
+                          PatchFetchPurpose purpose = PatchFetchPurpose::Editing);
+    bool fetchTemporaryPerformance(PatchFetchPurpose purpose = PatchFetchPurpose::Editing);
     void cancelPatchFetch();
     [[nodiscard]] const PatchFetchStatus& patchFetch() const noexcept { return m_patchFetch; }
 
@@ -229,6 +256,8 @@ private:
     void noticePatchSelection(midi::MidiByteSpan bytes);
     void updatePatchFetch();
     bool requestNextPatchBlock();
+    bool startBlockFetch(FetchKind kind, PatchFetchPurpose purpose, const roland::RolandAddress& base,
+                         std::vector<BlockRequest> plan, std::string_view what);
     void handleTransportError(midi::TransportError error);
     void handleEndpointsChanged();
     void checkOpenEndpoints();
@@ -283,7 +312,7 @@ private:
     PatchFetchStatus m_patchFetch;
     // Remaining blocks of the fetch in progress. Block reads are issued one at
     // a time: see fetchPatch() for why the XP-60 cannot be pipelined.
-    std::vector<xpmodel::Xp60PatchLayout::ReadRequest> m_patchFetchPlan;
+    std::vector<BlockRequest> m_patchFetchPlan;
     bool m_patchFetchAdvancing = false;
 
     Statistics m_statistics;

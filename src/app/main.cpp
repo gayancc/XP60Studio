@@ -18,6 +18,7 @@
 #include "services/LibraryImportService.h"
 #include "presentation/DevicesViewModel.h"
 #include "presentation/ExpansionViewModel.h"
+#include "presentation/PerformanceViewModel.h"
 #include "presentation/PatchEditorViewModel.h"
 #include "services/PatchWorkspace.h"
 #include "services/UserBankRead.h"
@@ -213,6 +214,11 @@ int main(int argc, char* argv[])
     QObject::connect(&expansion, &xp60studio::presentation::ExpansionViewModel::profileChanged,
                      &bankSourceModel, &xp60studio::presentation::LibraryListModel::expansionProfileChanged);
 
+    // The Performance editor keeps its own working copy: a Performance names
+    // sixteen Patches and the musician moves between them, so opening a Part's
+    // Patch must not destroy the Performance being edited.
+    xp60studio::presentation::PerformanceViewModel performance(session);
+
     xp60studio::services::LibraryImportService libraryImport(libraryDatabase);
     xp60studio::services::LibraryExportService libraryExport(libraryDatabase);
     xp60studio::presentation::LibraryTransferViewModel libraryTransfer(libraryImport, libraryExport);
@@ -268,6 +274,7 @@ int main(int argc, char* argv[])
         {QStringLiteral("libraryTransfer"), QVariant::fromValue(&libraryTransfer)},
         {QStringLiteral("bankBuilder"), QVariant::fromValue(&bankBuilder)},
         {QStringLiteral("expansion"), QVariant::fromValue(&expansion)},
+        {QStringLiteral("performance"), QVariant::fromValue(&performance)},
         {QStringLiteral("bankLibrary"), QVariant::fromValue(&bankSourceModel)},
         {QStringLiteral("dashboard"), QVariant::fromValue(&dashboard)},
     });

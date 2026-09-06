@@ -382,9 +382,24 @@ Temporary Performance (`00 00 1F 19`). All 32 Performances in the golden fixture
 decode with no range warnings. And every one of them round-trips byte for byte
 through the codec.
 
-Still to come in this phase: the Performance editor and 16-Part mixer UI, the
-Rhythm editor (§1-4 untranscribed), System data (§1-1 untranscribed), snapshots
-and restore workflows, and the shared transfer/verification UI.
+The Performance editor and its **16-Part mixer** are in on top of that:
+`PerformanceViewModel` owns the working Performance with its own undo history —
+separate from `PatchWorkspace`, because a Performance names sixteen Patches and
+opening a Part's Patch must not destroy the Performance being edited — and
+`PerformanceScreen` draws it as sixteen channel strips with a Part inspector.
+Reading a Performance off the instrument reuses the Patch fetch machinery: the
+block state machine is now layout-agnostic, so the hardware pacing lesson
+(§2.3, one request at a time) applies to seventeen blocks as it did to five.
+
+**Send writes the temporary Performance only** (`01 00 00 00`) — audition.
+Writing a USER Performance is a persistent write and is not offered yet: it
+needs the read-before-write, verify-by-read-back and restore machinery
+`services::UserMemoryWrite` provides for Patches. Keeping the two apart by
+address is `PATCH_SYNCHRONIZATION.md` §7.
+
+Still to come in this phase: persistent USER Performance write, the Rhythm
+editor (§1-4 untranscribed), System data (§1-1 untranscribed), snapshots and
+restore workflows, and the shared transfer/verification UI.
 
 At the end of this phase XP60Studio should cover the major practical capabilities expected from a mature XP-60 editor.
 

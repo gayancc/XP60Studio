@@ -15,6 +15,7 @@ QQC.ApplicationWindow {
     required property LibraryTransferViewModel libraryTransfer
     required property BankBuilderViewModel bankBuilder
     required property ExpansionViewModel expansion
+    required property PerformanceViewModel performance
     required property LibraryListModel bankLibrary
     required property DashboardViewModel dashboard
 
@@ -97,6 +98,13 @@ QQC.ApplicationWindow {
                     onEditRequested: window.shell.navigate("editor")
                 }
 
+                PerformanceScreen {
+                    objectName: "performanceScreen"
+                    anchors.fill: parent
+                    visible: window.shell.currentScreen === "performance"
+                    performance: window.performance
+                }
+
                 ExpansionScreen {
                     objectName: "expansionScreen"
                     anchors.fill: parent
@@ -111,6 +119,7 @@ QQC.ApplicationWindow {
                              && window.shell.currentScreen !== "banks"
                              && window.shell.currentScreen !== "dashboard"
                              && window.shell.currentScreen !== "expansion"
+                             && window.shell.currentScreen !== "performance"
                     screenTitle: window.shell.currentScreenTitle
                     availability: "a later phase"
                 }

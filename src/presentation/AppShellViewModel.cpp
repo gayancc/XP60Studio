@@ -20,7 +20,7 @@ const std::vector<AppShellViewModel::NavigationItem>& items()
         {QStringLiteral("editor"), QStringLiteral("Editor"), QStringLiteral("✎"), true, QString()},
         {QStringLiteral("banks"), QStringLiteral("Banks"), QStringLiteral("▥"), true, QString()},
         {QStringLiteral("expansion"), QStringLiteral("Expansion"), QStringLiteral("▣"), true, QString()},
-        {QStringLiteral("performance"), QStringLiteral("Performance"), QStringLiteral("♪"), false, QStringLiteral("Coming soon")},
+        {QStringLiteral("performance"), QStringLiteral("Performance"), QStringLiteral("♪"), true, QStringLiteral("")},
         {QStringLiteral("compare"), QStringLiteral("Compare"), QStringLiteral("⇄"), false, QStringLiteral("Coming soon")},
         {QStringLiteral("devices"), QStringLiteral("Devices"), QStringLiteral("⌁"), true, QString()},
         {QStringLiteral("settings"), QStringLiteral("Settings"), QStringLiteral("⚙"), false, QStringLiteral("Coming soon")},
