@@ -23,6 +23,8 @@ add_library(xp60studio_services STATIC
   CategorySuggestion.cpp
   SnapshotStore.h
   SnapshotStore.cpp
+  SnapshotCapture.h
+  SnapshotCapture.cpp
   RestorePlan.h
   RestorePlan.cpp
 )

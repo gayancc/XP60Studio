@@ -463,10 +463,24 @@ confirmation text also names the trap peculiar to Performances: a Performance
 names sixteen Patches by bank and number but does not carry them, so writing one
 does not bring its sounds with it.
 
+**Taking a snapshot from the instrument is in** (`services::SnapshotCapture`),
+which is what makes the destructive half usable: every restore plan requires a
+safety snapshot, and this is what takes it. It is RQ1-only and has no send path,
+so it cannot alter the instrument even if it is wrong, and it keeps the DT1
+bytes the XP-60 actually sent (`PatchFetchStatus::originalSysEx`) rather than a
+re-encoding of the decoded model — which is what makes the result a backup
+rather than a recreation.
+
+It reads User Patches and User Performances, the two areas with a documented
+block layout and a fetch plan. Rhythm Setups and System have neither yet, so
+asking for them is **refused by name, and refuses the whole request** rather
+than quietly returning a snapshot missing an area the user asked for. A run that
+ends early — cancelled, disconnected, a read that failed — keeps what arrived,
+and `RestorePlan` then reports that snapshot as partial rather than complete.
+
 Still to come in this phase: the Rhythm and System editors on top of those
-tables, and the shared transfer/verification UI. Sending a restore plan to
-hardware is deliberately a separate service from building one, and is part of
-that work.
+tables, the service that sends a restore plan to hardware, and the shared
+transfer/verification UI.
 
 Hardware verification for everything Phase 8 has built so far is open as
 `DEVICE_ACCEPTANCE.md` areas 16–18.
