@@ -478,9 +478,31 @@ than quietly returning a snapshot missing an area the user asked for. A run that
 ends early — cancelled, disconnected, a read that failed — keeps what arrived,
 and `RestorePlan` then reports that snapshot as partial rather than complete.
 
+**Sending a restore is in** (`services::SnapshotRestore`), which completes the
+workflow: capture → save → plan → restore → verify. Three rules it enforces
+rather than documents:
+
+- **The safety snapshot is saved to disk before a single byte goes out.** Saved,
+  not held: a backup that dies with the process is not a backup, and the moment
+  it is needed is usually the moment something has gone wrong. If the capture
+  fails or the file cannot be written, the restore aborts having written
+  nothing. There is no flag to skip it.
+- **A plan whose areas cannot be captured is refused.** Without a safety
+  snapshot there is no undo, so restoring an area this build cannot read is
+  refused rather than performed unprotected — which is why Rhythm Setups, which
+  a plan *can* restore, cannot be restored yet.
+- **Everything written is read back and compared, address by address**, against
+  what the plan intended and nothing else. A restore that did not take is a
+  mismatch, never a success, and the message names User Memory Protect as the
+  likely cause and says where the previous contents are.
+
+Cancel is honoured only before the send begins. Once DT1s are going out,
+stopping half-way would leave the instrument holding a mixture of two states —
+the one outcome the whole design avoids — so the run is seen through and
+verified, and the safety snapshot is the way back.
+
 Still to come in this phase: the Rhythm and System editors on top of those
-tables, the service that sends a restore plan to hardware, and the shared
-transfer/verification UI.
+tables, and the shared transfer/verification UI.
 
 Hardware verification for everything Phase 8 has built so far is open as
 `DEVICE_ACCEPTANCE.md` areas 16–18.

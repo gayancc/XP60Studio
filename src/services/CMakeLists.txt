@@ -25,6 +25,8 @@ add_library(xp60studio_services STATIC
   SnapshotStore.cpp
   SnapshotCapture.h
   SnapshotCapture.cpp
+  SnapshotRestore.h
+  SnapshotRestore.cpp
   RestorePlan.h
   RestorePlan.cpp
 )
