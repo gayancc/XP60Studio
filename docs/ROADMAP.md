@@ -449,10 +449,24 @@ memory** — 32 Performances, 2 Rhythm Setups and 128 Patches, 1314 messages. Th
 are the Rhythm Setup Notes and Commons, identified by the transcriptions done
 earlier in this phase. The README has been corrected.
 
+**Persistent USER Performance write is in** (`services::UserPerformanceWrite`),
+carrying the same safety envelope as the Patch writer: nothing is written to a
+destination that has not first been read and kept, every write is verified by
+reading it back and comparing, the snapshots are the undo, and arming is
+separate and single-use. It is a separate class from `UserMemoryWrite` rather
+than a mode of it, deliberately: merging them would save perhaps two hundred
+lines and cost the property that matters most about both — each hard-codes the
+region it can reach and **cannot be pointed at the other**, whatever a caller
+passes. In the one place where a bug overwrites permanent memory, a wrong
+argument being unrepresentable is worth more than the duplication. Its
+confirmation text also names the trap peculiar to Performances: a Performance
+names sixteen Patches by bank and number but does not carry them, so writing one
+does not bring its sounds with it.
+
 Still to come in this phase: the Rhythm and System editors on top of those
-tables, persistent USER Performance write, and the shared transfer/verification
-UI. Sending a restore plan to hardware is deliberately a separate service from
-building one, and is part of the transfer/verification work.
+tables, and the shared transfer/verification UI. Sending a restore plan to
+hardware is deliberately a separate service from building one, and is part of
+that work.
 
 Hardware verification for everything Phase 8 has built so far is open as
 `DEVICE_ACCEPTANCE.md` areas 16–18.
