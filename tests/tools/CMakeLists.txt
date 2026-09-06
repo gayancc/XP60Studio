@@ -45,3 +45,12 @@ target_link_libraries(xp60studio_export_roundtrip PRIVATE
   xp60studio::services
   xp60studio::xpmodel)
 set_target_properties(xp60studio_export_roundtrip PROPERTIES AUTOMOC ON WIN32_EXECUTABLE FALSE)
+
+# Offline corpus extraction uses the production SysEx importer and the exact
+# runtime feature extractor. It opens no MIDI or audio device.
+qt_add_executable(xp60studio_sounddna_export sounddna_corpus_export.cpp)
+target_link_libraries(xp60studio_sounddna_export PRIVATE
+  Qt6::Core
+  xp60studio::library
+  xp60studio::sounddna)
+set_target_properties(xp60studio_sounddna_export PROPERTIES WIN32_EXECUTABLE FALSE)

@@ -137,6 +137,17 @@ TestCase {
         compare(deviceBadge.text, "XP TEMP")
     }
 
+    function test_play_mode_shows_the_evidence_gated_sound_dna_workspace() {
+        testEditor.disclosure = 0
+        var screen = createTemporaryObject(screenComponent, testCase)
+        var panel = findChild(screen, "soundDnaPanel")
+        verify(panel)
+        verify(panel.visible)
+        verify(!testEditor.soundDnaAvailable)
+        compare(testEditor.soundDnaDimensions.length, 0)
+        verify(testEditor.soundDnaStatusText.toLowerCase().indexOf("evidence") >= 0)
+    }
+
     function test_four_tone_cards_are_present_and_colour_coded() {
         var screen = createTemporaryObject(screenComponent, testCase)
         verify(screen)

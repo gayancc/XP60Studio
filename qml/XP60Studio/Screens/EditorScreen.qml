@@ -805,7 +805,18 @@ Item {
                 note: qsTr("Numeric fields edit raw XP values; menu labels are from the parameter map. EFX type-specific meanings and physical timing units remain unverified.")
             }
 
-            // Play mode: musical summary — exact patch commons stay behind disclosure
+            SoundDnaPanel {
+                objectName: "soundDnaPanel"
+                visible: root.editor.disclosure === 0
+                Layout.fillWidth: true
+                Layout.leftMargin: Metrics.screenPadding
+                Layout.rightMargin: Metrics.screenPadding
+                Layout.bottomMargin: Metrics.screenPadding
+                editor: root.editor
+            }
+
+            // Existing Play workspace remains available beside the optional
+            // evidence-gated intelligence layer.
             XpCard {
                 visible: root.editor.disclosure === 0
                 Layout.fillWidth: true

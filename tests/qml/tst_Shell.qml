@@ -48,15 +48,15 @@ TestCase {
     function test_navigation_rail_lists_all_destinations_and_gates_unbuilt_ones() {
         var rail = createTemporaryObject(railComponent, testCase)
         verify(rail)
-        compare(testShell.navigationItems.length, 8)
+        compare(testShell.navigationItems.length, 9)
         var enabled = 0
         for (var i = 0; i < testShell.navigationItems.length; ++i) {
             if (testShell.navigationItems[i].enabled) enabled++
         }
-        compare(enabled, 5) // Dashboard, Library, Editor, Banks and Devices
+        compare(enabled, 7) // Adds the implemented Expansion and Performance screens.
         compare(testShell.currentScreen, "devices")
         // Disabled destinations must not navigate.
-        compare(testShell.navigate("performance"), false)
+        compare(testShell.navigate("compare"), false)
         compare(testShell.currentScreen, "devices")
         // Enabled ones must.
         compare(testShell.navigate("editor"), true)

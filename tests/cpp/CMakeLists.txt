@@ -123,6 +123,14 @@ xp60studio_add_test(tst_patch_diff
 target_compile_definitions(tst_patch_diff
   PRIVATE XP60STUDIO_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/xp60")
 
+# Derived Sound DNA runtime: complete feature retention, hard evidence gates,
+# deterministic scoring/contribution and constrained whole-Patch transforms.
+xp60studio_add_test(tst_sounddna
+  SOURCES tst_sounddna.cpp
+  LIBS xp60studio::sounddna xp60studio::simulation)
+target_compile_definitions(tst_sounddna
+  PRIVATE XP60STUDIO_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/xp60")
+
 xp60studio_add_test(tst_patch_transfer
   SOURCES tst_patch_transfer.cpp
   LIBS xp60studio::services xp60studio::simulation)
@@ -245,6 +253,18 @@ if(Python3_Interpreter_FOUND)
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
   add_test(NAME tst_capture_diff
     COMMAND Python3::Interpreter ${CMAKE_SOURCE_DIR}/tools/capture_diff.py --self-test
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+  add_test(NAME tst_sounddna_model_current
+    COMMAND Python3::Interpreter ${CMAKE_SOURCE_DIR}/tools/generate_sounddna_model.py --check
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+  add_test(NAME tst_sounddna_model_validation
+    COMMAND Python3::Interpreter ${CMAKE_SOURCE_DIR}/tools/generate_sounddna_model.py --self-test
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+  add_test(NAME tst_sounddna_analysis
+    COMMAND Python3::Interpreter ${CMAKE_SOURCE_DIR}/tools/sounddna_analysis.py self-test
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+  add_test(NAME tst_sounddna_stimulus
+    COMMAND Python3::Interpreter ${CMAKE_SOURCE_DIR}/tools/generate_sounddna_stimulus.py --self-test
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 endif()
 

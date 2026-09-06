@@ -7,6 +7,7 @@
 #   diagnostics - structured protocol log entries and formatting   (no Qt)
 #   xpmodel     - XP domain model & codecs: parameter tables, block  (no Qt)
 #                 codec, memory image, .syx stream parsing
+#   sounddna    - derived Patch analysis and constrained transforms  (no Qt)
 #   library     - fingerprints, provenance, .syx import/export,    (Qt Core)
 #                 library metadata and persistence
 #   services    - DeviceSession orchestration                      (Qt Core)
@@ -19,6 +20,7 @@ add_subdirectory(midi)
 add_subdirectory(protocol)
 add_subdirectory(diagnostics)
 add_subdirectory(xpmodel)
+add_subdirectory(sounddna)
 add_subdirectory(library)
 add_subdirectory(services)
 add_subdirectory(simulation)

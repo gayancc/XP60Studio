@@ -185,8 +185,10 @@ TestCase {
 
         verify(bankOne.width > bankOne.height * 2,
                "BANK keys are broad, low-profile hardware switches")
-        compare(Math.round(bankOne.width), Math.round(bankEight.width))
-        compare(Math.round(bankOne.width), Math.round(numberOne.width))
+        verify(Math.abs(bankOne.width - bankEight.width) <= 1,
+               "equal Layout cells may differ by one physical pixel after rounding")
+        verify(Math.abs(bankOne.width - numberOne.width) <= 1,
+               "equal Layout cells may differ by one physical pixel after rounding")
         verify(findChild(screen, "subgroupA").width > 80,
                "SUBGROUP has room for its range caption")
     }

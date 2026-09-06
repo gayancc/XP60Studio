@@ -48,6 +48,7 @@ set(XP60STUDIO_QML_FILES
   Controls/EffectRouteSelector.qml
   Controls/EffectParameterGraph.qml
   Controls/FourToneMixer.qml
+  Controls/SoundDnaPanel.qml
   Controls/LfoShapeSelector.qml
   Controls/LfoPreview.qml
   Controls/DeviceConnectionBar.qml

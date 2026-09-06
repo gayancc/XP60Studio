@@ -7,6 +7,8 @@
 #include "presentation/ToneViewModel.h"
 #include "services/PatchTransfer.h"
 #include "services/PatchWorkspace.h"
+#include "sounddna/PatchFeatureExtractor.h"
+#include "sounddna/SoundDnaKnowledgeModel.h"
 
 #include <QSignalSpy>
 #include <QAbstractItemModelTester>
@@ -15,6 +17,8 @@
 
 #include <chrono>
 #include <memory>
+#include <optional>
+#include <utility>
 
 using namespace xp60studio;
 using namespace xp60studio::presentation;
@@ -27,6 +31,19 @@ namespace {
 
 const RolandAddress kTemp = temporaryPatchAddress();
 
+sounddna::SoundDnaKnowledgeModel validatedDnaModel()
+{
+    sounddna::DimensionEvidence evidence{128, 6, 0.84, 0.76, 0.78, 10, true, true,
+                                         0.82, 4.4, 0.90, 0.80};
+    sounddna::DimensionModel body{
+        "body", "Body", "test patches", {}, 0.0,
+        {{"tone.1.tone_level", {{0.0, -1.0}, {1.0, 1.0}}, 0.5, 0.0, 1.0, true, 1.0, 1.0},
+         {"tone.2.tone_level", {{0.0, -0.5}, {1.0, 0.5}}, 0.5, 0.0, 1.0, true, 1.0, 1.0}},
+        {{"tone.1.tone_level", "tone.2.tone_level", 0.25}},
+        {{-2.0, 0.0}, {0.0, 50.0}, {2.0, 100.0}}, evidence, false, {}};
+    return {"test/1", std::string(sounddna::PatchFeatureExtractor::kSchemaVersion), {body}};
+}
+
 struct Fixture
 {
     midi::LoopbackMidiTransport* transport = nullptr;
@@ -37,7 +54,8 @@ struct Fixture
     std::unique_ptr<FakeXp60> device;
     protocol::TimePoint now{std::chrono::duration_cast<protocol::Clock::duration>(1000ms)};
 
-    explicit Fixture(int patchInTemporaryArea = 4)
+    explicit Fixture(int patchInTemporaryArea = 4,
+                     std::optional<sounddna::SoundDnaKnowledgeModel> dnaModel = std::nullopt)
     {
         auto loopback = std::make_unique<midi::LoopbackMidiTransport>();
         loopback->addInput("in-1", "XP-60 IN");
@@ -50,7 +68,9 @@ struct Fixture
         pacing.interMessageDelay = 0ms;
         session->setPacing(pacing);
         transfer = std::make_unique<services::PatchTransfer>(*session);
-        editor = std::make_unique<PatchEditorViewModel>(*session, workspace, transfer.get());
+        editor = dnaModel
+            ? std::make_unique<PatchEditorViewModel>(*session, workspace, transfer.get(), std::move(*dnaModel))
+            : std::make_unique<PatchEditorViewModel>(*session, workspace, transfer.get());
         device = std::make_unique<FakeXp60>(temporaryAreaWith(patchInTemporaryArea));
         session->connectEndpoints("in-1", "out-1");
     }
@@ -139,6 +159,61 @@ class PatchEditorTest : public QObject
     Q_OBJECT
 
 private slots:
+    void unvalidatedSoundDnaIsEvidenceGatedAndCannotMutateThePatch()
+    {
+        Fixture f;
+        f.loadPatch();
+        const auto before = f.editor->patch();
+        QVERIFY(!f.editor->soundDnaAvailable());
+        QVERIFY(f.editor->soundDnaDimensions().isEmpty());
+        QVERIFY(f.editor->soundDnaStatusText().contains(QStringLiteral("evidence"), Qt::CaseInsensitive));
+        f.editor->beginSoundDnaGesture();
+        f.editor->previewSoundDnaTarget(QStringLiteral("warmth"), 80);
+        f.editor->endSoundDnaGesture();
+        QVERIFY(f.editor->patch() == before);
+        QVERIFY(!f.editor->canUndo());
+    }
+
+    void soundDnaDragIsOneWorkspaceUndoAndKeepsItsDelegateStable()
+    {
+        Fixture f(4, validatedDnaModel());
+        f.loadPatch();
+        const auto before = f.editor->patch();
+        const int score = f.editor->soundDnaDimensions().first().toMap().value("score").toInt();
+        const int target = score > 50 ? score - 12 : score + 12;
+        QSignalSpy dnaChanged(f.editor.get(), &PatchEditorViewModel::soundDnaChanged);
+        f.editor->beginSoundDnaGesture();
+        f.editor->previewSoundDnaTarget(QStringLiteral("body"), target);
+        QVERIFY(f.editor->patch() != before);
+        QCOMPARE(dnaChanged.count(), 0);
+        f.editor->endSoundDnaGesture();
+        QCOMPARE(dnaChanged.count(), 1);
+        QVERIFY(f.editor->canUndo());
+        f.editor->undo();
+        QVERIFY(f.editor->patch() == before);
+        QVERIFY(!f.editor->canUndo());
+    }
+
+    void soundDnaUsesTheExistingLiveTemporaryPatchPath()
+    {
+        Fixture f(4, validatedDnaModel());
+        f.loadPatch();
+        f.editor->armWrite();
+        f.editor->startLiveAudition();
+        f.pump();
+        const int score = f.editor->soundDnaDimensions().first().toMap().value("score").toInt();
+        const int target = score > 50 ? score - 12 : score + 12;
+        f.editor->beginSoundDnaGesture();
+        f.editor->previewSoundDnaTarget(QStringLiteral("body"), target);
+        f.editor->endSoundDnaGesture();
+        const auto edited = f.editor->patch();
+        QVERIFY(f.pumpUntilTrue([&] {
+            return patchFrom(f.device->memory(), temporaryPatchAddress()) == edited;
+        }));
+        f.editor->stopLiveAudition();
+        QVERIFY(f.pumpUntilTrue([&] { return !f.editor->liveAudition(); }));
+    }
+
     void routingFollowsSelectionHistoryAndABWithoutSending()
     {
         Fixture f;

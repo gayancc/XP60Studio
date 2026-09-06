@@ -24,6 +24,8 @@ void PatchWorkspace::adopt(const xpmodel::Xp60Patch& patch, PatchOrigin origin)
     m_redo.clear();
     m_gesture = false;
     m_gestureHasUndo = false;
+    m_gestureBase.reset();
+    m_gestureRedoBefore.clear();
 
     // A different Patch is a different question about the instrument. Whatever
     // was verified about the previous one says nothing about this one, so the
@@ -49,6 +51,8 @@ void PatchWorkspace::clear()
     m_redo.clear();
     m_gesture = false;
     m_gestureHasUndo = false;
+    m_gestureBase.reset();
+    m_gestureRedoBefore.clear();
     m_deviceState = m_connected ? DeviceState::NotSent : DeviceState::Offline;
     m_deviceMessage.clear();
 
@@ -97,14 +101,29 @@ bool PatchWorkspace::amend(xpmodel::Xp60Patch patch)
 
 void PatchWorkspace::beginGesture()
 {
+    if (m_gesture) return;
     m_gesture = true;
     m_gestureHasUndo = false;
+    m_gestureBase = m_working;
+    m_gestureRedoBefore = m_redo;
 }
 
 void PatchWorkspace::endGesture()
 {
+    const bool returnedToOrigin = m_gesture && m_gestureHasUndo && m_working && m_gestureBase
+        && *m_working == *m_gestureBase;
+    if (returnedToOrigin) {
+        // A drag that finishes where it started is not an edit. Remove the
+        // provisional undo step and restore the redo future that the first
+        // movement temporarily displaced.
+        if (!m_undo.empty()) m_undo.pop_back();
+        m_redo = m_gestureRedoBefore;
+    }
     m_gesture = false;
     m_gestureHasUndo = false;
+    m_gestureBase.reset();
+    m_gestureRedoBefore.clear();
+    if (returnedToOrigin) emit changed();
 }
 
 void PatchWorkspace::pushUndo(const QString& label)

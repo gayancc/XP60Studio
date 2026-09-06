@@ -198,6 +198,8 @@ private:
     std::deque<Step> m_redo;
     bool m_gesture = false;
     bool m_gestureHasUndo = false;
+    std::optional<xpmodel::Xp60Patch> m_gestureBase;
+    std::deque<Step> m_gestureRedoBefore;
 
     bool m_connected = false;
     DeviceState m_deviceState = DeviceState::Offline;

@@ -69,6 +69,7 @@ private slots:
     void adoptingStartsCleanAndForgetsThePreviousPatch();
     void anEditThatChangesNothingIsNotAnEdit();
     void aGestureIsOneUndoStep();
+    void aGestureReturningToItsOriginRestoresRedo();
     void undoRedoAndRevertWalkTheWorkingPatch();
 
     // The two axes
@@ -174,6 +175,26 @@ void TestPatchWorkspace::aGestureIsOneUndoStep()
     QVERIFY(workspace.undo());
     QVERIFY(workspace.working() == before);
     QVERIFY(!workspace.canUndo());
+}
+
+void TestPatchWorkspace::aGestureReturningToItsOriginRestoresRedo()
+{
+    PatchWorkspace workspace;
+    workspace.adopt(patchAt(0), PatchOrigin::library(1));
+    const auto origin = workspace.working();
+    workspace.edit(QStringLiteral("Future"), [](Xp60Patch& p) { p.common().setRawAt(kEfxParam1, 17); });
+    QVERIFY(workspace.undo());
+    QVERIFY(workspace.canRedo());
+
+    workspace.beginGesture();
+    workspace.edit(QStringLiteral("Level"), [](Xp60Patch& p) { p.common().setRawAt(kEfxParam1, 42); });
+    workspace.commit(origin, QStringLiteral("Level"));
+    workspace.endGesture();
+
+    QVERIFY(workspace.working() == origin);
+    QVERIFY(!workspace.canUndo());
+    QVERIFY(workspace.canRedo());
+    QCOMPARE(workspace.redoLabel(), QStringLiteral("Future"));
 }
 
 void TestPatchWorkspace::undoRedoAndRevertWalkTheWorkingPatch()

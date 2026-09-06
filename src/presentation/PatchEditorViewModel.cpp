@@ -1,6 +1,7 @@
 #include "presentation/PatchEditorViewModel.h"
 
 #include "library/ExpansionBoardCatalog.h"
+#include "sounddna/generated/SoundDnaModel.generated.h"
 #include "xpmodel/Xp60WaveIdentifier.h"
 
 #include "xp60/Xp60Device.h"
@@ -9,8 +10,10 @@
 #include "xpmodel/Xp60PatchRouting.h"
 
 #include <QVariantMap>
+#include <QStringList>
 
 #include <algorithm>
+#include <utility>
 
 namespace xp60studio::presentation {
 
@@ -33,10 +36,20 @@ QString toQString(std::string_view text)
 
 PatchEditorViewModel::PatchEditorViewModel(services::DeviceSession& session, services::PatchWorkspace& workspace,
                                            services::PatchTransfer* transfer, QObject* parent)
+    : PatchEditorViewModel(session, workspace, transfer, sounddna::generated::model(), parent)
+{
+}
+
+PatchEditorViewModel::PatchEditorViewModel(services::DeviceSession& session, services::PatchWorkspace& workspace,
+                                           services::PatchTransfer* transfer,
+                                           sounddna::SoundDnaKnowledgeModel dnaModel, QObject* parent)
     : QObject(parent)
     , m_session(session)
     , m_workspace(workspace)
     , m_transfer(transfer)
+    , m_dnaModel(std::move(dnaModel))
+    , m_dnaAnalyzer(m_dnaModel)
+    , m_dnaTransformer(m_dnaModel)
 {
     for (const auto tone : ToneIndex::all()) {
         m_tones.push_back(std::make_unique<ToneViewModel>(*this, tone, this));
@@ -118,6 +131,10 @@ void PatchEditorViewModel::adoptFetchedPatch()
     }
     // A freshly read Patch becomes the new A side; local edits start over.
     endEffectGesture();
+    if (m_dnaGestureBase) m_workspace.endGesture();
+    m_dnaGestureBase.reset();
+    m_applyingDnaGesture = false;
+    m_dnaLastExplanation.clear();
     const bool temporary = fetch.base == xpmodel::Xp60PatchLayout::temporaryPatchAddress();
     m_workspace.adopt(*fetch.patch, temporary ? services::PatchOrigin::temporary()
                                               : services::PatchOrigin{});
@@ -139,18 +156,23 @@ void PatchEditorViewModel::adoptFetchedPatch()
 // instrument.
 bool PatchEditorViewModel::commitEdit(xpmodel::Xp60Patch edited, const QString& label)
 {
+    if (!m_applyingDnaGesture) {
+        endSoundDnaGesture();
+    }
     if (!m_applyingEffectGesture) {
         endEffectGesture();
     }
     if (!m_workspace.commit(std::move(edited), label)) {
         return false;
     }
+    if (!m_applyingDnaGesture) m_dnaLastExplanation.clear();
     emitAll();
     return true;
 }
 
 void PatchEditorViewModel::emitAll()
 {
+    refreshSoundDna();
     queueAudition();
     for (auto& tone : m_tones) {
         tone->notifyChanged();
@@ -160,6 +182,133 @@ void PatchEditorViewModel::emitAll()
     emit rangeChanged();
     emit writeChanged();
     emit compatibilityChanged();
+    // Replacing a QVariantList model destroys Slider delegates. Hold this
+    // notification until release so a DNA gesture remains continuous.
+    if (!m_dnaGestureBase) emit soundDnaChanged();
+}
+
+QString transformationExplanation(const sounddna::SoundDnaTransformationResult& result,
+                                  std::string_view dimensionId)
+{
+    QStringList parts;
+    const auto* before = result.before.find(dimensionId);
+    const auto* after = result.after.find(dimensionId);
+    if (before && after) {
+        parts << QStringLiteral("%1 %2 → %3")
+                     .arg(toQString(before->label).toUpper())
+                     .arg(before->score)
+                     .arg(after->score);
+    }
+    for (const auto& change : result.parameterChanges) {
+        const QString scope = change.toneNumber > 0
+            ? QStringLiteral("Tone %1").arg(change.toneNumber) : QStringLiteral("Patch");
+        parts << QStringLiteral("%1: %2 %3 → %4")
+                     .arg(scope, toQString(change.parameterName))
+                     .arg(change.beforeRaw).arg(change.afterRaw);
+    }
+    if (!result.secondaryEffects.empty()) {
+        QStringList secondary;
+        for (const auto& effect : result.secondaryEffects) {
+            const int delta = effect.afterScore - effect.beforeScore;
+            secondary << QStringLiteral("%1 %2%3").arg(toQString(effect.label))
+                             .arg(delta >= 0 ? QStringLiteral("+") : QString()).arg(delta);
+        }
+        parts << QStringLiteral("Expected secondary: %1").arg(secondary.join(QStringLiteral(", ")));
+    }
+    if (!result.limitation.empty()) parts << toQString(result.limitation);
+    return parts.join(QStringLiteral(" · "));
+}
+
+void PatchEditorViewModel::refreshSoundDna()
+{
+    if (!hasPatch()) {
+        m_dnaProfile = {};
+        m_dnaProfile.modelVersion = m_dnaModel.version();
+        m_dnaProfile.unavailableReason = "Load a Patch to analyze Sound DNA.";
+        return;
+    }
+    m_dnaProfile = m_dnaAnalyzer.analyze(m_dnaExtractor.extract(patch()));
+}
+
+QString PatchEditorViewModel::soundDnaStatusText() const
+{
+    if (m_dnaProfile.available()) return tr("Validated against comparable XP-60 patches");
+    return tr("Evidence gate: %1").arg(QString::fromStdString(m_dnaProfile.unavailableReason.empty()
+        ? m_dnaModel.unavailableReason() : m_dnaProfile.unavailableReason));
+}
+
+QString PatchEditorViewModel::soundDnaModelVersion() const
+{
+    return QString::fromStdString(m_dnaModel.version());
+}
+
+QVariantList PatchEditorViewModel::soundDnaDimensions() const
+{
+    QVariantList dimensions;
+    for (const auto& value : m_dnaProfile.values) {
+        QVariantList tones;
+        for (const auto& contribution : value.toneContributions) {
+            QVariantMap tone;
+            tone.insert(QStringLiteral("toneNumber"), contribution.toneNumber);
+            tone.insert(QStringLiteral("signedContribution"), contribution.signedContribution);
+            tone.insert(QStringLiteral("magnitudePercent"), contribution.magnitudePercent);
+            tones.push_back(tone);
+        }
+        QVariantMap row;
+        row.insert(QStringLiteral("id"), QString::fromStdString(value.id));
+        row.insert(QStringLiteral("label"), QString::fromStdString(value.label));
+        row.insert(QStringLiteral("score"), value.score);
+        row.insert(QStringLiteral("intervalLow"), value.intervalLow);
+        row.insert(QStringLiteral("intervalHigh"), value.intervalHigh);
+        row.insert(QStringLiteral("confidence"), value.confidence == sounddna::Confidence::High ? QStringLiteral("High")
+                  : value.confidence == sounddna::Confidence::Medium ? QStringLiteral("Medium") : QStringLiteral("Low"));
+        row.insert(QStringLiteral("cohort"), QString::fromStdString(value.cohort));
+        row.insert(QStringLiteral("referenceText"), QString::fromStdString(value.referenceText));
+        row.insert(QStringLiteral("confidenceReason"), QString::fromStdString(value.confidenceReason));
+        row.insert(QStringLiteral("inDistributionSupport"), value.inDistributionSupport);
+        row.insert(QStringLiteral("patchWideContributionPercent"), value.patchWideContributionPercent);
+        row.insert(QStringLiteral("editable"), value.editable);
+        row.insert(QStringLiteral("tones"), tones);
+        dimensions.push_back(row);
+    }
+    return dimensions;
+}
+
+void PatchEditorViewModel::beginSoundDnaGesture()
+{
+    if (!hasPatch() || m_comparing || !m_dnaProfile.available() || m_dnaGestureBase) return;
+    m_dnaGestureBase = working();
+    m_dnaLastExplanation.clear();
+    m_workspace.beginGesture();
+}
+
+void PatchEditorViewModel::previewSoundDnaTarget(const QString& dimensionId, int targetScore)
+{
+    if (!hasPatch() || m_comparing || !m_dnaProfile.available()) return;
+    const auto& base = m_dnaGestureBase ? *m_dnaGestureBase : working();
+    const auto result = m_dnaTransformer.transform(base, {}, {dimensionId.toStdString(), targetScore});
+    if (!result.patch) {
+        m_dnaLastExplanation = QString::fromStdString(result.limitation);
+        if (!m_dnaGestureBase) emit soundDnaChanged();
+        return;
+    }
+    m_dnaLastExplanation = transformationExplanation(result, dimensionId.toStdString());
+    if (*result.patch == working()) {
+        if (!m_dnaGestureBase) emit soundDnaChanged();
+        return;
+    }
+    m_applyingDnaGesture = true;
+    commitEdit(*result.patch, tr("Shape %1").arg(toQString(dimensionId.toStdString())));
+    m_applyingDnaGesture = false;
+}
+
+void PatchEditorViewModel::endSoundDnaGesture()
+{
+    const bool wasActive = m_dnaGestureBase.has_value();
+    if (wasActive) m_workspace.endGesture();
+    m_dnaGestureBase.reset();
+    m_applyingDnaGesture = false;
+    if (wasActive) emit soundDnaChanged();
 }
 
 void PatchEditorViewModel::setToneRaw(ToneIndex tone, ToneParameter parameter, int raw)
@@ -1194,6 +1343,8 @@ QString PatchEditorViewModel::differenceSummary() const
 
 void PatchEditorViewModel::undo()
 {
+    m_dnaLastExplanation.clear();
+    endSoundDnaGesture();
     endEffectGesture();
     if (m_comparing) {
         return;
@@ -1205,6 +1356,8 @@ void PatchEditorViewModel::undo()
 
 void PatchEditorViewModel::redo()
 {
+    m_dnaLastExplanation.clear();
+    endSoundDnaGesture();
     endEffectGesture();
     if (m_comparing) {
         return;
@@ -1219,6 +1372,8 @@ void PatchEditorViewModel::revertToOriginal()
     if (m_comparing) {
         return;
     }
+    m_dnaLastExplanation.clear();
+    endSoundDnaGesture();
     endEffectGesture();
     if (m_workspace.revert()) {
         emitAll();

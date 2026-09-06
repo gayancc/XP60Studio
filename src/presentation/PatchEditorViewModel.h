@@ -8,6 +8,9 @@
 #include "services/DeviceSession.h"
 #include "services/PatchTransfer.h"
 #include "services/PatchWorkspace.h"
+#include "sounddna/PatchFeatureExtractor.h"
+#include "sounddna/SoundDnaAnalyzer.h"
+#include "sounddna/SoundDnaTransformationEngine.h"
 #include "xpmodel/Xp60Patch.h"
 #include "xpmodel/Xp60PatchDiff.h"
 
@@ -135,6 +138,15 @@ class PatchEditorViewModel : public QObject
     Q_PROPERTY(bool canStartLiveAudition READ canStartLiveAudition NOTIFY writeChanged)
     Q_PROPERTY(QString auditionMessage READ auditionMessage NOTIFY writeChanged)
 
+    // Evidence-gated Sound DNA. An empty list is a first-class state: QML
+    // cannot expose a research candidate rejected by the knowledge model.
+    Q_PROPERTY(bool soundDnaAvailable READ soundDnaAvailable NOTIFY soundDnaChanged)
+    Q_PROPERTY(bool soundDnaBusy READ soundDnaBusy CONSTANT)
+    Q_PROPERTY(QString soundDnaStatusText READ soundDnaStatusText NOTIFY soundDnaChanged)
+    Q_PROPERTY(QString soundDnaModelVersion READ soundDnaModelVersion CONSTANT)
+    Q_PROPERTY(QVariantList soundDnaDimensions READ soundDnaDimensions NOTIFY soundDnaChanged)
+    Q_PROPERTY(QString soundDnaLastExplanation READ soundDnaLastExplanation NOTIFY soundDnaChanged)
+
 public:
     WaveBrowserModel* waves() { return &m_waves; }
     [[nodiscard]] bool writeBusy() const { return m_transfer && m_transfer->isBusy(); }
@@ -160,6 +172,11 @@ public:
     // being worked on, shared with every other screen showing it.
     PatchEditorViewModel(services::DeviceSession& session, services::PatchWorkspace& workspace,
                          services::PatchTransfer* transfer = nullptr, QObject* parent = nullptr);
+    // Explicit model injection keeps production evidence-gated while allowing
+    // deterministic integration tests of a validated model.
+    PatchEditorViewModel(services::DeviceSession& session, services::PatchWorkspace& workspace,
+                         services::PatchTransfer* transfer, sounddna::SoundDnaKnowledgeModel dnaModel,
+                         QObject* parent = nullptr);
 
     // Model access used by ToneViewModel -------------------------------------
     [[nodiscard]] bool hasPatch() const noexcept { return m_workspace.hasPatch(); }
@@ -322,6 +339,16 @@ public:
     Q_INVOKABLE void stopLiveAudition();
     Q_INVOKABLE void restoreBeforeAudition();
 
+    [[nodiscard]] bool soundDnaAvailable() const noexcept { return m_dnaProfile.available(); }
+    [[nodiscard]] bool soundDnaBusy() const noexcept { return false; }
+    [[nodiscard]] QString soundDnaStatusText() const;
+    [[nodiscard]] QString soundDnaModelVersion() const;
+    [[nodiscard]] QVariantList soundDnaDimensions() const;
+    [[nodiscard]] QString soundDnaLastExplanation() const { return m_dnaLastExplanation; }
+    Q_INVOKABLE void beginSoundDnaGesture();
+    Q_INVOKABLE void previewSoundDnaTarget(const QString& dimensionId, int targetScore);
+    Q_INVOKABLE void endSoundDnaGesture();
+
 signals:
     void patchChanged();
     void effectPageChanged();
@@ -332,6 +359,7 @@ signals:
     void rangeChanged();
     void writeChanged();
     void compatibilityChanged();
+    void soundDnaChanged();
     // The screen's cue to open the Wave Browser for `toneNumber`. Emitted only
     // from findReplacementFor(); nothing in this class picks a wave.
     void replacementRequested(int toneNumber);
@@ -343,6 +371,7 @@ private:
     xpmodel::Xp60Patch auditionPatch() const;
     void queueAudition();
     void resetAuditionFlags();
+    void refreshSoundDna();
     [[nodiscard]] xpmodel::ToneIndex selectedToneIndex() const;
     [[nodiscard]] std::optional<xpmodel::Xp60Patch::Envelope> currentEnvelope() const;
     // The Tone parameters backing the envelope in view, so a drag can write them.
@@ -376,6 +405,15 @@ private:
     bool m_effectGestureHasUndo = false;
     bool m_applyingEffectGesture = false;
     QString m_sourceText;
+
+    sounddna::SoundDnaKnowledgeModel m_dnaModel;
+    sounddna::PatchFeatureExtractor m_dnaExtractor;
+    sounddna::SoundDnaAnalyzer m_dnaAnalyzer;
+    sounddna::SoundDnaTransformationEngine m_dnaTransformer;
+    sounddna::SoundDnaProfile m_dnaProfile;
+    std::optional<xpmodel::Xp60Patch> m_dnaGestureBase;
+    bool m_applyingDnaGesture = false;
+    QString m_dnaLastExplanation;
 };
 
 } // namespace xp60studio::presentation
