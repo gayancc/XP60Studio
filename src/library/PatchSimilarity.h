@@ -40,6 +40,12 @@ namespace xp60studio::library {
 // feature exists for. `nameEqual()` reports the name separately, so nothing is
 // hidden — it is reported apart rather than folded in.
 //
+// This is not hypothetical. The project's one real 128-Patch User bank holds
+// twelve pairs that are the same sound: eleven exact duplicates, and `Vocal
+// Fall 1` / `Vocal Fall 2`, which differ in exactly one byte of 2816 — the
+// twelfth name character. `PatchFingerprint` calls that last pair two different
+// Patches, correctly for its own question and uselessly for this one.
+//
 // Pure: no I/O, no clock, no Qt. Derived metadata, never written back into
 // Roland data.
 class PatchSimilarity
