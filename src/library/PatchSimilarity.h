@@ -1,0 +1,106 @@
+#pragma once
+
+#include "xpmodel/Xp60Patch.h"
+#include "xpmodel/Xp60PatchDiff.h"
+
+#include <string>
+#include <string_view>
+#include <vector>
+
+namespace xp60studio::library {
+
+// How alike two Patches are, and exactly where they differ.
+//
+// `PatchFingerprint` answers "are these the same sound?" — one bit, and no help
+// when the answer is no. This answers "how nearly the same, and in what?", which
+// is the question a musician asks of a library that has accumulated a decade of
+// edits, resaves and near-misses.
+//
+// ── How similarity is defined, and why this way ──────────────────────────────
+//
+// **The fraction of documented parameters that are equal.** Every parameter in
+// the Roland Parameter Address Map counts once, unweighted.
+//
+// Unweighted is a deliberate refusal, not an oversight. Weighting would be a
+// claim that some parameters matter more to how a Patch sounds — that Cutoff
+// outranks Chorus Send, say. Roland documents no such ranking, this project
+// cannot measure one, and a score built on invented weights would be a number
+// that looks objective while encoding one person's guess. An unweighted count
+// is a fact about the data: *this many of the instrument's own parameters
+// agree*.
+//
+// Counted per **parameter**, not per byte, so a two-byte nibble value such as
+// Wave Number counts once rather than twice.
+//
+// ── The name is not part of the sound ────────────────────────────────────────
+//
+// `score()` excludes the twelve name bytes. Two Patches that sound identical but
+// are called `Strings 1` and `Strings 1b` are the near-duplicates a librarian is
+// hunting; letting a rename move the score would bury exactly the case the
+// feature exists for. `nameEqual()` reports the name separately, so nothing is
+// hidden — it is reported apart rather than folded in.
+//
+// Pure: no I/O, no clock, no Qt. Derived metadata, never written back into
+// Roland data.
+class PatchSimilarity
+{
+public:
+    // Similarity of one block.
+    struct Block
+    {
+        std::string block;          // "Patch Common", "Tone 1", ...
+        int comparedParameters = 0;
+        int equalParameters = 0;
+        [[nodiscard]] int differingParameters() const noexcept
+        {
+            return comparedParameters - equalParameters;
+        }
+        // 0.0 .. 1.0, or 1.0 for a block with nothing to compare.
+        [[nodiscard]] double score() const noexcept;
+    };
+
+    [[nodiscard]] static PatchSimilarity compare(const xpmodel::Xp60Patch& left,
+                                                 const xpmodel::Xp60Patch& right);
+
+    // 0.0 .. 1.0 over the sound parameters — the name is excluded, see above.
+    [[nodiscard]] double score() const noexcept;
+    // Same parameters *and* the same name: indistinguishable Patches.
+    [[nodiscard]] bool identical() const noexcept;
+    // Same sound, whatever they are called. This is what "near-duplicate"
+    // hunting is really looking for when it finds an exact match.
+    [[nodiscard]] bool identicalSound() const noexcept;
+    [[nodiscard]] bool nameEqual() const noexcept { return m_nameEqual; }
+
+    [[nodiscard]] int comparedParameters() const noexcept { return m_compared; }
+    [[nodiscard]] int equalParameters() const noexcept { return m_equal; }
+    [[nodiscard]] int differingParameters() const noexcept { return m_compared - m_equal; }
+
+    // Per block, in layout order: Patch Common then Tone 1..4. A musician
+    // reading "Tone 3 is 96% the same, the rest identical" learns more than a
+    // single number, and it is what the Compare screen draws.
+    [[nodiscard]] const std::vector<Block>& blocks() const noexcept { return m_blocks; }
+
+    // Every parameter that differs, with both values in display form. The same
+    // list the transfer mismatch report uses, so there is one explanation of a
+    // difference in the application rather than two.
+    [[nodiscard]] const xpmodel::Xp60PatchDiff& differences() const noexcept { return m_diff; }
+
+    // "97% alike — 5 parameters differ (Tone 3 4, Patch Common 1)". Includes a
+    // note when only the name differs, because that is the case most easily
+    // misread as a real difference.
+    [[nodiscard]] std::string summary() const;
+
+    // Score expressed the way a UI shows it: 0..100, rounded to the nearest
+    // whole percent, but never rounded *up* to 100 for Patches that actually
+    // differ — "100%" must mean identical.
+    [[nodiscard]] int percent() const noexcept;
+
+private:
+    xpmodel::Xp60PatchDiff m_diff;
+    std::vector<Block> m_blocks;
+    int m_compared = 0;
+    int m_equal = 0;
+    bool m_nameEqual = true;
+};
+
+} // namespace xp60studio::library
