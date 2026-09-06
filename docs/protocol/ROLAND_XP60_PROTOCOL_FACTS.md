@@ -275,7 +275,8 @@ To move a row to *Hardware-verified*:
 | Wave Group Type | 0 = INT, 1 = `<PCM>` (JV-1080 only, ignored on receive), 2 = EXP | Documentation-derived | Parameter Address Map p.224 |
 | Wave Group ID field | one 7-bit byte, 0..127, display "same as raw" | Documentation-derived | Parameter Address Map p.224 |
 | Group type 0, group ID 1/2 | INT-A / INT-B | **Hardware-verified 2026-09-04** | Front-panel comparison, area 9 |
-| **Which board a Wave Group ID denotes** | the SR-JV80 board of that number | **Inferred** | see below |
+| **Which board a Wave Group ID denotes** | the SR-JV80 board of that number | **Corroborated** | independent implementation + fixture wave names; see below |
+| Group type 1 (`<PCM>`), group ID | the SO-PCM1 card of that number | **Corroborated** | JV PatchEd. wave-ID list |
 | Expansion slots | four, EXP-A..EXP-D, one SR-JV80 board each | Documentation-derived | Owner's Manual p.45 |
 | Panel selection of expansion waves | by slot group XP-A..XP-D | Documentation-derived | Owner's Manual p.45 |
 
@@ -321,12 +322,56 @@ low-numbered boards alone would need — is itself explained by 96–99 existing
 Nothing observed contradicts the mapping, and four independent name/theme
 matches support it.
 
+#### Corroboration from an independent implementation
+
+**JV PatchEd. — JV-XP** (Leandro Cleto, a freeware Ctrlr panel for the JV-1010,
+JV-1080, JV-2080 and XP-30/50/60/80, <https://sourceforge.net/projects/jv-patched-jv-xp/>)
+sets its Wave ID control from this list, which in Ctrlr's `uiComboContent`
+gives `LABEL=value` — the value actually sent:
+
+```
+POP=1  ORCHESTRAL=2  PIANO=3  VITAGE SYNTH=4  WORLD=5  DANCE=6
+SUPER SOUND SET=7  KEYBOARD 60&70=8  SESSION=9  BASS & DRUMS=10
+TECHNO=11  HIP HOP=12  VOCAL=13  ASIA=14  EFX=15  ORCHESTRAL II=16
+COUNTRY=17  LATIN=18  HOUSE=19  EXPERIENCE I=99  EXPERIENCE II=98
+EXPERIENCE III=97
+```
+
+So that editor sends **14 for Asia and 97 for Experience III** — the board
+number, exactly as XP60Studio reads it. Its equivalent lists for the other two
+group types agree with what this document already records: `INTERNAL A=1`,
+`INTERNAL B=2` for group type 0 (hardware-verified here independently), and the
+SO-PCM1 card number for group type 1.
+
+*(Its Lua branches on a zero-based combo **index** — `waveIdValue==13` for Asia —
+which is an internal UI detail of that panel and not the transmitted value. It is
+worth naming because it is an easy thing to misread as a contradiction.)*
+
+#### Corroboration from the fixture's own wave numbers
+
+The same panel carries Roland's waveform-name list for each board, which makes
+the fixture checkable wave by wave rather than only by theme. Resolving each of
+its 192 expansion references as *(board = group ID, wave = wave number)*:
+
+| Patch in the fixture | Group | Wave | Resolves to |
+|---|---|---|---|
+| `*Tenor Solo` | 97 | 4 | SR-JV80-97 `*Tenor Solo` |
+| `*Poly Xpandr` | 97 | 25 | SR-JV80-97 `*OBXP Str` (OB-Xpander) |
+| `Cimbalom` | 5 | 11 | SR-JV80-05 `HmrDulcimer` |
+| `Clav 1 x4` | 1 | 16 | SR-JV80-01 `Clav 2A` |
+
+**All 192 resolve to a wave that exists on the board of that number**, and the
+names match the Patches using them — `*Tenor Solo` exactly, a cimbalom to a
+hammered dulcimer, a Clav patch to a Clav wave. Under the rival reading (group ID
+as a zero-based board index) 5 of the 192 do not resolve at all, and the rest
+land on nonsense: `Cimbalom` on `Ragga`, `Clav 1 x4` on `Cb Sect Lp`.
+
 #### What this project does with it, and what it still will not do
 
-The mapping is **inferred, not documented**. Roland's Parameter Address Map
-defines the field's width and nothing about its meaning, and this project has
-seen one instrument's data. So it is used for **naming and convenience**, never
-as authority:
+The mapping is **not documented by Roland** — the Parameter Address Map defines
+the field's width and nothing about its meaning — and this project has still not
+confirmed it against hardware itself. It is used for **naming and convenience**,
+never as authority:
 
 - `library::srJv80BoardName` turns a group into a board name, so XP60Studio can
   say "wave group 14 — SR-JV80-14 Asia" instead of a bare number, and so the
@@ -341,11 +386,16 @@ as authority:
   rather than "missing" whenever the profile is not complete enough for
   "missing" to be true.
 
-Confirming it outright is still a hardware task: install a known board, select
+Confirming it first-hand is still a hardware task: install a known board, select
 one of its waves in a Tone from the front panel, and read the Tone back —
 `DEVICE_ACCEPTANCE.md` area 15. Until then a musician who finds a board that
 answers to a different number can simply say so, and XP60Studio will believe
 them over its own table.
+
+One gap in the corroboration: **SR-JV80-96** (*World Collection: Latin*, a rare
+Japanese-market board) is a real product but does not appear in JV PatchEd.'s
+list, so its group ID is assumed rather than corroborated. XP60Studio lists it;
+nothing depends on it being right.
 
 ## Keybed
 

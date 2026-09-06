@@ -7,21 +7,26 @@
 
 namespace xp60studio::library {
 
-// The SR-JV80 Wave Expansion Board catalogue, and the inferred relationship
+// The SR-JV80 Wave Expansion Board catalogue, and the relationship
 // between a board and the Wave Group ID its waves carry.
 //
-// ── What is documented, and what is inferred ─────────────────────────────────
+// ── What is documented, and what is corroborated ────────────────────────────
 //
 // A Tone names an expansion wave by Wave Group ID: one 7-bit field, 0..127,
 // which Roland's Parameter Address Map defines the width of and nothing else.
-// The mapping below — **group ID is the SR-JV80 board number** — is an
-// inference, not a documented fact, and the reasoning is set out in full in
-// `docs/protocol/ROLAND_XP60_PROTOCOL_FACTS.md` §7.
+// The mapping below — **group ID is the SR-JV80 board number** — is therefore
+// not documented by Roland, but it is corroborated twice over, and
+// `docs/protocol/ROLAND_XP60_PROTOCOL_FACTS.md` §7 sets out the evidence.
 //
-// In short: every group the golden fixture uses (1, 5, 7, 14, 97) is a real
-// board number, and the Patches using them match those boards' contents — group
-// 5's are world instruments, group 14's is a sitar. The series runs 01..19 and
-// 96..99, which is also why the field is 0..127 wide rather than 0..19.
+// In short: an independent implementation (JV PatchEd. — JV-XP, a Ctrlr panel
+// for this family of instruments) transmits 14 for Asia and 97 for Experience
+// III; and resolving the golden fixture's 192 expansion references as
+// (board = group ID, wave = wave number) lands every one of them on a wave that
+// exists on that board, with the names matching the Patches — a Patch called
+// `*Tenor Solo` on group 97 wave 4 is SR-JV80-97's `*Tenor Solo`.
+//
+// The series runs 01..19 and 96..99, which is also why the field is 0..127 wide
+// rather than 0..19.
 //
 // ── What this catalogue is allowed to do ─────────────────────────────────────
 //

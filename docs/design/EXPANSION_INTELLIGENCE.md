@@ -18,15 +18,17 @@ There are two separate obstacles, and keeping them apart is most of the design.
 **What a Patch is asking for.** A Tone names an expansion wave by **Wave Group
 ID**, a plain 0..127 field the Parameter Address Map defines the width of and
 nothing else. XP60Studio reads that ID as the **SR-JV80 board of that number** —
-group 14 is SR-JV80-14 *Asia*. Roland documents no such mapping, so it is an
-inference, but a well-supported one: every group in real user data is a real
-board number, and the boards' contents match the Patches using them. The evidence
-and its limits are in `../protocol/ROLAND_XP60_PROTOCOL_FACTS.md` §7.
+group 14 is SR-JV80-14 *Asia*. Roland documents no such mapping, but two
+independent lines of evidence agree with it: another editor for this family of
+instruments transmits exactly these values, and every one of the golden
+fixture's 192 expansion references resolves to a wave that exists on the board
+of that number, names included. `../protocol/ROLAND_XP60_PROTOCOL_FACTS.md` §7
+sets it out.
 
 *(An earlier revision refused this mapping, on the false ground that the
 fixture's group 97 could not be a board number. The SR-JV80 series runs 01–19
-**and** 96–99; SR-JV80-97 is* Experience III*. The refusal was a mistake and has
-been corrected.)*
+**and** 96–99; SR-JV80-97 is* Experience III*, and the fixture's group-97
+Patches use its waves. The refusal was a mistake and has been corrected.)*
 
 **What the instrument actually has.** Nothing in the protocol reports which
 boards are fitted. No inference closes this one, and the catalogue above does not
@@ -161,8 +163,9 @@ Two details that follow from taking the words seriously:
 
 ## 7. What is deliberately not built
 
-- **Treating the group → board inference as verified.** It is labelled as an
-  inference everywhere it appears, and both Learn and a manual edit override it.
+- **Treating the group → board mapping as hardware-verified.** It is
+  corroborated, not confirmed by this project against an instrument, and both
+  Learn and a manual edit override it.
 - **An expansion waveform catalog.** Roland publishes waveform lists per board
   and none is transcribed here, so expansion waves still cannot be browsed or
   assigned by name.
