@@ -19,6 +19,10 @@ add_library(xp60studio_services STATIC
   LibraryDuplicateAnalysis.cpp
   CategorySuggestion.h
   CategorySuggestion.cpp
+  SnapshotStore.h
+  SnapshotStore.cpp
+  RestorePlan.h
+  RestorePlan.cpp
 )
 add_library(xp60studio::services ALIAS xp60studio_services)
 target_include_directories(xp60studio_services PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)

@@ -23,6 +23,8 @@ add_library(xp60studio_library STATIC
   PatchSimilarity.cpp
   PatchStructure.h
   PatchStructure.cpp
+  InstrumentSnapshot.h
+  InstrumentSnapshot.cpp
   SyxImport.h
   SyxImport.cpp
   SyxExport.h

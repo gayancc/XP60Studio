@@ -418,9 +418,41 @@ a User bank dump and carries no System data, so there is no local cross-check.
 `DEVICE_ACCEPTANCE.md` area 19 is what would settle them, and nothing ships on
 them yet.
 
+**Snapshots and restore workflows are in.** `library::InstrumentSnapshot` keeps
+the instrument's own DT1 bytes verbatim rather than a re-encoding of them, so a
+snapshot restores byte for byte even for regions this application has no model
+for, and a later version that learns to decode more does not invalidate one
+taken before it. `services::SnapshotStore` saves it as a plain `.syx` with a
+JSON manifest beside it — the backup is restorable by any other librarian, or by
+`amidi`, or by a build of this application that no longer exists; a backup
+readable only by the program that wrote it is a worse backup. The manifest adds
+provenance and a SHA-256, and losing it costs those, not the data. A digest
+mismatch on load is reported, never enforced silently.
+
+`services::RestorePlan` is a separate, inspectable step rather than an argument
+to a write call, because a restore is the most destructive thing the application
+can do. It enforces three rules: an area is restored whole or not at all and
+says so when it cannot be; nothing outside the requested areas is written even
+when the snapshot contains it; and every plan that writes anything requires a
+safety snapshot first — the snapshot being restored is not the safety net, it is
+what will replace what is there now. Coverage is counted in the area's own units
+(Patch slots, Performance slots) rather than bytes, because Roland leaves large
+gaps of unused address space between slots and a byte percentage would report a
+complete bank as a small fraction of itself. Where no block layout exists —
+Rhythm Setups and System — completeness is reported as *unknown* rather than
+assumed.
+
+Working on this corrected a long-standing misreading of the golden fixture.
+`user-bank-amal.syx` is not a Patch bank: it is a dump of the whole **user
+memory** — 32 Performances, 2 Rhythm Setups and 128 Patches, 1314 messages. The
+58-byte and 12-byte blocks its README recorded as "meaning not yet established"
+are the Rhythm Setup Notes and Commons, identified by the transcriptions done
+earlier in this phase. The README has been corrected.
+
 Still to come in this phase: the Rhythm and System editors on top of those
-tables, persistent USER Performance write, snapshots and restore workflows, and
-the shared transfer/verification UI.
+tables, persistent USER Performance write, and the shared transfer/verification
+UI. Sending a restore plan to hardware is deliberately a separate service from
+building one, and is part of the transfer/verification work.
 
 Hardware verification for everything Phase 8 has built so far is open as
 `DEVICE_ACCEPTANCE.md` areas 16–18.
