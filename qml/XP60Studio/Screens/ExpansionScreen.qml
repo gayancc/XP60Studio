@@ -237,9 +237,12 @@ FocusScope {
                         }
                         XpLabel {
                             visible: modelData.groupId >= 0
+                            // Roland's own wave name where this project holds
+                            // that board's list, the number alone where it does
+                            // not — never a guessed name.
                             text: modelData.slot > 0
-                                  ? qsTr("%1 · %2").arg(root.expansion.describeGroup(modelData.groupId)).arg(modelData.slotLabel)
-                                  : root.expansion.describeGroup(modelData.groupId)
+                                  ? qsTr("%1 · %2").arg(modelData.waveDescription).arg(modelData.slotLabel)
+                                  : modelData.waveDescription
                             role: "caption"
                             muted: true
                         }

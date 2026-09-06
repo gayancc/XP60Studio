@@ -77,12 +77,11 @@ public:
     [[nodiscard]] bool anyGroupUnknown() const { return m_profile.anyGroupUnknown(); }
     [[nodiscard]] QString advice() const;
 
-    // The Wave Browser cannot list expansion waves: this project has no
-    // waveform-name list for any SR-JV80 board — Roland publishes those per
-    // board and none is transcribed here — and no way to turn a board into the
-    // Wave Group ID a Tone would need. What it *can* say is which boards the
-    // musician has declared, so the tab reports the real state of this
-    // instrument instead of a flat "unverified".
+    // What the Wave Browser's Expansion tab can say about *this* instrument:
+    // the declared boards, and for each whether Roland's Waveform List for it is
+    // held here. Roland publishes those per board and this project has only
+    // some, so the tab reports which of the musician's own boards it can name
+    // waves for rather than a blanket yes or no.
     [[nodiscard]] QString browserNote() const;
     [[nodiscard]] QVariantList knownBoards() const;
 
@@ -95,6 +94,10 @@ public:
     // "wave group 14 (SR-JV80-14 Asia)" — the group number first, because that
     // is what the Tone carries; the board name is the inference resting on it.
     [[nodiscard]] Q_INVOKABLE QString describeGroup(int waveGroupId) const;
+
+    // "wave 17 “Clav 2A” on SR-JV80-01 Pop", degrading to the board or just the
+    // group as knowledge runs out. `rawWaveNumber` is the Tone's byte.
+    [[nodiscard]] Q_INVOKABLE QString describeWave(int waveGroupId, int rawWaveNumber) const;
 
     [[nodiscard]] QVariantMap currentPatch() const;
     [[nodiscard]] QVariantList learnableGroups() const;

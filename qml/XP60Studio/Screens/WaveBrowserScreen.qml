@@ -15,10 +15,9 @@ FocusScope {
     // screenshot harness and any catalog-only context get.
     property var editor: null
     // Optional: the Expansion Manager's view model. With it the Expansion tab
-    // reports this instrument's declared boards instead of a flat "unverified";
-    // without it (screenshot harness, catalog-only contexts) the tab falls back
-    // to the one fact that holds regardless — there is no expansion waveform
-    // catalog in this project.
+    // reports this instrument's declared boards and which of them Roland's
+    // Waveform List is held for; without it (screenshot harness, catalog-only
+    // contexts) the tab falls back to saying how expansion naming works at all.
     property var expansion: null
     signal closed()
     signal waveUsed()
@@ -27,7 +26,7 @@ FocusScope {
     readonly property bool wide: width >= 1040
     readonly property string expansionNote: root.expansion
         ? root.expansion.browserNote
-        : qsTr("XP60Studio has no waveform-name list for expansion boards, so their waves cannot be browsed or assigned by name here. A Tone that already uses one keeps it.")
+        : qsTr("Expansion waves are named per board, from Roland's own Waveform Lists. Declare your boards in the Expansion Manager to see which of them XP60Studio can name.")
     onVisibleChanged: if (visible) search.forceActiveFocus()
     Keys.onEscapePressed: root.closed()
 

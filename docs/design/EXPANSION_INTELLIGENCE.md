@@ -18,12 +18,12 @@ There are two separate obstacles, and keeping them apart is most of the design.
 **What a Patch is asking for.** A Tone names an expansion wave by **Wave Group
 ID**, a plain 0..127 field the Parameter Address Map defines the width of and
 nothing else. XP60Studio reads that ID as the **SR-JV80 board of that number** —
-group 14 is SR-JV80-14 *Asia*. Roland documents no such mapping, but two
-independent lines of evidence agree with it: another editor for this family of
-instruments transmits exactly these values, and every one of the golden
-fixture's 192 expansion references resolves to a wave that exists on the board
-of that number, names included. `../protocol/ROLAND_XP60_PROTOCOL_FACTS.md` §7
-sets it out.
+group 14 is SR-JV80-14 *Asia*. Roland documents the mapping nowhere, but its own
+per-board Waveform Lists settle it in practice: every reference to group 1 in a
+real user bank lands on a real wave of SR-JV80-01 *Pop*, and the Patch called
+`Clav 1 x4` uses four Clav waves while `60s Organ x4` uses the four numbered
+organ waves. An independent editor for this family transmits the same values.
+`../protocol/ROLAND_XP60_PROTOCOL_FACTS.md` §7 sets it out.
 
 *(An earlier revision refused this mapping, on the false ground that the
 fixture's group 97 could not be a board number. The SR-JV80 series runs 01–19
@@ -128,11 +128,10 @@ will have nothing to sound" is worth knowing, and it is the last moment to
 notice. (The fixture bank is a good example of a true and awkward answer: it
 needs five wave groups, and an XP-60 has four slots.)
 
-**Wave Browser.** Its Expansion tab reports the declared boards, and separately
-that this project has **no waveform-name list for any SR-JV80 board** — Roland
-publishes those per board and none is transcribed here. Two different gaps: the
-first the musician can close, the second they cannot close from that screen, and
-it does not go away when the profile is complete.
+**Wave Browser.** Its Expansion tab reports the declared boards and, for each,
+whether Roland's Waveform List for it is held here — the lists are published per
+board and `docs/XP60-References/SR-JV80/` has some of them. Board by board,
+because the answer differs per board.
 
 **Patch Editor.** Per-Tone, on the Tone card, with the workflow below.
 
@@ -166,9 +165,11 @@ Two details that follow from taking the words seriously:
 - **Treating the group → board mapping as hardware-verified.** It is
   corroborated, not confirmed by this project against an instrument, and both
   Learn and a manual edit override it.
-- **An expansion waveform catalog.** Roland publishes waveform lists per board
-  and none is transcribed here, so expansion waves still cannot be browsed or
-  assigned by name.
+- **A complete expansion waveform catalog.** Roland publishes waveform lists per
+  board and this project holds some of them (SR-JV80-01 and -02 so far). Waves
+  on a board whose list is absent are shown by number with the board's name, not
+  by a guessed name; adding a board is dropping its PDF in and re-running the
+  generator, per `docs/XP60-References/SR-JV80/README.md`.
 - **Concluding an instrument has a board.** Naming what a Patch wants is not the
   same claim, and no verdict rests on the catalogue.
 - **Detecting installed boards over MIDI.** No documented request for it.

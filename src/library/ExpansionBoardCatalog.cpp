@@ -1,5 +1,7 @@
 #include "library/ExpansionBoardCatalog.h"
 
+#include "library/generated/SrJv80WaveCatalog.generated.h"
+
 #include <algorithm>
 #include <array>
 
@@ -66,6 +68,51 @@ std::optional<std::string> srJv80BoardName(int boardNumber)
         number.insert(number.begin(), '0');
     }
     return "SR-JV80-" + number + " " + std::string(board->title);
+}
+
+namespace {
+
+const srjv80::BoardList* findList(int boardNumber) noexcept
+{
+    const auto found = std::find_if(srjv80::kBoardLists.begin(), srjv80::kBoardLists.end(),
+                                    [boardNumber](const srjv80::BoardList& l) { return l.board == boardNumber; });
+    return found == srjv80::kBoardLists.end() ? nullptr : &*found;
+}
+
+} // namespace
+
+bool hasSrJv80WaveList(int boardNumber) noexcept
+{
+    return findList(boardNumber) != nullptr;
+}
+
+int srJv80WaveCount(int boardNumber) noexcept
+{
+    const auto* list = findList(boardNumber);
+    return list ? list->count : 0;
+}
+
+std::optional<std::string_view> srJv80WaveName(int boardNumber, int displayNumber) noexcept
+{
+    const auto* list = findList(boardNumber);
+    if (!list || displayNumber < 1 || displayNumber > list->count) {
+        return std::nullopt;
+    }
+    return list->first[displayNumber - 1];
+}
+
+std::string describeExpansionWave(int waveGroupId, int rawWaveNumber)
+{
+    // Roland prints wave numbers from 1; the Tone carries one less.
+    const int display = rawWaveNumber + 1;
+    const auto board = srJv80BoardName(waveGroupId);
+    if (!board) {
+        return "wave " + std::to_string(display) + " of " + describeWaveGroup(waveGroupId);
+    }
+    if (const auto wave = srJv80WaveName(waveGroupId, display)) {
+        return "wave " + std::to_string(display) + " \u201c" + std::string(*wave) + "\u201d on " + *board;
+    }
+    return "wave " + std::to_string(display) + " on " + *board;
 }
 
 std::string describeWaveGroup(int waveGroupId)

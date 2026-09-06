@@ -208,6 +208,9 @@ if(Python3_Interpreter_FOUND)
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
   # The hardware-session capture comparator resolves addresses against the same
   # transcribed Parameter Address Map; its self-test fails if that drifts.
+  add_test(NAME tst_expansion_waves_current
+    COMMAND Python3::Interpreter ${CMAKE_SOURCE_DIR}/tools/generate_expansion_waves.py --check
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
   add_test(NAME tst_capture_diff
     COMMAND Python3::Interpreter ${CMAKE_SOURCE_DIR}/tools/capture_diff.py --self-test
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})

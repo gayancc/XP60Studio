@@ -1,0 +1,329 @@
+board,number,name,source
+1,1,Grand sft 1A,SR-JV80-01_Pop_Waveform_List.pdf
+1,2,Grand sft 1B,SR-JV80-01_Pop_Waveform_List.pdf
+1,3,Grand sft 1C,SR-JV80-01_Pop_Waveform_List.pdf
+1,4,Grand hrd 1A,SR-JV80-01_Pop_Waveform_List.pdf
+1,5,Grand hrd 1B,SR-JV80-01_Pop_Waveform_List.pdf
+1,6,Grand hrd 1C,SR-JV80-01_Pop_Waveform_List.pdf
+1,7,E.Grand 2,SR-JV80-01_Pop_Waveform_List.pdf
+1,8,Wurly soft A,SR-JV80-01_Pop_Waveform_List.pdf
+1,9,Wurly soft B,SR-JV80-01_Pop_Waveform_List.pdf
+1,10,Wurly soft C,SR-JV80-01_Pop_Waveform_List.pdf
+1,11,Wurly hard A,SR-JV80-01_Pop_Waveform_List.pdf
+1,12,Wurly hard B,SR-JV80-01_Pop_Waveform_List.pdf
+1,13,Wurly hard C,SR-JV80-01_Pop_Waveform_List.pdf
+1,14,E. Piano 3A,SR-JV80-01_Pop_Waveform_List.pdf
+1,15,E. Piano 3B,SR-JV80-01_Pop_Waveform_List.pdf
+1,16,E. Piano 3C,SR-JV80-01_Pop_Waveform_List.pdf
+1,17,Clav 2A,SR-JV80-01_Pop_Waveform_List.pdf
+1,18,Clav 2B,SR-JV80-01_Pop_Waveform_List.pdf
+1,19,Clav 2C,SR-JV80-01_Pop_Waveform_List.pdf
+1,20,Clav 3A,SR-JV80-01_Pop_Waveform_List.pdf
+1,21,Clav 3B,SR-JV80-01_Pop_Waveform_List.pdf
+1,22,Clav 3C,SR-JV80-01_Pop_Waveform_List.pdf
+1,23,Clav 4A,SR-JV80-01_Pop_Waveform_List.pdf
+1,24,Clav 4B,SR-JV80-01_Pop_Waveform_List.pdf
+1,25,Clav 4C,SR-JV80-01_Pop_Waveform_List.pdf
+1,26,Jazz Organ 2,SR-JV80-01_Pop_Waveform_List.pdf
+1,27,Ballad Organ,SR-JV80-01_Pop_Waveform_List.pdf
+1,28,Even Bars,SR-JV80-01_Pop_Waveform_List.pdf
+1,29,Sft Stop,SR-JV80-01_Pop_Waveform_List.pdf
+1,30,Mad Organ A,SR-JV80-01_Pop_Waveform_List.pdf
+1,31,Mad Organ B,SR-JV80-01_Pop_Waveform_List.pdf
+1,32,Mad Organ C,SR-JV80-01_Pop_Waveform_List.pdf
+1,33,60’s Organ 1,SR-JV80-01_Pop_Waveform_List.pdf
+1,34,60’s Organ 2,SR-JV80-01_Pop_Waveform_List.pdf
+1,35,60’s Organ 3,SR-JV80-01_Pop_Waveform_List.pdf
+1,36,60’s Organ 4,SR-JV80-01_Pop_Waveform_List.pdf
+1,37,Celeste,SR-JV80-01_Pop_Waveform_List.pdf
+1,38,Music Box,SR-JV80-01_Pop_Waveform_List.pdf
+1,39,Jazz Bass 1,SR-JV80-01_Pop_Waveform_List.pdf
+1,40,Jazz Bass 2,SR-JV80-01_Pop_Waveform_List.pdf
+1,41,P. Bass 1,SR-JV80-01_Pop_Waveform_List.pdf
+1,42,P. Bass 2,SR-JV80-01_Pop_Waveform_List.pdf
+1,43,Stick,SR-JV80-01_Pop_Waveform_List.pdf
+1,44,Fretless 2A,SR-JV80-01_Pop_Waveform_List.pdf
+1,45,Fretless 2B,SR-JV80-01_Pop_Waveform_List.pdf
+1,46,Fretless 2C,SR-JV80-01_Pop_Waveform_List.pdf
+1,47,Ac. Bass A,SR-JV80-01_Pop_Waveform_List.pdf
+1,48,Ac. Bass B,SR-JV80-01_Pop_Waveform_List.pdf
+1,49,Ac. Bass C,SR-JV80-01_Pop_Waveform_List.pdf
+1,50,Bs Harmonix,SR-JV80-01_Pop_Waveform_List.pdf
+1,51,Bs Side,SR-JV80-01_Pop_Waveform_List.pdf
+1,52,Organ Bass 1,SR-JV80-01_Pop_Waveform_List.pdf
+1,53,Organ Bass 2,SR-JV80-01_Pop_Waveform_List.pdf
+1,54,Jazz Guitar,SR-JV80-01_Pop_Waveform_List.pdf
+1,55,Mute GTR 2,SR-JV80-01_Pop_Waveform_List.pdf
+1,56,Funky Attack,SR-JV80-01_Pop_Waveform_List.pdf
+1,57,Lead GTR 1A,SR-JV80-01_Pop_Waveform_List.pdf
+1,58,Lead GTR 1B,SR-JV80-01_Pop_Waveform_List.pdf
+1,59,Lead GTR 1C,SR-JV80-01_Pop_Waveform_List.pdf
+1,60,Mute Dist,SR-JV80-01_Pop_Waveform_List.pdf
+1,61,Overdrive 1A,SR-JV80-01_Pop_Waveform_List.pdf
+1,62,Overdrive 1B,SR-JV80-01_Pop_Waveform_List.pdf
+1,63,Overdrive 1C,SR-JV80-01_Pop_Waveform_List.pdf
+1,64,Power Chords,SR-JV80-01_Pop_Waveform_List.pdf
+1,65,Harmo Lead,SR-JV80-01_Pop_Waveform_List.pdf
+1,66,E. Sitar,SR-JV80-01_Pop_Waveform_List.pdf
+1,67,Banjo,SR-JV80-01_Pop_Waveform_List.pdf
+1,68,Pedal Steel,SR-JV80-01_Pop_Waveform_List.pdf
+1,69,Shamisen A,SR-JV80-01_Pop_Waveform_List.pdf
+1,70,Shamisen B,SR-JV80-01_Pop_Waveform_List.pdf
+1,71,Shamisen C,SR-JV80-01_Pop_Waveform_List.pdf
+1,72,Koto Attack,SR-JV80-01_Pop_Waveform_List.pdf
+1,73,Sanza soft,SR-JV80-01_Pop_Waveform_List.pdf
+1,74,Sanza hard,SR-JV80-01_Pop_Waveform_List.pdf
+1,75,Pad Hit,SR-JV80-01_Pop_Waveform_List.pdf
+1,76,Santur A,SR-JV80-01_Pop_Waveform_List.pdf
+1,77,Santur B,SR-JV80-01_Pop_Waveform_List.pdf
+1,78,Santur C,SR-JV80-01_Pop_Waveform_List.pdf
+1,79,Glockenspiel,SR-JV80-01_Pop_Waveform_List.pdf
+1,80,Xylophone,SR-JV80-01_Pop_Waveform_List.pdf
+1,81,Tubular Bell,SR-JV80-01_Pop_Waveform_List.pdf
+1,82,Jazz Flute A,SR-JV80-01_Pop_Waveform_List.pdf
+1,83,Jazz Flute B,SR-JV80-01_Pop_Waveform_List.pdf
+1,84,Jazz Flute C,SR-JV80-01_Pop_Waveform_List.pdf
+1,85,Sing Flute,SR-JV80-01_Pop_Waveform_List.pdf
+1,86,Trumpet 2A,SR-JV80-01_Pop_Waveform_List.pdf
+1,87,Trumpet 2B,SR-JV80-01_Pop_Waveform_List.pdf
+1,88,Trumpet 2C,SR-JV80-01_Pop_Waveform_List.pdf
+1,89,Flugel A,SR-JV80-01_Pop_Waveform_List.pdf
+1,90,Flugel B,SR-JV80-01_Pop_Waveform_List.pdf
+1,91,Flugel C,SR-JV80-01_Pop_Waveform_List.pdf
+1,92,Tuba 1,SR-JV80-01_Pop_Waveform_List.pdf
+1,93,Clarinet 1,SR-JV80-01_Pop_Waveform_List.pdf
+1,94,Oboe 1,SR-JV80-01_Pop_Waveform_List.pdf
+1,95,Bassoon 1,SR-JV80-01_Pop_Waveform_List.pdf
+1,96,Bassoon&Oboe,SR-JV80-01_Pop_Waveform_List.pdf
+1,97,F. Horn Sect,SR-JV80-01_Pop_Waveform_List.pdf
+1,98,Soporano Sax,SR-JV80-01_Pop_Waveform_List.pdf
+1,99,Alto mp A,SR-JV80-01_Pop_Waveform_List.pdf
+1,100,Alto mp B,SR-JV80-01_Pop_Waveform_List.pdf
+1,101,Alto mp C,SR-JV80-01_Pop_Waveform_List.pdf
+1,102,TenorBreathy,SR-JV80-01_Pop_Waveform_List.pdf
+1,103,Tenor Sax mf,SR-JV80-01_Pop_Waveform_List.pdf
+1,104,Baritone Sax,SR-JV80-01_Pop_Waveform_List.pdf
+1,105,Multi Sax 1,SR-JV80-01_Pop_Waveform_List.pdf
+1,106,Multi Sax 2,SR-JV80-01_Pop_Waveform_List.pdf
+1,107,Shakuhachi,SR-JV80-01_Pop_Waveform_List.pdf
+1,108,Harmonica 1,SR-JV80-01_Pop_Waveform_List.pdf
+1,109,Whistle 1,SR-JV80-01_Pop_Waveform_List.pdf
+1,110,Tb Sect A,SR-JV80-01_Pop_Waveform_List.pdf
+1,111,Tb Sect B,SR-JV80-01_Pop_Waveform_List.pdf
+1,112,Tb Sect C,SR-JV80-01_Pop_Waveform_List.pdf
+1,113,T. Sax Sect A,SR-JV80-01_Pop_Waveform_List.pdf
+1,114,T. Sax Sect B,SR-JV80-01_Pop_Waveform_List.pdf
+1,115,T. Sax Sect C,SR-JV80-01_Pop_Waveform_List.pdf
+1,116,Violin A,SR-JV80-01_Pop_Waveform_List.pdf
+1,117,Violin B,SR-JV80-01_Pop_Waveform_List.pdf
+1,118,Violin C,SR-JV80-01_Pop_Waveform_List.pdf
+1,119,Cello A,SR-JV80-01_Pop_Waveform_List.pdf
+1,120,Cello B,SR-JV80-01_Pop_Waveform_List.pdf
+1,121,Cello C,SR-JV80-01_Pop_Waveform_List.pdf
+1,122,Violin&Cello,SR-JV80-01_Pop_Waveform_List.pdf
+1,123,STR Attack A,SR-JV80-01_Pop_Waveform_List.pdf
+1,124,STR Attack B,SR-JV80-01_Pop_Waveform_List.pdf
+1,125,STR Attack C,SR-JV80-01_Pop_Waveform_List.pdf
+1,126,Choir 1A,SR-JV80-01_Pop_Waveform_List.pdf
+1,127,Choir 1B,SR-JV80-01_Pop_Waveform_List.pdf
+1,128,Choir 1C,SR-JV80-01_Pop_Waveform_List.pdf
+1,129,Huge MIDI,SR-JV80-01_Pop_Waveform_List.pdf
+1,130,Bell VOX,SR-JV80-01_Pop_Waveform_List.pdf
+1,131,Synharmon,SR-JV80-01_Pop_Waveform_List.pdf
+1,132,PWM,SR-JV80-01_Pop_Waveform_List.pdf
+1,133,Rip Lead,SR-JV80-01_Pop_Waveform_List.pdf
+1,134,Bright Lead,SR-JV80-01_Pop_Waveform_List.pdf
+1,135,GR300 Saw,SR-JV80-01_Pop_Waveform_List.pdf
+1,136,Vocal Wave,SR-JV80-01_Pop_Waveform_List.pdf
+1,137,Sync Wave,SR-JV80-01_Pop_Waveform_List.pdf
+1,138,Sync Sweep,SR-JV80-01_Pop_Waveform_List.pdf
+1,139,Cello Wave,SR-JV80-01_Pop_Waveform_List.pdf
+1,140,Wally Wave,SR-JV80-01_Pop_Waveform_List.pdf
+1,141,VOX Noise 2,SR-JV80-01_Pop_Waveform_List.pdf
+1,142,Bottle Lp A,SR-JV80-01_Pop_Waveform_List.pdf
+1,143,Bottle Lp B,SR-JV80-01_Pop_Waveform_List.pdf
+1,144,Bottle Lp C,SR-JV80-01_Pop_Waveform_List.pdf
+1,145,Breath Wind,SR-JV80-01_Pop_Waveform_List.pdf
+1,146,Breath Atack,SR-JV80-01_Pop_Waveform_List.pdf
+1,147,Breath Whisl,SR-JV80-01_Pop_Waveform_List.pdf
+1,148,Breath Hrmon,SR-JV80-01_Pop_Waveform_List.pdf
+1,149,Metal Rain,SR-JV80-01_Pop_Waveform_List.pdf
+1,150,Pink Noise,SR-JV80-01_Pop_Waveform_List.pdf
+1,151,Orchestra Hit,SR-JV80-01_Pop_Waveform_List.pdf
+1,152,Kong,SR-JV80-01_Pop_Waveform_List.pdf
+1,153,Timpani,SR-JV80-01_Pop_Waveform_List.pdf
+1,154,Gong,SR-JV80-01_Pop_Waveform_List.pdf
+2,1,Vl Sect A,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,2,Vl Sect B,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,3,Vl Sect C,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,4,Va Sect A,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,5,Va Sect B,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,6,Va Sect C,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,7,Vc Sect A,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,8,Vc Sect B,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,9,Vc Sect C,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,10,Cb Sect,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,11,Multi STR A,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,12,Multi STR B,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,13,Multi STR C,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,14,Vl Sect Lp,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,15,Va Sect Lp,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,16,Vc Sect Lp,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,17,Cb Sect Lp,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,18,Mulit STR Lp,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,19,Vl Solo A,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,20,Vl Solo B,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,21,Vl Solo C,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,22,Va Solo A,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,23,Va Solo B,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,24,Va Solo C,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,25,Vc Solo A,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,26,Vc Solo B,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,27,Vc Solo C,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,28,Cb Solo,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,29,Multi Solo 1,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,30,Multi Solo 2,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,31,Vls Spicc A,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,32,Vls Spicc B,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,33,Vls Spicc C,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,34,Vas Spicc A,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,35,Vas Spicc B,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,36,Vas Spicc C,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,37,Vcs Spicc A,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,38,Vcs Spicc B,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,39,Vcs Spicc C,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,40,Cbs Spicc A,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,41,Cbs Spicc B,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,42,Cbs Spicc C,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,43,Multi Spicc,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,44,VlSolo Spicc,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,45,VcSolo Spicc,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,46,MultSl Spicc,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,47,STR Attack,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,48,Pizzicato 1,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,49,Pizzicato 2,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,50,Piccolo,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,51,Oboe 1A,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,52,Oboe 1B,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,53,Oboe 1C,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,54,Oboe 2A,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,55,Oboe 2B,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,56,Oboe 2C,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,57,Eng.Horn A,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,58,Eng.Horn B,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,59,Eng.Horn C,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,60,Clarinet,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,61,Bs Clarint,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,62,Multi Cla,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,63,Bassoon,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,64,Multi Reed,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,65,Tnr.Recorder,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,66,F.Horn Solo,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,67,F.Horn Sect1,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,68,F.Horn Sect2,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,69,F.Horn Mute,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,70,Trumpet 2,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,71,Flugelhorn,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,72,Cornet,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,73,HarmonMute2A,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,74,HarmonMute2B,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,75,HarmonMute2C,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,76,Solo Tb A,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,77,Solo Tb B,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,78,Solo Tb C,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,79,Bass Tb,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,80,Tb Sect,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,81,Tuba,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,82,BRS Ensemble,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,83,Brass ff,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,84,Full Orch.,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,85,Orch Hit Maj,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,86,Orch Hit Min,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,87,Orch Hit Dim,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,88,Choir A,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,89,Choir B,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,90,Choir C,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,91,F.Hrn Sc1 Lp,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,92,F.Hrn Sc2 Lp,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,93,F.Hrn MuteLp,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,94,Tb Sect Lp,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,95,BRS Ens Lp,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,96,ff Brass Lp,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,97,Full Orch Lp,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,98,Breath Wind,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,99,Breath Atack,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,100,Breath Whisl,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,101,Breath Hrmon,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,102,EuroPiano pA,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,103,EuroPiano pB,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,104,EuroPiano pC,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,105,EuroPiano fA,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,106,EuroPiano fB,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,107,EuroPiano fC,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,108,Harpsichord,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,109,Celesta A,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,110,Celesta B,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,111,Celesta C,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,112,Harp A,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,113,Harp B,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,114,Harp C,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,115,Glockenspiel,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,116,Xylophone,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,117,Bass Marimba,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,118,TubularBells,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,119,Church Bells,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,120,Timpani p,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,121,Timpani f,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,122,Timp Roll p,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,123,Timp Roll f,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,124,Concert SNR1,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,125,Concert SNR2,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,126,Concert SNR3,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,127,SNR Roll,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,128,Concert BD 1,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,129,Concert BD 2,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,130,Concert BD 3,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,131,BD Roll,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,132,Crash Cymbal,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,133,Crash Cym Lp,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,134,Cymbal Hit,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,135,Tam Tam,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,136,Gong,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,137,Perc Hit 1,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,138,Perc Hit 2,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,139,Triangle,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,140,Castanets 1,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,141,Castanets 2,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,142,Slapstick,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,143,Ratchet,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,144,Sleigh Bell,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,145,Tambourine,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,146,Wind Chime 2,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,147,Rev Hit Maj,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,148,Rev Hit Min,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,149,Rev Hit Dim,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,150,REV Bell,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,151,REV Timp 1,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,152,REV Timp 2,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,153,REV SNR 1,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,154,REV SNR 2,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,155,REV SNR 3,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,156,REV BD 1,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,157,REV BD 2,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,158,REV BD 3,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,159,REV BD Roll,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,160,REV Crash,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,161,REV Cym Hit,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,162,REV Tam Tam,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,163,REV Gong,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,164,REV PercHit1,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,165,REV PercHit2,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,166,REV Casta 1,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,167,REV Casta 2,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,168,REV S.Stick,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,169,REV Sleigh,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,170,REV Tamb,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,171,SNR Set,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,172,Perc Set 1,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,173,Perc Set 2,SR-JV80-02_Orchestral_Waveform_List.pdf
+2,174,Perc Set 3,SR-JV80-02_Orchestral_Waveform_List.pdf

@@ -62,4 +62,33 @@ struct SrJv80Board
 
 [[nodiscard]] bool isKnownSrJv80Board(int boardNumber) noexcept;
 
+// ── Waveform names, where Roland's own list is held ──────────────────────────
+//
+// `docs/XP60-References/SR-JV80/` holds Roland's per-board Waveform Lists for
+// some boards. Where one is present, XP60Studio can name the wave a Tone
+// actually points at rather than only the board it lives on.
+//
+// The distinction the API keeps is between **no list** and **no such wave**.
+// A board this project has no list for is not a board with no waves, and a
+// musician whose Tone points at wave 200 of a board whose list stops at 154 has
+// been told something worth knowing. Both come back as nullopt from
+// `srJv80WaveName`, so callers that care use `hasSrJv80WaveList` first.
+
+// True when this project holds Roland's Waveform List for the board.
+[[nodiscard]] bool hasSrJv80WaveList(int boardNumber) noexcept;
+// How many waves that list has, or 0 when there is no list.
+[[nodiscard]] int srJv80WaveCount(int boardNumber) noexcept;
+// The name Roland prints for `displayNumber` (1-based, as the instrument shows
+// it — a Tone's raw byte is one less). Nullopt when there is no list for the
+// board, or the number is outside it.
+[[nodiscard]] std::optional<std::string_view> srJv80WaveName(int boardNumber, int displayNumber) noexcept;
+
+// "wave 17 “Clav 2A” on SR-JV80-01 Pop" — the fullest honest description of an
+// expansion reference, degrading a piece at a time as knowledge runs out:
+// without a wave list, "wave 17 on SR-JV80-01 Pop"; without even a board of
+// that number, "wave 17 of wave group 42".
+//
+// `rawWaveNumber` is the Tone's byte; the printed number is one more.
+[[nodiscard]] std::string describeExpansionWave(int waveGroupId, int rawWaveNumber);
+
 } // namespace xp60studio::library

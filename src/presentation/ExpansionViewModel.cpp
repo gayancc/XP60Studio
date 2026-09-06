@@ -142,32 +142,43 @@ QString ExpansionViewModel::advice() const
 
 QString ExpansionViewModel::browserNote() const
 {
-    // Two independent gaps, and conflating them would be the lie. XP60Studio
-    // does not know what is in the instrument (the musician can fix that in the
-    // Expansion Manager), and it has no waveform-name list for any SR-JV80
-    // board (nobody can fix that from this screen). Say both.
-    const QString noCatalog =
-        tr("XP60Studio has no waveform-name list for expansion boards, so their waves cannot be browsed or "
-           "assigned by name here. A Tone that already uses one keeps it, and the Expansion Manager says whether "
-           "it will play.");
     if (m_profile.isEmpty()) {
-        return tr("No expansion boards declared. %1").arg(noCatalog);
+        return tr("No expansion boards declared. Say what is in EXP-A to EXP-D in the Expansion Manager and "
+                  "XP60Studio can name the waves on the boards it holds Roland's list for.");
     }
 
-    QStringList declared;
+    QStringList named;
+    QStringList unnamed;
     for (int slot = 1; slot <= library::kSlotCount; ++slot) {
         const auto& board = m_profile.board(slot);
         if (board.name.empty()) {
             continue;
         }
-        declared.append(board.waveGroupId
-                            ? tr("%1 · %2 (wave group %3)")
-                                  .arg(toQt(library::slotLabel(slot)), toQt(board.name))
-                                  .arg(*board.waveGroupId)
-                            : tr("%1 · %2 (wave group not known yet)")
-                                  .arg(toQt(library::slotLabel(slot)), toQt(board.name)));
+        const QString label = tr("%1 · %2").arg(toQt(library::slotLabel(slot)), toQt(board.name));
+        if (board.waveGroupId && library::hasSrJv80WaveList(*board.waveGroupId)) {
+            named.append(tr("%1 (%n wave(s))", "", library::srJv80WaveCount(*board.waveGroupId)).arg(label));
+        } else if (!board.waveGroupId) {
+            unnamed.append(tr("%1 — wave group not known yet").arg(label));
+        } else {
+            unnamed.append(label);
+        }
     }
-    return tr("You have declared: %1. %2").arg(declared.join(QStringLiteral("; ")), noCatalog);
+
+    QStringList parts;
+    if (!named.isEmpty()) {
+        parts.append(tr("Waves can be named on: %1.").arg(named.join(QStringLiteral("; "))));
+    }
+    if (!unnamed.isEmpty()) {
+        // Two different reasons land here, and the sentence covers both without
+        // pretending either is the musician's fault: no Waveform List held, or
+        // no wave group established for that board yet.
+        parts.append(tr("Not on: %1 — XP60Studio does not hold Roland's Waveform List for %2. Tones using them "
+                        "keep working and still show their wave number.",
+                        "", static_cast<int>(unnamed.size()))
+                         .arg(unnamed.join(QStringLiteral("; ")),
+                              unnamed.size() == 1 ? tr("it") : tr("them")));
+    }
+    return parts.join(QStringLiteral(" "));
 }
 
 QVariantList ExpansionViewModel::knownBoards() const
@@ -199,6 +210,11 @@ bool ExpansionViewModel::declareBoard(int slot, int boardNumber)
 QString ExpansionViewModel::describeGroup(int waveGroupId) const
 {
     return toQt(library::describeWaveGroup(waveGroupId));
+}
+
+QString ExpansionViewModel::describeWave(int waveGroupId, int rawWaveNumber) const
+{
+    return toQt(library::describeExpansionWave(waveGroupId, rawWaveNumber));
 }
 
 bool ExpansionViewModel::setBoard(int slot, const QString& name, int waveGroupId)
@@ -258,6 +274,19 @@ QVariantMap ExpansionViewModel::currentPatch() const
         map.insert(QStringLiteral("tone"), toneFor(tone.status));
         map.insert(QStringLiteral("groupId"), tone.waveGroupId ? *tone.waveGroupId : -1);
         map.insert(QStringLiteral("numberRaw"), tone.waveNumberRaw ? *tone.waveNumberRaw : -1);
+        // Roland's own name for the wave, when this project holds that board's
+        // Waveform List. Empty rather than invented when it does not.
+        map.insert(QStringLiteral("waveName"),
+                   tone.waveGroupId && tone.waveNumberRaw
+                       ? [&] {
+                             const auto name = library::srJv80WaveName(*tone.waveGroupId, *tone.waveNumberRaw + 1);
+                             return name ? toQt(*name) : QString();
+                         }()
+                       : QString());
+        map.insert(QStringLiteral("waveDescription"),
+                   tone.waveGroupId && tone.waveNumberRaw
+                       ? toQt(library::describeExpansionWave(*tone.waveGroupId, *tone.waveNumberRaw))
+                       : QString());
         map.insert(QStringLiteral("slot"), tone.providedBySlot ? *tone.providedBySlot : 0);
         map.insert(QStringLiteral("slotLabel"),
                    tone.providedBySlot ? toQt(library::slotLabel(*tone.providedBySlot)) : QString());

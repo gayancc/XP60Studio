@@ -350,11 +350,35 @@ SO-PCM1 card number for group type 1.
 which is an internal UI detail of that panel and not the transmitted value. It is
 worth naming because it is an easy thing to misread as a contradiction.)*
 
-#### Corroboration from the fixture's own wave numbers
+#### Corroboration from Roland's own Waveform Lists
 
-The same panel carries Roland's waveform-name list for each board, which makes
-the fixture checkable wave by wave rather than only by theme. Resolving each of
-its 192 expansion references as *(board = group ID, wave = wave number)*:
+Roland's per-board Waveform Lists for SR-JV80-01 *Pop* and SR-JV80-02
+*Orchestral* are held at `docs/XP60-References/SR-JV80/`. They make the fixture
+checkable against Roland's own data, wave by wave, with no third-party source
+involved. All **76** of its references to group 1 resolve to a real wave on the
+*Pop* board's 154, and the Patch names give the game away:
+
+| Patch in the fixture | Group | Raw wave | SR-JV80-01 *Pop* wave |
+|---|---|---|---|
+| `Clav 1 x4` | 1 | 16, 19, 20, 22 | 017 `Clav 2A`, 020 `Clav 3A`, 021 `Clav 3B`, 023 `Clav 4A` |
+| `60s Organ x4` | 1 | 32, 33, 34, 35 | 033–036 `60's Organ 1`…`4` |
+| `Whistle` | 1 | 108 | 109 `Whistle 1` |
+| `Raya Shaku` | 1 | 106 | 107 `Shakuhachi` |
+| `Turbo Tenor` | 1 | 102 | 103 `Tenor Sax mf` |
+
+A Patch called `Clav 1 x4` using four Clav waves, and one called `60s Organ x4`
+using the four numbered organ waves, is not something a wrong mapping produces.
+This also confirms the wave numbering: Roland prints from 1 and the Tone carries
+one less, the same relationship hardware-verified for internal waves (area 9).
+
+`tst_expansion_compatibility` checks every fixture reference to a board whose
+list is held, so this cannot silently rot.
+
+#### Earlier corroboration from the fixture's own wave numbers
+
+Before Roland's lists were to hand, the same check was run against the wave
+names carried in the JV PatchEd. panel. Resolving each of the fixture's 192
+expansion references as *(board = group ID, wave = wave number)*:
 
 | Patch in the fixture | Group | Wave | Resolves to |
 |---|---|---|---|

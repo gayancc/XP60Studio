@@ -89,6 +89,8 @@ private slots:
     void everyGroupTheFixtureUsesIsARealBoardNumber();
     void namesABoardForAGroupWithoutClaimingItIsInstalled();
     void pickingABoardFillsInItsGroupAndLearningStillOverridesIt();
+    void namesTheWaveItselfWhereRolandsListIsHeld();
+    void everyFixtureReferenceToABoardWeHoldResolvesToARealWave();
 
     // The three explicit ways out, and the absence of a fourth.
     void offersThreeWaysOutOfAMissingWaveAndReplacesNothingItself();
@@ -465,32 +467,35 @@ void TestExpansionCompatibility::refusesToLearnFromAnAmbiguousPatch()
     QVERIFY(manager.learnAdvice(1).contains(QStringLiteral("cannot tell which one")));
 }
 
-// The Wave Browser's Expansion tab has two different things to be sorry about,
-// and the note must not blur them: XP60Studio does not know what is in the
-// instrument (the musician can fix that), and it has no waveform-name list for
-// any SR-JV80 board (nobody can fix that from that screen). The second holds
-// however complete the profile is.
+// The Wave Browser's Expansion tab reports *this* instrument: which of the
+// musician's declared boards XP60Studio holds Roland's Waveform List for, and
+// which it does not. Board-by-board, because the answer differs per board and a
+// blanket "no expansion names" would now be false.
 void TestExpansionCompatibility::theWaveBrowserNoteSeparatesTheTwoGaps()
 {
     presentation::ExpansionViewModel manager;
 
     const auto empty = manager.browserNote();
     QVERIFY(empty.contains(QStringLiteral("No expansion boards declared")));
-    QVERIFY(empty.contains(QStringLiteral("no waveform-name list")));
 
-    QVERIFY(manager.setBoard(1, QStringLiteral("SR-JV80-05 World"), 5));
+    // A board whose list is held: named, with Roland's own count.
+    QVERIFY(manager.declareBoard(1, 1));
+    const auto pop = manager.browserNote();
+    QVERIFY(pop.contains(QStringLiteral("SR-JV80-01 Pop")));
+    QVERIFY(pop.contains(QString::number(library::srJv80WaveCount(1))));
+    QVERIFY(!pop.contains(QStringLiteral("Not on:")));
+
+    // A board whose list is not held, and one whose group is not known yet:
+    // both are things XP60Studio cannot name waves for, and it says which.
+    QVERIFY(manager.declareBoard(2, 14));
     QVERIFY(manager.setBoard(3, QStringLiteral("The unlabelled one"), -1));
-
-    const auto declared = manager.browserNote();
-    QVERIFY(!declared.contains(QStringLiteral("No expansion boards declared")));
-    QVERIFY(declared.contains(QStringLiteral("SR-JV80-05 World")));
-    QVERIFY(declared.contains(QStringLiteral("wave group 5")));
-    QVERIFY(declared.contains(QStringLiteral("The unlabelled one")));
-    QVERIFY(declared.contains(QStringLiteral("not known yet")));
-    // Declaring boards never earns a browsable expansion catalog.
-    QVERIFY(declared.contains(QStringLiteral("no waveform-name list")));
-    // EXP-B is empty and must not be listed as something the musician owns.
-    QVERIFY(!declared.contains(QStringLiteral("EXP-B")));
+    const auto mixed = manager.browserNote();
+    QVERIFY(mixed.contains(QStringLiteral("SR-JV80-01 Pop")));
+    QVERIFY(mixed.contains(QStringLiteral("Not on:")));
+    QVERIFY(mixed.contains(QStringLiteral("SR-JV80-14 Asia")));
+    QVERIFY(mixed.contains(QStringLiteral("not known yet")));
+    // EXP-D is empty and must not be listed as something the musician owns.
+    QVERIFY(!mixed.contains(QStringLiteral("EXP-D")));
 }
 
 // "Never silently replace missing waves" is the rule this test exists to hold.
@@ -703,6 +708,106 @@ void TestExpansionCompatibility::pickingABoardFillsInItsGroupAndLearningStillOve
     // A musician can also just say their board answers to something else.
     QVERIFY(manager.setWaveGroup(2, 42));
     QCOMPARE(manager.profile().board(2).waveGroupId.value(), 42);
+}
+
+// Roland's own per-board Waveform Lists live in docs/XP60-References/SR-JV80/
+// and are generated into the catalogue. Where one is held, a Tone's wave can be
+// named; where it is not, the number stands alone rather than a guess.
+void TestExpansionCompatibility::namesTheWaveItselfWhereRolandsListIsHeld()
+{
+    // Counts are Roland's own, from the Waveform List PDFs.
+    QVERIFY(library::hasSrJv80WaveList(1));
+    QCOMPARE(library::srJv80WaveCount(1), 154);
+    QVERIFY(library::hasSrJv80WaveList(2));
+    QCOMPARE(library::srJv80WaveCount(2), 174);
+
+    // Roland numbers waves from 1; a Tone's raw byte is one less.
+    QCOMPARE(QString::fromUtf8(library::srJv80WaveName(1, 17)->data(),
+                               static_cast<qsizetype>(library::srJv80WaveName(1, 17)->size())),
+             QStringLiteral("Clav 2A"));
+    QCOMPARE(QString::fromUtf8(library::srJv80WaveName(2, 17)->data(),
+                               static_cast<qsizetype>(library::srJv80WaveName(2, 17)->size())),
+             QStringLiteral("Cb Sect Lp"));
+
+    // Off the end of a list is not a name, and neither is a board with no list.
+    QVERIFY(!library::srJv80WaveName(1, 155).has_value());
+    QVERIFY(!library::srJv80WaveName(1, 0).has_value());
+    QVERIFY(!library::hasSrJv80WaveList(14));
+    QCOMPARE(library::srJv80WaveCount(14), 0);
+    QVERIFY(!library::srJv80WaveName(14, 3).has_value());
+
+    // The description degrades one step at a time as knowledge runs out, and
+    // never fills a gap with something plausible.
+    QCOMPARE(QString::fromStdString(library::describeExpansionWave(1, 16)),
+             QString::fromUtf8("wave 17 \u201cClav 2A\u201d on SR-JV80-01 Pop"));
+    QCOMPARE(QString::fromStdString(library::describeExpansionWave(14, 2)),
+             QStringLiteral("wave 3 on SR-JV80-14 Asia"));
+    QCOMPARE(QString::fromStdString(library::describeExpansionWave(42, 2)),
+             QStringLiteral("wave 3 of wave group 42"));
+}
+
+// The strongest check available without hardware, and it uses only Roland
+// documents: every Tone in a real user bank that points at a board whose
+// Waveform List we hold must land on a wave that list actually has. If the
+// group-to-board reading were wrong, or the wave numbering off by one, this
+// would fail.
+void TestExpansionCompatibility::everyFixtureReferenceToABoardWeHoldResolvesToARealWave()
+{
+    int checked = 0;
+    for (const auto& patch : m_patches) {
+        for (const auto tone : ToneIndex::all()) {
+            const auto wave = patch.wave(tone);
+            const auto expansion = xpmodel::expansionWave(wave.groupTypeRaw, wave.groupId, wave.numberRaw);
+            if (!expansion || !library::hasSrJv80WaveList(expansion->groupIdRaw)) {
+                continue;
+            }
+            ++checked;
+            const auto name = library::srJv80WaveName(expansion->groupIdRaw, expansion->numberRaw + 1);
+            QVERIFY2(name.has_value(),
+                     qPrintable(QStringLiteral("group %1 wave %2 is outside SR-JV80-%3's %4 waves")
+                                    .arg(expansion->groupIdRaw)
+                                    .arg(expansion->numberRaw + 1)
+                                    .arg(expansion->groupIdRaw, 2, 10, QLatin1Char('0'))
+                                    .arg(library::srJv80WaveCount(expansion->groupIdRaw))));
+            QVERIFY(!name->empty());
+        }
+    }
+    QVERIFY2(checked > 0, "the fixture uses a board whose Waveform List this project holds");
+
+    // Spot-checks a musician could confirm by eye: the Patch named for four
+    // Clavs uses four Clav waves, and the one named for four organs uses the
+    // four numbered 60's Organ waves. Coincidence does not produce that.
+    std::set<QString> clavs;
+    std::set<QString> organs;
+    for (const auto& patch : m_patches) {
+        const auto title = QString::fromStdString(patch.name().displayText()).trimmed();
+        for (const auto tone : ToneIndex::all()) {
+            const auto wave = patch.wave(tone);
+            const auto expansion = xpmodel::expansionWave(wave.groupTypeRaw, wave.groupId, wave.numberRaw);
+            if (!expansion || expansion->groupIdRaw != 1) {
+                continue;
+            }
+            const auto name = library::srJv80WaveName(1, expansion->numberRaw + 1);
+            if (!name) {
+                continue;
+            }
+            const auto text = QString::fromUtf8(name->data(), static_cast<qsizetype>(name->size()));
+            if (title == QLatin1String("Clav 1 x4")) {
+                clavs.insert(text);
+            }
+            if (title == QLatin1String("60s Organ x4")) {
+                organs.insert(text);
+            }
+        }
+    }
+    QCOMPARE(clavs.size(), std::size_t{4});
+    for (const auto& n : clavs) {
+        QVERIFY2(n.startsWith(QStringLiteral("Clav")), qPrintable(n));
+    }
+    QCOMPARE(organs.size(), std::size_t{4});
+    for (const auto& n : organs) {
+        QVERIFY2(n.contains(QStringLiteral("Organ")), qPrintable(n));
+    }
 }
 
 QTEST_MAIN(TestExpansionCompatibility)
