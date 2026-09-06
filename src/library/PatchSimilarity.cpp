@@ -21,6 +21,56 @@ bool isNameParameter(const xpmodel::ParameterDescriptor& parameter) noexcept
 
 } // namespace
 
+PatchSignature PatchSignature::of(const xpmodel::Xp60Patch& patch)
+{
+    PatchSignature signature;
+    for (const auto& block : Xp60PatchLayout::blocks()) {
+        const auto& values = block.tone ? patch.tone(*block.tone) : patch.common();
+        const auto parameters = block.table->parameters();
+        for (std::size_t i = 0; i < parameters.size(); ++i) {
+            if (!isNameParameter(parameters[i])) {
+                signature.m_values.push_back(values.rawAt(i));
+            }
+        }
+    }
+    return signature;
+}
+
+int PatchSignature::equalCount(const PatchSignature& left, const PatchSignature& right) noexcept
+{
+    const auto count = std::min(left.m_values.size(), right.m_values.size());
+    int equal = 0;
+    for (std::size_t i = 0; i < count; ++i) {
+        equal += left.m_values[i] == right.m_values[i] ? 1 : 0;
+    }
+    return equal;
+}
+
+double PatchSignature::score(const PatchSignature& left, const PatchSignature& right) noexcept
+{
+    const auto count = std::min(left.m_values.size(), right.m_values.size());
+    return count == 0 ? 1.0
+                      : static_cast<double>(equalCount(left, right)) / static_cast<double>(count);
+}
+
+bool PatchSignature::atLeast(const PatchSignature& left, const PatchSignature& right,
+                             int minimumEqual) noexcept
+{
+    const auto count = std::min(left.m_values.size(), right.m_values.size());
+    // Every position still unread could match; give up the moment even all of
+    // them matching would not be enough.
+    int equal = 0;
+    int remaining = static_cast<int>(count);
+    for (std::size_t i = 0; i < count; ++i) {
+        equal += left.m_values[i] == right.m_values[i] ? 1 : 0;
+        --remaining;
+        if (equal + remaining < minimumEqual) {
+            return false;
+        }
+    }
+    return equal >= minimumEqual;
+}
+
 double PatchSimilarity::Block::score() const noexcept
 {
     return comparedParameters == 0 ? 1.0

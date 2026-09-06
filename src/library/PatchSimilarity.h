@@ -3,11 +3,51 @@
 #include "xpmodel/Xp60Patch.h"
 #include "xpmodel/Xp60PatchDiff.h"
 
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
 
 namespace xp60studio::library {
+
+// A Patch reduced to the raw values of its documented sound parameters, in
+// layout order (Patch Common, then Tone 1..4), with the twelve name bytes left
+// out — exactly the parameters `PatchSimilarity` scores over.
+//
+// This exists because sweeping a library is quadratic. `PatchSimilarity`
+// answers one pair richly: it builds a full diff with parameter names and
+// display text, which costs about a millisecond. That is the right price for
+// the one comparison a Compare screen shows, and the wrong price for the
+// 500,000 comparisons a thousand-Patch library needs — half an hour of them.
+//
+// A signature costs one decode and then compares as an integer scan. Same
+// definition of similarity, same numbers, no strings. `atLeast()` stops as soon
+// as too many positions have differed to reach the caller's threshold, which is
+// what makes a full sweep finish: most pairs of unrelated sounds fail within a
+// few dozen parameters.
+class PatchSignature
+{
+public:
+    [[nodiscard]] static PatchSignature of(const xpmodel::Xp60Patch& patch);
+
+    // Positions where both Patches carry the same raw value.
+    [[nodiscard]] static int equalCount(const PatchSignature& left,
+                                        const PatchSignature& right) noexcept;
+    // The same 0.0..1.0 number `PatchSimilarity::score()` reports.
+    [[nodiscard]] static double score(const PatchSignature& left,
+                                      const PatchSignature& right) noexcept;
+    // True when at least `minimumEqual` positions match, abandoning the scan as
+    // soon as the answer can no longer be yes.
+    [[nodiscard]] static bool atLeast(const PatchSignature& left,
+                                      const PatchSignature& right,
+                                      int minimumEqual) noexcept;
+
+    [[nodiscard]] int parameterCount() const noexcept { return static_cast<int>(m_values.size()); }
+    [[nodiscard]] std::span<const int> values() const noexcept { return m_values; }
+
+private:
+    std::vector<int> m_values;
+};
 
 // How alike two Patches are, and exactly where they differ.
 //
