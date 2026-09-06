@@ -461,6 +461,14 @@ Done, with tests:
 - source/bank cross-analysis and library-wide duplicate sweeps
   (`LibraryDuplicateAnalysis`)
 - compatibility filters (`LibraryQuery::Expansion`, Phase 7)
+- structural search (`PatchStructure`, `StructuralQuery`)
+- automatic categorization assistance (`CategorySuggester`) — the user's
+  own labels carried along measured similarity, with the neighbours the
+  suggestion came from and the dissenters among them. There is no
+  category byte in the Parameter Address Map, a Patch name is text
+  somebody typed, and structure alone cannot separate a pad from a bass,
+  so this is the only form of it the project can honestly offer. It
+  refuses on a tie or on too little agreement, and never writes.
 - Patch DNA — the evidence-gated `sounddna` engine. Implemented and
   tested; it publishes no dimensions until a reviewed model passes the
   gates in `SOUND_DNA_ENGINE.md`, which needs a research corpus that does
@@ -486,7 +494,7 @@ presentation-layer job when a Qt 6.5+ environment is available:
 - Bank Builder and Dashboard summaries → the same report, narrowed by
   `LibraryQuery`.
 
-Also open: automatic categorization assistance and structural search.
+Nothing else in this phase is outstanding.
 
 ---
 

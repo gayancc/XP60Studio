@@ -141,6 +141,12 @@ xp60studio_add_test(tst_library_duplicates
 target_compile_definitions(tst_library_duplicates
   PRIVATE XP60STUDIO_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/xp60")
 
+xp60studio_add_test(tst_category_suggestion
+  SOURCES tst_category_suggestion.cpp
+  LIBS xp60studio::services)
+target_compile_definitions(tst_category_suggestion
+  PRIVATE XP60STUDIO_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/xp60")
+
 # Derived Sound DNA runtime: complete feature retention, hard evidence gates,
 # deterministic scoring/contribution and constrained whole-Patch transforms.
 xp60studio_add_test(tst_sounddna
