@@ -364,6 +364,28 @@ Deliverables:
 - shared transfer/verification UI
 - complete major XP-60 editor/librarian baseline
 
+Execution update (2026-09-06): started with the Performance model, the
+foundation the Performance editor and 16-Part mixer rest on.
+
+The Performance Address Map was never transcribed — the layout was carried as
+"observed in the fixture only" — so that came first
+(`protocol/XP60_PERFORMANCE_PARAMETER_MAP.md`), and the model follows the Patch
+pattern exactly: `tools/generate_performance_tables.py` turns the document into
+`generated/Xp60PerformanceTables.{h,cpp}`, and `Xp60PerformanceLayout`,
+`Xp60Performance` and `Xp60PerformanceCodec` sit on top. The generator refuses a
+document whose rows do not tile each block exactly, so a dropped row or a
+mistyped offset fails the build rather than silently shifting every later byte.
+
+Three independent checks pass. The block offsets and sizes span **3993 bytes**,
+which is exactly the size in Roland's own published RQ1 example for the
+Temporary Performance (`00 00 1F 19`). All 32 Performances in the golden fixture
+decode with no range warnings. And every one of them round-trips byte for byte
+through the codec.
+
+Still to come in this phase: the Performance editor and 16-Part mixer UI, the
+Rhythm editor (§1-4 untranscribed), System data (§1-1 untranscribed), snapshots
+and restore workflows, and the shared transfer/verification UI.
+
 At the end of this phase XP60Studio should cover the major practical capabilities expected from a mature XP-60 editor.
 
 ---

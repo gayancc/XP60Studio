@@ -46,6 +46,22 @@ All rows are **Documentation-derived**. Nothing here is hardware-verified; a
 physical XP-60 capture is still required before any row may be promoted. See
 `DEVICE_ACCEPTANCE.md`.
 
+### Machine-readable conventions
+
+The two parameter tables below are parsed by
+`tools/generate_performance_tables.py`, so their shape is load-bearing:
+
+- Seven columns, in the order shown, one row per parameter.
+- A row's **Display** column must either read `same as raw`, give an integer
+  range that scales linearly from the raw range, use Roland's pan or note
+  notation, or list **exactly one label per raw value**. Enumerations are
+  spelled out rather than abbreviated with a dash (`GROUP1, GROUP2, …` not
+  `GROUP1..GROUP7`) so the count can be checked against the raw range — a
+  mismatch fails the generator rather than shifting every later label.
+- A row using `2 / nibble` occupies two offsets, and the next row's offset must
+  account for that. The generator checks that the rows tile the declared total
+  size exactly, with no gap and no overlap.
+
 ### Encoding notation
 
 Identical to the Patch map:
@@ -185,7 +201,7 @@ Part; the Performance holds sixteen of them at the addresses above.
 | `00 13` | Octave Shift | 1 / 7-bit (`0000 0aaa`) | 0..6 | -3..+3 | Documentation-derived | Parameter Address Map §1-2-2 |
 | `00 14` | Local Switch | 1 / 7-bit (`0000 000a`) | 0..1 | OFF, ON | Documentation-derived | Parameter Address Map §1-2-2 |
 | `00 15` | Transmit Switch | 1 / 7-bit (`0000 000a`) | 0..1 | OFF, ON | Documentation-derived | Parameter Address Map §1-2-2 |
-| `00 16` | Transmit Bank Select Group | 1 / 7-bit (`0000 0aaa`) | 0..7 | PATCH, GROUP1..GROUP7 | Documentation-derived | Parameter Address Map §1-2-2 note *3 |
+| `00 16` | Transmit Bank Select Group | 1 / 7-bit (`0000 0aaa`) | 0..7 | PATCH, GROUP1, GROUP2, GROUP3, GROUP4, GROUP5, GROUP6, GROUP7 | Documentation-derived | Parameter Address Map §1-2-2 note *3 |
 | `00 17` | Transmit Volume | 2 / nibble (`0000 aaaa`, `0000 bbbb`) | 0..128 | 0..127, OFF | Documentation-derived | Parameter Address Map §1-2-2 |
 
 ### Paired-range invariant
