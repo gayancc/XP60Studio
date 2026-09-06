@@ -129,6 +129,12 @@ xp60studio_add_test(tst_patch_similarity
 target_compile_definitions(tst_patch_similarity
   PRIVATE XP60STUDIO_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/xp60")
 
+xp60studio_add_test(tst_patch_structure
+  SOURCES tst_patch_structure.cpp
+  LIBS xp60studio::library)
+target_compile_definitions(tst_patch_structure
+  PRIVATE XP60STUDIO_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/xp60")
+
 xp60studio_add_test(tst_library_duplicates
   SOURCES tst_library_duplicates.cpp
   LIBS xp60studio::services)

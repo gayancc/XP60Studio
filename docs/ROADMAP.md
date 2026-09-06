@@ -450,6 +450,44 @@ Deliverables:
 
 Derived metadata must remain separate from Roland hardware data.
 
+## Status
+
+Done, with tests:
+
+- exact parameter fingerprints (`PatchFingerprint`, Phase 5)
+- exact duplicate detection (`LibraryDatabase::findDuplicatesOf`, Phase 5)
+- explainable patch diff (`Xp60PatchDiff`, Phase 4)
+- near-duplicate similarity (`PatchSimilarity`, `PatchSignature`)
+- source/bank cross-analysis and library-wide duplicate sweeps
+  (`LibraryDuplicateAnalysis`)
+- compatibility filters (`LibraryQuery::Expansion`, Phase 7)
+- Patch DNA — the evidence-gated `sounddna` engine. Implemented and
+  tested; it publishes no dimensions until a reviewed model passes the
+  gates in `SOUND_DNA_ENGINE.md`, which needs a research corpus that does
+  not exist yet.
+
+### Open — screen work held back deliberately
+
+The **full Compare screen**, a duplicates view over the sweep report, and
+the **Bank Builder / Dashboard intelligence summaries** are all QML
+surfaces. They are deferred rather than written, for the same reason the
+Phase 4–6 screenshot reviews are still open: this container has Qt 6.4,
+the screens need 6.5+, and `tst_qml` cannot run. Writing screens that
+cannot be executed or looked at would produce code whose only evidence of
+correctness is that it compiles.
+
+The C++ underneath them is finished and tested, so each is a
+presentation-layer job when a Qt 6.5+ environment is available:
+
+- Compare screen → a view model over `PatchSimilarity` (per-block scores,
+  the parameter diff, `summary()`).
+- Duplicates view → a view model over `LibraryDuplicateReport`, including
+  its `truncated` / `minimumPercent` honesty fields.
+- Bank Builder and Dashboard summaries → the same report, narrowed by
+  `LibraryQuery`.
+
+Also open: automatic categorization assistance and structural search.
+
 ---
 
 # Phase 10 — Advanced Sound Design
