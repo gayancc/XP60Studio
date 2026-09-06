@@ -107,6 +107,18 @@ struct ExpansionWaveReference
 // error, and quietly moving it to the nearest legal one would write a wave
 // nobody asked for.
 [[nodiscard]] std::optional<WaveIdentifier> encodeWave(const WaveSelection& selection) noexcept;
+
+// The three Tone bytes naming a wave on a Wave Expansion Board.
+//
+// `displayNumber` is 1-based, as Roland prints it and the instrument shows it;
+// the Tone carries one less. Refuses anything the fields cannot hold — a group
+// ID outside 0..127 or a number outside 1..256 — and clamps nothing.
+//
+// It cannot check that the board *has* that wave: this layer does not know what
+// any board contains, and must not pretend to. A caller that knows the board's
+// waveform list (library::srJv80WaveCount) should bound the number before
+// calling, so the musician is told rather than the instrument surprised.
+[[nodiscard]] std::optional<WaveIdentifier> encodeExpansionWave(int waveGroupId, int displayNumber) noexcept;
 [[nodiscard]] std::optional<WaveSelection> decodeWave(int groupTypeRaw, int groupIdRaw, int numberRaw) noexcept;
 
 } // namespace xp60studio::xpmodel

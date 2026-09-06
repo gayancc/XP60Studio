@@ -90,7 +90,10 @@ FocusScope {
         }
 
         XpLabel {
-            text: qsTr("%1 results · Internal ROM catalog · Category taxonomy not verified").arg(root.catalog.count)
+            text: root.catalog.expansionCount > 0
+                  ? qsTr("%1 results · %2 internal + %3 from your expansion boards · Category taxonomy not verified")
+                        .arg(root.catalog.count).arg(448).arg(root.catalog.expansionCount)
+                  : qsTr("%1 results · Internal ROM catalog · Category taxonomy not verified").arg(root.catalog.count)
             role: "caption"; secondary: true
         }
 
@@ -134,7 +137,7 @@ FocusScope {
                         }
                         delegate: WaveResultRow {
                             width: results.width - 12
-                            catalogMissing: root.catalog.sourceFilter === 3
+                            catalogMissing: false
                             selected: root.catalog.selectedRow === index
                             listFocused: results.activeFocus
                             onActivated: {
@@ -145,8 +148,10 @@ FocusScope {
                         XpEmptyState {
                             anchors.fill: parent
                             visible: root.catalog.count === 0
-                            title: root.catalog.sourceFilter === 3 ? qsTr("Expansion waves cannot be listed") : qsTr("No matching waveforms")
-                            message: root.catalog.sourceFilter === 3 ? root.expansionNote : qsTr("Try another name, number or source.")
+                            title: root.catalog.sourceFilter === 3 && root.catalog.expansionCount === 0
+                                   ? qsTr("No expansion waves to browse") : qsTr("No matching waveforms")
+                            message: root.catalog.sourceFilter === 3 && root.catalog.expansionCount === 0
+                                     ? root.expansionNote : qsTr("Try another name, number or source.")
                         }
                     }
                 }
@@ -171,8 +176,15 @@ FocusScope {
                     RowLayout {
                         Layout.fillWidth: true
                         WaveAvailabilityBadge {
-                            availability: root.catalog.sourceFilter === 3 ? "missing_catalog"
-                                          : (root.catalog.selected.name ? "available" : "unknown")
+                            availability: root.catalog.selected.name ? "available" : "unknown"
+                        }
+                        StatusPill {
+                            objectName: "waveBoardPill"
+                            visible: root.catalog.selected.boardName !== undefined
+                                     && root.catalog.selected.boardName.length > 0
+                            text: root.catalog.selected.boardName || ""
+                            tone: "info"
+                            showDot: false
                         }
                         StatusPill {
                             visible: root.catalog.selected.bank !== undefined && root.catalog.selected.bank.length > 0
@@ -230,7 +242,8 @@ FocusScope {
                     }
                     XpLabel {
                         Layout.fillWidth: true
-                        text: qsTr("Audio preview unavailable. Expansion waves cannot be assigned from here: %1").arg(root.expansionNote)
+                        visible: root.catalog.expansionCount === 0
+                        text: qsTr("Audio preview unavailable. %1").arg(root.expansionNote)
                         wrapMode: Text.WordWrap; role: "caption"; color: Theme.warning
                     }
                 }

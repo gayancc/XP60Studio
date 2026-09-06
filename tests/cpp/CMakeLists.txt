@@ -196,7 +196,7 @@ target_compile_definitions(tst_library_model
 # The generated tables must match the protocol document they come from.
 xp60studio_add_test(tst_wave_browser
   SOURCES tst_wave_browser.cpp
-  LIBS xp60studio::presentation)
+  LIBS xp60studio::presentation xp60studio::library)
 
 find_package(Python3 COMPONENTS Interpreter QUIET)
 if(Python3_Interpreter_FOUND)

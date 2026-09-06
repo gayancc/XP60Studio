@@ -249,6 +249,16 @@ public:
     // the instrument could not select: a bank other than INT-A or INT-B, or a
     // number outside that bank. Values are never clamped to fit.
     Q_INVOKABLE bool useWaveInTone(int toneNumber, const QString& bank, int displayNumber);
+
+    // Points a Tone at a wave on a Wave Expansion Board. `displayNumber` is
+    // 1-based as Roland prints it; the Tone carries one less.
+    //
+    // Refuses a number the board does not have whenever Roland's Waveform List
+    // for it is held, rather than writing a reference that would sound as
+    // nothing. Where no list is held the field limits are all that can be
+    // enforced, and the caller is trusted — but nothing in XP60Studio's own UI
+    // offers a wave from such a board.
+    Q_INVOKABLE bool useExpansionWaveInTone(int toneNumber, int waveGroupId, int displayNumber);
     // The browser's current selection applied to the currently selected Tone.
     Q_INVOKABLE bool useSelectedWaveInTone();
 

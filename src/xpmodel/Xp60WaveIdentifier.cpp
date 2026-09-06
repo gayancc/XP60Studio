@@ -45,6 +45,17 @@ std::optional<WaveIdentifier> encodeWave(const WaveSelection& selection) noexcep
     return identifier;
 }
 
+std::optional<WaveIdentifier> encodeExpansionWave(int waveGroupId, int displayNumber) noexcept
+{
+    if (waveGroupId < 0 || waveGroupId > 127) {
+        return std::nullopt;
+    }
+    if (displayNumber < 1 || displayNumber > 256) {
+        return std::nullopt;
+    }
+    return WaveIdentifier{kExpansionWaveGroupTypeRaw, waveGroupId, displayNumber - 1};
+}
+
 std::optional<WaveSelection> decodeWave(int groupTypeRaw, int groupIdRaw, int numberRaw) noexcept
 {
     const auto bank = internalWaveBank(groupTypeRaw, groupIdRaw);

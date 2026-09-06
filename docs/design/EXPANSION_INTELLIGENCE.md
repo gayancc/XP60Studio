@@ -128,10 +128,12 @@ will have nothing to sound" is worth knowing, and it is the last moment to
 notice. (The fixture bank is a good example of a true and awkward answer: it
 needs five wave groups, and an XP-60 has four slots.)
 
-**Wave Browser.** Its Expansion tab reports the declared boards and, for each,
-whether Roland's Waveform List for it is held here — the lists are published per
-board and `docs/XP60-References/SR-JV80/` has some of them. Board by board,
-because the answer differs per board.
+**Wave Browser.** Its Expansion tab lists the waves of every board the musician
+declared whose Waveform List is held here, by Roland's own names, and they can
+be assigned to a Tone like any internal wave. The set is deliberately narrow:
+only declared boards, so a wave picked in the browser is one the Patch will
+actually sound. A declared board with no list here, or with no wave group
+established yet, contributes nothing and the tab says which.
 
 **Patch Editor.** Per-Tone, on the Tone card, with the workflow below.
 
@@ -147,7 +149,7 @@ auto-replace path at all**, and these three are the whole of what is offered:
 
 | Action | What it does | What it does not do |
 | --- | --- | --- |
-| **Find replacement** | Selects the Tone and asks the screen to open the Wave Browser, where the musician picks. | Chooses nothing. Changes no data. |
+| **Find replacement** | Selects the Tone and asks the screen to open the Wave Browser, where the musician picks — from internal waves or from the boards they do have. | Chooses nothing. Changes no data. |
 | **Disable Tone** | Turns the Tone's switch off — the same ordinary, undoable edit the Tone card's own switch makes. | Does not touch the wave it points at, so it is reversible. |
 | **Keep anyway** | Dismisses the prompt. | Changes nothing at all. The Patch is byte for byte what it was, and it will still not sound. |
 

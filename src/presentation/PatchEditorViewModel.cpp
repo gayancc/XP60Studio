@@ -1,5 +1,6 @@
 #include "presentation/PatchEditorViewModel.h"
 
+#include "library/ExpansionBoardCatalog.h"
 #include "xpmodel/Xp60WaveIdentifier.h"
 
 #include "xp60/Xp60Device.h"
@@ -232,14 +233,56 @@ bool PatchEditorViewModel::useWaveInTone(int toneNumber, const QString& bank, in
     return true;
 }
 
+bool PatchEditorViewModel::useExpansionWaveInTone(int toneNumber, int waveGroupId, int displayNumber)
+{
+    if (!hasPatch() || m_comparing) {
+        return false;
+    }
+    const auto tone = ToneIndex::fromNumber(toneNumber);
+    if (!tone) {
+        return false;
+    }
+    // Where Roland's list for the board is held, a number outside it is a
+    // caller error and is refused. Clamping would write a wave nobody chose.
+    if (library::hasSrJv80WaveList(waveGroupId)
+        && (displayNumber < 1 || displayNumber > library::srJv80WaveCount(waveGroupId))) {
+        return false;
+    }
+    const auto identifier = xpmodel::encodeExpansionWave(waveGroupId, displayNumber);
+    if (!identifier) {
+        return false;
+    }
+
+    auto edited = working();
+    if (!edited.setRaw(*tone, ToneParameter::WaveGroupType, identifier->groupTypeRaw)
+        || !edited.setRaw(*tone, ToneParameter::WaveGroupId, identifier->groupIdRaw)
+        || !edited.setRaw(*tone, ToneParameter::WaveNumber, identifier->numberRaw)) {
+        return false;
+    }
+    // Named in the undo label the way the musician chose it, so the history
+    // reads as what they did rather than as three raw bytes.
+    commitEdit(std::move(edited),
+               tr("Use %1 in Tone %2")
+                   .arg(toQString(library::describeExpansionWave(waveGroupId, displayNumber - 1)))
+                   .arg(toneNumber));
+    return true;
+}
+
 bool PatchEditorViewModel::canUseSelectedWave() const
 {
     if (!hasPatch() || m_comparing) {
         return false;
     }
     const auto selected = m_waves.selected();
-    return !selected.isEmpty()
-        && xpmodel::internalWaveBankFromLabel(selected.value("bank").toString().toStdString()).has_value();
+    if (selected.isEmpty()) {
+        return false;
+    }
+    if (selected.value(QStringLiteral("expansion")).toBool()) {
+        // The browser only ever offers boards the musician declared, so an
+        // expansion selection is assignable by construction.
+        return selected.value(QStringLiteral("waveGroupId")).toInt() >= 0;
+    }
+    return xpmodel::internalWaveBankFromLabel(selected.value("bank").toString().toStdString()).has_value();
 }
 
 bool PatchEditorViewModel::useSelectedWaveInTone()
@@ -247,6 +290,10 @@ bool PatchEditorViewModel::useSelectedWaveInTone()
     const auto selected = m_waves.selected();
     if (selected.isEmpty()) {
         return false;
+    }
+    if (selected.value(QStringLiteral("expansion")).toBool()) {
+        return useExpansionWaveInTone(m_selectedTone, selected.value(QStringLiteral("waveGroupId")).toInt(),
+                                      selected.value(QStringLiteral("number")).toInt());
     }
     return useWaveInTone(m_selectedTone, selected.value("bank").toString(), selected.value("number").toInt());
 }
@@ -610,11 +657,15 @@ void PatchEditorViewModel::setExpansionProfile(const library::ExpansionProfile* 
         return;
     }
     m_expansionProfile = profile;
+    // The browser offers the boards this instrument has, so it follows the same
+    // profile the compatibility verdicts do.
+    m_waves.setExpansionProfile(profile);
     emit compatibilityChanged();
 }
 
 void PatchEditorViewModel::expansionProfileChanged()
 {
+    m_waves.expansionProfileChanged();
     emit compatibilityChanged();
 }
 

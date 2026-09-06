@@ -91,6 +91,7 @@ private slots:
     void pickingABoardFillsInItsGroupAndLearningStillOverridesIt();
     void namesTheWaveItselfWhereRolandsListIsHeld();
     void everyFixtureReferenceToABoardWeHoldResolvesToARealWave();
+    void assigningAnExpansionWaveWritesTheThreeBytesTogether();
 
     // The three explicit ways out, and the absence of a fourth.
     void offersThreeWaysOutOfAMissingWaveAndReplacesNothingItself();
@@ -808,6 +809,59 @@ void TestExpansionCompatibility::everyFixtureReferenceToABoardWeHoldResolvesToAR
     for (const auto& n : organs) {
         QVERIFY2(n.contains(QStringLiteral("Organ")), qPrintable(n));
     }
+}
+
+// Find Replacement now has somewhere to land: an expansion wave can be chosen
+// and assigned, not merely named. The three bytes move as one undo step, and a
+// number the board does not have is refused rather than clamped.
+void TestExpansionCompatibility::assigningAnExpansionWaveWritesTheThreeBytesTogether()
+{
+    services::DeviceSession session(std::make_unique<midi::LoopbackMidiTransport>());
+    services::PatchWorkspace workspace;
+    presentation::PatchEditorViewModel editor(session, workspace);
+    library::ExpansionProfile profile;
+    editor.setExpansionProfile(&profile);
+    QVERIFY(profile.setBoard(1, "SR-JV80-01 Pop", 1));
+    editor.expansionProfileChanged();
+
+    workspace.adopt(internalOnlyPatch(), services::PatchOrigin::temporary());
+    const auto tone = ToneIndex::tone2();
+
+    QVERIFY(editor.useExpansionWaveInTone(2, 1, 17));
+    const auto wave = workspace.working().wave(tone);
+    QCOMPARE(wave.groupTypeRaw, xpmodel::kExpansionWaveGroupTypeRaw);
+    QCOMPARE(wave.groupId, 1);
+    // Roland prints from 1; the Tone carries one less.
+    QCOMPARE(wave.numberRaw, 16);
+    const auto reference = xpmodel::expansionWave(wave.groupTypeRaw, wave.groupId, wave.numberRaw);
+    QVERIFY(reference.has_value());
+    QCOMPARE(QString::fromUtf8(library::srJv80WaveName(1, reference->numberRaw + 1)->data(),
+                               static_cast<qsizetype>(library::srJv80WaveName(1, reference->numberRaw + 1)->size())),
+             QStringLiteral("Clav 2A"));
+
+    // One undo step puts all three bytes back.
+    QVERIFY(workspace.canUndo());
+    workspace.undo();
+    QCOMPARE(workspace.working().wave(tone).groupTypeRaw, internalOnlyPatch().wave(tone).groupTypeRaw);
+    QCOMPARE(workspace.working().wave(tone).numberRaw, internalOnlyPatch().wave(tone).numberRaw);
+
+    // Past the end of Roland's list for that board: refused, nothing written.
+    const auto before = workspace.working();
+    QVERIFY(!editor.useExpansionWaveInTone(2, 1, library::srJv80WaveCount(1) + 1));
+    QVERIFY(!editor.useExpansionWaveInTone(2, 1, 0));
+    QVERIFY(workspace.working() == before);
+
+    // A group the field cannot hold is refused too.
+    QVERIFY(!editor.useExpansionWaveInTone(2, 128, 1));
+    QVERIFY(!editor.useExpansionWaveInTone(9, 1, 1));
+
+    // A board with no Waveform List here can still be addressed — the field
+    // limits are all that can honestly be enforced — but nothing in the UI
+    // offers one, because the browser lists only boards it can name.
+    QVERIFY(!library::hasSrJv80WaveList(14));
+    QVERIFY(editor.useExpansionWaveInTone(2, 14, 200));
+    QCOMPARE(workspace.working().wave(tone).groupId, 14);
+    QCOMPARE(workspace.working().wave(tone).numberRaw, 199);
 }
 
 QTEST_MAIN(TestExpansionCompatibility)
