@@ -113,7 +113,7 @@ target_compile_definitions(tst_xp60_rhythm
 
 xp60studio_add_test(tst_performance_editor
   SOURCES tst_performance_editor.cpp
-  LIBS xp60studio::presentation)
+  LIBS xp60studio::presentation xp60studio::simulation)
 target_compile_definitions(tst_performance_editor
   PRIVATE XP60STUDIO_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/xp60")
 

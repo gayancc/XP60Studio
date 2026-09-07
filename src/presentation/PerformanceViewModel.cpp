@@ -35,6 +35,7 @@ PerformanceCommonParameter voiceReserveFor(PartIndex part) noexcept
 PerformanceViewModel::PerformanceViewModel(services::DeviceSession& session, QObject* parent)
     : QObject(parent)
     , m_session(session)
+    , m_userWrite(std::make_unique<services::UserPerformanceWrite>(session))
 {
     connect(&m_session, &services::DeviceSession::patchFetchChanged, this, &PerformanceViewModel::onFetchChanged);
     connect(&m_session, &services::DeviceSession::connectionStateChanged, this,
@@ -48,6 +49,17 @@ PerformanceViewModel::PerformanceViewModel(services::DeviceSession& session, QOb
                 setTransfer(ok ? tr("Sent to the XP-60's temporary Performance.") : message,
                             ok ? QStringLiteral("success") : QStringLiteral("error"));
             });
+    connect(m_userWrite.get(), &services::UserPerformanceWrite::changed, this,
+            [this] { emit userWriteChanged(); });
+    connect(m_userWrite.get(), &services::UserPerformanceWrite::progressed, this,
+            [this](std::size_t, std::size_t) { emit userWriteChanged(); });
+    connect(m_userWrite.get(), &services::UserPerformanceWrite::finished, this, [this](bool ok) {
+        emit userWriteChanged();
+        // A persistent write changes what fetching a USER slot would return, so
+        // anything showing device state has to re-read.
+        emit transferChanged();
+        emit userWriteFinished(ok);
+    });
 }
 
 // ---------------------------------------------------------------------------
@@ -409,5 +421,105 @@ void PerformanceViewModel::setTransfer(const QString& message, const QString& to
     m_transferTone = tone;
     emit transferChanged();
 }
+
+// ---------------------------------------------------------------------------
+// Persistent write to a USER Performance slot
+// ---------------------------------------------------------------------------
+//
+// Every rule here belongs to services::UserPerformanceWrite: read the
+// destination and keep it, verify by reading back, restore what was
+// overwritten, arm once. This is projection, and the one thing it adds is
+// refusing to start a persistent write while an audition send or a fetch is
+// still in flight -- two writers talking to the instrument at once is how a
+// verification reads back somebody else's bytes.
+
+namespace {
+
+QString text(std::string_view value)
+{
+    return QString::fromUtf8(value.data(), static_cast<qsizetype>(value.size()));
+}
+
+} // namespace
+
+bool PerformanceViewModel::userWriteBusy() const { return m_userWrite->isBusy(); }
+bool PerformanceViewModel::userWriteArmed() const { return m_userWrite->isArmed(); }
+QString PerformanceViewModel::userWriteState() const { return text(m_userWrite->stateName()); }
+QString PerformanceViewModel::userWriteStateLabel() const { return m_userWrite->stateLabel(); }
+QString PerformanceViewModel::userWriteMessage() const { return m_userWrite->message(); }
+int PerformanceViewModel::userWriteCompleted() const { return static_cast<int>(m_userWrite->completed()); }
+int PerformanceViewModel::userWriteTotal() const { return static_cast<int>(m_userWrite->total()); }
+int PerformanceViewModel::userWriteCurrentSlot() const { return m_userWrite->currentUserNumber(); }
+bool PerformanceViewModel::canRestoreUserWrite() const { return m_userWrite->canRestore(); }
+bool PerformanceViewModel::canRetryUserWrite() const { return m_userWrite->canRetry(); }
+
+int PerformanceViewModel::userPerformanceCount() const
+{
+    return services::UserPerformanceWrite::kUserPerformanceCount;
+}
+
+bool PerformanceViewModel::canArmUserWrite() const
+{
+    return hasPerformance() && !busy() && m_userWrite->canArm();
+}
+
+QVariantList PerformanceViewModel::userWriteUnwritten() const
+{
+    QVariantList list;
+    for (const auto& destination : m_userWrite->unwritten()) {
+        list.append(destination.userNumber);
+    }
+    return list;
+}
+
+QString PerformanceViewModel::userWritePlan(int userNumber) const
+{
+    if (!hasPerformance() || !services::UserPerformanceWrite::isValidUserNumber(userNumber)) {
+        return {};
+    }
+    return m_userWrite->writePlanDescription({{userNumber, *m_working}});
+}
+
+bool PerformanceViewModel::armUserWrite()
+{
+    if (!canArmUserWrite()) {
+        return false;
+    }
+    const bool armed = m_userWrite->arm();
+    emit userWriteChanged();
+    return armed;
+}
+
+void PerformanceViewModel::disarmUserWrite()
+{
+    m_userWrite->disarm();
+    emit userWriteChanged();
+}
+
+bool PerformanceViewModel::writeToUserSlot(int userNumber)
+{
+    if (!hasPerformance() || busy()) {
+        return false;
+    }
+    const bool started = m_userWrite->writeOne(*m_working, userNumber);
+    emit userWriteChanged();
+    return started;
+}
+
+bool PerformanceViewModel::restoreUserWrite()
+{
+    const bool started = m_userWrite->restore();
+    emit userWriteChanged();
+    return started;
+}
+
+bool PerformanceViewModel::retryUserWrite()
+{
+    const bool started = m_userWrite->retry();
+    emit userWriteChanged();
+    return started;
+}
+
+void PerformanceViewModel::cancelUserWrite() { m_userWrite->cancel(); }
 
 } // namespace xp60studio::presentation

@@ -6,15 +6,20 @@
 
 #include "midi/LoopbackMidiTransport.h"
 #include "presentation/PerformanceViewModel.h"
+#include "support/FakeXp60.h"
 #include "xp60/Xp60Device.h"
 #include "xpmodel/SysExStream.h"
 #include "xpmodel/Xp60PerformanceCodec.h"
 
+#include <QCoreApplication>
 #include <QFile>
 #include <QSignalSpy>
 #include <QTest>
 
+#include <chrono>
 #include <memory>
+
+using namespace std::chrono_literals;
 
 using namespace xp60studio;
 using presentation::PerformanceViewModel;
@@ -58,6 +63,9 @@ private slots:
     void voiceReserveIsEditedThroughTheStripButLivesInCommon();
     void revertGoesBackToWhatWasFetched();
     void sendingNeedsAConnectedInstrument();
+    void aPersistentWriteIsRefusedUntilThereIsAnInstrumentAndAnArm();
+    void theWritePlanNamesTheDestinationBeforeAnythingIsArmed();
+    void writingToAUserSlotVerifiesAndTheSnapshotPutsItBack();
 
 private:
     [[nodiscard]] xpmodel::Xp60Performance fixturePerformance(int userNumber) const;
@@ -246,6 +254,132 @@ void TestPerformanceEditor::sendingNeedsAConnectedInstrument()
     // USER numbers outside 1..32 are refused whatever the connection state.
     QVERIFY(!m_model->fetchUser(0));
     QVERIFY(!m_model->fetchUser(33));
+}
+
+namespace {
+
+// A connected instrument, for the one thing that cannot be tested offline.
+// The write path itself is covered against the real device model in
+// tst_snapshot_restore_run; what matters here is that the view model drives it
+// and reports back what QML needs.
+struct Connected
+{
+    protocol::TimePoint now{std::chrono::duration_cast<protocol::Clock::duration>(1000ms)};
+    midi::LoopbackMidiTransport* transport = nullptr;
+    std::unique_ptr<services::DeviceSession> session;
+    std::unique_ptr<PerformanceViewModel> model;
+    std::unique_ptr<testsupport::FakeXp60> device;
+
+    Connected()
+    {
+        auto loopback = std::make_unique<midi::LoopbackMidiTransport>();
+        loopback->addInput("in-1", "XP-60 IN");
+        loopback->addOutput("out-1", "XP-60 OUT");
+        transport = loopback.get();
+        session = std::make_unique<services::DeviceSession>(std::move(loopback));
+        session->setAutomaticTimeoutPolling(false);
+        session->setClocks([this] { return now; }, {});
+        auto pacing = session->pacing();
+        pacing.interMessageDelay = 0ms;
+        session->setPacing(pacing);
+        model = std::make_unique<PerformanceViewModel>(*session);
+        device = std::make_unique<testsupport::FakeXp60>(testsupport::fixtureImage());
+        session->connectEndpoints("in-1", "out-1");
+    }
+
+    void pump(int rounds = 60000)
+    {
+        for (int i = 0; i < rounds; ++i) {
+            QCoreApplication::processEvents();
+            const auto replies = device->exchange(*transport);
+            for (const auto& reply : replies) {
+                const auto bytes = reply.encode();
+                transport->injectIncoming(midi::MidiByteSpan(bytes.data(), bytes.size()));
+            }
+            QCoreApplication::processEvents();
+            if (replies.empty() && transport->sentMessages().empty()
+                && session->pendingSendCount() == 0 && !model->userWriteBusy()) {
+                return;
+            }
+        }
+    }
+
+    [[nodiscard]] xpmodel::Xp60Performance inUserSlot(int userNumber) const
+    {
+        return *xpmodel::Xp60PerformanceCodec::decode(
+                    device->memory(), *Xp60PerformanceLayout::userPerformanceAddress(userNumber))
+                    .performance;
+    }
+};
+
+} // namespace
+
+void TestPerformanceEditor::aPersistentWriteIsRefusedUntilThereIsAnInstrumentAndAnArm()
+{
+    // Nothing adopted: nothing to write, nothing to arm for.
+    QVERIFY(!m_model->canArmUserWrite());
+    QVERIFY(!m_model->armUserWrite());
+    QVERIFY(!m_model->writeToUserSlot(1));
+
+    m_model->adopt(fixturePerformance(1), QStringLiteral("fixture"));
+    // Adopted but offline. A persistent write replaces something the musician
+    // stored, so it is refused rather than queued for later.
+    QVERIFY(!m_model->canArmUserWrite());
+    QVERIFY(!m_model->armUserWrite());
+    QVERIFY(!m_model->userWriteArmed());
+    QVERIFY(!m_model->writeToUserSlot(1));
+    QCOMPARE(m_model->userWriteTotal(), 0);
+    QVERIFY(!m_model->canRestoreUserWrite());
+    QVERIFY(!m_model->canRetryUserWrite());
+    QCOMPARE(m_model->userPerformanceCount(), 32);
+}
+
+void TestPerformanceEditor::theWritePlanNamesTheDestinationBeforeAnythingIsArmed()
+{
+    QVERIFY(m_model->userWritePlan(1).isEmpty()); // nothing adopted
+    m_model->adopt(fixturePerformance(1), QStringLiteral("fixture"));
+
+    const auto plan = m_model->userWritePlan(7);
+    QVERIFY(!plan.isEmpty());
+    QVERIFY(plan.contains(QStringLiteral("7")));
+
+    // Slots the instrument does not have are refused rather than clamped into
+    // one it does.
+    QVERIFY(m_model->userWritePlan(0).isEmpty());
+    QVERIFY(m_model->userWritePlan(33).isEmpty());
+    QVERIFY(!m_model->writeToUserSlot(0));
+    QVERIFY(!m_model->writeToUserSlot(33));
+}
+
+void TestPerformanceEditor::writingToAUserSlotVerifiesAndTheSnapshotPutsItBack()
+{
+    Connected c;
+    const auto before = c.inUserSlot(9);
+    c.model->adopt(c.inUserSlot(1), QStringLiteral("fixture"));
+    QVERIFY(c.model->name() != QString::fromStdString(before.name().displayText()));
+
+    QVERIFY(c.model->canArmUserWrite());
+    QVERIFY(c.model->armUserWrite());
+    QVERIFY(c.model->userWriteArmed());
+
+    QSignalSpy finished(c.model.get(), &PerformanceViewModel::userWriteFinished);
+    QVERIFY(c.model->writeToUserSlot(9));
+    c.pump();
+
+    QCOMPARE(finished.size(), 1);
+    QCOMPARE(finished.at(0).at(0).toBool(), true);
+    QCOMPARE(c.model->userWriteState(), QStringLiteral("Completed"));
+    QCOMPARE(c.model->userWriteCompleted(), 1);
+    QCOMPARE(c.model->userWriteTotal(), 1);
+    QVERIFY(c.model->userWriteUnwritten().isEmpty());
+    QCOMPARE(c.inUserSlot(9).name().displayText(), c.inUserSlot(1).name().displayText());
+
+    // The snapshot taken before the write is the undo, and it is a real one:
+    // the slot goes back to the bytes it held.
+    QVERIFY(c.model->canRestoreUserWrite());
+    QVERIFY(c.model->restoreUserWrite());
+    c.pump();
+    QVERIFY(c.inUserSlot(9) == before);
 }
 
 QTEST_MAIN(TestPerformanceEditor)

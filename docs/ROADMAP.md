@@ -501,8 +501,23 @@ stopping half-way would leave the instrument holding a mixture of two states —
 the one outcome the whole design avoids — so the run is seen through and
 verified, and the safety snapshot is the way back.
 
+**Both are reachable now.** `presentation::BackupViewModel` sequences the whole
+backup workflow — capture → save → load → plan → arm → restore — holding the
+state between steps and converting Roland types into rows QML can display. It
+adds no safety rules of its own; what it enforces is sequencing: a plan is
+dropped whenever the snapshot it describes is replaced or forgotten, arming
+without a plan is refused, and an area this build does not know is refused
+outright rather than dropped from the request. Areas that cannot be captured are
+named in `unreadableAreaNote` rather than left off a list the user reads as
+complete. `presentation::PerformanceViewModel` surfaces the persistent USER
+Performance write beside the audition send it already had — arm, write to a
+slot, restore what was overwritten, retry what did not land — refusing to start
+one while a fetch or an audition send is still in flight.
+
 Still to come in this phase: the Rhythm and System editors on top of those
-tables, and the shared transfer/verification UI.
+tables, the shared transfer/verification UI, and the QML screens over the two
+view models above (deferred with the other screen work — they need Qt 6.5+ and
+could be neither run nor looked at here).
 
 Hardware verification for everything Phase 8 has built so far is open as
 `DEVICE_ACCEPTANCE.md` areas 16–18.

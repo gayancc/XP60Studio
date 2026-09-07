@@ -284,3 +284,29 @@ encoded per-commit granularity and now say what they mean by advancing the
 clock between deliberate edits.
 
 66/66 CTest targets pass (`tst_qml` still cannot run under Qt 6.4).
+
+---
+
+## 7. F3 addendum — the two capabilities nobody could reach
+
+Of the twelve classes in F3's table, two were user-visible capabilities that
+existed and had no way in at all. Both now have a view model, tested against the
+loopback instrument and real files; the QML screens over them stay deferred.
+
+- **`presentation::BackupViewModel`** sequences capture → save → load → plan →
+  arm → restore. Nineteen tests: a cancelled capture is kept but says it did not
+  finish, a save refuses to overwrite without being told, a `.syx` with no
+  manifest is not listed as a snapshot, a plan reports coverage in slots,
+  loading a snapshot drops the plan built from the previous one, and a restore
+  writes a *loadable* safety snapshot to disk before any byte goes out.
+- **`presentation::PerformanceViewModel`** gained the persistent USER
+  Performance write beside its audition send. Its class comment said the write
+  "is not implemented yet"; that had been untrue since `UserPerformanceWrite`
+  landed, and is corrected. Three tests: refused offline and unarmed, the plan
+  names the destination before anything is armed, and a connected write verifies
+  and is put back by its own snapshot.
+
+The rest of F3's table is engine reached only by other engine code, which is
+what a library layer is supposed to look like. What was wrong was not that
+`PatchSimilarity` has no QML reference — it is that a musician could not take a
+backup.
