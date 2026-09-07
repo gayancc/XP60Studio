@@ -628,9 +628,31 @@ an expansion board, a Tone switch that came along and turned a Tone on. Nothing
 is refused on those grounds — the user may know exactly what they are doing —
 but nothing is silent either.
 
-Still to come in this phase: constrained variation, mutation/evolution,
-morphing where parameter semantics permit, advanced A/B, richer version history,
-and the sound-design surfaces (QML, deferred with the other screen work).
+**Constrained variation is in** (`library::PatchVariation`). "Vary this Patch"
+is where invention creeps into a synthesizer editor, so the constraints are the
+design:
+
+- **Nothing discrete is touched.** A parameter is left alone when it carries an
+  enumeration, when its range is 0..1 (every switch), or when it belongs to the
+  Wave category. Those hold identities, not quantities: Filter Type 3 is not "a
+  bit more" than 2 and wave 118 is not "near" 119. `whyNotVaried()` gives the
+  reason in words, so a UI can show it beside a control it will not move.
+- **Nothing in a Tone that is switched off**, because changing what nobody
+  hears is change without effect.
+- **Never the Patch name.** A variation deserves a new name and choosing one is
+  the musician's job.
+- The amount is a fraction of each parameter's **own** documented range, so a
+  coarse field and a fine one move by comparable musical amounts rather than by
+  the same number of steps. Clamping at a range edge is counted and reported,
+  not hidden.
+- Deterministic from a seed, so a variation a musician liked can be reproduced.
+
+It makes no claim about how the result sounds — it says which parameters moved
+and by how much. Perceptual claims live in `sounddna`, which publishes none.
+
+Still to come in this phase: mutation/evolution, morphing where parameter
+semantics permit, advanced A/B, richer version history, and the sound-design
+surfaces (QML, deferred with the other screen work).
 
 ---
 

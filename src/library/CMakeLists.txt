@@ -27,6 +27,8 @@ add_library(xp60studio_library STATIC
   InstrumentSnapshot.cpp
   PatchComponentCopy.h
   PatchComponentCopy.cpp
+  PatchVariation.h
+  PatchVariation.cpp
   SyxImport.h
   SyxImport.cpp
   SyxExport.h
