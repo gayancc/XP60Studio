@@ -650,6 +650,19 @@ design:
 It makes no claim about how the result sounds — it says which parameters moved
 and by how much. Perceptual claims live in `sounddna`, which publishes none.
 
+**The envelope interaction engine is in** (`src/interaction/`), which is the
+hard half of the graphical envelope editors — the half that decides whether
+dragging a point feels smooth or sticky. `EnvelopeGeometry` turns a Tone's
+Pitch, Filter or Amplifier envelope into draggable points; `EnvelopeDrag` runs
+the gesture. The four mechanisms and the reasoning are in
+[`design/ENVELOPE_INTERACTION.md`](design/ENVELOPE_INTERACTION.md); in short, a
+continuous shadow the view draws from, hysteresis at step boundaries, exact
+accumulation from the grab origin, and coalescing to at most one message per
+parameter per drain.
+
+The QML surface on top is deferred with the other screen work: it needs Qt 6.5+
+and could be neither run nor looked at here.
+
 Still to come in this phase: mutation/evolution, morphing where parameter
 semantics permit, advanced A/B, richer version history, and the sound-design
 surfaces (QML, deferred with the other screen work).

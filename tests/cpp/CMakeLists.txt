@@ -172,6 +172,13 @@ xp60studio_add_test(tst_patch_variation
 target_compile_definitions(tst_patch_variation
   PRIVATE XP60STUDIO_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/xp60")
 
+# Phase 10 — smooth dragging of envelope points over coarse integer parameters.
+xp60studio_add_test(tst_envelope_drag
+  SOURCES tst_envelope_drag.cpp
+  LIBS xp60studio::interaction)
+target_compile_definitions(tst_envelope_drag
+  PRIVATE XP60STUDIO_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/xp60")
+
 # Phase 8 — snapshots, restore plans and the safety snapshot rule.
 xp60studio_add_test(tst_snapshot_restore
   SOURCES tst_snapshot_restore.cpp
