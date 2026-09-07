@@ -179,6 +179,12 @@ xp60studio_add_test(tst_envelope_drag
 target_compile_definitions(tst_envelope_drag
   PRIVATE XP60STUDIO_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/xp60")
 
+xp60studio_add_test(tst_lfo_panel
+  SOURCES tst_lfo_panel.cpp
+  LIBS xp60studio::interaction)
+target_compile_definitions(tst_lfo_panel
+  PRIVATE XP60STUDIO_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/xp60")
+
 # Phase 8 — snapshots, restore plans and the safety snapshot rule.
 xp60studio_add_test(tst_snapshot_restore
   SOURCES tst_snapshot_restore.cpp

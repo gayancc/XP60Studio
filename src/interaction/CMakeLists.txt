@@ -3,6 +3,10 @@ add_library(xp60studio_interaction STATIC
   EnvelopeGeometry.cpp
   EnvelopeDrag.h
   EnvelopeDrag.cpp
+  ParameterDrag.h
+  ParameterDrag.cpp
+  LfoGeometry.h
+  LfoGeometry.cpp
 )
 add_library(xp60studio::interaction ALIAS xp60studio_interaction)
 target_include_directories(xp60studio_interaction PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)

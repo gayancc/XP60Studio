@@ -660,8 +660,20 @@ continuous shadow the view draws from, hysteresis at step boundaries, exact
 accumulation from the grab origin, and coalescing to at most one message per
 parameter per drain.
 
-The QML surface on top is deferred with the other screen work: it needs Qt 6.5+
-and could be neither run nor looked at here.
+`ParameterDrag` generalises the same four mechanisms to every ordinary knob and
+slider, and `LfoGeometry` draws the LFO on the same terms — cycles proportional
+to Rate rather than an invented frequency axis, Delay and Fade shading the start
+of the plot, and the waveform switched rather than blended because it is an
+identity.
+
+That work also found a real bug: the table generator's category rules match in
+order and the `Wave` rule sat above `LFO1`/`LFO2`, so "LFO1 Waveform" — which
+contains the word "Wave" — was filed under Wave. `PatchComponentCopy` had
+therefore been making "copy the wave" change a Tone's LFO shapes and "copy
+LFO 1" leave its own shape behind. Fixed, regenerated, and pinned by a test.
+
+The QML surfaces on top are deferred with the other screen work: they need
+Qt 6.5+ and could be neither run nor looked at here.
 
 Still to come in this phase: mutation/evolution, morphing where parameter
 semantics permit, advanced A/B, richer version history, and the sound-design

@@ -87,6 +87,48 @@ levels; the tables say otherwise. Only the **Pitch** envelope's levels are
 bipolar, so only its plot draws zero in the middle. Measured from the generated
 tables, not assumed.
 
+## The same engine, generalised
+
+`interaction::ParameterDrag` is the four mechanisms factored out for every
+ordinary knob, slider and field, where the same stickiness shows up and is if
+anything more obvious. Wave Gain has **four** legal values: drawn from the
+quantised value a knob snaps between four positions and feels broken; drawn from
+the shadow it turns continuously and lands on the value the hand chose. It takes
+a `ParameterDescriptor` — the same one that drives decoding, display and
+validation — so the range and step count are the instrument's, never a caller's
+guess. `sensitivity` gives a fine-drag modifier for free, because precision here
+is a scale factor on an exact mechanism rather than a separate code path.
+
+`interaction::LfoGeometry` draws the LFO, on the same terms as the envelope:
+
+- **No frequency axis.** Roland documents LFO Rate as 0..127 and publishes no Hz
+  mapping. The plot shows one width, and the number of cycles across it is
+  proportional to Rate. A faster Rate draws more cycles; nothing claims a
+  frequency.
+- **Delay and Fade** shade the start of the plot in proportion to their stored
+  values, and the curve rests on the centre line until the delay has elapsed
+  rather than pretending the LFO starts at note-on. Each takes at most half the
+  width, so a long delay cannot push the waveform off the plot.
+- **The waveform is an identity**, one of Roland's eight, drawn as itself and
+  switched — never blended. `lfoWaveformIsAperiodic()` marks Sample & Hold,
+  Random and Chaos, which have no fixed shape: a view draws a representative one
+  and can say that it is representative. That shape is seeded from the stored
+  Rate, so the same Patch always draws the same picture — a plot that reshuffled
+  itself on every repaint would look like a fault.
+
+## A bug this work found
+
+The generator assigns categories by matching rules **in order**, and the `Wave`
+rule sat above the `LFO1` / `LFO2` rules. "LFO1 Waveform" contains the word
+"Wave", so both LFO waveforms were filed under the Wave category. The
+consequences had already shipped: `PatchComponentCopy` made "copy the wave"
+silently change a Tone's LFO shapes, and made "copy LFO 1" leave its own shape
+behind. The parameter's block position settles it — offset `00 2D` sits between
+the Controller rows and LFO1 Key Trigger — so the rules are reordered, the tables
+regenerated (Wave 9 → 7 parameters, LFO1 and LFO2 11 → 12 each), and
+`tst_generated_tables` now pins every `tone.lfo*` parameter to its own LFO
+category so it cannot drift back.
+
 ## What is not built yet
 
 The QML surface. This container has Qt 6.4 and the screens need 6.5+, so a view
