@@ -761,9 +761,35 @@ write for stage use needs a Performance transfer service carrying the same
 read-back rules `PatchTransfer` has. `LiveBlock::PerformanceNotSupported` says
 so by name.
 
-Still to come: **MIDI-triggered navigation**, a view model over `LiveSession`,
-and the stage display itself — the last of those deferred with the other screen
-work (Qt 6.5+, could be neither run nor looked at here).
+**MIDI-triggered navigation is in** (`services::LiveMidiNavigation`), and its
+whole shape is set by one hazard: the application listens to whatever is plugged
+into its MIDI input, which on stage is the XP-60's own MIDI OUT, and the XP-60
+transmits Program Change whenever a Patch is chosen on its front panel (Owner's
+Manual p.218-219). A default binding on Program Change would make the setlist
+jump every time the musician touched a Patch button. So it is off until switched
+on, nothing is bound by default, and a Program Change binding's own description
+says out loud that the keyboard will trigger it too.
+
+The rest follows from what a pedal actually does. A binding fires at or above a
+threshold, so a momentary switch acts on the press and not again on the release;
+a threshold of zero is refused for that reason. Note On with velocity 0 is a
+Note Off and is treated as the release. `GoToNumbered` on a control change is
+refused — a control change carries a level, not a cue — and the wire's
+zero-based program number maps straight onto the zero-based cue index, so a
+pedal displaying "1" selects the first cue. A trigger arriving while a switch is
+already running is dropped and counted rather than queued: the press meant
+"now", and honouring it four seconds later puts the wrong sound under the next
+section. `ignoredCount()` and `lastIgnoredReason()` exist because the failure
+mode of MIDI control is silence — a pedal on the wrong channel and a pedal that
+is not plugged in look identical from the stage.
+
+`DeviceSession` gained one signal for this, `channelMessageObserved`, reporting
+any channel voice message as it arrived. Bytes rather than named events: that
+class has no reason to own a vocabulary of controllers.
+
+Still to come: a view model over `LiveSession`, and the stage display itself —
+deferred with the other screen work (Qt 6.5+, could be neither run nor looked at
+here).
 
 ---
 

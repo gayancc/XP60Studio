@@ -205,6 +205,12 @@ xp60studio_add_test(tst_live_session
 target_compile_definitions(tst_live_session
   PRIVATE XP60STUDIO_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/xp60")
 
+xp60studio_add_test(tst_live_midi_navigation
+  SOURCES tst_live_midi_navigation.cpp
+  LIBS xp60studio::services xp60studio::simulation)
+target_compile_definitions(tst_live_midi_navigation
+  PRIVATE XP60STUDIO_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/xp60")
+
 xp60studio_add_test(tst_backup_view_model
   SOURCES tst_backup_view_model.cpp
   LIBS xp60studio::presentation xp60studio::simulation)

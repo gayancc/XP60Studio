@@ -817,6 +817,16 @@ void DeviceSession::noticePatchSelection(midi::MidiByteSpan bytes)
     const auto status = static_cast<unsigned>(bytes[0]);
     const int channel = static_cast<int>(status & 0x0FU) + 1;
 
+    // Every channel voice message is reported as it arrived, before any
+    // interpretation. Patch selection is the one this class draws a conclusion
+    // from; a listener that wants to act on a foot switch needs the message
+    // itself, and inventing a second signal per controller kind would be a
+    // vocabulary this class has no reason to own.
+    if ((status & 0x80U) != 0U && status < 0xF0U) {
+        emit channelMessageObserved(static_cast<int>(status), static_cast<int>(bytes[1]),
+                                    bytes.size() >= 3 ? static_cast<int>(bytes[2]) : -1);
+    }
+
     if ((status & 0xF0U) == 0xC0U) { // Program Change
         emit patchSelectionObserved(channel, static_cast<int>(bytes[1]) + 1);
         return;
