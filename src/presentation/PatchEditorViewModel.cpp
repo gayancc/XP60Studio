@@ -57,6 +57,15 @@ PatchEditorViewModel::PatchEditorViewModel(services::DeviceSession& session, ser
     m_sectionParameters = new EditorParameterModel(*this, false, this);
     m_expertParameters = new EditorParameterModel(*this, true, this);
 
+    // Availability depends on both halves of the operation: the Patch may be
+    // editable (or enter/leave comparison), and the browser may gain a new
+    // selection without changing the Patch. Keep the narrow property signal
+    // connected to both instead of pretending a selection changed the Patch.
+    connect(&m_waves, &WaveBrowserModel::selectionChanged,
+            this, &PatchEditorViewModel::canUseSelectedWaveChanged);
+    connect(this, &PatchEditorViewModel::patchChanged,
+            this, &PatchEditorViewModel::canUseSelectedWaveChanged);
+
     connect(&m_workspace, &services::PatchWorkspace::changed, this, &PatchEditorViewModel::emitAll);
     // A different Patch is a different set of questions, so nothing a musician
     // dismissed about the last one carries over to this one.

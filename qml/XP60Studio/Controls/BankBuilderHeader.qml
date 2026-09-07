@@ -19,6 +19,7 @@ RowLayout {
 
     required property var builder
     property bool savedBanksOpen: false
+    property bool compact: false
     // Optional: without it the screen arranges banks but cannot write one to a
     // file, which is what the screenshot harness gets.
     property var transfer: null
@@ -33,6 +34,7 @@ RowLayout {
     spacing: Metrics.spacingSm
 
     ColumnLayout {
+        Layout.fillWidth: root.compact
         spacing: 2
         XpLabel { text: qsTr("BANK BUILDER"); role: "overline"; color: Theme.accentText }
 
@@ -62,7 +64,7 @@ RowLayout {
             // exactly what was meant.
             StatusPill {
                 objectName: "bankDuplicates"
-                visible: root.builder.duplicateCount > 0
+                visible: !root.compact && root.builder.duplicateCount > 0
                 text: qsTr("%n duplicate(s)", "", root.builder.duplicateCount)
                 tone: "info"
             }
@@ -72,7 +74,7 @@ RowLayout {
             // destinations are committed to USER memory.
             StatusPill {
                 objectName: "bankNeedsBoards"
-                visible: root.builder.expansionSummary.needsBoard > 0
+                visible: !root.compact && root.builder.expansionSummary.needsBoard > 0
                 text: root.builder.expansionSummary.undecided
                       ? qsTr("%n may need a board", "", root.builder.expansionSummary.needsBoard)
                       : qsTr("%n need a board", "", root.builder.expansionSummary.needsBoard)
@@ -84,10 +86,30 @@ RowLayout {
             }
             StatusPill {
                 objectName: "bankMissing"
-                visible: root.builder.missingCount > 0
+                visible: !root.compact && root.builder.missingCount > 0
                 text: qsTr("%n missing patch(es)", "", root.builder.missingCount)
                 tone: "error"
             }
+        }
+
+        // At the minimum supported width the full desktop toolbar is wider
+        // than the window. Keep every action reachable in a wrapping second
+        // row rather than clipping the destructive actions off-screen.
+        Flow {
+            Layout.fillWidth: true
+            visible: root.compact
+            spacing: Metrics.spacingXs
+
+            XpButton { iconName: "undo"; iconOnly: true; compact: true; variant: "ghost"; enabled: root.builder.canUndo; Accessible.name: qsTr("Undo"); onClicked: root.builder.undo() }
+            XpButton { iconName: "redo"; iconOnly: true; compact: true; variant: "ghost"; enabled: root.builder.canRedo; Accessible.name: qsTr("Redo"); onClicked: root.builder.redo() }
+            XpButton { text: qsTr("Saved banks"); compact: true; variant: root.savedBanksOpen ? "primary" : "ghost"; onClicked: root.savedBanksToggled() }
+            XpButton { text: qsTr("New bank"); compact: true; variant: "ghost"; onClicked: root.newBankRequested() }
+            XpButton { text: qsTr("Save"); compact: true; variant: "ghost"; visible: root.builder.savedBefore; enabled: root.builder.modified; onClicked: root.builder.saveBank() }
+            XpButton { text: qsTr("Export"); compact: true; variant: "ghost"; visible: root.transfer !== null; enabled: root.transfer !== null && !root.transfer.busy && root.builder.occupiedCount > 0; onClicked: root.exportRequested() }
+            XpButton { text: qsTr("Read XP-60"); compact: true; variant: "ghost"; visible: root.builder.canFetchBank || root.builder.bankFetchBusy; enabled: root.builder.canFetchBank; onClicked: root.fetchBankRequested() }
+            XpButton { text: root.builder.userWriteArmed ? qsTr("Armed") : qsTr("Arm"); compact: true; variant: root.builder.userWriteArmed ? "danger" : "ghost"; visible: root.builder.userWriteTotal > 0 || root.builder.canArmUserWrite || root.builder.userWriteArmed; enabled: root.builder.userWriteArmed || root.builder.canArmUserWrite; onClicked: root.builder.userWriteArmed ? root.builder.disarmUserWrite() : root.builder.armUserWrite() }
+            XpButton { text: qsTr("Write USER"); compact: true; variant: "danger"; visible: root.builder.userWriteArmed || root.builder.userWriteBusy; enabled: root.builder.canWriteToUserMemory; onClicked: root.writeToUserRequested() }
+            XpButton { text: qsTr("Save as new"); compact: true; variant: "primary"; onClicked: root.saveAsRequested() }
         }
     }
 
@@ -96,11 +118,13 @@ RowLayout {
     // History. The tooltip names the edit, so "Undo" is never a guess.
     XpButton {
         objectName: "bankUndo"
+        visible: !root.compact
         iconName: "undo"
         iconOnly: true
         compact: true
         variant: "ghost"
         enabled: root.builder.canUndo
+        Accessible.name: qsTr("Undo")
         QQC.ToolTip.visible: hovered && root.builder.canUndo
         QQC.ToolTip.delay: 400
         QQC.ToolTip.text: qsTr("Undo %1").arg(root.builder.undoLabel)
@@ -108,11 +132,13 @@ RowLayout {
     }
     XpButton {
         objectName: "bankRedo"
+        visible: !root.compact
         iconName: "redo"
         iconOnly: true
         compact: true
         variant: "ghost"
         enabled: root.builder.canRedo
+        Accessible.name: qsTr("Redo")
         QQC.ToolTip.visible: hovered && root.builder.canRedo
         QQC.ToolTip.delay: 400
         QQC.ToolTip.text: qsTr("Redo %1").arg(root.builder.redoLabel)
@@ -121,6 +147,7 @@ RowLayout {
 
     XpButton {
         objectName: "bankOpen"
+        visible: !root.compact
         text: qsTr("Saved banks")
         iconName: "library"
         compact: true
@@ -129,6 +156,7 @@ RowLayout {
     }
     XpButton {
         objectName: "bankNew"
+        visible: !root.compact
         text: qsTr("New empty bank")
         iconName: "plus"
         compact: true
@@ -141,7 +169,7 @@ RowLayout {
         compact: true
         variant: "ghost"
         // Only meaningful once there is a stored bank to write over.
-        visible: root.builder.savedBefore
+        visible: !root.compact && root.builder.savedBefore
         enabled: root.builder.modified
         onClicked: root.builder.saveBank()
     }
@@ -154,7 +182,7 @@ RowLayout {
         iconName: "export"
         compact: true
         variant: "ghost"
-        visible: root.transfer !== null
+        visible: !root.compact && root.transfer !== null
         enabled: root.transfer !== null && !root.transfer.busy && root.builder.occupiedCount > 0
         QQC.ToolTip.visible: hovered
         QQC.ToolTip.delay: 400
@@ -172,7 +200,7 @@ RowLayout {
         iconName: "midi-in"
         compact: true
         variant: "ghost"
-        visible: root.builder.canFetchBank || root.builder.bankFetchBusy
+        visible: !root.compact && (root.builder.canFetchBank || root.builder.bankFetchBusy)
         enabled: root.builder.canFetchBank
         QQC.ToolTip.visible: hovered
         QQC.ToolTip.delay: 400
@@ -190,7 +218,7 @@ RowLayout {
         text: root.builder.userWriteArmed ? qsTr("Armed") : qsTr("Arm")
         compact: true
         variant: root.builder.userWriteArmed ? "danger" : "ghost"
-        visible: root.builder.userWriteTotal > 0 || root.builder.canArmUserWrite || root.builder.userWriteArmed
+        visible: !root.compact && (root.builder.userWriteTotal > 0 || root.builder.canArmUserWrite || root.builder.userWriteArmed)
         enabled: root.builder.userWriteArmed || root.builder.canArmUserWrite
         QQC.ToolTip.visible: hovered
         QQC.ToolTip.delay: 400
@@ -203,7 +231,7 @@ RowLayout {
         iconName: "midi-out"
         compact: true
         variant: "danger"
-        visible: root.builder.userWriteArmed || root.builder.userWriteBusy
+        visible: !root.compact && (root.builder.userWriteArmed || root.builder.userWriteBusy)
         enabled: root.builder.canWriteToUserMemory
         QQC.ToolTip.visible: hovered
         QQC.ToolTip.delay: 400
@@ -213,6 +241,7 @@ RowLayout {
 
     XpButton {
         objectName: "bankSaveAs"
+        visible: !root.compact
         text: qsTr("Save as new bank")
         iconName: "export"
         compact: true

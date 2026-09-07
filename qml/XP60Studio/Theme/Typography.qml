@@ -12,16 +12,21 @@ import QtQuick
 // display's device pixel ratio, so 125%/150%/175% OS scaling enlarges text and
 // geometry together — which is the behaviour a dense desktop editor needs.
 QtObject {
-    // Offscreen renderers can otherwise select the first installed font
-    // (for example Agency FB on Windows), changing every control's metrics.
-    readonly property var familyCandidates: ["Segoe UI", "SF Pro Text", "Helvetica Neue", "Noto Sans", "DejaVu Sans", "Arial"]
+    // Keep the application face independent from fonts loaded by individual
+    // components. In particular, loading Silkscreen for the Bank Builder LCD
+    // must never allow it to become Qt.application.font and leak into the
+    // shell. Naming the native UI family also keeps metrics deterministic in
+    // headless captures, whose font database may initially be sparse.
     readonly property string family: {
-        var installed = Qt.fontFamilies()
-        for (var i = 0; i < familyCandidates.length; ++i) {
-            if (installed.indexOf(familyCandidates[i]) >= 0)
-                return familyCandidates[i]
-        }
-        return Qt.application.font.family
+        if (Qt.platform.os === "windows")
+            return "Segoe UI"
+        if (Qt.platform.os === "osx" || Qt.platform.os === "macos")
+            return "SF Pro Text"
+        if (Qt.platform.os === "ios")
+            return "SF Pro Text"
+        if (Qt.platform.os === "android")
+            return "Roboto"
+        return "Noto Sans"
     }
 
     // First installed monospace face from the preferred list; "monospace"

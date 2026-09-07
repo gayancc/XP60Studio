@@ -204,6 +204,33 @@ TestCase {
                "destination strip does not expand into tall cards")
     }
 
+    function test_minimum_width_keeps_all_destinations_reachable_and_moves_source_to_overlay() {
+        const screen = createScreen()
+        screen.width = 800
+        screen.height = 620
+        verify(waitForRendering(screen), "minimum-width bank completed layout")
+
+        const last = findChild(screen, "destinationA18")
+        const lastPosition = last.mapToItem(screen, 0, 0)
+        let geometry = ""
+        let item = last
+        for (let depth = 0; item !== null && depth < 7; ++depth) {
+            geometry += " " + (item.objectName || item.toString())
+                      + "[x=" + item.x + ",w=" + item.width + "]"
+            item = item.parent
+        }
+        verify(lastPosition.x + last.width <= screen.width,
+               "all eight destination columns stay inside the compact viewport "
+               + "(right=" + (lastPosition.x + last.width)
+               + ", viewport=" + screen.width + ";" + geometry + ")")
+
+        const sourceButton = findChild(screen, "compactSourceButton")
+        verify(sourceButton.visible)
+        sourceButton.clicked()
+        verify(findChild(screen, "compactSourceOverlay").visible,
+               "the full source workflow remains available as an overlay")
+    }
+
     // ── Placement ────────────────────────────────────────────────────────
 
     function test_placing_a_patch_leaves_the_source_alone() {

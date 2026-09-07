@@ -41,6 +41,11 @@ TestCase {
         XpCard { width: 200; XpLabel { text: "Inside" } }
     }
 
+    Component {
+        id: labelComponent
+        XpLabel { text: "Application label" }
+    }
+
     function test_theme_tokens_are_defined() {
         verify(Theme.accent.toString().length > 0)
         verify(Theme.tone1 !== Theme.tone2)
@@ -51,7 +56,16 @@ TestCase {
         compare(Theme.toneBackground("error"), Theme.errorSoft)
         verify(Metrics.controlHeight > 0)
         verify(Typography.bodySize > 0)
+        verify(Typography.family.toLowerCase().indexOf("silkscreen") < 0,
+               "the LCD face must never become the application default")
         verify(Motion.durationNormal >= 0)
+    }
+
+    function test_regular_labels_never_inherit_the_lcd_face() {
+        var label = createTemporaryObject(labelComponent, testCase)
+        verify(label)
+        compare(label.font.family, Typography.family)
+        verify(label.font.family.toLowerCase().indexOf("silkscreen") < 0)
     }
 
     function test_button_click_and_states() {
@@ -82,6 +96,10 @@ TestCase {
         button.clicked.connect(function() { clicks++ })
         keyClick(Qt.Key_Space)
         compare(clicks, 1)
+        keyClick(Qt.Key_Return)
+        compare(clicks, 2)
+        keyClick(Qt.Key_Enter)
+        compare(clicks, 3)
     }
 
     function test_status_pill_conveys_tone_by_text_and_colour() {

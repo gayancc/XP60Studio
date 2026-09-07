@@ -31,8 +31,9 @@ XP60STUDIO_DEMO=0   # force live even if the in-app preference is on
 2. Creates a `LoopbackMidiTransport` with ports named `XP-60 IN (Demo)` / `XP-60 OUT (Demo)`.
 3. Runs an in-process `SimulatedXp60` seeded from the embedded user-bank fixture.
 4. Starts a `DemoReplyPump` on the Qt event loop so RQ1/DT1 traffic is answered continuously.
-5. Auto-connects and fetches the temporary Patch so Devices, Patch Editor, and Wave Browser are immediately usable.
-6. Shows a **Demo Mode** badge and **XP-60 SIM** connection label in the shell.
+5. Seeds the in-memory library from the same embedded verified USER bank fixture.
+6. Auto-connects and fetches the temporary Patch so Devices, Patch Editor, Wave Browser, Library, and Bank Builder are immediately usable.
+7. Shows a **Demo Mode** badge and **XP-60 SIM** connection label in the shell.
 
 ## Safety guarantees
 
@@ -48,12 +49,13 @@ XP60STUDIO_DEMO=0   # force live even if the in-app preference is on
 | Devices | Connect, health, safe read, transfer against simulator |
 | Patch Editor | Seeded patch; Play / Design / Expert editing |
 | Wave Browser | Offline catalog (unchanged) |
-| Library | In-memory empty/demo library (does not touch the real DB file) |
+| Library | In-memory 128-Patch demo library (does not touch the real DB file) |
+| Bank Builder | Real arrangement/import/export workflows over the in-memory demo library |
 | Write / verify / audition | Against `SimulatedXp60` |
 
 ## What is not faked
 
-Unfinished navigation destinations (Dashboard, Banks, …) remain unavailable. Demo Mode must not invent fake Dashboard actions for future phases. Extend simulation when those screens ship.
+Unfinished navigation destinations remain unavailable. Demo Mode must not invent fake actions for future phases; extend simulation only when their real screens ship.
 
 ## Architecture note
 

@@ -119,18 +119,15 @@ TestCase {
         compare(testDashboard.expansionCountKnown, false)
     }
 
-    function test_the_bank_card_shows_no_numbers_until_banks_exist() {
+    function test_the_bank_card_opens_the_implemented_builder_without_inventing_counts() {
         var screen = makeScreen()
         var card = findChild(screen, "banksCard")
-        // Bank building is a later phase. The card keeps the composition but
-        // states the absence instead of showing a plausible occupancy.
-        compare(testDashboard.banksAvailable, false)
-        verify(!card.available)
-        var note = findChild(card, "unavailableNote")
-        verify(note.visible)
-        verify(note.text.length > 0)
-        // And it is not a button to nowhere.
-        verify(!card.interactive)
+        compare(testDashboard.banksAvailable, true)
+        verify(card.available)
+        verify(card.interactive)
+        compare(card.metrics.length, 0)
+        card.activated()
+        compare(testShell.currentScreen, "banks")
     }
 
     function test_the_device_card_reports_the_real_connection() {

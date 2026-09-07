@@ -18,8 +18,10 @@
 #include "presentation/BankBuilderViewModel.h"
 #include "presentation/DevicesViewModel.h"
 #include "presentation/DashboardViewModel.h"
+#include "presentation/ExpansionViewModel.h"
 #include "presentation/LibraryListModel.h"
 #include "presentation/LibraryTransferViewModel.h"
+#include "presentation/PerformanceViewModel.h"
 #include "services/LibraryExportService.h"
 #include "services/LibraryImportService.h"
 #include "presentation/PatchEditorViewModel.h"
@@ -29,6 +31,8 @@
 #include "services/PatchWorkspace.h"
 
 #include <QFile>
+#include <QFont>
+#include <QFontDatabase>
 #include <QGuiApplication>
 #include <QImage>
 #include <QQmlApplicationEngine>
@@ -44,6 +48,15 @@
 int main(int argc, char* argv[])
 {
     QGuiApplication app(argc, argv);
+#ifdef Q_OS_WIN
+    // The offscreen plugin does not enumerate Windows' system font directory
+    // reliably. Register the native UI faces explicitly so captures exercise
+    // the same typography as the real Windows window, while Silkscreen stays
+    // local to BankPanelDisplay.
+    QFontDatabase::addApplicationFont(QStringLiteral("C:/Windows/Fonts/segoeui.ttf"));
+    QFontDatabase::addApplicationFont(QStringLiteral("C:/Windows/Fonts/segoeuib.ttf"));
+    app.setFont(QFont(QStringLiteral("Segoe UI")));
+#endif
     if (argc < 2) {
         qWarning("usage: %s <out.png> [screen-id] [width] [height]", argv[0]);
         return 2;
@@ -120,8 +133,6 @@ int main(int argc, char* argv[])
         }
     }
 
-    QQmlApplicationEngine engine;
-    engine.addImportPath(QStringLiteral("qrc:/qt/qml"));
     // Main.qml requires every view model the shell binds. The harness has to
     // supply them all or the engine refuses to load the scene, which is how
     // this capture tool notices a new required property.
@@ -133,9 +144,29 @@ int main(int argc, char* argv[])
     bankBuilder.setDatabase(&libraryDatabase);
     bankBuilder.setTransfer(&transfer);
 
+    // Keep the harness wired like the production composition root. Main.qml
+    // deliberately makes these required properties, so adding a screen cannot
+    // leave visual-regression captures silently exercising a partial shell.
+    xp60studio::presentation::ExpansionViewModel expansion;
+    expansion.setDatabase(&libraryDatabase);
+    expansion.setWorkspace(&workspace);
+    libraryModel.setExpansionProfile(&expansion.profile());
+    bankSourceModel.setExpansionProfile(&expansion.profile());
+    bankBuilder.setExpansionProfile(&expansion.profile());
+    editor.setExpansionProfile(&expansion.profile());
+
+    xp60studio::presentation::PerformanceViewModel performance(session);
+
     xp60studio::services::LibraryImportService libraryImport(libraryDatabase);
     xp60studio::services::LibraryExportService libraryExport(libraryDatabase);
     xp60studio::presentation::LibraryTransferViewModel libraryTransfer(libraryImport, libraryExport);
+
+    // Construct the QML engine last. C++ destroys locals in reverse order, so
+    // every QObject exposed below must outlive the engine and its bindings.
+    // Otherwise shutdown produces a flood of misleading null-property errors
+    // that can hide a real visual-regression warning.
+    QQmlApplicationEngine engine;
+    engine.addImportPath(QStringLiteral("qrc:/qt/qml"));
     engine.setInitialProperties({
         {QStringLiteral("shell"), QVariant::fromValue(&shell)},
         {QStringLiteral("devices"), QVariant::fromValue(&devices)},
@@ -143,6 +174,8 @@ int main(int argc, char* argv[])
         {QStringLiteral("library"), QVariant::fromValue(&libraryModel)},
         {QStringLiteral("libraryTransfer"), QVariant::fromValue(&libraryTransfer)},
         {QStringLiteral("bankBuilder"), QVariant::fromValue(&bankBuilder)},
+        {QStringLiteral("expansion"), QVariant::fromValue(&expansion)},
+        {QStringLiteral("performance"), QVariant::fromValue(&performance)},
         {QStringLiteral("bankLibrary"), QVariant::fromValue(&bankSourceModel)},
         {QStringLiteral("dashboard"), QVariant::fromValue(&dashboard)},
     });

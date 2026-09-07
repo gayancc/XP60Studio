@@ -235,7 +235,7 @@ FocusScope {
                             wrapMode: Text.WordWrap
                             role: "caption"
                             muted: true
-                            text: qsTr("Save As and Add to Bank arrive with the Bank Builder.")
+                            text: qsTr("Use Bank Builder to arrange, save, import, export, and transfer complete USER banks.")
                         }
                     }
                 }
@@ -279,9 +279,10 @@ FocusScope {
                         iconName: "banks"
                         accentColor: Theme.tone2
                         available: root.dashboard.banksAvailable
-                        unavailableText: qsTr("Bank building arrives in a later phase. Nothing is counted yet.")
+                        unavailableText: qsTr("Bank Builder is unavailable.")
                         actionText: qsTr("Build & organize live banks")
                         metrics: []
+                        onActivated: root.shell.currentScreen = "banks"
                     }
 
                     DashboardSummaryCard {

@@ -21,6 +21,9 @@
 #include "services/PatchTransfer.h"
 
 #include <QFile>
+#include <QFont>
+#include <QFontDatabase>
+#include <QGuiApplication>
 #include <QQmlContext>
 #include <QQmlEngine>
 #include <QQuickStyle>
@@ -90,6 +93,12 @@ public:
 public slots:
     void applicationAvailable()
     {
+#ifdef Q_OS_WIN
+        // Match the production composition even under QT_QPA_PLATFORM=offscreen.
+        QFontDatabase::addApplicationFont(QStringLiteral("C:/Windows/Fonts/segoeui.ttf"));
+        QFontDatabase::addApplicationFont(QStringLiteral("C:/Windows/Fonts/segoeuib.ttf"));
+        QGuiApplication::setFont(QFont(QStringLiteral("Segoe UI")));
+#endif
         QQuickStyle::setStyle(QStringLiteral("Basic"));
         xp60studio::presentation::registerQmlTypes();
     }

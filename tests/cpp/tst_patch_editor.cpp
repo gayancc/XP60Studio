@@ -403,7 +403,9 @@ private slots:
         f.editor->setSelectedTone(3);
         f.editor->waves()->setQuery(QStringLiteral("Kalimba"));
         QVERIFY(f.editor->waves()->count() > 0);
+        QSignalSpy availabilityChanged(f.editor.get(), &PatchEditorViewModel::canUseSelectedWaveChanged);
         f.editor->waves()->selectRow(0);
+        QCOMPARE(availabilityChanged.count(), 1);
         QVERIFY(f.editor->canUseSelectedWave());
 
         const auto selected = f.editor->waves()->selected();

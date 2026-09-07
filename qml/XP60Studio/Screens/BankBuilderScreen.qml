@@ -50,6 +50,7 @@ FocusScope {
     signal editRequested()
 
     readonly property bool wide: width >= 1180
+    property bool compactSourceOpen: false
 
     // ── Drag state ───────────────────────────────────────────────────────
     property bool dragActive: false
@@ -335,6 +336,26 @@ FocusScope {
         event.accepted = handled
     }
 
+    Component {
+        id: sourcePanelComponent
+
+        BankSourcePanel {
+            library: root.library
+            showHeading: root.wide
+            draggingRow: root.dragFromRow
+            canImport: root.transfer !== null
+            importBusy: root.transfer !== null && root.transfer.busy
+            onImportRequested: importDialog.open()
+            onFillRequested: function (digest) { root.builder.fillFromSource(digest) }
+            onPatchDragStarted: function (row, patchId, patchName, x, y) {
+                root.beginDragFromLibrary(row, patchId, patchName, x, y)
+            }
+            onPatchDragMoved: function (x, y) { root.updateDrag(x, y) }
+            onPatchDragReleased: root.commitDrag()
+            onPatchDragCancelled: root.endDrag()
+        }
+    }
+
     // ── Layout ───────────────────────────────────────────────────────────
     ColumnLayout {
         anchors.fill: parent
@@ -347,6 +368,7 @@ FocusScope {
             Layout.fillWidth: true
             builder: root.builder
             transfer: root.transfer
+            compact: !root.wide
             savedBanksOpen: banksDrawer.visible
             onExportRequested: exportDialog.open()
             onWriteToUserRequested: userWriteConfirm.open()
@@ -446,44 +468,49 @@ FocusScope {
         // What the last import or export did. Kept until dismissed rather
         // than shown in a toast: an import can report duplicates, partial
         // Patches and rejected messages, and those are worth reading slowly.
-        LibraryTransferCard {
+        Loader {
             objectName: "bankTransferCard"
             Layout.fillWidth: true
-            visible: root.transfer !== null && (root.transfer.busy || root.transfer.hasResult)
-            transfer: root.transfer !== null ? root.transfer : null
+            active: root.transfer !== null
+            visible: active && item !== null && item.showing
+            sourceComponent: Component {
+                LibraryTransferCard { transfer: root.transfer }
+            }
+        }
+
+        XpButton {
+            objectName: "compactSourceButton"
+            Layout.fillWidth: true
+            visible: !root.wide
+            text: root.compactSourceOpen ? qsTr("Hide source library") : qsTr("Open source library")
+            iconName: "library"
+            variant: root.compactSourceOpen ? "primary" : "secondary"
+            onClicked: root.compactSourceOpen = !root.compactSourceOpen
         }
 
         // Source | Panel ---------------------------------------------------
         RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
+            // Rich controls inside the instrument panel have useful implicit
+            // widths, but they must not make the whole panel wider than the
+            // compact viewport. The panel's own responsive rows decide how to
+            // use the available space.
+            Layout.minimumWidth: 0
+            Layout.maximumWidth: Math.max(0, root.width - 2 * Metrics.screenMargin(root.width))
             spacing: Metrics.spacingMd
 
             XpCard {
+                visible: root.wide
                 Layout.preferredWidth: root.wide ? 320 : 260
                 Layout.fillHeight: true
                 padding: Metrics.spacingMd
 
-                BankSourcePanel {
-                    id: sourcePanel
+                Loader {
                     objectName: "bankSourcePanel"
                     anchors.fill: parent
-                    library: root.library
-                    draggingRow: root.dragFromRow
-                    canImport: root.transfer !== null
-                    importBusy: root.transfer !== null && root.transfer.busy
-                    onImportRequested: importDialog.open()
-                    onFillRequested: function (digest) {
-                        // The view model decides what can be arranged and says
-                        // what it left out; the screen only asks.
-                        root.builder.fillFromSource(digest)
-                    }
-                    onPatchDragStarted: function (row, patchId, patchName, x, y) {
-                        root.beginDragFromLibrary(row, patchId, patchName, x, y)
-                    }
-                    onPatchDragMoved: function (x, y) { root.updateDrag(x, y) }
-                    onPatchDragReleased: root.commitDrag()
-                    onPatchDragCancelled: root.endDrag()
+                    active: root.wide
+                    sourceComponent: sourcePanelComponent
                 }
             }
 
@@ -491,6 +518,8 @@ FocusScope {
             ColumnLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
+                Layout.minimumWidth: 0
+                Layout.maximumWidth: Math.max(0, root.width - 2 * Metrics.screenMargin(root.width))
                 spacing: Metrics.spacingSm
 
                 BankPanelDisplay {
@@ -723,6 +752,12 @@ FocusScope {
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
+                    // The destination delegates contain descriptive text with
+                    // wide implicit sizes. At compact widths the panel, not
+                    // that text, owns the column geometry; labels elide inside
+                    // their assigned destination instead of widening it.
+                    Layout.minimumWidth: 0
+                    Layout.maximumWidth: parent.width
                     radius: Metrics.radiusMd
                     color: Theme.surface
                     border.width: 1
@@ -745,6 +780,7 @@ FocusScope {
                         // SUBGROUP -------------------------------------------
                         RowLayout {
                             Layout.fillWidth: true
+                            Layout.minimumWidth: 0
                             Layout.minimumHeight: 34
                             Layout.preferredHeight: 34
                             Layout.maximumHeight: 34
@@ -787,6 +823,7 @@ FocusScope {
                         // BANK -----------------------------------------------
                         RowLayout {
                             Layout.fillWidth: true
+                            Layout.minimumWidth: 0
                             Layout.minimumHeight: 34
                             Layout.preferredHeight: 34
                             Layout.maximumHeight: 34
@@ -864,6 +901,7 @@ FocusScope {
                         // The eight destinations -----------------------------
                         RowLayout {
                             Layout.fillWidth: true
+                            Layout.minimumWidth: 0
                             Layout.minimumHeight: 112
                             Layout.preferredHeight: 144
                             Layout.maximumHeight: 144
@@ -923,6 +961,39 @@ FocusScope {
                         }
                     }
                 }
+            }
+        }
+    }
+
+    // The source becomes a deliberate overlay at compact widths. This keeps
+    // all eight destination columns visible while preserving search, import,
+    // fill and drag/drop instead of discarding the source workflow.
+    XpCard {
+        objectName: "compactSourceOverlay"
+        visible: !root.wide && root.compactSourceOpen
+        z: 80
+        anchors {
+            left: parent.left
+            top: parent.top
+            bottom: parent.bottom
+            margins: Metrics.screenPadding
+        }
+        width: Math.min(390, root.width - 2 * Metrics.screenPadding)
+        padding: Metrics.spacingMd
+
+        ColumnLayout {
+            anchors.fill: parent
+            spacing: Metrics.spacingSm
+            RowLayout {
+                Layout.fillWidth: true
+                XpLabel { text: qsTr("SOURCE LIBRARY"); role: "overline"; color: Theme.accentText; Layout.fillWidth: true }
+                XpButton { text: qsTr("Close"); compact: true; variant: "ghost"; onClicked: root.compactSourceOpen = false }
+            }
+            Loader {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                active: !root.wide && root.compactSourceOpen
+                sourceComponent: sourcePanelComponent
             }
         }
     }
@@ -1073,6 +1144,7 @@ FocusScope {
         id: discardConfirm
         objectName: "bankDiscardDialog"
         anchors.centerIn: parent
+        width: Math.min(420, root.width - 2 * Metrics.screenPadding)
         modal: true
         title: qsTr("Start a new empty bank?")
         standardButtons: QQC.Dialog.Yes | QQC.Dialog.Cancel

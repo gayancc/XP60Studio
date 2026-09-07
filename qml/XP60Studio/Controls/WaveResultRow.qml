@@ -22,12 +22,16 @@ Rectangle {
     height: 48
     radius: Metrics.radiusSm
     color: selected ? Theme.selection : (hover.hovered ? Theme.surfaceHover : "transparent")
-    border.width: listFocused && selected ? 1 : 0
+    border.width: (listFocused || activeFocus) && selected ? 1 : 0
     border.color: Theme.focusRing
 
     Accessible.role: Accessible.ListItem
     Accessible.name: waveName + ", " + waveKey
     Accessible.selected: selected
+    activeFocusOnTab: true
+    Keys.onSpacePressed: root.activated()
+    Keys.onReturnPressed: root.activated()
+    Keys.onEnterPressed: root.activated()
 
     HoverHandler { id: hover }
     TapHandler { onTapped: root.activated() }

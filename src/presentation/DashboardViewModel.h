@@ -41,8 +41,8 @@ class DashboardViewModel : public QObject
     Q_PROPERTY(bool expansionCountKnown READ expansionCountKnown CONSTANT)
 
     // Banks ----------------------------------------------------------------
-    // Phase 6. Present as an explicitly empty card rather than absent, so the
-    // Dashboard keeps the composition the mockup defines.
+    // Phase 6 is implemented. The card is an entry point, while bank-specific
+    // counts remain owned by the Bank Builder itself.
     Q_PROPERTY(bool banksAvailable READ banksAvailable CONSTANT)
 
 public:
@@ -58,7 +58,7 @@ public:
     [[nodiscard]] bool libraryAvailable() const;
     [[nodiscard]] int waveCount() const;
     [[nodiscard]] bool expansionCountKnown() const { return false; }
-    [[nodiscard]] bool banksAvailable() const { return false; }
+    [[nodiscard]] bool banksAvailable() const { return true; }
 
 Q_SIGNALS:
     void libraryChanged();

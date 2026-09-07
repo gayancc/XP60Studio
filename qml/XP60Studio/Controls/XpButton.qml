@@ -43,6 +43,12 @@ T.Button {
     Accessible.role: Accessible.Button
     Accessible.name: control.text
 
+    // Qt Quick Templates activates buttons with Space, but Return/Enter was
+    // ignored in the Windows UIA path. Navigation controls already accept
+    // both; keep the shared button equally predictable for keyboard users.
+    Keys.onReturnPressed: control.clicked()
+    Keys.onEnterPressed: control.clicked()
+
     readonly property bool quiet: variant === "quiet"
 
     readonly property color fillColor: {

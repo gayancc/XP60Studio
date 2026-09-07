@@ -11,6 +11,7 @@ T.ComboBox {
     implicitHeight: Metrics.controlHeight
     leftPadding: Metrics.spacingMd
     rightPadding: Metrics.spacingMd + indicatorItem.width
+    font.family: Typography.family
     font.pixelSize: Typography.bodySize
     hoverEnabled: true
 

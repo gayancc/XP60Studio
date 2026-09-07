@@ -38,6 +38,10 @@ Item {
     // being pressed twice.
     property bool importBusy: false
     property bool canImport: false
+    // Compact overlays already provide their own title and close affordance.
+    // Keep this heading for the desktop source column, but do not repeat it
+    // when the panel is hosted inside that overlay.
+    property bool showHeading: true
 
     signal patchDragStarted(int row, var patchId, string patchName, real x, real y)
     signal patchDragMoved(real x, real y)
@@ -51,7 +55,12 @@ Item {
         RowLayout {
             Layout.fillWidth: true
             spacing: Metrics.spacingSm
-            XpLabel { text: qsTr("SOURCE LIBRARY"); role: "overline"; color: Theme.textSecondary }
+            XpLabel {
+                visible: root.showHeading
+                text: qsTr("SOURCE LIBRARY")
+                role: "overline"
+                color: Theme.textSecondary
+            }
             Item { Layout.fillWidth: true }
             XpButton {
                 objectName: "bankSourceImport"

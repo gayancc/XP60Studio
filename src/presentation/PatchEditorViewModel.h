@@ -69,7 +69,7 @@ class PatchEditorViewModel : public QObject
     Q_PROPERTY(QVariantList tones READ tones CONSTANT)
     Q_PROPERTY(WaveBrowserModel* waves READ waves CONSTANT)
     Q_PROPERTY(int selectedTone READ selectedTone WRITE setSelectedTone NOTIFY selectedToneChanged)
-    Q_PROPERTY(bool canUseSelectedWave READ canUseSelectedWave NOTIFY patchChanged)
+    Q_PROPERTY(bool canUseSelectedWave READ canUseSelectedWave NOTIFY canUseSelectedWaveChanged)
     Q_PROPERTY(int enabledToneCount READ enabledToneCount NOTIFY patchChanged)
 
     // Per-Tone compatibility with the declared instrument, and what the
@@ -351,6 +351,7 @@ public:
 
 signals:
     void patchChanged();
+    void canUseSelectedWaveChanged();
     void effectPageChanged();
     void sectionChanged();
     void disclosureChanged();

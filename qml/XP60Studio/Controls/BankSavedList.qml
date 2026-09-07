@@ -33,6 +33,7 @@ ColumnLayout {
             iconOnly: true
             compact: true
             variant: "ghost"
+            Accessible.name: qsTr("Close saved banks")
             onClicked: root.closeRequested()
         }
     }

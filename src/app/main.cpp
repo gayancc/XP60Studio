@@ -9,6 +9,7 @@
 #include "midi/LibremidiTransport.h"
 #include "midi/LoopbackMidiTransport.h"
 #include "library/LibraryDatabase.h"
+#include "library/SyxImport.h"
 #include "presentation/AppShellViewModel.h"
 #include "presentation/BankBuilderViewModel.h"
 #include "presentation/DashboardViewModel.h"
@@ -39,6 +40,8 @@
 #include <QQuickStyle>
 #include <QQuickWindow>
 #include <QDir>
+#include <QFile>
+#include <QFont>
 #include <QSettings>
 #include <QStandardPaths>
 #include <QTimer>
@@ -85,6 +88,14 @@ QString defaultLibraryPath()
 int main(int argc, char* argv[])
 {
     QGuiApplication app(argc, argv);
+#ifdef Q_OS_WIN
+    // FontLoader registers the LCD face globally when Bank Builder is first
+    // created. Pin the ordinary application font before QML loads so that a
+    // component-specific display face can never become a fallback for stock
+    // controls or other text outside that display.
+    QFont uiFont(QStringLiteral("Segoe UI"));
+    app.setFont(uiFont);
+#endif
     QGuiApplication::setWindowIcon(QIcon(QStringLiteral(":/icons/xp60studio.png")));
     QCoreApplication::setOrganizationName(QStringLiteral("XP60Studio"));
     QCoreApplication::setOrganizationDomain(QStringLiteral("xp60studio.local"));
@@ -161,6 +172,27 @@ int main(int argc, char* argv[])
         // empty library rather than the app refusing to start.
         qWarning("Could not open the library at %s: %s", qUtf8Printable(libraryPath),
                  qUtf8Printable(libraryDatabase.lastError()));
+    }
+    if (demoMode && libraryDatabase.isOpen()) {
+        // Phases 5-6 made Library and Bank Builder real Demo Mode surfaces.
+        // Seed their in-memory database from the same embedded, verified bank
+        // that drives the simulated temporary Patch. No user library is read
+        // or changed, and the source metadata remains explicit.
+        QFile fixture(QStringLiteral(":/demo/user-bank-amal.syx"));
+        if (fixture.open(QIODevice::ReadOnly)) {
+            const QByteArray bytes = fixture.readAll();
+            const auto* begin = reinterpret_cast<const xp60studio::roland::Byte*>(bytes.constData());
+            xp60studio::library::SyxImportOptions options;
+            options.sourceName = "Demo USER bank";
+            const auto imported = xp60studio::library::importSyxStream(
+                xp60studio::roland::ByteSpan(begin, static_cast<std::size_t>(bytes.size())), options);
+            if (!libraryDatabase.insertAll(imported.entries)) {
+                qWarning("Demo Mode: could not seed the in-memory Patch library: %s",
+                         qUtf8Printable(libraryDatabase.lastError()));
+            }
+        } else {
+            qWarning("Demo Mode: embedded USER bank fixture is unavailable");
+        }
     }
     xp60studio::presentation::LibraryListModel libraryModel;
     libraryModel.setDatabase(&libraryDatabase);
