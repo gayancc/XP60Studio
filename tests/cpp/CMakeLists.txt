@@ -192,6 +192,19 @@ xp60studio_add_test(tst_snapshot_restore
 target_compile_definitions(tst_snapshot_restore
   PRIVATE XP60STUDIO_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/xp60")
 
+# Phase 11 - the running order a musician takes on stage.
+xp60studio_add_test(tst_setlist
+  SOURCES tst_setlist.cpp
+  LIBS xp60studio::library)
+target_compile_definitions(tst_setlist
+  PRIVATE XP60STUDIO_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/xp60")
+
+xp60studio_add_test(tst_live_session
+  SOURCES tst_live_session.cpp
+  LIBS xp60studio::services xp60studio::simulation)
+target_compile_definitions(tst_live_session
+  PRIVATE XP60STUDIO_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/xp60")
+
 xp60studio_add_test(tst_backup_view_model
   SOURCES tst_backup_view_model.cpp
   LIBS xp60studio::presentation xp60studio::simulation)

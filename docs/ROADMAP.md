@@ -721,6 +721,50 @@ Deliverables:
 
 Live Mode must inherit the XP60Studio visual identity while using lower density for stage readability.
 
+## Status (2026-09-07)
+
+**The data layer is in.** `library::Setlist` is the running order — songs,
+sections, and the sound each section calls for — and `services::LiveSession`
+drives it against the instrument. Schema 6 persists setlists in the library.
+
+Three decisions shaped it, and each is a refusal to guess:
+
+- **A cue names a sound; it never holds one.** Same rule as a saved bank, so
+  building a setlist changes nothing and deleting one loses nothing. A cue whose
+  Patch is later deleted keeps its name, reports itself missing, and stays in
+  position — the alternative is a running order that quietly shortens itself
+  between soundcheck and the show.
+- **Switching does not use Program Change.** Whether a Program Change *we*
+  transmit changes the temporary area the way a panel press does is unverified
+  (`PATCH_SYNCHRONIZATION.md` U5), and the preset Bank Select mapping is not
+  documented anywhere this project has (`ROLAND_XP60_PROTOCOL_FACTS.md` §7).
+  Guessing at either means the wrong sound in front of an audience. So a cue is
+  realised the one way this project has verified: the Patch is written into the
+  temporary area and read back — five blocks out for a library cue, five in and
+  five out for a USER slot cue, and `planFor()` says which before the downbeat.
+  Nothing a live session writes can alter a stored sound.
+- **Armed once, not once per cue.** `PatchTransfer` arming is single-use, which
+  is right for a one-off write and wrong for a show; re-arming between every bar
+  is not an armed write, it is an unguarded one with an extra tap. Live Mode
+  uses the session-scoped live preview instead, which also means two fast
+  advances land on the second sound rather than playing the first on the way
+  past.
+
+Navigation never transmits: scrolling ahead to see the next song must not change
+what is playing, so `position()` (the cursor) and `soundingIndex()` (what the
+instrument is actually making) are separate, and only `goToCurrent()` sends.
+
+Performance cues can be written down, seen and moved through, but cannot be
+switched to: writing the temporary Performance exists only inside the
+Performance editor, and inventing a second path to a seventeen-block destructive
+write for stage use needs a Performance transfer service carrying the same
+read-back rules `PatchTransfer` has. `LiveBlock::PerformanceNotSupported` says
+so by name.
+
+Still to come: **MIDI-triggered navigation**, a view model over `LiveSession`,
+and the stage display itself — the last of those deferred with the other screen
+work (Qt 6.5+, could be neither run nor looked at here).
+
 ---
 
 # Phase 12 — Audio Intelligence
