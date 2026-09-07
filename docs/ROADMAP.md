@@ -597,6 +597,41 @@ Deliverables:
 
 Do not interpolate discrete IDs blindly.
 
+## Status
+
+**Component copy between Patches is in** (`library::PatchComponentCopy`), the
+first Phase 10 deliverable and item 7 of the long-term success standard.
+
+The components are Roland's own groupings: each is exactly the set of
+parameters the Parameter Address Map files under one category, so "copy the
+filter" means the five TVF parameters the instrument itself calls TVF rather
+than a selection somebody thought looked right. Two tests assert the partition
+holds in both directions — nothing in the instrument's table is left out of
+`WholeTone`, and nothing is listed that the table does not have — so a UI
+showing what a copy will touch shows the same thing the copy does.
+
+Three rules:
+
+- **It never interpolates.** Every value is carried across exactly as stored.
+  Wave numbers, filter types and controller destinations are identities rather
+  than quantities, so the way this obeys the phase's "do not interpolate
+  discrete IDs blindly" rule is by not interpolating at all.
+- **It never copies the Patch name.** A Patch that took on the name of the one
+  a filter came from is a Patch nobody could find again.
+- **It applies whole or not at all**, on a working copy, so a refused copy
+  leaves nothing half-changed.
+
+The part that earns it its place is what it says stayed behind: a Structure
+pairing that lives in Patch Common and cannot travel with a Tone, effect sends
+that route into Patch-level settings the copy did not bring, a wave that needs
+an expansion board, a Tone switch that came along and turned a Tone on. Nothing
+is refused on those grounds — the user may know exactly what they are doing —
+but nothing is silent either.
+
+Still to come in this phase: constrained variation, mutation/evolution,
+morphing where parameter semantics permit, advanced A/B, richer version history,
+and the sound-design surfaces (QML, deferred with the other screen work).
+
 ---
 
 # Phase 11 — Live Mode
