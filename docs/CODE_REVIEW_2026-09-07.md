@@ -38,6 +38,14 @@ needs a begin/end pair from QML's `DragHandler.active`, and so does every
 `XpKnob`/`XpFader`. Then a test that drives 200 samples and asserts `canUndo()`
 walks back exactly one step.
 
+#### Resolved — see *F1 addendum* below
+
+Two corrections to the finding as written. Gestures were declared in **two**
+places, not one: `beginSoundDnaGesture()` and `beginEffectGesture()`. And the
+effect one did not work — `endEffectGesture()` called `m_workspace.endGesture()`
+unconditionally while `commitEdit` calls it on every commit, so a Sound DNA drag
+was torn down by its own first commit. That is fixed too.
+
 ### F2 — The shipped envelope editor has the stickiness the new engine fixes, and does not use it · **high**
 
 I need to correct something I told you. I said the envelope view "is not built
@@ -235,3 +243,44 @@ blocked.**
    non-UI work.
 
 Items 2–4 need Qt 6.5+ to see. Item 1 does not.
+
+---
+
+## 6. F1 addendum — what was actually done
+
+The finding said to bracket every drag from QML. That is the exact fix, and it
+is also the fragile one: it makes undo integrity depend on 21 call sites across
+five QML files remembering to bracket, in a layer this container's Qt 6.4 cannot
+run. A control that forgets does not degrade — it erases the session's history.
+
+So the grouping is now inferred as well as declared, and the inference is what
+carries the safety:
+
+- **`PatchWorkspace::commit` takes a coalescing key.** Consecutive commits with
+  the same non-empty key, arriving within `kCoalesceWindowMs` (500 ms), are one
+  undo step: the first pushes, the rest amend. `breakCoalescing()` ends a run
+  early, and is called from `adopt`, `clear`, `undo`, `redo`, `revert` and
+  `beginGesture`. A `setClockForTesting` seam makes the window deterministic.
+- **The key names the adjustment, not the parameter.** A knob is
+  `tone:<n>:<parameter>`; an envelope point is `envelope:<section>:<tone>:<point>`
+  and is shared by the stage *time* and *level* the drag writes together.
+  Keyed per parameter they would alternate and each break the other's run —
+  which is exactly the failure `anEnvelopeDragIsOneStepThoughItWritesATimeAndALevel`
+  pins.
+- **The time window is what keeps it honest.** Two deliberate edits of the same
+  knob a moment apart stay two steps. Only genuinely continuous movement merges.
+- **`beginEditGesture()` / `endEditGesture()`** are on `PatchEditorViewModel` for
+  the view to bracket exactly when it can — nestable, and independent of the
+  window, so a musician who pauses mid-drag still gets one step. Wiring them
+  into `EnvelopeEditor.qml` and the knobs stays an open UI task; it is now an
+  improvement in precision rather than a correctness requirement.
+
+Six tests were added to `tst_patch_editor` — a 200-sample knob drag that must
+leave three earlier edits reachable, a 200-sample envelope drag writing two
+parameters, two consecutive point drags staying distinct, a declared gesture
+grouping a drag however slow, a declared gesture returning to its origin
+recording nothing, and nested brackets counting once. Three existing tests
+encoded per-commit granularity and now say what they mean by advancing the
+clock between deliberate edits.
+
+66/66 CTest targets pass (`tst_qml` still cannot run under Qt 6.4).

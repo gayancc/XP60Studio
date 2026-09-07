@@ -229,6 +229,19 @@ public:
     Q_INVOKABLE void beginEffectGesture();
     Q_INVOKABLE void endEffectGesture();
 
+    // Brackets any continuous adjustment the view knows the bounds of: a knob
+    // press-to-release, an envelope point being dragged. Everything committed
+    // between them is one undo step.
+    //
+    // Calling these is an optimisation, not a safety requirement. The workspace
+    // infers the same grouping from the coalescing key every edit carries (see
+    // PatchWorkspace::breakCoalescing), so a control that forgets to bracket
+    // still cannot flood the undo history — it just loses the exactness of
+    // knowing when the drag really ended.
+    Q_INVOKABLE void beginEditGesture();
+    Q_INVOKABLE void endEditGesture();
+    [[nodiscard]] bool editGestureActive() const noexcept { return m_editGestureDepth > 0; }
+
     [[nodiscard]] bool envelopeAvailable() const;
     [[nodiscard]] QString envelopeTitle() const;
     [[nodiscard]] QVariantList envelopePoints() const;
@@ -366,7 +379,13 @@ signals:
 
 private:
     void adoptFetchedPatch();
-    bool commitEdit(xpmodel::Xp60Patch edited, const QString& label);
+    bool commitEdit(xpmodel::Xp60Patch edited, const QString& label,
+                    const QString& coalesceKey = {});
+    // As setToneRaw, but the caller names the adjustment the write belongs to.
+    // An envelope point moves a time and a level together; both must carry the
+    // *same* key or they alternate and neither run ever coalesces.
+    void setToneRawKeyed(xpmodel::ToneIndex tone, xpmodel::ToneParameter parameter, int raw,
+                         const QString& coalesceKey);
     void emitAll();
     xpmodel::Xp60Patch auditionPatch() const;
     void queueAudition();
@@ -404,6 +423,7 @@ private:
     bool m_effectGesture = false;
     bool m_effectGestureHasUndo = false;
     bool m_applyingEffectGesture = false;
+    int m_editGestureDepth = 0;
     QString m_sourceText;
 
     sounddna::SoundDnaKnowledgeModel m_dnaModel;

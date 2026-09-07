@@ -25,7 +25,7 @@ void PatchEditorViewModel::setEffectPage(int page)
 // an effect knob here and to an envelope point being pulled elsewhere.
 void PatchEditorViewModel::beginEffectGesture()
 {
-    if (!hasPatch() || comparing() || m_effectGesture) return;
+    if (!hasPatch() || comparing() || m_effectGesture || editGestureActive()) return;
     m_effectGesture = true;
     m_effectGestureHasUndo = false;
     m_workspace.beginGesture();
@@ -33,10 +33,17 @@ void PatchEditorViewModel::beginEffectGesture()
 
 void PatchEditorViewModel::endEffectGesture()
 {
+    // Only end the workspace gesture this function started. `commitEdit` calls
+    // here on every commit to break a stale effect drag, and an unguarded
+    // `endGesture()` there tore down whichever *other* gesture was running —
+    // a Sound DNA drag was ended by its own first commit.
+    const bool mine = m_effectGesture;
     m_effectGesture = false;
     m_effectGestureHasUndo = false;
     m_applyingEffectGesture = false;
-    m_workspace.endGesture();
+    if (mine) {
+        m_workspace.endGesture();
+    }
 }
 
 QVariantMap PatchEditorViewModel::effectValues() const

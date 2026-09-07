@@ -575,6 +575,13 @@ presentation-layer job when a Qt 6.5+ environment is available:
   its `truncated` / `minimumPercent` honesty fields.
 - Bank Builder and Dashboard summaries → the same report, narrowed by
   `LibraryQuery`.
+- Gesture brackets on drags → `PatchEditorViewModel::beginEditGesture()` /
+  `endEditGesture()` exist and are nestable; `EnvelopeEditor.qml`'s
+  `DragHandler.active` and every `XpKnob`/`XpFader` press should call them.
+  This is a precision improvement, not a correctness fix: since 2026-09-07 the
+  workspace infers the same grouping from the coalescing key every edit carries,
+  so a control that never brackets still cannot flood the undo history. See
+  `docs/CODE_REVIEW_2026-09-07.md` §6.
 
 Nothing else in this phase is outstanding.
 

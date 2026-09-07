@@ -8,6 +8,7 @@
 
 #include <cstdint>
 #include <deque>
+#include <functional>
 #include <optional>
 #include <string>
 
@@ -111,7 +112,14 @@ public:
 
     // Replaces the working Patch wholesale as one undoable step. Same rules as
     // edit(): no change means no step.
-    bool commit(xpmodel::Xp60Patch patch, const QString& label);
+    //
+    // `coalesceKey` names *which* continuous adjustment this commit belongs to
+    // — one knob, one envelope point. Consecutive commits carrying the same
+    // non-empty key, arriving within `kCoalesceWindowMs` of one another, become
+    // a single undo step: the first records history, the rest amend it. See
+    // `beginGesture()` for why that matters and `breakCoalescing()` for how a
+    // run ends early.
+    bool commit(xpmodel::Xp60Patch patch, const QString& label, const QString& coalesceKey = {});
     // Applies `patch` without recording history and without marking the Patch
     // edited. For a gesture already in progress whose first move pushed the undo
     // step — see `beginGesture()`.
@@ -124,6 +132,29 @@ public:
     void beginGesture();
     void endGesture();
     [[nodiscard]] bool gestureActive() const noexcept { return m_gesture; }
+
+    // The same grouping, inferred rather than declared.
+    //
+    // `beginGesture()` is exact but depends on every drag remembering to
+    // bracket itself, and a drag that forgets is not a cosmetic bug: an
+    // unbracketed drag commits once per pointer sample, `pushUndo` evicts from
+    // the front at `kUndoLimit`, and under a second of movement therefore
+    // erases every earlier step in the session. Coalescing is the backstop that
+    // makes that impossible without asking the view layer to be perfect: a run
+    // of commits about the same thing, close together in time, is one step
+    // whether or not anyone declared a gesture.
+    //
+    // The time window is what keeps it honest. Two deliberate edits of the same
+    // knob, made a moment apart, are two steps — only a genuinely continuous
+    // adjustment falls inside the window.
+    static constexpr int kCoalesceWindowMs = 500;
+    // Ends the current run, so the next commit records a fresh undo step even
+    // if it carries the same key. Called on pointer release, and whenever the
+    // history is repositioned.
+    void breakCoalescing() noexcept;
+    // Test seam: supplies the milliseconds `commit` compares against the
+    // window, so coalescing can be exercised without waiting in real time.
+    void setClockForTesting(std::function<qint64()> clock);
 
     [[nodiscard]] bool canUndo() const noexcept { return !m_undo.empty(); }
     [[nodiscard]] bool canRedo() const noexcept { return !m_redo.empty(); }
@@ -200,6 +231,12 @@ private:
     bool m_gestureHasUndo = false;
     std::optional<xpmodel::Xp60Patch> m_gestureBase;
     std::deque<Step> m_gestureRedoBefore;
+
+    // The run an inferred gesture is currently in: which thing is being
+    // adjusted, and when it was last touched.
+    QString m_coalesceKey;
+    qint64 m_coalesceAt = 0;
+    std::function<qint64()> m_clock;
 
     bool m_connected = false;
     DeviceState m_deviceState = DeviceState::Offline;
