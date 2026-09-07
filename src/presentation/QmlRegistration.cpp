@@ -2,6 +2,7 @@
 
 #include "presentation/AppShellViewModel.h"
 #include "presentation/ConnectionState.h"
+#include "presentation/BackupViewModel.h"
 #include "presentation/DevicesViewModel.h"
 #include "presentation/DashboardViewModel.h"
 #include "presentation/BankBuilderViewModel.h"
@@ -30,6 +31,7 @@ void registerQmlTypes()
     const char* reason = "Created by the application, not from QML";
     qmlRegisterUncreatableMetaObject(xp60studio::presentation::staticMetaObject, kPresentationModuleUri, 1, 0,
                                      "ConnectionState", QString::fromLatin1(reason));
+    qmlRegisterUncreatableType<BackupViewModel>(kPresentationModuleUri, 1, 0, "BackupViewModel", QString::fromLatin1(reason));
     qmlRegisterUncreatableType<DevicesViewModel>(kPresentationModuleUri, 1, 0, "DevicesViewModel", QString::fromLatin1(reason));
     qmlRegisterUncreatableType<AppShellViewModel>(kPresentationModuleUri, 1, 0, "AppShellViewModel", QString::fromLatin1(reason));
     qmlRegisterUncreatableType<PatchEditorViewModel>(kPresentationModuleUri, 1, 0, "PatchEditorViewModel", QString::fromLatin1(reason));

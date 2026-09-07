@@ -192,6 +192,12 @@ xp60studio_add_test(tst_snapshot_restore
 target_compile_definitions(tst_snapshot_restore
   PRIVATE XP60STUDIO_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/xp60")
 
+xp60studio_add_test(tst_backup_view_model
+  SOURCES tst_backup_view_model.cpp
+  LIBS xp60studio::presentation xp60studio::simulation)
+target_compile_definitions(tst_backup_view_model
+  PRIVATE XP60STUDIO_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/xp60")
+
 xp60studio_add_test(tst_snapshot_restore_run
   SOURCES tst_snapshot_restore_run.cpp
   LIBS xp60studio::services xp60studio::simulation)
