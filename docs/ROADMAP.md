@@ -501,8 +501,23 @@ stopping half-way would leave the instrument holding a mixture of two states —
 the one outcome the whole design avoids — so the run is seen through and
 verified, and the safety snapshot is the way back.
 
+**Both are reachable now.** `presentation::BackupViewModel` sequences the whole
+backup workflow — capture → save → load → plan → arm → restore — holding the
+state between steps and converting Roland types into rows QML can display. It
+adds no safety rules of its own; what it enforces is sequencing: a plan is
+dropped whenever the snapshot it describes is replaced or forgotten, arming
+without a plan is refused, and an area this build does not know is refused
+outright rather than dropped from the request. Areas that cannot be captured are
+named in `unreadableAreaNote` rather than left off a list the user reads as
+complete. `presentation::PerformanceViewModel` surfaces the persistent USER
+Performance write beside the audition send it already had — arm, write to a
+slot, restore what was overwritten, retry what did not land — refusing to start
+one while a fetch or an audition send is still in flight.
+
 Still to come in this phase: the Rhythm and System editors on top of those
-tables, and the shared transfer/verification UI.
+tables, the shared transfer/verification UI, and the QML screens over the two
+view models above (deferred with the other screen work — they need Qt 6.5+ and
+could be neither run nor looked at here).
 
 Hardware verification for everything Phase 8 has built so far is open as
 `DEVICE_ACCEPTANCE.md` areas 16–18.
@@ -575,6 +590,13 @@ presentation-layer job when a Qt 6.5+ environment is available:
   its `truncated` / `minimumPercent` honesty fields.
 - Bank Builder and Dashboard summaries → the same report, narrowed by
   `LibraryQuery`.
+- Gesture brackets on drags → `PatchEditorViewModel::beginEditGesture()` /
+  `endEditGesture()` exist and are nestable; `EnvelopeEditor.qml`'s
+  `DragHandler.active` and every `XpKnob`/`XpFader` press should call them.
+  This is a precision improvement, not a correctness fix: since 2026-09-07 the
+  workspace infers the same grouping from the coalescing key every edit carries,
+  so a control that never brackets still cannot flood the undo history. See
+  `docs/CODE_REVIEW_2026-09-07.md` §6.
 
 Nothing else in this phase is outstanding.
 
@@ -628,9 +650,56 @@ an expansion board, a Tone switch that came along and turned a Tone on. Nothing
 is refused on those grounds — the user may know exactly what they are doing —
 but nothing is silent either.
 
-Still to come in this phase: constrained variation, mutation/evolution,
-morphing where parameter semantics permit, advanced A/B, richer version history,
-and the sound-design surfaces (QML, deferred with the other screen work).
+**Constrained variation is in** (`library::PatchVariation`). "Vary this Patch"
+is where invention creeps into a synthesizer editor, so the constraints are the
+design:
+
+- **Nothing discrete is touched.** A parameter is left alone when it carries an
+  enumeration, when its range is 0..1 (every switch), or when it belongs to the
+  Wave category. Those hold identities, not quantities: Filter Type 3 is not "a
+  bit more" than 2 and wave 118 is not "near" 119. `whyNotVaried()` gives the
+  reason in words, so a UI can show it beside a control it will not move.
+- **Nothing in a Tone that is switched off**, because changing what nobody
+  hears is change without effect.
+- **Never the Patch name.** A variation deserves a new name and choosing one is
+  the musician's job.
+- The amount is a fraction of each parameter's **own** documented range, so a
+  coarse field and a fine one move by comparable musical amounts rather than by
+  the same number of steps. Clamping at a range edge is counted and reported,
+  not hidden.
+- Deterministic from a seed, so a variation a musician liked can be reproduced.
+
+It makes no claim about how the result sounds — it says which parameters moved
+and by how much. Perceptual claims live in `sounddna`, which publishes none.
+
+**The envelope interaction engine is in** (`src/interaction/`), which is the
+hard half of the graphical envelope editors — the half that decides whether
+dragging a point feels smooth or sticky. `EnvelopeGeometry` turns a Tone's
+Pitch, Filter or Amplifier envelope into draggable points; `EnvelopeDrag` runs
+the gesture. The four mechanisms and the reasoning are in
+[`design/ENVELOPE_INTERACTION.md`](design/ENVELOPE_INTERACTION.md); in short, a
+continuous shadow the view draws from, hysteresis at step boundaries, exact
+accumulation from the grab origin, and coalescing to at most one message per
+parameter per drain.
+
+`ParameterDrag` generalises the same four mechanisms to every ordinary knob and
+slider, and `LfoGeometry` draws the LFO on the same terms — cycles proportional
+to Rate rather than an invented frequency axis, Delay and Fade shading the start
+of the plot, and the waveform switched rather than blended because it is an
+identity.
+
+That work also found a real bug: the table generator's category rules match in
+order and the `Wave` rule sat above `LFO1`/`LFO2`, so "LFO1 Waveform" — which
+contains the word "Wave" — was filed under Wave. `PatchComponentCopy` had
+therefore been making "copy the wave" change a Tone's LFO shapes and "copy
+LFO 1" leave its own shape behind. Fixed, regenerated, and pinned by a test.
+
+The QML surfaces on top are deferred with the other screen work: they need
+Qt 6.5+ and could be neither run nor looked at here.
+
+Still to come in this phase: mutation/evolution, morphing where parameter
+semantics permit, advanced A/B, richer version history, and the sound-design
+surfaces (QML, deferred with the other screen work).
 
 ---
 
@@ -652,27 +721,79 @@ Deliverables:
 
 Live Mode must inherit the XP60Studio visual identity while using lower density for stage readability.
 
+## Status (2026-09-07)
+
+**The data layer is in.** `library::Setlist` is the running order — songs,
+sections, and the sound each section calls for — and `services::LiveSession`
+drives it against the instrument. Schema 6 persists setlists in the library.
+
+Three decisions shaped it, and each is a refusal to guess:
+
+- **A cue names a sound; it never holds one.** Same rule as a saved bank, so
+  building a setlist changes nothing and deleting one loses nothing. A cue whose
+  Patch is later deleted keeps its name, reports itself missing, and stays in
+  position — the alternative is a running order that quietly shortens itself
+  between soundcheck and the show.
+- **Switching does not use Program Change.** Whether a Program Change *we*
+  transmit changes the temporary area the way a panel press does is unverified
+  (`PATCH_SYNCHRONIZATION.md` U5), and the preset Bank Select mapping is not
+  documented anywhere this project has (`ROLAND_XP60_PROTOCOL_FACTS.md` §7).
+  Guessing at either means the wrong sound in front of an audience. So a cue is
+  realised the one way this project has verified: the Patch is written into the
+  temporary area and read back — five blocks out for a library cue, five in and
+  five out for a USER slot cue, and `planFor()` says which before the downbeat.
+  Nothing a live session writes can alter a stored sound.
+- **Armed once, not once per cue.** `PatchTransfer` arming is single-use, which
+  is right for a one-off write and wrong for a show; re-arming between every bar
+  is not an armed write, it is an unguarded one with an extra tap. Live Mode
+  uses the session-scoped live preview instead, which also means two fast
+  advances land on the second sound rather than playing the first on the way
+  past.
+
+Navigation never transmits: scrolling ahead to see the next song must not change
+what is playing, so `position()` (the cursor) and `soundingIndex()` (what the
+instrument is actually making) are separate, and only `goToCurrent()` sends.
+
+Performance cues can be written down, seen and moved through, but cannot be
+switched to: writing the temporary Performance exists only inside the
+Performance editor, and inventing a second path to a seventeen-block destructive
+write for stage use needs a Performance transfer service carrying the same
+read-back rules `PatchTransfer` has. `LiveBlock::PerformanceNotSupported` says
+so by name.
+
+**MIDI-triggered navigation is in** (`services::LiveMidiNavigation`), and its
+whole shape is set by one hazard: the application listens to whatever is plugged
+into its MIDI input, which on stage is the XP-60's own MIDI OUT, and the XP-60
+transmits Program Change whenever a Patch is chosen on its front panel (Owner's
+Manual p.218-219). A default binding on Program Change would make the setlist
+jump every time the musician touched a Patch button. So it is off until switched
+on, nothing is bound by default, and a Program Change binding's own description
+says out loud that the keyboard will trigger it too.
+
+The rest follows from what a pedal actually does. A binding fires at or above a
+threshold, so a momentary switch acts on the press and not again on the release;
+a threshold of zero is refused for that reason. Note On with velocity 0 is a
+Note Off and is treated as the release. `GoToNumbered` on a control change is
+refused — a control change carries a level, not a cue — and the wire's
+zero-based program number maps straight onto the zero-based cue index, so a
+pedal displaying "1" selects the first cue. A trigger arriving while a switch is
+already running is dropped and counted rather than queued: the press meant
+"now", and honouring it four seconds later puts the wrong sound under the next
+section. `ignoredCount()` and `lastIgnoredReason()` exist because the failure
+mode of MIDI control is silence — a pedal on the wrong channel and a pedal that
+is not plugged in look identical from the stage.
+
+`DeviceSession` gained one signal for this, `channelMessageObserved`, reporting
+any channel voice message as it arrived. Bytes rather than named events: that
+class has no reason to own a vocabulary of controllers.
+
+Still to come: a view model over `LiveSession`, and the stage display itself —
+deferred with the other screen work (Qt 6.5+, could be neither run nor looked at
+here).
+
 ---
 
-# Phase 12 — Audio Intelligence
-
-Goal: make library auditioning and search richer without emulating the XP-60 synthesizer.
-
-Potential deliverables:
-
-- capture XP-60 audio output
-- associate previews with patches
-- standardized preview notes/velocities
-- local preview playback
-- audio-derived metadata research
-- sound-aware search
-- similarity based on actual recordings
-
-Do not implement fake audio understanding without real data.
-
----
-
-# Phase 13 — Additional Roland XP/JV Hardware
+# Phase 12 — Additional Roland XP/JV Hardware
 
 Goal: reuse verified abstractions for related devices.
 
@@ -687,6 +808,28 @@ Potential targets:
 Extract common abstractions based on verified shared behavior.
 
 XP-60 correctness must not be weakened for premature generic support.
+
+---
+
+# Rejected scope — Audio Intelligence (2026-09-08)
+
+A phase once planned here proposed capturing the XP-60's actual audio output,
+attaching recorded previews to library Patches, and building sound-aware
+search/similarity on top of those recordings.
+
+Removed rather than deferred: a captured preview is a recording of one
+instant — one note, one velocity, one fixed effects state — and the XP-60's
+real sound is produced live, by envelopes, LFOs, and key/velocity tracking
+reacting continuously to how it is actually played. A library of static
+recordings can never represent that; it can only ever claim to. Presenting
+one as "what the Patch sounds like" would misrepresent the instrument, not
+merely leave a feature unfinished. Nothing here needed hardware to rule out —
+the concept itself does not belong in this project. Do not re-add it under a
+different name (audio fingerprinting, tone previews, and similar are the same
+proposal).
+
+If sound-aware search is ever wanted, it stands or falls entirely on the real
+XP-60 synthesis engine, not on any recording of it.
 
 ---
 

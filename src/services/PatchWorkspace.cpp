@@ -1,10 +1,28 @@
 #include "services/PatchWorkspace.h"
 
+#include <QDateTime>
+
+#include <utility>
+
 namespace xp60studio::services {
 
 PatchWorkspace::PatchWorkspace(QObject* parent)
     : QObject(parent)
+    , m_clock([] { return QDateTime::currentMSecsSinceEpoch(); })
 {
+}
+
+void PatchWorkspace::setClockForTesting(std::function<qint64()> clock)
+{
+    m_clock = clock ? std::move(clock) : std::function<qint64()>([] {
+        return QDateTime::currentMSecsSinceEpoch();
+    });
+}
+
+void PatchWorkspace::breakCoalescing() noexcept
+{
+    m_coalesceKey.clear();
+    m_coalesceAt = 0;
 }
 
 QString PatchWorkspace::displayName() const
@@ -26,6 +44,7 @@ void PatchWorkspace::adopt(const xpmodel::Xp60Patch& patch, PatchOrigin origin)
     m_gestureHasUndo = false;
     m_gestureBase.reset();
     m_gestureRedoBefore.clear();
+    breakCoalescing();
 
     // A different Patch is a different question about the instrument. Whatever
     // was verified about the previous one says nothing about this one, so the
@@ -53,6 +72,7 @@ void PatchWorkspace::clear()
     m_gestureHasUndo = false;
     m_gestureBase.reset();
     m_gestureRedoBefore.clear();
+    breakCoalescing();
     m_deviceState = m_connected ? DeviceState::NotSent : DeviceState::Offline;
     m_deviceMessage.clear();
 
@@ -65,21 +85,42 @@ void PatchWorkspace::clear()
 // Editing
 // ---------------------------------------------------------------------------
 
-bool PatchWorkspace::commit(xpmodel::Xp60Patch patch, const QString& label)
+bool PatchWorkspace::commit(xpmodel::Xp60Patch patch, const QString& label,
+                            const QString& coalesceKey)
 {
     if (!m_working) {
         return false;
     }
     if (patch == *m_working) {
         // An edit that changes nothing must not consume an undo step, mark the
-        // Patch dirty, or diverge it from the instrument.
+        // Patch dirty, or diverge it from the instrument. It also leaves the
+        // coalescing run alone: a pointer sample that lands on the value the
+        // parameter already holds is still part of the same drag.
         return false;
     }
+
+    // A declared gesture wins. It knows exactly where the drag starts and ends,
+    // so it needs no window and no key.
     if (m_gesture && m_gestureHasUndo) {
         m_working = std::move(patch);
         afterPatchChanged();
         return true;
     }
+
+    const qint64 now = m_clock();
+    const bool continues = !coalesceKey.isEmpty() && coalesceKey == m_coalesceKey && !m_undo.empty()
+        && now - m_coalesceAt <= kCoalesceWindowMs;
+    m_coalesceKey = coalesceKey;
+    m_coalesceAt = now;
+
+    if (continues) {
+        // Amend the step this run already pushed. Its label stays the first
+        // one, which is the right thing to show: the run is one adjustment.
+        m_working = std::move(patch);
+        afterPatchChanged();
+        return true;
+    }
+
     pushUndo(label);
     if (m_gesture) {
         m_gestureHasUndo = true;
@@ -102,6 +143,9 @@ bool PatchWorkspace::amend(xpmodel::Xp60Patch patch)
 void PatchWorkspace::beginGesture()
 {
     if (m_gesture) return;
+    // Whatever run was in progress is over: a declared gesture must record its
+    // own undo step rather than amending the previous adjustment's.
+    breakCoalescing();
     m_gesture = true;
     m_gestureHasUndo = false;
     m_gestureBase = m_working;
@@ -123,6 +167,7 @@ void PatchWorkspace::endGesture()
     m_gestureHasUndo = false;
     m_gestureBase.reset();
     m_gestureRedoBefore.clear();
+    breakCoalescing();
     if (returnedToOrigin) emit changed();
 }
 
@@ -171,6 +216,7 @@ bool PatchWorkspace::undo()
         return false;
     }
     endGesture();
+    breakCoalescing();
     auto step = std::move(m_undo.back());
     m_undo.pop_back();
     m_redo.push_back(Step{*m_working, step.label});
@@ -185,6 +231,7 @@ bool PatchWorkspace::redo()
         return false;
     }
     endGesture();
+    breakCoalescing();
     auto step = std::move(m_redo.back());
     m_redo.pop_back();
     m_undo.push_back(Step{*m_working, step.label});
@@ -199,6 +246,7 @@ bool PatchWorkspace::revert()
         return false;
     }
     endGesture();
+    breakCoalescing();
     return commit(*m_baseline, QObject::tr("Discard changes"));
 }
 

@@ -26,8 +26,12 @@ struct AreaBounds
 
 AreaBounds boundsOf(RestoreArea area)
 {
-    const auto base = [](roland::Byte b0, roland::Byte b1) {
-        return RolandAddress(b0, b1, 0x00, 0x00).value();
+    // Linear 28-bit value of `b0 b1 00 00`, packed the way SevenBitQuad does:
+    // seven significant bits per byte. Computed rather than constructed —
+    // `RolandAddress(b0, b1, 0x00, 0x00)` throws on a byte with bit 7 set, and
+    // a throwing expression has no business in a bounds table.
+    const auto base = [](std::uint32_t b0, std::uint32_t b1) {
+        return ((b0 & 0x7Fu) << 21) | ((b1 & 0x7Fu) << 14);
     };
     // Every multi-slot area in this map uses the same stride, 00 01 00 00.
     // The end is computed by arithmetic rather than by naming an address: the

@@ -203,6 +203,11 @@ CATEGORY_RULES = [
     ("Portamento", "Portamento"),
     ("Structure", "Structure"),
     ("Booster", "Structure"),
+    # LFO1/LFO2 must precede the Wave rule: "LFO1 Waveform" contains "Wave",
+    # and the rules match in order. Filed under Wave it made "copy the wave"
+    # change the LFOs and "copy LFO 1" leave its own shape behind.
+    ("LFO1", "LFO1"),
+    ("LFO2", "LFO2"),
     ("Wave", "Wave"),
     ("FXM", "Wave"),
     ("Tone Delay", "Tone Delay"),
@@ -211,8 +216,6 @@ CATEGORY_RULES = [
     ("Velocity Cross Fade", "Range"),
     ("Control Switch", "Control Switches"),
     ("Controller", "Controllers"),
-    ("LFO1", "LFO1"),
-    ("LFO2", "LFO2"),
     ("Pitch", "Pitch"),
     ("Coarse Tune", "Pitch"),
     ("Fine Tune", "Pitch"),

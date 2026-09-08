@@ -140,6 +140,7 @@ void PatchEditorViewModel::adoptFetchedPatch()
     }
     // A freshly read Patch becomes the new A side; local edits start over.
     endEffectGesture();
+    m_editGestureDepth = 0;
     if (m_dnaGestureBase) m_workspace.endGesture();
     m_dnaGestureBase.reset();
     m_applyingDnaGesture = false;
@@ -163,7 +164,8 @@ void PatchEditorViewModel::adoptFetchedPatch()
 // workspace decides whether it is a step at all: an edit that changes nothing
 // records no history and does not mark the Patch out of sync with the
 // instrument.
-bool PatchEditorViewModel::commitEdit(xpmodel::Xp60Patch edited, const QString& label)
+bool PatchEditorViewModel::commitEdit(xpmodel::Xp60Patch edited, const QString& label,
+                                      const QString& coalesceKey)
 {
     if (!m_applyingDnaGesture) {
         endSoundDnaGesture();
@@ -171,7 +173,7 @@ bool PatchEditorViewModel::commitEdit(xpmodel::Xp60Patch edited, const QString& 
     if (!m_applyingEffectGesture) {
         endEffectGesture();
     }
-    if (!m_workspace.commit(std::move(edited), label)) {
+    if (!m_workspace.commit(std::move(edited), label, coalesceKey)) {
         return false;
     }
     if (!m_applyingDnaGesture) m_dnaLastExplanation.clear();
@@ -283,9 +285,28 @@ QVariantList PatchEditorViewModel::soundDnaDimensions() const
     return dimensions;
 }
 
+void PatchEditorViewModel::beginEditGesture()
+{
+    if (!hasPatch() || m_comparing) return;
+    // Nestable, because a composite control may bracket a drag its own children
+    // also bracket. Only the outermost pair reaches the workspace.
+    if (m_editGestureDepth++ == 0) {
+        m_workspace.beginGesture();
+    }
+}
+
+void PatchEditorViewModel::endEditGesture()
+{
+    if (m_editGestureDepth == 0) return;
+    if (--m_editGestureDepth == 0) {
+        m_workspace.endGesture();
+    }
+}
+
 void PatchEditorViewModel::beginSoundDnaGesture()
 {
     if (!hasPatch() || m_comparing || !m_dnaProfile.available() || m_dnaGestureBase) return;
+    if (editGestureActive()) return;
     m_dnaGestureBase = working();
     m_dnaLastExplanation.clear();
     m_workspace.beginGesture();
@@ -322,6 +343,14 @@ void PatchEditorViewModel::endSoundDnaGesture()
 
 void PatchEditorViewModel::setToneRaw(ToneIndex tone, ToneParameter parameter, int raw)
 {
+    // One knob is one adjustment: key the run by the parameter it writes.
+    setToneRawKeyed(tone, parameter, raw,
+                    QStringLiteral("tone:%1:%2").arg(tone.number()).arg(static_cast<int>(parameter)));
+}
+
+void PatchEditorViewModel::setToneRawKeyed(ToneIndex tone, ToneParameter parameter, int raw,
+                                           const QString& coalesceKey)
+{
     if (!hasPatch() || m_comparing) {
         return;
     }
@@ -340,7 +369,7 @@ void PatchEditorViewModel::setToneRaw(ToneIndex tone, ToneParameter parameter, i
     if (!edited.setRaw(tone, parameter, raw)) {
         return;
     }
-    commitEdit(std::move(edited), tr("Edit Tone %1").arg(tone.number()));
+    commitEdit(std::move(edited), tr("Edit Tone %1").arg(tone.number()), coalesceKey);
 }
 
 void PatchEditorViewModel::setCommonRaw(CommonParameter parameter, int raw)
@@ -355,7 +384,8 @@ void PatchEditorViewModel::setCommonRaw(CommonParameter parameter, int raw)
     if (!edited.setRaw(parameter, raw)) {
         return;
     }
-    commitEdit(std::move(edited), tr("Edit Patch Common"));
+    commitEdit(std::move(edited), tr("Edit Patch Common"),
+               QStringLiteral("common:%1").arg(static_cast<int>(parameter)));
 }
 
 bool PatchEditorViewModel::useWaveInTone(int toneNumber, const QString& bank, int displayNumber)
@@ -1126,14 +1156,18 @@ void PatchEditorViewModel::moveEnvelopePoint(int index, double x, double y)
     const double span = total > 0 ? total : 1.0;
     const double desired = std::clamp(x, 0.0, 1.0) * span - before;
     const int timeRaw = std::clamp(static_cast<int>(std::lround(desired)), 0, 127);
-    setToneRaw(tone, parameters.times[static_cast<std::size_t>(stage)], timeRaw);
+    // Time and level are one adjustment — the point the user has hold of — so
+    // they share a key. Keyed per parameter they would alternate, each write
+    // breaking the other's run, and the drag would push a step per sample.
+    const auto key = QStringLiteral("envelope:%1:%2:%3").arg(m_section).arg(tone.number()).arg(index);
+    setToneRawKeyed(tone, parameters.times[static_cast<std::size_t>(stage)], timeRaw, key);
 
     if (stage < parameters.levelCount) {
         const auto& descriptor = tables::descriptor(parameters.levels[static_cast<std::size_t>(stage)]);
         const double scale = descriptor.rawMax;
         const int levelRaw = std::clamp(static_cast<int>(std::lround(std::clamp(y, 0.0, 1.0) * scale)),
                                         descriptor.rawMin, descriptor.rawMax);
-        setToneRaw(tone, parameters.levels[static_cast<std::size_t>(stage)], levelRaw);
+        setToneRawKeyed(tone, parameters.levels[static_cast<std::size_t>(stage)], levelRaw, key);
     }
 }
 

@@ -128,6 +128,45 @@ constexpr const char* kSchemaStatements[] = {
     "  PRIMARY KEY (patch_id, group_id)"
     ")",
     "CREATE INDEX IF NOT EXISTS idx_patch_expansion_group ON patch_expansion_groups(group_id)",
+    // Schema version 6 -- setlists for stage use.
+    //
+    // A setlist is an arrangement of references, exactly as a saved bank is, so
+    // `setlist_sections.patch_id` is ON DELETE SET NULL rather than CASCADE:
+    // deleting a Patch from the library must not delete the cue that called for
+    // it, silently shortening somebody's running order between soundcheck and
+    // the show. The cached `target_name` survives, which is what lets the stage
+    // display say "GrandPiano -- no longer in the library" instead of going
+    // blank at bar one.
+    //
+    // Sections are numbered within a song rather than globally: reordering one
+    // song must not renumber every cue after it.
+    "CREATE TABLE IF NOT EXISTS setlists ("
+    "  id         INTEGER PRIMARY KEY AUTOINCREMENT,"
+    "  name       TEXT    NOT NULL,"
+    "  note       TEXT    NOT NULL DEFAULT '',"
+    "  created_at INTEGER NOT NULL,"
+    "  updated_at INTEGER NOT NULL"
+    ")",
+    "CREATE TABLE IF NOT EXISTS setlist_songs ("
+    "  setlist_id INTEGER NOT NULL REFERENCES setlists(id) ON DELETE CASCADE,"
+    "  song_index INTEGER NOT NULL,"
+    "  name       TEXT    NOT NULL DEFAULT '',"
+    "  note       TEXT    NOT NULL DEFAULT '',"
+    "  PRIMARY KEY (setlist_id, song_index)"
+    ")",
+    "CREATE TABLE IF NOT EXISTS setlist_sections ("
+    "  setlist_id    INTEGER NOT NULL REFERENCES setlists(id) ON DELETE CASCADE,"
+    "  song_index    INTEGER NOT NULL,"
+    "  section_index INTEGER NOT NULL,"
+    "  name          TEXT    NOT NULL DEFAULT '',"
+    "  note          TEXT    NOT NULL DEFAULT '',"
+    "  target_kind   INTEGER NOT NULL,"
+    "  patch_id      INTEGER          REFERENCES patches(id) ON DELETE SET NULL,"
+    "  user_number   INTEGER NOT NULL DEFAULT 0,"
+    "  target_name   TEXT    NOT NULL DEFAULT '',"
+    "  PRIMARY KEY (setlist_id, song_index, section_index)"
+    ")",
+    "CREATE INDEX IF NOT EXISTS idx_setlist_sections_patch ON setlist_sections(patch_id)",
 };
 
 QString toQt(const std::string& text)
@@ -1213,6 +1252,261 @@ bool LibraryDatabase::removeBank(std::int64_t id)
     }
     if (sql.numRowsAffected() == 0) {
         m_lastError = QStringLiteral("No saved bank with id %1.").arg(id);
+        return false;
+    }
+    m_lastError.clear();
+    return true;
+}
+
+// ---------------------------------------------------------------------------
+// Setlists
+// ---------------------------------------------------------------------------
+
+std::optional<std::int64_t> LibraryDatabase::saveSetlist(const Setlist& setlist)
+{
+    if (!isOpen()) {
+        m_lastError = QStringLiteral("The library is not open.");
+        return std::nullopt;
+    }
+    if (setlist.name.empty()) {
+        m_lastError = QStringLiteral("A setlist needs a name.");
+        return std::nullopt;
+    }
+    // Refuse a cue pointing at a slot the instrument does not have, rather than
+    // clamping it into one it does. A setlist that silently plays USER:128
+    // where the musician wrote USER:130 is worse than one that will not save.
+    for (const auto& song : setlist.songs) {
+        for (const auto& section : song.sections) {
+            if (!section.target.isValid()) {
+                m_lastError = QStringLiteral("\"%1\" calls for %2 slot %3, which the XP-60 does not have.")
+                                  .arg(toQt(section.name))
+                                  .arg(QString::fromUtf8(
+                                      liveTargetKindName(section.target.kind).data(),
+                                      static_cast<qsizetype>(liveTargetKindName(section.target.kind).size())))
+                                  .arg(section.target.userNumber);
+                return std::nullopt;
+            }
+        }
+    }
+
+    const auto now = toEpochSeconds(std::chrono::system_clock::now());
+    if (!m_d->database.transaction()) {
+        m_lastError = m_d->database.lastError().text();
+        return std::nullopt;
+    }
+    auto fail = [this](const QString& error) -> std::optional<std::int64_t> {
+        m_lastError = error;
+        m_d->database.rollback();
+        return std::nullopt;
+    };
+
+    auto sql = m_d->query();
+    std::int64_t setlistId = setlist.id;
+    if (setlistId != 0) {
+        sql.prepare(QStringLiteral("UPDATE setlists SET name = ?, note = ?, updated_at = ? WHERE id = ?"));
+        sql.addBindValue(toQt(setlist.name));
+        sql.addBindValue(toQt(setlist.note));
+        sql.addBindValue(QVariant::fromValue<qlonglong>(now));
+        sql.addBindValue(QVariant::fromValue<qlonglong>(setlistId));
+        if (!sql.exec()) {
+            return fail(sql.lastError().text());
+        }
+        if (sql.numRowsAffected() == 0) {
+            return fail(QStringLiteral("No setlist with id %1.").arg(setlistId));
+        }
+        // Songs and sections are rewritten wholesale. Reordering a running
+        // order changes almost every index, so a diff would be more code and
+        // more ways to leave a stale cue behind.
+        for (const auto* table : {"setlist_sections", "setlist_songs"}) {
+            sql.prepare(QStringLiteral("DELETE FROM %1 WHERE setlist_id = ?").arg(QString::fromLatin1(table)));
+            sql.addBindValue(QVariant::fromValue<qlonglong>(setlistId));
+            if (!sql.exec()) {
+                return fail(sql.lastError().text());
+            }
+        }
+    } else {
+        sql.prepare(QStringLiteral("INSERT INTO setlists (name, note, created_at, updated_at) VALUES (?, ?, ?, ?)"));
+        sql.addBindValue(toQt(setlist.name));
+        sql.addBindValue(toQt(setlist.note));
+        sql.addBindValue(QVariant::fromValue<qlonglong>(now));
+        sql.addBindValue(QVariant::fromValue<qlonglong>(now));
+        if (!sql.exec()) {
+            return fail(sql.lastError().text());
+        }
+        setlistId = sql.lastInsertId().toLongLong();
+    }
+
+    for (std::size_t songIndex = 0; songIndex < setlist.songs.size(); ++songIndex) {
+        const auto& song = setlist.songs[songIndex];
+        sql.prepare(QStringLiteral("INSERT INTO setlist_songs (setlist_id, song_index, name, note) "
+                                   "VALUES (?, ?, ?, ?)"));
+        sql.addBindValue(QVariant::fromValue<qlonglong>(setlistId));
+        sql.addBindValue(static_cast<int>(songIndex));
+        sql.addBindValue(toQt(song.name));
+        sql.addBindValue(toQt(song.note));
+        if (!sql.exec()) {
+            return fail(sql.lastError().text());
+        }
+        for (std::size_t sectionIndex = 0; sectionIndex < song.sections.size(); ++sectionIndex) {
+            const auto& section = song.sections[sectionIndex];
+            sql.prepare(QStringLiteral(
+                "INSERT INTO setlist_sections (setlist_id, song_index, section_index, name, note, "
+                "target_kind, patch_id, user_number, target_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"));
+            sql.addBindValue(QVariant::fromValue<qlonglong>(setlistId));
+            sql.addBindValue(static_cast<int>(songIndex));
+            sql.addBindValue(static_cast<int>(sectionIndex));
+            sql.addBindValue(toQt(section.name));
+            sql.addBindValue(toQt(section.note));
+            sql.addBindValue(static_cast<int>(section.target.kind));
+            const bool references = section.target.kind == LiveTargetKind::LibraryPatch
+                && section.target.libraryId != 0;
+            sql.addBindValue(references ? QVariant::fromValue<qlonglong>(section.target.libraryId)
+                                        : QVariant(QMetaType(QMetaType::LongLong)));
+            sql.addBindValue(section.target.userNumber);
+            sql.addBindValue(toQt(section.target.name));
+            if (!sql.exec()) {
+                return fail(sql.lastError().text());
+            }
+        }
+    }
+
+    if (!m_d->database.commit()) {
+        return fail(m_d->database.lastError().text());
+    }
+    m_lastError.clear();
+    return setlistId;
+}
+
+std::vector<SavedSetlistRecord> LibraryDatabase::setlists() const
+{
+    std::vector<SavedSetlistRecord> records;
+    if (!isOpen()) {
+        return records;
+    }
+    auto sql = m_d->query();
+    if (!sql.exec(QStringLiteral(
+            "SELECT l.id, l.name, l.created_at, l.updated_at, "
+            "  (SELECT COUNT(*) FROM setlist_songs g WHERE g.setlist_id = l.id), "
+            "  (SELECT COUNT(*) FROM setlist_sections s WHERE s.setlist_id = l.id), "
+            "  (SELECT COUNT(*) FROM setlist_sections s WHERE s.setlist_id = l.id "
+            "     AND s.target_kind = %1 AND s.patch_id IS NULL) "
+            "FROM setlists l ORDER BY l.updated_at DESC, l.id DESC")
+                      .arg(static_cast<int>(LiveTargetKind::LibraryPatch)))) {
+        m_lastError = sql.lastError().text();
+        return records;
+    }
+    while (sql.next()) {
+        SavedSetlistRecord record;
+        record.id = sql.value(0).toLongLong();
+        record.name = fromQt(sql.value(1).toString());
+        record.createdAt = fromEpochSeconds(sql.value(2).toLongLong());
+        record.updatedAt = fromEpochSeconds(sql.value(3).toLongLong());
+        record.songCount = sql.value(4).toInt();
+        record.cueCount = sql.value(5).toInt();
+        record.missingCount = sql.value(6).toInt();
+        records.push_back(std::move(record));
+    }
+    return records;
+}
+
+std::optional<Setlist> LibraryDatabase::loadSetlist(std::int64_t id) const
+{
+    if (!isOpen()) {
+        m_lastError = QStringLiteral("The library is not open.");
+        return std::nullopt;
+    }
+    auto sql = m_d->query();
+    sql.prepare(QStringLiteral("SELECT name, note, created_at, updated_at FROM setlists WHERE id = ?"));
+    sql.addBindValue(QVariant::fromValue<qlonglong>(id));
+    if (!sql.exec()) {
+        m_lastError = sql.lastError().text();
+        return std::nullopt;
+    }
+    if (!sql.next()) {
+        m_lastError = QStringLiteral("No setlist with id %1.").arg(id);
+        return std::nullopt;
+    }
+
+    Setlist setlist;
+    setlist.id = id;
+    setlist.name = fromQt(sql.value(0).toString());
+    setlist.note = fromQt(sql.value(1).toString());
+    setlist.createdAt = fromEpochSeconds(sql.value(2).toLongLong());
+    setlist.updatedAt = fromEpochSeconds(sql.value(3).toLongLong());
+
+    auto songQuery = m_d->query();
+    songQuery.prepare(QStringLiteral(
+        "SELECT song_index, name, note FROM setlist_songs WHERE setlist_id = ? ORDER BY song_index"));
+    songQuery.addBindValue(QVariant::fromValue<qlonglong>(id));
+    if (!songQuery.exec()) {
+        m_lastError = songQuery.lastError().text();
+        return std::nullopt;
+    }
+    // Indices are read back as positions rather than trusted as array offsets:
+    // a gap left by an older build must not become a blank song nobody added.
+    std::vector<int> songOrder;
+    while (songQuery.next()) {
+        SetlistSong song;
+        songOrder.push_back(songQuery.value(0).toInt());
+        song.name = fromQt(songQuery.value(1).toString());
+        song.note = fromQt(songQuery.value(2).toString());
+        setlist.songs.push_back(std::move(song));
+    }
+
+    auto sectionQuery = m_d->query();
+    sectionQuery.prepare(QStringLiteral(
+        "SELECT song_index, name, note, target_kind, patch_id, user_number, target_name "
+        "FROM setlist_sections WHERE setlist_id = ? ORDER BY song_index, section_index"));
+    sectionQuery.addBindValue(QVariant::fromValue<qlonglong>(id));
+    if (!sectionQuery.exec()) {
+        m_lastError = sectionQuery.lastError().text();
+        return std::nullopt;
+    }
+    while (sectionQuery.next()) {
+        const int songIndex = sectionQuery.value(0).toInt();
+        const auto position = std::find(songOrder.begin(), songOrder.end(), songIndex);
+        if (position == songOrder.end()) {
+            // A section whose song is gone. Dropped rather than attached to
+            // some other song: putting a cue in the wrong song on stage is
+            // worse than losing it, and the row could only arrive here through
+            // a hand-edited database.
+            continue;
+        }
+        SetlistSection section;
+        section.name = fromQt(sectionQuery.value(1).toString());
+        section.note = fromQt(sectionQuery.value(2).toString());
+        const int kind = sectionQuery.value(3).toInt();
+        section.target.kind = kind >= static_cast<int>(LiveTargetKind::CarryPrevious)
+                && kind <= static_cast<int>(LiveTargetKind::UserPerformanceSlot)
+            ? static_cast<LiveTargetKind>(kind)
+            : LiveTargetKind::CarryPrevious;
+        const QVariant patchId = sectionQuery.value(4);
+        section.target.libraryId = patchId.isNull() ? 0 : patchId.toLongLong();
+        section.target.userNumber = sectionQuery.value(5).toInt();
+        section.target.name = fromQt(sectionQuery.value(6).toString());
+        setlist.songs[static_cast<std::size_t>(position - songOrder.begin())].sections.push_back(
+            std::move(section));
+    }
+
+    m_lastError.clear();
+    return setlist;
+}
+
+bool LibraryDatabase::removeSetlist(std::int64_t id)
+{
+    if (!isOpen()) {
+        m_lastError = QStringLiteral("The library is not open.");
+        return false;
+    }
+    auto sql = m_d->query();
+    sql.prepare(QStringLiteral("DELETE FROM setlists WHERE id = ?"));
+    sql.addBindValue(QVariant::fromValue<qlonglong>(id));
+    if (!sql.exec()) {
+        m_lastError = sql.lastError().text();
+        return false;
+    }
+    if (sql.numRowsAffected() == 0) {
+        m_lastError = QStringLiteral("No setlist with id %1.").arg(id);
         return false;
     }
     m_lastError.clear();

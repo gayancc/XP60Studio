@@ -3,6 +3,7 @@
 #include "library/BankDraft.h"
 #include "library/ExpansionProfile.h"
 #include "library/LibraryEntry.h"
+#include "library/Setlist.h"
 #include "library/PatchFingerprint.h"
 #include "library/PatchProvenance.h"
 
@@ -151,6 +152,20 @@ struct SavedBank
     std::vector<BankSection> sections;
 };
 
+// A setlist as the picker needs it, without loading every cue.
+struct SavedSetlistRecord
+{
+    std::int64_t id = 0;
+    std::string name;
+    int songCount = 0;
+    int cueCount = 0;
+    // Cues whose Patch has since been deleted from the library. Surfaced here
+    // so a musician sees a setlist is broken before opening it.
+    int missingCount = 0;
+    std::chrono::system_clock::time_point createdAt{};
+    std::chrono::system_clock::time_point updatedAt{};
+};
+
 // The persistent local library.
 //
 // `.syx` files are an import/export format, not the database
@@ -185,7 +200,10 @@ public:
     // SysEx — so an older library opens with them empty and `open` backfills
     // them by decoding the bytes it already has. Nothing is asked of the user
     // and nothing stored is altered.
-    static constexpr int kSchemaVersion = 5;
+    //
+    // 6 added `setlists` / `setlist_songs` / `setlist_sections`. Additive
+    // again: an older library opens with no setlists, which is what it had.
+    static constexpr int kSchemaVersion = 6;
     // Passed as the path to keep the whole library in memory (tests).
     static constexpr const char* kInMemoryPath = ":memory:";
 
@@ -255,6 +273,21 @@ public:
     [[nodiscard]] std::vector<SavedBankRecord> banks() const;
     [[nodiscard]] std::optional<SavedBank> loadBank(std::int64_t id) const;
     [[nodiscard]] bool removeBank(std::int64_t id);
+
+    // Setlists --------------------------------------------------------------
+    //
+    // Same rules as a saved bank, for the same reasons: a setlist references
+    // Patches and never copies them, saving one changes nothing about the
+    // library, and deleting one deletes no sound. A cue whose Patch is later
+    // deleted keeps its name and reports itself missing rather than becoming
+    // an empty bar in the middle of a show.
+
+    // Inserts a new setlist, or replaces `setlist.id`'s songs and sections
+    // when that is non-zero. Returns the setlist's id.
+    [[nodiscard]] std::optional<std::int64_t> saveSetlist(const Setlist& setlist);
+    [[nodiscard]] std::vector<SavedSetlistRecord> setlists() const;
+    [[nodiscard]] std::optional<Setlist> loadSetlist(std::int64_t id) const;
+    [[nodiscard]] bool removeSetlist(std::int64_t id);
 
     // The musician's Wave Expansion configuration ---------------------------
     // One row per occupied slot. Stored in the library because it is the same

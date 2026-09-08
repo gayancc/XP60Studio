@@ -14,6 +14,31 @@ class GeneratedTablesTest : public QObject
     Q_OBJECT
 
 private slots:
+    // The category rules match in order, and "LFO1 Waveform" contains the word
+    // "Wave". Filed under Wave — as it was until this test existed — copying a
+    // Tone's wave silently changed its LFO shapes, and copying LFO 1 left its
+    // own shape behind. The parameter's own block position settles it: offset
+    // 0x2D sits between the Controller rows and LFO1 Key Trigger.
+    void everyLfoParameterIsFiledUnderItsOwnLfo()
+    {
+        int lfo1 = 0;
+        int lfo2 = 0;
+        for (const auto& parameter : patchToneTable().parameters()) {
+            if (parameter.id.starts_with("tone.lfo1_")) {
+                QCOMPARE(parameter.category, std::string_view("LFO1"));
+                ++lfo1;
+            } else if (parameter.id.starts_with("tone.lfo2_")) {
+                QCOMPARE(parameter.category, std::string_view("LFO2"));
+                ++lfo2;
+            } else if (parameter.category == "Wave") {
+                // Whatever else lives under Wave, no LFO does.
+                QVERIFY(!parameter.id.starts_with("tone.lfo"));
+            }
+        }
+        QCOMPARE(lfo1, 8);
+        QCOMPARE(lfo2, 8);
+    }
+
     void tablesAreCompleteContiguousAndValid()
     {
         for (const auto* table : {&patchCommonTable(), &patchToneTable()}) {

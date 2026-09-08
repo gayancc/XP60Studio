@@ -53,6 +53,12 @@ struct Fixture
     std::unique_ptr<PatchEditorViewModel> editor;
     std::unique_ptr<FakeXp60> device;
     protocol::TimePoint now{std::chrono::duration_cast<protocol::Clock::duration>(1000ms)};
+    // The workspace groups a run of commits about the same parameter into one
+    // undo step when they arrive close together. A frozen clock makes that
+    // deterministic: without moving it, every edit in a test looks like one
+    // continuous drag — which is what a drag test wants and what a test of two
+    // deliberate edits must opt out of with `separateEdits()`.
+    qint64 editClockMs = 1;
 
     explicit Fixture(int patchInTemporaryArea = 4,
                      std::optional<sounddna::SoundDnaKnowledgeModel> dnaModel = std::nullopt)
@@ -64,6 +70,7 @@ struct Fixture
         session = std::make_unique<services::DeviceSession>(std::move(loopback));
         session->setAutomaticTimeoutPolling(false);
         session->setClocks([this] { return now; }, {});
+        workspace.setClockForTesting([this] { return editClockMs; });
         auto pacing = session->pacing();
         pacing.interMessageDelay = 0ms;
         session->setPacing(pacing);
@@ -73,6 +80,13 @@ struct Fixture
             : std::make_unique<PatchEditorViewModel>(*session, workspace, transfer.get());
         device = std::make_unique<FakeXp60>(temporaryAreaWith(patchInTemporaryArea));
         session->connectEndpoints("in-1", "out-1");
+    }
+
+    // Puts enough time between two edits that they are separate undo steps
+    // rather than one adjustment.
+    void separateEdits()
+    {
+        editClockMs += services::PatchWorkspace::kCoalesceWindowMs + 1;
     }
 
     void pump(int rounds = 40)
@@ -946,6 +960,7 @@ private slots:
         const auto original = f.editor->patch();
 
         f.tone(1)->setLevel(10);
+        f.separateEdits();
         f.tone(1)->setLevel(20);
         QCOMPARE(f.tone(1)->level(), 20);
         QVERIFY(f.editor->canUndo());
@@ -987,6 +1002,7 @@ private slots:
         f.editor->redo();
         QCOMPARE(f.tone(1)->level(), 10);
         for (int i = 1; i <= 80; ++i) {
+            f.separateEdits();
             f.tone(1)->setLevel(i);
         }
         f.tone(1)->setLevel(-1);
@@ -1016,6 +1032,7 @@ private slots:
         Fixture f;
         f.loadPatch();
         for (int i = 1; i <= 80; ++i) {
+            f.separateEdits();
             f.tone(1)->setLevel(i % 128);
         }
         int steps = 0;
@@ -1024,6 +1041,162 @@ private slots:
             ++steps;
         }
         QCOMPARE(steps, 64);
+    }
+
+    // -- Drags must not flood the undo history --------------------------------
+    //
+    // The bound above is what makes this dangerous. A drag commits once per
+    // pointer sample; unbrokered, a second of movement pushes more than 64
+    // steps and every earlier edit in the session is evicted out of the front
+    // of the deque. These tests drive real drags and assert the history
+    // survives them.
+
+    void aKnobDragIsOneUndoStepAndLeavesEarlierHistoryIntact()
+    {
+        Fixture f;
+        f.loadPatch();
+        const auto original = f.editor->patch();
+
+        // Three deliberate edits, well apart in time.
+        f.separateEdits(); f.tone(1)->setLevel(10);
+        f.separateEdits(); f.tone(2)->setLevel(20);
+        f.separateEdits(); f.tone(3)->setLevel(30);
+        const auto beforeDrag = f.editor->patch();
+
+        // Now a drag: 200 samples on one parameter, a few milliseconds apart,
+        // which is what a pointer actually produces.
+        f.separateEdits();
+        for (int i = 0; i < 200; ++i) {
+            f.editClockMs += 4;
+            f.tone(4)->setLevel(1 + i % 127);
+        }
+        QVERIFY(f.editor->patch() != beforeDrag);
+
+        // One undo takes the whole drag back.
+        QVERIFY(f.editor->canUndo());
+        f.editor->undo();
+        QVERIFY(f.editor->patch() == beforeDrag);
+
+        // And the three earlier edits are still reachable.
+        QVERIFY(f.editor->canUndo());
+        f.editor->undo();
+        QCOMPARE(f.tone(3)->level(), original.raw(ToneIndex::tone3(), ToneParameter::ToneLevel));
+        QVERIFY(f.editor->canUndo());
+        f.editor->undo();
+        QVERIFY(f.editor->canUndo());
+        f.editor->undo();
+        QVERIFY(f.editor->patch() == original);
+        QVERIFY(!f.editor->canUndo());
+    }
+
+    void anEnvelopeDragIsOneStepThoughItWritesATimeAndALevel()
+    {
+        Fixture f;
+        f.loadPatch();
+        f.editor->setSection(PatchEditorViewModel::Filter);
+        f.editor->setSelectedTone(1);
+        const auto beforeDrag = f.editor->patch();
+
+        // Each sample writes two parameters. Keyed per parameter they would
+        // alternate and each break the other's run; keyed per point they are
+        // one adjustment.
+        for (int i = 0; i < 200; ++i) {
+            f.editClockMs += 4;
+            f.editor->moveEnvelopePoint(1, 0.1 + 0.004 * i, 0.1 + 0.004 * i);
+        }
+        QVERIFY(f.editor->patch() != beforeDrag);
+        QVERIFY(f.editor->canUndo());
+        f.editor->undo();
+        QVERIFY(f.editor->patch() == beforeDrag);
+        QVERIFY(!f.editor->canUndo());
+    }
+
+    void aDraggedPointAndThenADifferentPointAreTwoSteps()
+    {
+        Fixture f;
+        f.loadPatch();
+        f.editor->setSection(PatchEditorViewModel::Filter);
+        const auto original = f.editor->patch();
+
+        for (int i = 0; i < 20; ++i) {
+            f.editClockMs += 4;
+            f.editor->moveEnvelopePoint(1, 0.2, 0.1 + 0.02 * i);
+        }
+        const auto afterFirst = f.editor->patch();
+        for (int i = 0; i < 20; ++i) {
+            f.editClockMs += 4;
+            f.editor->moveEnvelopePoint(2, 0.5, 0.9 - 0.02 * i);
+        }
+        QVERIFY(f.editor->patch() != afterFirst);
+        QVERIFY(f.editor->canUndo());
+        f.editor->undo();
+        QVERIFY(f.editor->patch() == afterFirst);
+        QVERIFY(f.editor->canUndo());
+        f.editor->undo();
+        QVERIFY(f.editor->patch() == original);
+    }
+
+    void aDeclaredGestureGroupsADragHoweverSlowItIs()
+    {
+        Fixture f;
+        f.loadPatch();
+        const auto beforeDrag = f.editor->patch();
+
+        // A gesture the view brackets explicitly does not depend on the timing
+        // window at all: a musician who pauses mid-drag still gets one step.
+        f.editor->beginEditGesture();
+        QVERIFY(f.editor->editGestureActive());
+        for (int i = 0; i < 20; ++i) {
+            f.separateEdits();
+            f.tone(1)->setLevel(1 + i);
+        }
+        f.editor->endEditGesture();
+        QVERIFY(!f.editor->editGestureActive());
+
+        QVERIFY(f.editor->canUndo());
+        f.editor->undo();
+        QVERIFY(f.editor->patch() == beforeDrag);
+        QVERIFY(!f.editor->canUndo());
+    }
+
+    void aDeclaredGestureThatEndsWhereItStartedRecordsNothing()
+    {
+        Fixture f;
+        f.loadPatch();
+        const auto original = f.editor->patch();
+        const int level = f.tone(1)->level();
+
+        f.editor->beginEditGesture();
+        for (int i = 0; i < 10; ++i) {
+            f.separateEdits();
+            f.tone(1)->setLevel(1 + i);
+        }
+        f.tone(1)->setLevel(level);
+        f.editor->endEditGesture();
+
+        QVERIFY(f.editor->patch() == original);
+        QVERIFY(!f.editor->canUndo());
+        QVERIFY(!f.editor->modified());
+    }
+
+    void nestedGestureBracketsOnlyCountOnce()
+    {
+        Fixture f;
+        f.loadPatch();
+        const auto original = f.editor->patch();
+        f.editor->beginEditGesture();
+        f.editor->beginEditGesture();
+        f.separateEdits(); f.tone(1)->setLevel(11);
+        f.editor->endEditGesture();
+        QVERIFY(f.editor->editGestureActive()); // the outer bracket is still open
+        f.separateEdits(); f.tone(1)->setLevel(22);
+        f.editor->endEditGesture();
+        QVERIFY(!f.editor->editGestureActive());
+
+        QVERIFY(f.editor->canUndo());
+        f.editor->undo();
+        QVERIFY(f.editor->patch() == original);
+        QVERIFY(!f.editor->canUndo());
     }
 
     // -- A/B comparison -------------------------------------------------------

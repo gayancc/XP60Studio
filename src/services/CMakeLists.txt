@@ -25,6 +25,10 @@ add_library(xp60studio_services STATIC
   SnapshotStore.cpp
   SnapshotCapture.h
   SnapshotCapture.cpp
+  LiveMidiNavigation.h
+  LiveMidiNavigation.cpp
+  LiveSession.h
+  LiveSession.cpp
   SnapshotRestore.h
   SnapshotRestore.cpp
   RestorePlan.h

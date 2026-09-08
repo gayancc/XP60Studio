@@ -30,6 +30,8 @@ add_library(xp60studio_presentation STATIC
   PerformanceViewModel.h
   PerformanceViewModel.cpp
   PatchEffectsPresentation.cpp
+  BackupViewModel.h
+  BackupViewModel.cpp
   DevicesViewModel.h
   DevicesViewModel.cpp
   AppShellViewModel.h

@@ -234,6 +234,17 @@ signals:
     // does. Reported as an observation; acting on it is the listener's business.
     void patchSelectionObserved(int channel, int program);
 
+    // Any channel voice message that arrived on the input, uninterpreted:
+    // `status` is the raw status byte (channel in its low nibble), `data1` and
+    // `data2` the bytes after it, with `data2` -1 for a two-byte message.
+    //
+    // Reported as bytes rather than as named events because this class has no
+    // reason to own a vocabulary of controllers. What arrives here is whatever
+    // is plugged into the input, which is usually — but not necessarily — the
+    // XP-60's MIDI OUT, and what the XP-60 passes through depends on its own
+    // soft-thru and Tx switches.
+    void channelMessageObserved(int status, int data1, int data2);
+
 private:
     struct Outgoing
     {

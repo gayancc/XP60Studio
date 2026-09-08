@@ -113,7 +113,7 @@ target_compile_definitions(tst_xp60_rhythm
 
 xp60studio_add_test(tst_performance_editor
   SOURCES tst_performance_editor.cpp
-  LIBS xp60studio::presentation)
+  LIBS xp60studio::presentation xp60studio::simulation)
 target_compile_definitions(tst_performance_editor
   PRIVATE XP60STUDIO_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/xp60")
 
@@ -166,11 +166,55 @@ xp60studio_add_test(tst_patch_component_copy
 target_compile_definitions(tst_patch_component_copy
   PRIVATE XP60STUDIO_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/xp60")
 
+xp60studio_add_test(tst_patch_variation
+  SOURCES tst_patch_variation.cpp
+  LIBS xp60studio::library)
+target_compile_definitions(tst_patch_variation
+  PRIVATE XP60STUDIO_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/xp60")
+
+# Phase 10 — smooth dragging of envelope points over coarse integer parameters.
+xp60studio_add_test(tst_envelope_drag
+  SOURCES tst_envelope_drag.cpp
+  LIBS xp60studio::interaction)
+target_compile_definitions(tst_envelope_drag
+  PRIVATE XP60STUDIO_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/xp60")
+
+xp60studio_add_test(tst_lfo_panel
+  SOURCES tst_lfo_panel.cpp
+  LIBS xp60studio::interaction)
+target_compile_definitions(tst_lfo_panel
+  PRIVATE XP60STUDIO_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/xp60")
+
 # Phase 8 — snapshots, restore plans and the safety snapshot rule.
 xp60studio_add_test(tst_snapshot_restore
   SOURCES tst_snapshot_restore.cpp
   LIBS xp60studio::services)
 target_compile_definitions(tst_snapshot_restore
+  PRIVATE XP60STUDIO_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/xp60")
+
+# Phase 11 - the running order a musician takes on stage.
+xp60studio_add_test(tst_setlist
+  SOURCES tst_setlist.cpp
+  LIBS xp60studio::library)
+target_compile_definitions(tst_setlist
+  PRIVATE XP60STUDIO_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/xp60")
+
+xp60studio_add_test(tst_live_session
+  SOURCES tst_live_session.cpp
+  LIBS xp60studio::services xp60studio::simulation)
+target_compile_definitions(tst_live_session
+  PRIVATE XP60STUDIO_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/xp60")
+
+xp60studio_add_test(tst_live_midi_navigation
+  SOURCES tst_live_midi_navigation.cpp
+  LIBS xp60studio::services xp60studio::simulation)
+target_compile_definitions(tst_live_midi_navigation
+  PRIVATE XP60STUDIO_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/xp60")
+
+xp60studio_add_test(tst_backup_view_model
+  SOURCES tst_backup_view_model.cpp
+  LIBS xp60studio::presentation xp60studio::simulation)
+target_compile_definitions(tst_backup_view_model
   PRIVATE XP60STUDIO_FIXTURE_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/xp60")
 
 xp60studio_add_test(tst_snapshot_restore_run

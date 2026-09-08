@@ -12,6 +12,8 @@ add_library(xp60studio_library STATIC
   LibraryEntry.h
   LibraryEntry.cpp
   BankDraft.h
+  Setlist.h
+  Setlist.cpp
   BankDraft.cpp
   ExpansionBoardCatalog.h
   ExpansionBoardCatalog.cpp
@@ -27,6 +29,8 @@ add_library(xp60studio_library STATIC
   InstrumentSnapshot.cpp
   PatchComponentCopy.h
   PatchComponentCopy.cpp
+  PatchVariation.h
+  PatchVariation.cpp
   SyxImport.h
   SyxImport.cpp
   SyxExport.h

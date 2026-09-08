@@ -1,6 +1,7 @@
 #pragma once
 
 #include "services/DeviceSession.h"
+#include "services/UserPerformanceWrite.h"
 #include "xpmodel/Xp60Performance.h"
 
 #include <QObject>
@@ -9,6 +10,7 @@
 #include <QVariantMap>
 
 #include <deque>
+#include <memory>
 #include <optional>
 
 namespace xp60studio::presentation {
@@ -31,11 +33,17 @@ namespace xp60studio::presentation {
 // selecting another Performance. That is audition, and it is the only write
 // offered here.
 //
-// Writing a USER Performance (`10 nn 00 00`) is a persistent write and is not
-// implemented yet: it needs the read-before-write, verify-by-read-back and
-// restore-what-was-there machinery `services::UserMemoryWrite` already provides
-// for Patches. Until that exists this class must not pretend otherwise — see
-// PATCH_SYNCHRONIZATION.md §7 for why the two are kept apart by address.
+// Writing a USER Performance (`10 nn 00 00`) is a **persistent** write and is a
+// different act entirely: it replaces something the musician stored. It is
+// offered through `services::UserPerformanceWrite`, which reads and keeps the
+// destination before sending, verifies by reading back, and can put back
+// everything a run overwrote. This class surfaces that writer; it does not
+// reimplement any part of it, and the two paths stay separate by address — see
+// PATCH_SYNCHRONIZATION.md §7.
+//
+// Arming for a persistent write is single-use and is not shared with any other
+// writer: arming here does not arm the Patch writer, or the reverse. Nothing in
+// the editing path above can reach it.
 class PerformanceViewModel : public QObject
 {
     Q_OBJECT
@@ -67,6 +75,25 @@ class PerformanceViewModel : public QObject
     Q_PROPERTY(QString transferMessage READ transferMessage NOTIFY transferChanged)
     Q_PROPERTY(QString transferTone READ transferTone NOTIFY transferChanged)
     Q_PROPERTY(bool canSend READ canSend NOTIFY transferChanged)
+
+    // ── Persistent write to a USER Performance slot ─────────────────────────
+    Q_PROPERTY(bool userWriteBusy READ userWriteBusy NOTIFY userWriteChanged)
+    Q_PROPERTY(bool userWriteArmed READ userWriteArmed NOTIFY userWriteChanged)
+    Q_PROPERTY(bool canArmUserWrite READ canArmUserWrite NOTIFY userWriteChanged)
+    Q_PROPERTY(QString userWriteState READ userWriteState NOTIFY userWriteChanged)
+    Q_PROPERTY(QString userWriteStateLabel READ userWriteStateLabel NOTIFY userWriteChanged)
+    Q_PROPERTY(QString userWriteMessage READ userWriteMessage NOTIFY userWriteChanged)
+    Q_PROPERTY(int userWriteCompleted READ userWriteCompleted NOTIFY userWriteChanged)
+    Q_PROPERTY(int userWriteTotal READ userWriteTotal NOTIFY userWriteChanged)
+    // 1..32 while a slot is being worked on, 0 otherwise.
+    Q_PROPERTY(int userWriteCurrentSlot READ userWriteCurrentSlot NOTIFY userWriteChanged)
+    // True once something was overwritten and the snapshots taken before it can
+    // put it back. This is the undo for a persistent write.
+    Q_PROPERTY(bool canRestoreUserWrite READ canRestoreUserWrite NOTIFY userWriteChanged)
+    Q_PROPERTY(bool canRetryUserWrite READ canRetryUserWrite NOTIFY userWriteChanged)
+    // USER slot numbers a run did not manage to write.
+    Q_PROPERTY(QVariantList userWriteUnwritten READ userWriteUnwritten NOTIFY userWriteChanged)
+    Q_PROPERTY(int userPerformanceCount READ userPerformanceCount CONSTANT)
 
 public:
     explicit PerformanceViewModel(services::DeviceSession& session, QObject* parent = nullptr);
@@ -130,9 +157,39 @@ public:
     // a persistent write. See the class comment.
     Q_INVOKABLE bool sendToTemporary();
 
+    // ── Persistent write ────────────────────────────────────────────────────
+    [[nodiscard]] bool userWriteBusy() const;
+    [[nodiscard]] bool userWriteArmed() const;
+    [[nodiscard]] bool canArmUserWrite() const;
+    [[nodiscard]] QString userWriteState() const;
+    [[nodiscard]] QString userWriteStateLabel() const;
+    [[nodiscard]] QString userWriteMessage() const;
+    [[nodiscard]] int userWriteCompleted() const;
+    [[nodiscard]] int userWriteTotal() const;
+    [[nodiscard]] int userWriteCurrentSlot() const;
+    [[nodiscard]] bool canRestoreUserWrite() const;
+    [[nodiscard]] bool canRetryUserWrite() const;
+    [[nodiscard]] QVariantList userWriteUnwritten() const;
+    [[nodiscard]] int userPerformanceCount() const;
+
+    // What a write to `userNumber` would do, for the confirmation the user
+    // reads before arming. Empty when the slot number is not 1..32.
+    Q_INVOKABLE QString userWritePlan(int userNumber) const;
+    Q_INVOKABLE bool armUserWrite();
+    Q_INVOKABLE void disarmUserWrite();
+    // Writes the working Performance to USER slot `userNumber` (1..32). Refused
+    // unless armed, connected, idle and holding a Performance.
+    Q_INVOKABLE bool writeToUserSlot(int userNumber);
+    // Puts back every USER Performance this run overwrote, in reverse order.
+    Q_INVOKABLE bool restoreUserWrite();
+    Q_INVOKABLE bool retryUserWrite();
+    Q_INVOKABLE void cancelUserWrite();
+
 Q_SIGNALS:
     void changed();
     void transferChanged();
+    void userWriteChanged();
+    void userWriteFinished(bool ok);
 
 private:
     // Applies `mutate` as one undoable step. An edit that changes nothing
@@ -157,6 +214,7 @@ private:
     QString m_transferMessage;
     QString m_transferTone{QStringLiteral("neutral")};
     bool m_sending = false;
+    std::unique_ptr<services::UserPerformanceWrite> m_userWrite;
 };
 
 } // namespace xp60studio::presentation
