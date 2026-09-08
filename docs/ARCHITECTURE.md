@@ -380,9 +380,14 @@ The persistent local library should support:
 - fingerprints
 - compatibility metadata
 - version history
-- optional later audio-preview references
 
 Choose the persistence technology after query patterns are understood. Do not add cloud/distributed architecture prematurely.
+
+No audio-preview references: see `ROADMAP.md` "Rejected scope — Audio
+Intelligence" (2026-09-08). A recorded preview is one instant of the
+XP-60 — one note, one velocity, one effects state — and cannot represent
+an instrument that produces its sound live and continuously; a schema
+column for it would invite a feature this project has decided not to build.
 
 Decided 2026-09-04, once the Phase 5 query patterns existed: **SQLite through Qt SQL**
 (`QSQLITE`, already shipped with Qt). See `PHASE_5_LIBRARIAN.md` for the schema, what is

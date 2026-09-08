@@ -310,3 +310,23 @@ The rest of F3's table is engine reached only by other engine code, which is
 what a library layer is supposed to look like. What was wrong was not that
 `PatchSimilarity` has no QML reference — it is that a musician could not take a
 backup.
+
+---
+
+## 8. Addendum (2026-09-08) — Phase 12 removed, not just deferred
+
+§3's `Phase 12 — Audio Intelligence (7) · ⛔ all (needs capture hardware)`
+line is superseded: the phase has been removed from `ROADMAP.md`, not merely
+left blocked. On review, the deliverables — captured previews, sound-aware
+search and similarity built from recordings — do not have hardware as their
+real obstacle. A recording is one instant of the XP-60 (one note, one
+velocity, one effects state); the instrument's actual sound is produced
+live, continuously, by envelopes, LFOs, and key/velocity tracking. A library
+of recordings cannot represent that, connected instrument or not, so
+building it would misrepresent the instrument rather than merely wait on
+hardware. See `ROADMAP.md` "Rejected scope — Audio Intelligence" for the
+full reasoning.
+
+The totals in §3 (149 deliverables) predate this removal and are not
+restated here; Phase 12's 7 no longer count toward "not started" or
+"blocked" in any future tally, and what was Phase 13 is renumbered Phase 12.

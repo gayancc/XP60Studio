@@ -390,9 +390,15 @@ The design system can be established early, but each polished screen is implemen
 - Phase 9: Library intelligence + Compare enhancements
 - Phase 10: advanced sound-design surfaces
 - Phase 11: Live Mode
-- Phase 12: audio-preview/search additions
+- Phase 12: additional Roland XP/JV hardware
 
 Do not implement a fake screen backed by placeholder logic and mark the feature finished.
+
+Audio-preview/search screens are not planned — see ROADMAP.md "Rejected
+scope — Audio Intelligence": a captured recording cannot represent the
+XP-60's live, continuously-reacting synthesis engine, so a preview screen
+built on recordings would misrepresent the instrument rather than merely be
+unfinished.
 
 ---
 

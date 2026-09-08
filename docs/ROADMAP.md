@@ -793,25 +793,7 @@ here).
 
 ---
 
-# Phase 12 — Audio Intelligence
-
-Goal: make library auditioning and search richer without emulating the XP-60 synthesizer.
-
-Potential deliverables:
-
-- capture XP-60 audio output
-- associate previews with patches
-- standardized preview notes/velocities
-- local preview playback
-- audio-derived metadata research
-- sound-aware search
-- similarity based on actual recordings
-
-Do not implement fake audio understanding without real data.
-
----
-
-# Phase 13 — Additional Roland XP/JV Hardware
+# Phase 12 — Additional Roland XP/JV Hardware
 
 Goal: reuse verified abstractions for related devices.
 
@@ -826,6 +808,28 @@ Potential targets:
 Extract common abstractions based on verified shared behavior.
 
 XP-60 correctness must not be weakened for premature generic support.
+
+---
+
+# Rejected scope — Audio Intelligence (2026-09-08)
+
+A phase once planned here proposed capturing the XP-60's actual audio output,
+attaching recorded previews to library Patches, and building sound-aware
+search/similarity on top of those recordings.
+
+Removed rather than deferred: a captured preview is a recording of one
+instant — one note, one velocity, one fixed effects state — and the XP-60's
+real sound is produced live, by envelopes, LFOs, and key/velocity tracking
+reacting continuously to how it is actually played. A library of static
+recordings can never represent that; it can only ever claim to. Presenting
+one as "what the Patch sounds like" would misrepresent the instrument, not
+merely leave a feature unfinished. Nothing here needed hardware to rule out —
+the concept itself does not belong in this project. Do not re-add it under a
+different name (audio fingerprinting, tone previews, and similar are the same
+proposal).
+
+If sound-aware search is ever wanted, it stands or falls entirely on the real
+XP-60 synthesis engine, not on any recording of it.
 
 ---
 
