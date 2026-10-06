@@ -41,6 +41,7 @@ ColumnLayout {
     XpEmptyState {
         Layout.fillWidth: true
         visible: root.builder.savedBanks.length === 0
+        iconName: "banks"
         title: qsTr("No saved banks yet")
         message: qsTr("Arrange destinations on the panel, then choose Save as new bank.")
     }

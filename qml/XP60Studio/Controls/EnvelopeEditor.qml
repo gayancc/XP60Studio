@@ -14,13 +14,15 @@ Rectangle {
     // rises from silence.
     property bool bipolar: false
     property int selectedIndex: -1
+    // Which node the pointer is currently moving, for the crosshair.
+    property int activeIndex: -1
     signal pointMoved(int index, real x, real y)
 
     color: Theme.surfaceSunken
     radius: Metrics.radiusSm
     border.width: 1
     border.color: Theme.borderSubtle
-    implicitHeight: 180
+    implicitHeight: 140
 
     readonly property int padding: 18
     function plotX(x) { return padding + x * (width - 2 * padding) }
@@ -32,7 +34,9 @@ Rectangle {
         id: canvas
         anchors.fill: parent
         readonly property var pts: root.points
+        readonly property int active: root.activeIndex
         onPtsChanged: requestPaint()
+        onActiveChanged: requestPaint()
         onWidthChanged: requestPaint()
         onHeightChanged: requestPaint()
         Component.onCompleted: requestPaint()
@@ -48,6 +52,16 @@ Rectangle {
             for (var g = 0; g <= 4; ++g) {
                 var gy = p + (height - 2 * p) * g / 4
                 ctx.beginPath(); ctx.moveTo(p, gy); ctx.lineTo(width - p, gy); ctx.stroke()
+            }
+            // A guide down from each breakpoint, so the graph and the stage
+            // knobs beneath it read as one control rather than two.
+            if (root.points && root.points.length > 1) {
+                for (var s = 0; s < root.points.length; ++s) {
+                    if (root.points[s].draggable !== true)
+                        continue
+                    var sx = root.plotX(root.points[s].x)
+                    ctx.beginPath(); ctx.moveTo(sx, p); ctx.lineTo(sx, height - p); ctx.stroke()
+                }
             }
             // Centre line for bipolar envelopes
             if (root.bipolar) {
@@ -80,6 +94,19 @@ Rectangle {
             ctx.lineWidth = 2
             ctx.lineJoin = "round"
             ctx.stroke()
+
+            // Crosshair on the node being dragged.
+            if (root.activeIndex >= 0 && root.activeIndex < root.points.length) {
+                var ax = root.plotX(root.points[root.activeIndex].x)
+                var ay = root.plotY(root.points[root.activeIndex].y)
+                ctx.strokeStyle = Qt.rgba(root.accentColor.r, root.accentColor.g,
+                                          root.accentColor.b, 0.55)
+                ctx.lineWidth = 1
+                ctx.setLineDash([2, 3])
+                ctx.beginPath(); ctx.moveTo(p, ay); ctx.lineTo(width - p, ay); ctx.stroke()
+                ctx.beginPath(); ctx.moveTo(ax, p); ctx.lineTo(ax, height - p); ctx.stroke()
+                ctx.setLineDash([])
+            }
         }
     }
 
@@ -105,18 +132,22 @@ Rectangle {
     }
 
     Repeater {
-        model: root.points
+        // Count, not the list. `points` is a QVariantList rebuilt on every
+        // move, and a Repeater given the list resets its model each time —
+        // deleting the node under the pointer halfway through the drag.
+        model: root.points.length
         delegate: Item {
             id: handle
-            required property var modelData
             required property int index
-            readonly property bool draggable: modelData.draggable === true
+            readonly property var modelData: root.points[index]
+            readonly property bool present: modelData !== undefined
+            readonly property bool draggable: present && modelData.draggable === true
 
-            x: root.plotX(modelData.x) - width / 2
-            y: root.plotY(modelData.y) - height / 2
+            x: (present ? root.plotX(modelData.x) : 0) - width / 2
+            y: (present ? root.plotY(modelData.y) : 0) - height / 2
             width: 22
             height: 22
-            visible: draggable || index === 0
+            visible: present && (draggable || index === 0)
 
             Rectangle {
                 anchors.centerIn: parent
@@ -143,6 +174,7 @@ Rectangle {
                 id: drag
                 enabled: handle.draggable
                 target: null
+                onActiveChanged: root.activeIndex = active ? handle.index : -1
                 onCentroidChanged: {
                     if (!active)
                         return
@@ -173,7 +205,7 @@ Rectangle {
             XpLabel {
                 visible: handle.draggable && (hover.hovered || drag.active)
                 anchors { bottom: parent.top; horizontalCenter: parent.horizontalCenter }
-                text: handle.modelData.label !== undefined ? handle.modelData.label : ""
+                text: handle.present && handle.modelData.label !== undefined ? handle.modelData.label : ""
                 role: "overline"
                 color: root.accentColor
             }

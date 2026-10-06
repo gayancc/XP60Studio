@@ -27,9 +27,28 @@ FocusScope {
 
     readonly property bool wide: width >= 1040
 
-    ColumnLayout {
+    // The four slot cards plus the per-Tone verdict outgrow a short window,
+    // so the screen scrolls like Dashboard and Devices do.
+    QQC.ScrollView {
+        id: scroller
+        objectName: "expansionScroll"
         anchors.fill: parent
-        anchors.margins: Metrics.screenMargin(root.width)
+        contentWidth: availableWidth
+        clip: true
+        QQC.ScrollBar.vertical: XpScrollBar {}
+
+    // Outer column: viewport geometry. Inner column: the screen margin, which
+    // Layout.margins can express where an anchor margin cannot (the outer
+    // column is positioned by the ScrollView, not by anchors).
+    ColumnLayout {
+        width: scroller.availableWidth
+        height: Math.max(implicitHeight, scroller.availableHeight)
+        spacing: 0
+
+        ColumnLayout {
+        Layout.fillWidth: true
+        Layout.fillHeight: true
+        Layout.margins: Metrics.screenMargin(root.width)
         spacing: Metrics.spacingMd
 
         // Identity ---------------------------------------------------------
@@ -72,9 +91,12 @@ FocusScope {
         // The four slots ---------------------------------------------------
         GridLayout {
             Layout.fillWidth: true
-            columns: root.wide ? 2 : 1
-            columnSpacing: Metrics.spacingMd
-            rowSpacing: Metrics.spacingSm
+            // EXP-A to EXP-D are one bank of four slots on the instrument, so
+            // they read as one row here when there is room. A 2x2 of tall cards
+            // made four dropdowns look like four separate decisions.
+            columns: root.width >= 1080 ? 4 : (root.wide ? 2 : 1)
+            columnSpacing: Metrics.gap
+            rowSpacing: Metrics.gap
 
             Repeater {
                 model: root.expansion.slots
@@ -83,10 +105,12 @@ FocusScope {
                     required property var modelData
                     Layout.fillWidth: true
                     padding: Metrics.spacingMd
+                    implicitHeight: slotColumn.implicitHeight + 2 * Metrics.spacingMd
 
                     ColumnLayout {
-                        anchors.fill: parent
-                        spacing: Metrics.spacingXs
+                        id: slotColumn
+                        anchors { left: parent.left; right: parent.right; top: parent.top }
+                        spacing: Metrics.spacingSm
 
                         RowLayout {
                             Layout.fillWidth: true
@@ -184,10 +208,12 @@ FocusScope {
             objectName: "expansionCurrentPatch"
             Layout.fillWidth: true
             padding: Metrics.spacingMd
+            implicitHeight: patchColumn.implicitHeight + 2 * Metrics.spacingMd
             visible: Object.keys(root.expansion.currentPatch).length > 0
 
             ColumnLayout {
-                anchors.fill: parent
+                id: patchColumn
+                anchors { left: parent.left; right: parent.right; top: parent.top }
                 spacing: Metrics.spacingXs
 
                 RowLayout {
@@ -217,20 +243,30 @@ FocusScope {
                 }
 
                 // Per-Tone, because a Patch is four Tones and only some of them
-                // may need a board the musician does not have.
+                // may need a board the musician does not have. One row of four,
+                // the way the Tones read everywhere else in the app.
+                Flow {
+                    Layout.fillWidth: true
+                    spacing: Metrics.gapMd
+
                 Repeater {
                     model: root.expansion.currentPatch.tones ?? []
+                    // A RowLayout, not a Row: only Grid and Flow have
+                    // verticalItemAlignment, and a Row's children cannot anchor
+                    // to it, so a layout is what centres the label against its
+                    // pill.
                     delegate: RowLayout {
                         required property var modelData
-                        Layout.fillWidth: true
-                        spacing: Metrics.spacingSm
+                        spacing: Metrics.gapXs
 
                         XpLabel {
+                            Layout.alignment: Qt.AlignVCenter
                             text: qsTr("Tone %1").arg(modelData.toneNumber)
                             role: "caption"
                             color: modelData.enabled ? Theme.textPrimary : Theme.textDisabled
                         }
                         StatusPill {
+                            Layout.alignment: Qt.AlignVCenter
                             text: modelData.label
                             tone: modelData.tone
                             showDot: false
@@ -252,8 +288,8 @@ FocusScope {
                             role: "caption"
                             muted: true
                         }
-                        Item { Layout.fillWidth: true }
                     }
+                }
                 }
             }
         }
@@ -262,10 +298,13 @@ FocusScope {
             Layout.fillWidth: true
             Layout.fillHeight: true
             visible: Object.keys(root.expansion.currentPatch).length === 0
+            iconName: "expansion"
             title: qsTr("No Patch open")
             message: qsTr("Open a Patch from the Library, a Bank destination, or the XP-60, and this screen will say whether it plays on your instrument.")
         }
 
         Item { Layout.fillHeight: true; visible: Object.keys(root.expansion.currentPatch).length > 0 }
+        }
+    }
     }
 }

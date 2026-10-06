@@ -9,8 +9,8 @@ Item {
 
     XpEmptyState {
         anchors.fill: parent
-        iconName: "dashboard"
-        title: screenTitle + " is not part of Phase 1"
-        message: "This destination is implemented in " + availability + " once its backing domain layer is trustworthy."
+        iconName: "settings"
+        title: qsTr("%1 is not available yet").arg(screenTitle)
+        message: qsTr("This destination is implemented in %1, once its backing domain layer is trustworthy.").arg(availability)
     }
 }

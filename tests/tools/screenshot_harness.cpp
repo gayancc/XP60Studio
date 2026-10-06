@@ -27,6 +27,8 @@
 #include "presentation/PatchEditorViewModel.h"
 #include "presentation/QmlRegistration.h"
 #include "services/DeviceSession.h"
+#include "xpmodel/Xp60PerformanceCodec.h"
+#include "xpmodel/Xp60PerformanceLayout.h"
 #include "services/PatchTransfer.h"
 #include "services/PatchWorkspace.h"
 
@@ -277,6 +279,26 @@ int main(int argc, char* argv[])
     }
     if (qEnvironmentVariableIsSet("XP60STUDIO_SHOT_BANK_NUMBER")) {
         bankBuilder.selectNumber(qEnvironmentVariableIntValue("XP60STUDIO_SHOT_BANK_NUMBER"));
+    }
+    // Library selection, so the details inspector can be reviewed with a real
+    // fixture entry rather than only its empty state.
+    if (qEnvironmentVariableIsSet("XP60STUDIO_SHOT_LIBRARY_SELECT")) {
+        libraryModel.selectRow(qEnvironmentVariableIntValue("XP60STUDIO_SHOT_LIBRARY_SELECT"));
+    }
+    // The 16-Part mixer only exists with a Performance open; adopt one of the
+    // golden fixture's real USER Performances so the strips carry real values.
+    if (qEnvironmentVariableIsSet("XP60STUDIO_SHOT_PERFORMANCE")) {
+        const int userNumber = std::max(1, qEnvironmentVariableIntValue("XP60STUDIO_SHOT_PERFORMANCE"));
+        const auto image = xp60studio::testsupport::fixtureImage();
+        if (const auto address = xp60studio::xpmodel::Xp60PerformanceLayout::userPerformanceAddress(userNumber)) {
+            const auto decoded = xp60studio::xpmodel::Xp60PerformanceCodec::decode(image, *address);
+            if (decoded.performance) {
+                performance.adopt(*decoded.performance,
+                                  QStringLiteral("USER:%1").arg(userNumber, 2, 10, QLatin1Char('0')));
+            } else {
+                qWarning("Fixture Performance %d did not decode", userNumber);
+            }
+        }
     }
 
     if (!shell.navigate(screenId)) {

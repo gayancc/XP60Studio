@@ -70,7 +70,6 @@ FocusScope {
 
             GridLayout {
                 Layout.fillWidth: true
-                Layout.fillHeight: true
                 Layout.leftMargin: Metrics.screenPadding
                 Layout.rightMargin: Metrics.screenPadding
                 Layout.bottomMargin: Metrics.screenPadding
@@ -88,20 +87,27 @@ FocusScope {
                     // column off the screen.
                     Layout.preferredWidth: 1
                     Layout.horizontalStretchFactor: 3
-                    Layout.fillHeight: true
+                    // Natural height. The Dashboard has less content than a
+                    // 900 px window, and neither stretching the card nor
+                    // stretching the cards inside it creates content — both
+                    // only move the empty space somewhere worse. Leftover
+                    // belongs below the page as background, not as a hole
+                    // inside a module.
                     Layout.minimumHeight: hero.implicitHeight + 2 * Metrics.cardPadding
                     implicitHeight: hero.implicitHeight + 2 * Metrics.cardPadding
 
                     ColumnLayout {
                         id: hero
                         anchors {
-                            left: parent.left; right: parent.right; top: parent.top
+                            left: parent.left; right: parent.right
+                            top: parent.top
                             margins: Metrics.cardPadding
                         }
                         spacing: Metrics.spacingMd
 
                         RowLayout {
                             Layout.fillWidth: true
+                            Layout.fillHeight: false
                             spacing: Metrics.spacingSm
                             XpLabel { text: qsTr("CURRENT PATCH"); role: "overline"; secondary: true }
                             Item { Layout.fillWidth: true }
@@ -138,6 +144,7 @@ FocusScope {
                         // claim the instrument never made.
                         Flow {
                             Layout.fillWidth: true
+                            Layout.fillHeight: false
                             visible: root.hasPatch
                             spacing: Metrics.spacingXs
                             StatusPill {
@@ -163,6 +170,13 @@ FocusScope {
                         }
                         GridLayout {
                             Layout.fillWidth: true
+                            // Tall enough for the four Tones to be compared at
+                            // a glance, and no taller: past this the bars stop
+                            // reading as meters and become colour slabs. The
+                            // explicit false is required — a layout nested in a
+                            // layout fills by default and would ignore this.
+                            Layout.fillHeight: false
+                            Layout.preferredHeight: 236
                             visible: root.hasPatch
                             columns: root.width >= 720 ? 4 : 2
                             columnSpacing: Metrics.spacingSm
@@ -175,6 +189,10 @@ FocusScope {
                                     required property int index
                                     objectName: "dashboardTone" + (index + 1)
                                     Layout.fillWidth: true
+                                    // The grid is a fixed height; the cards
+                                    // fill it so the meter, not a gap, gets the
+                                    // room.
+                                    Layout.fillHeight: true
                                     tone: modelData
                                     toneNumber: index + 1
                                     // Straight to this Tone in the Editor: the
@@ -193,6 +211,7 @@ FocusScope {
                         XpLabel { text: qsTr("QUICK ACTIONS"); role: "overline"; secondary: true }
                         Flow {
                             Layout.fillWidth: true
+                            Layout.fillHeight: false
                             spacing: Metrics.spacingSm
 
                             XpButton {
@@ -249,7 +268,6 @@ FocusScope {
                     // Below this the cards stop being readable, so the grid
                     // drops to one column rather than crushing them.
                     Layout.minimumWidth: 250
-                    Layout.fillHeight: true
                     spacing: Metrics.spacingMd
 
                     DashboardSummaryCard {
@@ -300,7 +318,7 @@ FocusScope {
 
                     // Holds the cards to the top; the column itself fills the
                     // frame so the two sides end level.
-                    Item { Layout.fillWidth: true; Layout.fillHeight: true }
+
                 }
             }
         }

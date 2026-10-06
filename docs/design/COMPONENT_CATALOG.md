@@ -98,27 +98,31 @@ Tone identity colors must be semantic tokens shared across all screens.
 
 These should feel like premium instrument controls, not generic form fields.
 
-- `XpKnob`
-- `XpBipolarKnob`
+Primary (Design / Play):
+
+- `XpKnob` / `MusicalParamKnob` — continuous; exact entry secondary
 - `XpFader`
-- `XpBipolarFader`
-- `ParameterValueEditor`
-- `ParameterLabel`
-- `ParameterResetAction`
-- `ParameterFineAdjustMode`
-- `EnvelopeEditor`
-- `EnvelopePointHandle`
-- `EnvelopeStageReadout`
-- `KeyRangeSelector`
-- `VelocityRangeSelector`
-- `KeyboardStrip`
-- `StructureSelector`
-- `EffectBlock`
-- `EffectRoutingView`
-- `SignalFlowNode`
-- `SignalFlowConnector`
-- `LfoShapeSelector`
-- `LfoPreview`
+- `EnvelopeEditor` + stage knobs
+- `KeyboardStrip` / `XpRangeBar` / key & velocity selectors
+- `TonePlaySettingsStrip` — bend wheel / portamento glide (what the player
+  does after the note starts)
+- `ToneKeyAssign` — POLY / SOLO, grouped with Key Range and Velocity:
+  all three answer what the Tone does when keys go down
+- `XpModuleHeader` — the band that opens a module: lamp, icon, name,
+  inline controls, trailing value or badge. Use instead of a floating
+  `XpPanelHeader` on any sound-shaping surface
+- `LfoShapeSelector` / `LfoPreview`
+- `LfoLane` — one LFO: shape chips + drawn waveform, Rate/Delay, and the
+  four documented depths (Pitch / Filter / Level / Pan), coloured by
+  destination
+- Effects canvas / workbench nodes (`EffectBlock`, routing, signal flow)
+
+Secondary / Expert:
+
+- `ParameterValueEditor` — exact XP values
+- `ParameterLabel`, reset / fine-adjust affordances
+
+See [`SYNTHESIZER_UI_AGENT_GUIDELINES.md`](SYNTHESIZER_UI_AGENT_GUIDELINES.md).
 
 Every continuous visual control must also support exact numeric entry.
 

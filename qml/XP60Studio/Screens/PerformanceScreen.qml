@@ -81,6 +81,7 @@ FocusScope {
             XpButton {
                 objectName: "performanceFetchTemporary"
                 text: qsTr("Read from XP-60")
+                iconName: "midi-in"
                 variant: "primary"
                 enabled: root.performance.canFetch
                 onClicked: root.performance.fetchTemporary()
@@ -88,6 +89,7 @@ FocusScope {
             XpButton {
                 objectName: "performanceSend"
                 text: qsTr("Send to XP-60")
+                iconName: "midi-out"
                 enabled: root.performance.canSend
                 QQC.ToolTip.visible: hovered
                 QQC.ToolTip.delay: 400
@@ -96,18 +98,26 @@ FocusScope {
             }
             XpButton {
                 objectName: "performanceUndo"
-                text: qsTr("Undo")
+                iconName: "undo"
+                iconOnly: true
                 variant: "ghost"
                 enabled: root.performance.canUndo
+                Accessible.name: qsTr("Undo")
                 QQC.ToolTip.visible: hovered && root.performance.canUndo
+                QQC.ToolTip.delay: 400
                 QQC.ToolTip.text: root.performance.undoLabel
                 onClicked: root.performance.undo()
             }
             XpButton {
                 objectName: "performanceRedo"
-                text: qsTr("Redo")
+                iconName: "redo"
+                iconOnly: true
                 variant: "ghost"
                 enabled: root.performance.canRedo
+                Accessible.name: qsTr("Redo")
+                QQC.ToolTip.visible: hovered && root.performance.canRedo
+                QQC.ToolTip.delay: 400
+                QQC.ToolTip.text: qsTr("Redo")
                 onClicked: root.performance.redo()
             }
             XpButton {
@@ -177,126 +187,197 @@ FocusScope {
             Layout.fillWidth: true
             visible: root.performance.hasPerformance && root.selectedStrip !== null
             padding: Metrics.spacingMd
+            implicitHeight: inspectorColumn.implicitHeight + 2 * Metrics.spacingMd
 
             ColumnLayout {
-                anchors.fill: parent
+                id: inspectorColumn
+                anchors { left: parent.left; right: parent.right; top: parent.top }
                 spacing: Metrics.spacingSm
 
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: Metrics.spacingSm
-                    XpLabel {
-                        text: qsTr("PART %1").arg(root.selectedPart)
-                        role: "overline"
-                        color: Theme.accentText
-                    }
-                    XpLabel {
+                XpModuleHeader {
+                    title: qsTr("PART %1").arg(root.selectedPart)
+                    iconName: "sliders"
+                    lampColor: root.selectedStrip && root.selectedStrip.receiveSwitch
+                               ? Theme.live : Theme.offline
+                    accentColor: Theme.accent
+                    trailing: XpLabel {
                         visible: root.selectedStrip && root.selectedStrip.isRhythmPart
-                        text: qsTr("the Rhythm part — its sound is a Rhythm Setup, not a Patch")
+                        text: qsTr("Rhythm part — a Rhythm Setup, not a Patch")
                         role: "caption"
                         muted: true
                     }
-                    Item { Layout.fillWidth: true }
                 }
 
-                GridLayout {
+                // What the Part is set to, then where on the keyboard it
+                // answers — side by side across the panel. Stacked, the sends
+                // and the output chips each used the left third of a 1560 px
+                // strip and left the rest empty; abreast, the keyboard gets the
+                // width its drag handles want and the panel loses two thirds of
+                // its height.
+                RowLayout {
                     Layout.fillWidth: true
-                    columns: root.wide ? 4 : 2
-                    columnSpacing: Metrics.spacingMd
-                    rowSpacing: Metrics.spacingSm
+                    spacing: Metrics.gapMd
 
-                    XpFieldRow {
-                        label: qsTr("MIDI channel")
-                        XpSpinField {
-                            objectName: "inspectorChannel"
-                            from: 1
-                            to: 16
-                            value: root.selectedStrip ? root.selectedStrip.midiChannel : 1
-                            onValueModified: root.performance.setPartMidiChannel(root.selectedPart, value)
+                    ColumnLayout {
+                        Layout.fillWidth: false
+                        Layout.alignment: Qt.AlignTop
+                        spacing: Metrics.gap
+
+                        RowLayout {
+                            Layout.fillWidth: false
+                            spacing: Metrics.gap
+
+                            MusicalParamKnob {
+                                objectName: "inspectorChannel"
+                                label: qsTr("MIDI Ch")
+                                value: root.selectedStrip ? root.selectedStrip.midiChannel : 1
+                                from: 1
+                                to: 16
+                                displayText: root.selectedStrip ? String(root.selectedStrip.midiChannel) : "1"
+                                knobSize: Metrics.knobSm
+                                onEdited: root.performance.setPartMidiChannel(root.selectedPart, value)
+                            }
+                            MusicalParamKnob {
+                                objectName: "inspectorChorus"
+                                label: qsTr("Chorus")
+                                value: root.selectedStrip ? root.selectedStrip.chorusSend : 0
+                                from: 0
+                                to: 127
+                                knobSize: Metrics.knobSm
+                                accentColor: Theme.tone2
+                                onEdited: root.performance.setPartChorusSend(root.selectedPart, value)
+                            }
+                            MusicalParamKnob {
+                                objectName: "inspectorReverb"
+                                label: qsTr("Reverb")
+                                value: root.selectedStrip ? root.selectedStrip.reverbSend : 0
+                                from: 0
+                                to: 127
+                                knobSize: Metrics.knobSm
+                                accentColor: Theme.tone3
+                                onEdited: root.performance.setPartReverbSend(root.selectedPart, value)
+                            }
+                            MusicalParamKnob {
+                                objectName: "inspectorVoiceReserve"
+                                label: qsTr("Voices")
+                                value: root.selectedStrip ? root.selectedStrip.voiceReserve : 0
+                                from: 0
+                                to: 64
+                                knobSize: Metrics.knobSm
+                                onEdited: root.performance.setPartVoiceReserve(root.selectedPart, value)
+                            }
+                            MusicalParamKnob {
+                                objectName: "inspectorOctave"
+                                label: qsTr("Octave")
+                                value: root.selectedStrip ? root.selectedStrip.octaveShift : 0
+                                from: -3
+                                to: 3
+                                displayText: {
+                                    var v = root.selectedStrip ? root.selectedStrip.octaveShift : 0
+                                    return v > 0 ? ("+" + v) : String(v)
+                                }
+                                bipolar: true
+                                knobSize: Metrics.knobSm
+                                onEdited: root.performance.setPartOctaveShift(root.selectedPart, value)
+                            }
+                            Item { Layout.fillWidth: true }
                         }
-                    }
-                    XpFieldRow {
-                        label: qsTr("Chorus send")
-                        XpSpinField {
-                            objectName: "inspectorChorus"
-                            from: 0
-                            to: 127
-                            value: root.selectedStrip ? root.selectedStrip.chorusSend : 0
-                            onValueModified: root.performance.setPartChorusSend(root.selectedPart, value)
+
+                        // Where the Part leaves the XP-60 is a destination
+                        // choice with five documented values, so it selects
+                        // like one rather than printing its current label.
+                        ColumnLayout {
+                            Layout.fillWidth: false
+                            spacing: Metrics.gapXs
+                            XpModuleHeader {
+                                title: qsTr("OUTPUT")
+                                iconName: "midi-out"
+                                accentColor: Theme.accent
+                            }
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: Metrics.spacingXs
+                                Repeater {
+                                    model: ["MIX", "EFX", "DIR", "<OUTPUT-2>", "PAT"]
+                                    XpButton {
+                                        required property string modelData
+                                        required property int index
+                                        objectName: index === 0 ? "inspectorOutput" : ""
+                                        text: modelData
+                                        compact: true
+                                        variant: root.selectedStrip && root.selectedStrip.outputAssign === index
+                                                 ? "primary" : "ghost"
+                                        onClicked: root.performance.setPartOutputAssign(root.selectedPart, index)
+                                        Accessible.name: qsTr("Part output: %1").arg(modelData)
+                                    }
+                                }
+                                Item { Layout.fillWidth: true }
+                            }
                         }
-                    }
-                    XpFieldRow {
-                        label: qsTr("Reverb send")
-                        XpSpinField {
-                            objectName: "inspectorReverb"
-                            from: 0
-                            to: 127
-                            value: root.selectedStrip ? root.selectedStrip.reverbSend : 0
-                            onValueModified: root.performance.setPartReverbSend(root.selectedPart, value)
-                        }
-                    }
-                    XpFieldRow {
-                        // Roland documents 0..64, not 0..127.
-                        label: qsTr("Voice reserve")
-                        XpSpinField {
-                            objectName: "inspectorVoiceReserve"
-                            from: 0
-                            to: 64
-                            value: root.selectedStrip ? root.selectedStrip.voiceReserve : 0
-                            onValueModified: root.performance.setPartVoiceReserve(root.selectedPart, value)
-                        }
-                    }
-                    XpFieldRow {
-                        label: qsTr("Octave shift")
-                        XpSpinField {
-                            objectName: "inspectorOctave"
-                            from: -3
-                            to: 3
-                            value: root.selectedStrip ? root.selectedStrip.octaveShift : 0
-                            onValueModified: root.performance.setPartOctaveShift(root.selectedPart, value)
-                        }
-                    }
-                    XpFieldRow {
-                        label: qsTr("Key range low")
-                        XpSpinField {
-                            objectName: "inspectorKeyLow"
-                            from: 0
-                            to: 127
-                            value: root.selectedStrip ? root.selectedStrip.keyLowerRaw : 0
-                            // Refused rather than clamped when it would cross
-                            // the upper bound, so the pair is never half-set.
-                            onValueModified: root.performance.setPartKeyRange(
-                                root.selectedPart, value, root.selectedStrip.keyUpperRaw)
-                        }
-                    }
-                    XpFieldRow {
-                        label: qsTr("Key range high")
-                        XpSpinField {
-                            objectName: "inspectorKeyHigh"
-                            from: 0
-                            to: 127
-                            value: root.selectedStrip ? root.selectedStrip.keyUpperRaw : 127
-                            onValueModified: root.performance.setPartKeyRange(
-                                root.selectedPart, root.selectedStrip.keyLowerRaw, value)
-                        }
-                    }
-                    XpFieldRow {
-                        label: qsTr("Output")
+
                         XpLabel {
-                            objectName: "inspectorOutput"
-                            text: root.selectedStrip ? root.selectedStrip.outputAssignLabel : ""
-                            role: "body"
+                            Layout.fillWidth: true
+                            visible: root.selectedStrip && root.selectedStrip.voiceReserve === 0
+                            text: qsTr("Voice reserve 0: this Part keeps no voices of its own, so a busy Performance can starve it.")
+                            role: "caption"
+                            color: Theme.warning
+                            wrapMode: Text.WordWrap
                         }
                     }
-                }
 
-                XpLabel {
-                    Layout.fillWidth: true
-                    visible: root.selectedStrip && root.selectedStrip.voiceReserve === 0
-                    text: qsTr("Voice reserve 0: this Part keeps no voices of its own, so a busy Performance can starve it.")
-                    role: "caption"
-                    color: Theme.warning
-                    wrapMode: Text.WordWrap
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        Layout.alignment: Qt.AlignTop
+                        spacing: Metrics.gapXs
+
+                        XpModuleHeader {
+                            title: qsTr("KEY RANGE")
+                            iconName: "keyboard"
+                            accentColor: Theme.accent
+                            trailing: XpLabel {
+                                text: root.selectedStrip
+                                      ? qsTr("%1 – %2").arg(root.selectedStrip.keyLowerNote).arg(root.selectedStrip.keyUpperNote)
+                                      : ""
+                                role: "mono"
+                                color: Theme.accentText
+                            }
+                        }
+                        KeyboardStrip {
+                            objectName: "inspectorKeyRange"
+                            Layout.fillWidth: true
+                            lowerNote: root.selectedStrip ? root.selectedStrip.keyLowerRaw : 0
+                            upperNote: root.selectedStrip ? root.selectedStrip.keyUpperRaw : 127
+                            accentColor: Theme.accent
+                            onRangeEdited: function(lower, upper) {
+                                root.performance.setPartKeyRange(root.selectedPart, lower, upper)
+                            }
+                        }
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Item { Layout.fillWidth: true }
+                            // Precision path kept for scripting/tests; not the primary UI.
+                            ParameterValueEditor {
+                                objectName: "inspectorKeyLow"
+                                visible: false
+                                value: root.selectedStrip ? root.selectedStrip.keyLowerRaw : 0
+                                minimumValue: 0
+                                maximumValue: root.selectedStrip ? root.selectedStrip.keyUpperRaw : 127
+                                onEdited: function(v) {
+                                    root.performance.setPartKeyRange(root.selectedPart, v, root.selectedStrip.keyUpperRaw)
+                                }
+                            }
+                            ParameterValueEditor {
+                                objectName: "inspectorKeyHigh"
+                                visible: false
+                                value: root.selectedStrip ? root.selectedStrip.keyUpperRaw : 127
+                                minimumValue: root.selectedStrip ? root.selectedStrip.keyLowerRaw : 0
+                                maximumValue: 127
+                                onEdited: function(v) {
+                                    root.performance.setPartKeyRange(root.selectedPart, root.selectedStrip.keyLowerRaw, v)
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -305,8 +386,14 @@ FocusScope {
             Layout.fillWidth: true
             Layout.fillHeight: true
             visible: !root.performance.hasPerformance
-            title: qsTr("No Performance open")
-            message: qsTr("Read the Performance the XP-60 is playing now, and its sixteen Parts appear here as a mixer.")
+            iconName: "performance"
+            // The heading above already says "No Performance open"; this
+            // region says what will appear and offers the action that fills it.
+            title: qsTr("The 16-Part mixer appears here")
+            message: qsTr("Read the Performance the XP-60 is playing now, and each of its sixteen Parts becomes a channel strip.")
+            actionText: qsTr("Read from XP-60")
+            actionEnabled: root.performance.canFetch
+            onActionTriggered: root.performance.fetchTemporary()
         }
     }
 }

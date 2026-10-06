@@ -12,6 +12,30 @@ TestCase {
     visible: true
 
     Component {
+        id: partStripComponent
+        PerformancePartStrip {
+            width: 96
+            height: 360
+            part: ({
+                partNumber: 1, midiChannel: 1, isRhythmPart: false,
+                patchNumber: 12, patchGroupLabel: "USER", receives: true,
+                level: 100, pan: 64, panText: "C",
+                chorusSend: 64, reverbSend: 32, voiceReserve: 0,
+                keyLowerNote: "C2", keyUpperNote: "C7",
+                keyLowerRaw: 36, keyUpperRaw: 96
+            })
+        }
+    }
+
+    Component {
+        id: musicalKnobComponent
+        MusicalParamKnob {
+            label: "Random Pitch Depth"
+            from: 0; to: 126; value: 63; bipolar: true; labelWidth: 140
+        }
+    }
+
+    Component {
         id: buttonComponent
         XpButton { text: "Connect"; variant: "primary" }
     }
@@ -145,5 +169,35 @@ TestCase {
         verify(card)
         compare(card.color, Theme.surface)
         verify(card.implicitHeight > 0)
+    }
+
+    // A send is a continuous amount, so the strip has to show how much, not
+    // only print the number (Directive Alpha).
+    function test_part_strip_shows_sends_as_meters_and_flags_no_voice_reserve() {
+        var strip = createTemporaryObject(partStripComponent, testCase)
+        verify(strip)
+        verify(strip.showSends)
+        var reserve = findChild(strip, "partVoiceReserve1")
+        verify(reserve)
+        compare(reserve.text, "0")
+        // Voice Reserve 0 means the Part can be starved, and the strip says so
+        // in colour rather than only in the inspector.
+        compare(reserve.color, Theme.warning)
+        verify(findChild(strip, "partLevel1"))
+        verify(findChild(strip, "partPan1"))
+    }
+
+    // Documented Roland names are long; a knob-width caption elided them into
+    // nonsense ("Random...").
+    function test_musical_knob_caption_survives_a_long_documented_name() {
+        var knob = createTemporaryObject(musicalKnobComponent, testCase)
+        verify(knob)
+        var caption = null
+        for (var i = 0; i < knob.children.length; ++i) {
+            if (knob.children[i].text === "Random Pitch Depth") caption = knob.children[i]
+        }
+        verify(caption, "knob caption not found")
+        verify(!caption.truncated, "documented parameter name was elided")
+        verify(findChild(knob, "musicalKnob").bipolar)
     }
 }

@@ -14,8 +14,8 @@ GridLayout {
 
     objectName: "toneGrid"
     columns: wide ? 4 : 2
-    columnSpacing: Metrics.spacingMd
-    rowSpacing: Metrics.spacingMd
+    columnSpacing: Metrics.spacingSm
+    rowSpacing: Metrics.spacingSm
 
     Repeater {
         id: toneCards

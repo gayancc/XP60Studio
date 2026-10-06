@@ -30,3 +30,5 @@ Thumbs.db
 # Python bytecode from the research utilities in tools/
 __pycache__/
 *.pyc
+/shots
+/tmp

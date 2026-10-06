@@ -148,6 +148,7 @@ FocusScope {
                         XpEmptyState {
                             anchors.fill: parent
                             visible: root.catalog.count === 0
+                            iconName: "search"
                             title: root.catalog.sourceFilter === 3 && root.catalog.expansionCount === 0
                                    ? qsTr("No expansion waves to browse") : qsTr("No matching waveforms")
                             message: root.catalog.sourceFilter === 3 && root.catalog.expansionCount === 0

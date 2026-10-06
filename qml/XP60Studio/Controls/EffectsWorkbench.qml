@@ -47,7 +47,7 @@ ColumnLayout {
             Layout.fillWidth: true; implicitHeight: sends.implicitHeight + 2 * Metrics.cardPadding
             ColumnLayout {
                 id: sends; anchors { left: parent.left; right: parent.right; top: parent.top }
-                XpPanelHeader { title: qsTr("SEND MIXER"); Layout.fillWidth: true }
+                XpModuleHeader { title: qsTr("SEND MIXER"); iconName: "sliders"; accentColor: Theme.accent }
                 Flow {
                     Layout.fillWidth: true;  spacing: Metrics.spacingMd
                     Repeater {
@@ -103,7 +103,11 @@ ColumnLayout {
                     accentColor: Theme.tone4
                     ColumnLayout {
                         id: stageContent; anchors { left: parent.left; right: parent.right; top: parent.top }
-                        XpPanelHeader { title: (root.algorithm.topology === "SINGLE" ? "" : (stage.index === 0 ? "A · " : "B · ")) + stage.modelData.name; Layout.fillWidth: true }
+                        XpModuleHeader {
+                            title: (root.algorithm.topology === "SINGLE" ? "" : (stage.index === 0 ? "A · " : "B · ")) + stage.modelData.name
+                            iconName: "wave"
+                            accentColor: Theme.accent
+                        }
                         XpLabel {
                             visible: root.algorithm.topology !== "SINGLE"; role: "caption"; secondary: true
                             text: root.algorithm.topology === "SERIES" ? qsTr("INPUT → A → B → OUTPUT") : qsTr("INPUT ⇉ A / B ⇉ OUTPUT")
@@ -203,7 +207,11 @@ ColumnLayout {
         accentColor: root.page === 3 ? Theme.tone2 : Theme.tone3
         ColumnLayout {
             id: processor; anchors { left: parent.left; right: parent.right; top: parent.top } spacing: Metrics.spacingMd
-            XpPanelHeader { Layout.fillWidth: true; title: root.page === 3 ? qsTr("CHORUS · STEREO MODULATION") : qsTr("REVERB · SPACE & ECHO") }
+            XpModuleHeader {
+                title: root.page === 3 ? qsTr("CHORUS · STEREO MODULATION") : qsTr("REVERB · SPACE & ECHO")
+                iconName: "wave"
+                accentColor: root.page === 3 ? Theme.tone2 : Theme.tone3
+            }
             EffectChoiceControl { visible: root.page === 4; Layout.fillWidth: true; editor: root.editor; parameterId: "common.reverb_type"; title: qsTr("SPACE") }
             EffectParameterGraph {
                 objectName: "independentEffectGraph"

@@ -24,18 +24,25 @@ XpCard {
     XpEmptyState {
         anchors.fill: parent
         visible: !root.hasSelection
+        iconName: "library"
         title: qsTr("No patch selected")
         message: qsTr("Choose a patch to see where it came from.")
     }
 
     QQC.ScrollView {
+        id: detailsScroll
         anchors.fill: parent
         visible: root.hasSelection
         clip: true
+        contentWidth: availableWidth
         QQC.ScrollBar.vertical: XpScrollBar {}
 
         ColumnLayout {
-            width: root.width - 2 * Metrics.spacingSm
+            // The card has already inset this ScrollView by its padding, so
+            // the column takes the viewport width — sizing it from root.width
+            // ignored that inset and pushed the header's Edit button under the
+            // clipped right edge.
+            width: detailsScroll.availableWidth
             spacing: Metrics.spacingSm
 
             ColumnLayout {

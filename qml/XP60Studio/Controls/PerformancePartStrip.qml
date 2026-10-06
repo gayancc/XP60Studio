@@ -24,6 +24,11 @@ Rectangle {
     // A Part that receives nothing cannot sound, and the whole strip says so
     // rather than only its switch.
     readonly property bool live: part.receives
+    // At short window heights the strip keeps its interactive controls and
+    // sheds the read-only rows first — they stay one click away in the
+    // inspector — instead of clipping the receive switch off the bottom.
+    readonly property bool showSends: height >= 330
+    readonly property bool showKeyRange: height >= 290
 
     implicitWidth: 96
     radius: Metrics.radiusMd
@@ -75,12 +80,21 @@ Rectangle {
         XpLabel {
             objectName: "partPatch" + root.partNumber
             Layout.fillWidth: true
+            // Number first: at strip width Roland's group vocabulary
+            // ("USER&PRESET") elides, and the number is the part a musician
+            // scans for. The full assignment stays readable in the tooltip.
             text: root.part.isRhythmPart
                   ? qsTr("Rhythm %1").arg(root.part.patchNumber)
-                  : qsTr("%1 %2").arg(root.part.patchGroupLabel).arg(root.part.patchNumber)
+                  : qsTr("%1 · %2").arg(root.part.patchNumber).arg(root.part.patchGroupLabel)
             role: "caption"
             muted: !root.live
             elide: Text.ElideRight
+            QQC.ToolTip.visible: patchHover.hovered && truncated
+            QQC.ToolTip.delay: 400
+            QQC.ToolTip.text: root.part.isRhythmPart
+                              ? qsTr("Rhythm %1").arg(root.part.patchNumber)
+                              : qsTr("%1 %2").arg(root.part.patchGroupLabel).arg(root.part.patchNumber)
+            HoverHandler { id: patchHover }
         }
 
         XpDivider { Layout.fillWidth: true }
@@ -90,7 +104,7 @@ Rectangle {
             objectName: "partLevel" + root.partNumber
             Layout.alignment: Qt.AlignHCenter
             Layout.fillHeight: true
-            Layout.minimumHeight: 120
+            Layout.minimumHeight: 80
             from: 0
             to: 127
             enabled: root.live
@@ -103,8 +117,8 @@ Rectangle {
         XpKnob {
             objectName: "partPan" + root.partNumber
             Layout.alignment: Qt.AlignHCenter
-            implicitWidth: 44
-            implicitHeight: 44
+            implicitWidth: Metrics.knobSm
+            implicitHeight: Metrics.knobSm
             from: 0
             to: 127
             bipolar: true
@@ -117,28 +131,59 @@ Rectangle {
 
         // Sends and reserve, read-only here: the inspector edits them, and a
         // strip crowded with every control is harder to read at a glance.
-        GridLayout {
+        ColumnLayout {
+            visible: root.showSends
             Layout.fillWidth: true
-            columns: 2
-            columnSpacing: Metrics.spacingXs
-            rowSpacing: 1
-            XpLabel { text: qsTr("cho"); role: "caption"; muted: true }
-            XpLabel { text: String(root.part.chorusSend); role: "caption"; horizontalAlignment: Text.AlignRight; Layout.fillWidth: true }
-            XpLabel { text: qsTr("rev"); role: "caption"; muted: true }
-            XpLabel { text: String(root.part.reverbSend); role: "caption"; horizontalAlignment: Text.AlignRight; Layout.fillWidth: true }
-            XpLabel { text: qsTr("vcs"); role: "caption"; muted: true }
-            XpLabel {
-                objectName: "partVoiceReserve" + root.partNumber
-                text: String(root.part.voiceReserve)
-                role: "caption"
-                horizontalAlignment: Text.AlignRight
-                Layout.fillWidth: true
-                // Voice Reserve 0 means this Part can be starved by the others.
-                color: root.part.voiceReserve === 0 ? Theme.warning : Theme.textPrimary
+            spacing: 2
+            Repeater {
+                model: [
+                    { key: "cho", value: root.part.chorusSend, max: 127, tint: Theme.tone2,
+                      name: qsTr("Chorus send"), warn: false, tag: "" },
+                    { key: "rev", value: root.part.reverbSend, max: 127, tint: Theme.tone3,
+                      name: qsTr("Reverb send"), warn: false, tag: "" },
+                    // Voice Reserve 0 means this Part can be starved by the others.
+                    { key: "vcs", value: root.part.voiceReserve, max: 64, tint: Theme.accent,
+                      name: qsTr("Voice reserve"), warn: root.part.voiceReserve === 0,
+                      tag: "partVoiceReserve" + root.partNumber }
+                ]
+                delegate: RowLayout {
+                    required property var modelData
+                    Layout.fillWidth: true
+                    spacing: Metrics.spacingXs
+                    Accessible.role: Accessible.ProgressBar
+                    Accessible.name: qsTr("Part %1 %2 %3")
+                        .arg(root.partNumber).arg(modelData.name).arg(modelData.value)
+                    XpLabel { text: modelData.key; role: "caption"; muted: true }
+                    // A send is a continuous amount, so the strip shows how much
+                    // rather than only printing the number.
+                    Rectangle {
+                        Layout.fillWidth: true
+                        implicitHeight: 4
+                        radius: 2
+                        color: Theme.surfaceSunken
+                        Rectangle {
+                            anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
+                            width: Math.round(parent.width
+                                   * Math.max(0, Math.min(1, modelData.value / modelData.max)))
+                            radius: 2
+                            color: modelData.warn ? Theme.warning : modelData.tint
+                            opacity: root.live ? 1.0 : 0.45
+                        }
+                    }
+                    XpLabel {
+                        objectName: modelData.tag
+                        text: String(modelData.value)
+                        role: "caption"
+                        horizontalAlignment: Text.AlignRight
+                        Layout.minimumWidth: 22
+                        color: modelData.warn ? Theme.warning : Theme.textPrimary
+                    }
+                }
             }
         }
 
         XpLabel {
+            visible: root.showKeyRange
             Layout.fillWidth: true
             text: root.part.keyLowerNote + "–" + root.part.keyUpperNote
             role: "caption"

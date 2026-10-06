@@ -29,7 +29,7 @@ ColumnLayout {
     }
     Item {
         Layout.alignment: Qt.AlignHCenter
-        implicitWidth: 68; implicitHeight: 68
+        implicitWidth: Metrics.knobLg; implicitHeight: Metrics.knobLg
         XpKnob {
             id: knob
             objectName: "effectKnob-" + root.parameterId
@@ -41,12 +41,15 @@ ColumnLayout {
             accentColor: root.accentColor
             enabled: root.parameter.value !== undefined && !root.editor.comparing
             valueText: root.title + ": " + (root.parameter.display || "")
-            onPressedChanged: {
-                if (pressed) { root.selected(root.parameterId); root.editor.beginEffectGesture() }
+            // XpKnob handles its own drag, so the whole gesture — and the
+            // single undo entry it must produce — is bracketed on `dragging`,
+            // not on T.Dial's read-only `pressed`.
+            onDraggingChanged: {
+                if (dragging) { root.selected(root.parameterId); root.editor.beginEffectGesture() }
                 else root.editor.endEffectGesture()
             }
             onMoved: root.editor.editEffect(root.parameterId, Math.round(value))
-            QQC.ToolTip.visible: pressed
+            QQC.ToolTip.visible: dragging
             QQC.ToolTip.text: root.parameter.display || ""
             HoverHandler { cursorShape: Qt.SizeVerCursor }
         }

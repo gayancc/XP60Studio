@@ -250,7 +250,10 @@ QString DevicesViewModel::connectionStateText() const
     case ConnectionState::Connecting:
         return QStringLiteral("Connecting");
     case ConnectionState::Connected:
-        return connectionVerified() ? tr("XP-60 verified ✓") : tr("Connected");
+        // No glyph in the string: the pill that shows this already carries a
+        // success dot, and ✓ falls back to a tofu box where the platform font
+        // has no fallback (offscreen captures, minimal font sets).
+        return connectionVerified() ? tr("XP-60 verified") : tr("Connected");
     case ConnectionState::Error:
         return QStringLiteral("Connection error");
     }
@@ -814,13 +817,13 @@ QString DevicesViewModel::sysExHealthText() const
     if (stats.requestsTimedOut > 0) {
         return QStringLiteral("Unstable connection");
     }
-    return QStringLiteral("All good ✓");
+    return QStringLiteral("All good");
 }
 
 QString DevicesViewModel::sysExHealthTone() const
 {
     const QString text = sysExHealthText();
-    if (text == QStringLiteral("All good ✓")) {
+    if (text == QStringLiteral("All good")) {
         return QStringLiteral("success");
     }
     if (text == QStringLiteral("Data errors") || text == QStringLiteral("No reply from XP-60")) {

@@ -932,7 +932,7 @@ private slots:
         Fixture f;
         f.loadPatch();
         const auto rows = f.editor->toneSettings();
-        QCOMPARE(rows.size(), 5);
+        QCOMPARE(rows.size(), 6);
         const auto first = at(rows, 0);
         QVERIFY(!first.value(QStringLiteral("parameterId")).toString().isEmpty());
         QVERIFY(first.contains(QStringLiteral("minimum")));

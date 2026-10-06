@@ -20,6 +20,7 @@ set(XP60STUDIO_QML_FILES
   Controls/XpByteView.qml
   Controls/XpLabel.qml
   Controls/XpMetricTile.qml
+  Controls/XpModuleHeader.qml
   Controls/XpPanelHeader.qml
   Controls/XpScrollBar.qml
   Controls/XpSpinField.qml
@@ -30,6 +31,9 @@ set(XP60STUDIO_QML_FILES
   Controls/XpSegmentedControl.qml
   Controls/XpRangeBar.qml
   Controls/ParameterValueEditor.qml
+  Controls/MusicalParamKnob.qml
+  Controls/ToneKeyAssign.qml
+  Controls/TonePlaySettingsStrip.qml
   Controls/EditorParameterPanel.qml
   Controls/ToneCard.qml
   Controls/ToneMiniEnvelope.qml
@@ -51,6 +55,7 @@ set(XP60STUDIO_QML_FILES
   Controls/SoundDnaPanel.qml
   Controls/LfoShapeSelector.qml
   Controls/LfoPreview.qml
+  Controls/LfoLane.qml
   Controls/DeviceConnectionBar.qml
   Controls/DeviceHealthCard.qml
   Controls/SafeReadFlow.qml

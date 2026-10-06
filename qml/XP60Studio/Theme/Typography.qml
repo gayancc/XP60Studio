@@ -43,17 +43,17 @@ QtObject {
 
     // The ramp. Each size has one job; a screen that needs a size not on this
     // list needs a different role, not a one-off number.
-    readonly property int displaySize: 22     // screen title, one per screen
-    readonly property int titleSize: 17       // patch name, hero value
-    readonly property int headingSize: 14     // panel heading
-    readonly property int subheadingSize: 13  // module heading inside a panel
-    readonly property int bodySize: 13        // default
-    readonly property int valueSize: 13       // parameter value
-    readonly property int labelSize: 12       // parameter label — title case
-    readonly property int captionSize: 12     // helper text, metadata
-    readonly property int overlineSize: 11    // section overline — upper case
-    readonly property int monoSize: 12        // numeric value, address
-    readonly property int dataSize: 12        // raw SysEx bytes
+    readonly property int displaySize: 20     // screen title, one per screen
+    readonly property int titleSize: 16       // patch name, hero value
+    readonly property int headingSize: 13     // panel heading
+    readonly property int subheadingSize: 12  // module heading inside a panel
+    readonly property int bodySize: 12        // default
+    readonly property int valueSize: 12       // parameter value
+    readonly property int labelSize: 11       // parameter label — title case
+    readonly property int captionSize: 11     // helper text, metadata
+    readonly property int overlineSize: 10    // section overline — upper case
+    readonly property int monoSize: 11        // numeric value, address
+    readonly property int dataSize: 11        // raw SysEx bytes
 
     readonly property int weightRegular: Font.Normal
     readonly property int weightMedium: Font.DemiBold

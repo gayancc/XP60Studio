@@ -187,6 +187,8 @@ QVariant EditorParameterModel::data(const QModelIndex& idx, int role) const
         for (const auto label : p.enumLabels) labels.append(qstr(label));
         return labels;
     }
+    case BipolarRole:
+        return p.displayOffset < 0;
     default: return {};
     }
 }
@@ -195,7 +197,7 @@ QHash<int, QByteArray> EditorParameterModel::roleNames() const
 {
     return {{NameRole, "name"}, {IdRole, "parameterId"}, {ToneRole, "toneNumber"}, {CategoryRole, "category"},
             {RawRole, "rawValue"}, {ValueTextRole, "valueText"}, {MinimumRole, "minimum"},
-            {MaximumRole, "maximum"}, {ChoicesRole, "choices"}};
+            {MaximumRole, "maximum"}, {ChoicesRole, "choices"}, {BipolarRole, "bipolar"}};
 }
 
 void EditorParameterModel::edit(const QString& id, int toneNumber, int raw)
@@ -272,6 +274,18 @@ QString EditorParameterModel::valueTextForId(const QString& parameterId) const
     for (int i = 0; i < rowCount(); ++i) {
         const auto idx = index(i, 0);
         if (data(idx, IdRole).toString() == parameterId) return data(idx, ValueTextRole).toString();
+    }
+    // Same fallback as choicesForId: a panel may show a documented Tone
+    // parameter that the current group or search does not list.
+    const int toneNumber = m_editor.selectedTone();
+    if (toneNumber <= 0) return {};
+    const auto& table = tables::patchToneTable();
+    const auto& parameters = table.parameters();
+    for (std::size_t i = 0; i < parameters.size(); ++i) {
+        if (qstr(parameters[i].id) != parameterId) continue;
+        const auto& tone = m_editor.patch().tone(
+            xpmodel::ToneIndex::all()[static_cast<std::size_t>(toneNumber - 1)]);
+        return QString::fromStdString(parameters[i].formatDisplay(tone.rawAt(i)));
     }
     return {};
 }

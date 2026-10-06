@@ -148,8 +148,11 @@ FocusScope {
             XpButton {
                 objectName: "libraryRatedFilter"
                 // One tap for "the ones I actually rated well"; tapping again
-                // clears it, so the chip is its own off switch.
-                text: qsTr("4★ and up")
+                // clears it, so the chip is its own off switch. The star is the
+                // design system's icon, not a font glyph, so it renders with
+                // the same stroke weight everywhere.
+                iconName: "star-filled"
+                text: qsTr("4 and up")
                 compact: true
                 variant: root.library.minimumRating >= 4 ? "primary" : "ghost"
                 onClicked: root.library.minimumRating = root.library.minimumRating >= 4 ? 0 : 4
@@ -251,7 +254,14 @@ FocusScope {
                 // layout sets this item's width, so reading the parent's width
                 // back to compute it makes the two chase each other (Qt Quick
                 // Layouts reports a recursive rearrange and gives up).
+                //
+                // The preferred width matters as much as the factor: stretch
+                // factors divide only *surplus* space, and the details panel's
+                // implicit width is large enough that without a small preferred
+                // width here the results list is squeezed to a sliver.
+                Layout.preferredWidth: 1
                 Layout.horizontalStretchFactor: 3
+                Layout.minimumWidth: root.wide ? 360 : -1
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -263,6 +273,7 @@ FocusScope {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         visible: root.library.count === 0
+                        iconName: "library"
                         title: root.library.libraryTotal === 0
                                ? qsTr("The library is empty")
                                : qsTr("No patch matches these filters")
@@ -304,10 +315,16 @@ FocusScope {
 
             LibraryDetailsPanel {
                 objectName: "libraryDetails"
+                id: detailsPanel
                 Layout.fillWidth: true
+                Layout.preferredWidth: 1
                 Layout.horizontalStretchFactor: 2
+                Layout.minimumWidth: root.wide ? Metrics.inspectorWidth : -1
                 Layout.fillHeight: root.wide
-                Layout.preferredHeight: root.wide ? -1 : 260
+                // Stacked mode: while nothing is selected the panel is a
+                // one-line hint, so the results — the reason the user is
+                // here — keep the height.
+                Layout.preferredHeight: root.wide ? -1 : (detailsPanel.hasSelection ? 280 : 120)
                 library: root.library
                 onEditRequested: function (entryId) {
                     if (root.library.editEntry(entryId))

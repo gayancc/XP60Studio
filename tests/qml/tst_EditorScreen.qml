@@ -168,10 +168,8 @@ TestCase {
         var grid = findChild(screen, "toneGrid")
         verify(grid)
         compare(grid.columns, 4)
-        verify(findChild(screen, "toneConnections").visible)
         screen.width = 900
         compare(grid.columns, 2)
-        verify(!findChild(screen, "toneConnections").visible)
     }
 
     function test_write_actions_fit_at_minimum_shell_width() {
@@ -737,5 +735,214 @@ TestCase {
         compare(bar.lower, 1)
         compare(bar.upper, 127)
         verify(bar.valueAt(0) <= bar.valueAt(bar.width))
+    }
+
+    // -- Directive Alpha: musical controls, not text, on Design ---------------
+
+    function test_tone_octave_turns_like_a_knob_and_moves_coarse_tune() {
+        var screen = createTemporaryObject(screenComponent, testCase)
+        var card = findChild(screen, "toneCard1")
+        var octave = findChild(card, "toneOctaveField")
+        verify(octave)
+        // Not a text box: a bipolar dial centred on no transposition.
+        verify(octave.bipolar)
+        compare(octave.from, -4)
+        compare(octave.to, 4)
+
+        var before = testEditor.tones[0].coarseTune
+        var here = octave.value
+        var step = here < octave.to ? 1 : -1
+        octave.value = here + step
+        octave.moved()
+        compare(testEditor.tones[0].coarseTune, before + step * 12)
+        compare(testEditor.tones[0].octave, here + step)
+    }
+
+    function test_design_selects_a_parameter_group_with_chips_not_a_dropdown() {
+        var screen = createTemporaryObject(screenComponent, testCase)
+        testEditor.section = 1 // Filter
+        var panel = findChild(screen, "sectionParameterPanel")
+        verify(panel)
+        var chips = findChild(panel, "parameterGroupChips")
+        var combo = findChild(panel, "parameterGroup")
+        verify(chips)
+        // The dropdown stays in the tree for Expert, but Design must not lead
+        // with it.
+        verify(!combo.visible)
+        verify(chips.visible)
+    }
+
+    function test_motion_shows_the_documented_lfo_depths_as_knobs() {
+        var screen = createTemporaryObject(screenComponent, testCase)
+        testEditor.section = 3 // Motion
+        var panel = findChild(screen, "motionEffectsPanel")
+        verify(panel)
+        // The shape the LFO is set to is drawn, not only named.
+        verify(findChild(panel, "lfo1Preview"))
+        var destinations = ["pitch", "filter", "level", "pan"]
+        for (var i = 0; i < destinations.length; ++i) {
+            for (var n = 1; n <= 2; ++n) {
+                var knob = findChild(panel, "lfo" + n + "Depth-" + destinations[i])
+                verify(knob, "missing LFO" + n + " " + destinations[i] + " depth")
+                // Raw 0-126 displays -63/+63, so the arc grows out of centre.
+                verify(knob.bipolar)
+                compare(knob.to, 126)
+            }
+        }
+
+        var depth = findChild(panel, "lfo1Depth-pitch")
+        var before = testEditor.sectionParameters.rawForId("tone.pitch_lfo1_depth")
+        var next = before === 100 ? 40 : 100
+        depth.edited(next)
+        compare(testEditor.sectionParameters.rawForId("tone.pitch_lfo1_depth"), next)
+    }
+
+    // -- Knob feel -----------------------------------------------------------
+
+    function test_editing_a_stage_does_not_recreate_the_knob_being_dragged() {
+        var screen = createTemporaryObject(screenComponent, testCase)
+        testEditor.section = 0 // Pitch envelope
+        var stages = findChild(screen, "envelopeStages")
+        verify(stages)
+        var knob = findChild(stages, "envelopeTime1")
+        verify(knob)
+
+        // envelopeStages is a QVariantList that notifies on every edit. If the
+        // Repeater takes it as its model directly, one edit resets the model
+        // and destroys the very item the pointer is grabbing, so a drag dies
+        // after a pixel or two.
+        testEditor.setEnvelopeStageRaw(0, false, 40)
+        var after = findChild(stages, "envelopeTime1")
+        compare(after, knob, "the stage delegate was rebuilt by its own edit")
+    }
+
+    function test_envelope_graph_nodes_survive_their_own_move() {
+        var screen = createTemporaryObject(screenComponent, testCase)
+        testEditor.section = 0
+        var graph = findChild(screen, "envelopeEditor")
+        verify(graph)
+        var before = graph.children.length
+        var node = null
+        for (var i = 0; i < graph.children.length; ++i) {
+            if (graph.children[i].draggable === true) { node = graph.children[i]; break }
+        }
+        verify(node, "no draggable envelope node")
+        testEditor.setEnvelopeStageRaw(1, false, 55)
+        var stillThere = false
+        for (var j = 0; j < graph.children.length; ++j)
+            if (graph.children[j] === node) stillThere = true
+        verify(stillThere, "the envelope node was rebuilt by its own move")
+    }
+
+    function test_knob_drag_is_aimable_not_a_sweep_across_its_own_height() {
+        var knob = createTemporaryObject(knobComponent, testCase)
+        verify(knob)
+        knob.value = 64
+        var start = knob.value
+        mousePress(knob, knob.width / 2, knob.height / 2)
+        mouseMove(knob, knob.width / 2, knob.height / 2 - 10)
+        var delta = knob.value - start
+        mouseRelease(knob, knob.width / 2, knob.height / 2 - 10)
+        verify(delta > 0, "dragging up did not raise the value")
+        // A 44 px knob mapping its whole 0-127 range onto its own height moves
+        // ~29 steps for 10 px. That is not a control a musician can aim.
+        verify(delta <= 12, "10 px moved the value by " + delta + " steps")
+    }
+
+    function test_knob_sensitivity_is_a_fixed_travel_not_the_control_size() {
+        var knob = createTemporaryObject(knobComponent, testCase)
+        verify(knob)
+
+        function dragSteps(pixels) {
+            knob.value = 64
+            mousePress(knob, knob.width / 2, knob.height / 2)
+            mouseMove(knob, knob.width / 2, knob.height / 2 - pixels)
+            var moved = knob.value - 64
+            mouseRelease(knob, knob.width / 2, knob.height / 2 - pixels)
+            return moved
+        }
+
+        // Twice the travel, twice the change: the gesture is measured from
+        // where it started, so a slow drag cannot drift.
+        var ten = dragSteps(10)
+        var twenty = dragSteps(20)
+        verify(ten > 0 && twenty > 0)
+        fuzzyCompare(twenty, ten * 2, 1.5)
+
+        // Halving the travel doubles the sensitivity, and none of it depends
+        // on how large the knob happens to be drawn.
+        knob.dragPixelsForFullRange = Math.round(knob.dragPixelsForFullRange / 2)
+        var faster = dragSteps(10)
+        verify(faster > ten, "shortening the travel did not sharpen the knob")
+    }
+
+    function test_shift_is_the_fine_step_from_the_keyboard() {
+        var knob = createTemporaryObject(knobComponent, testCase)
+        knob.value = 64
+        knob.forceActiveFocus()
+        keyClick(Qt.Key_Up)
+        var coarse = knob.value - 64
+        knob.value = 64
+        keyClick(Qt.Key_Up, Qt.ShiftModifier)
+        var fine = knob.value - 64
+        compare(fine, 1, "Shift+Up must be a single documented step")
+        verify(coarse > fine, "a plain arrow (" + coarse + ") must be coarser than Shift (" + fine + ")")
+    }
+
+    // The dial writes its own `value` while turning, which drops a plain QML
+    // binding for good. Undo, A/B and a Tone switch have to still reach it.
+    function test_knob_follows_the_model_again_after_the_user_has_dragged_it() {
+        var screen = createTemporaryObject(screenComponent, testCase)
+        testEditor.section = 0
+        var stages = findChild(screen, "envelopeStages")
+        var wrapper = findChild(stages, "envelopeTime1")
+        verify(wrapper)
+        var knob = findChild(wrapper, "musicalKnob")
+        verify(knob)
+
+        // Exactly what a drag does, through the control's own path. Assigning
+        // knob.value from here would delete the very binding under test.
+        verify(knob.applyValue(99))
+        knob.moved()
+        compare(testEditor.envelopeStages[0].timeRaw, 99)
+
+        // Now the model moves on its own.
+        testEditor.setEnvelopeStageRaw(0, false, 7)
+        tryCompare(knob, "value", 7)
+    }
+
+    // -- Modulation reach ----------------------------------------------------
+
+    function test_an_lfo_depth_shows_as_a_second_arc_on_what_it_moves() {
+        var screen = createTemporaryObject(screenComponent, testCase)
+        testEditor.section = 1 // FILTER — Cutoff Frequency is the LFO's filter destination
+        var panel = findChild(screen, "sectionParameterPanel")
+        verify(panel)
+        var cell = findChild(panel, "parameter-tone.cutoff_frequency")
+        verify(cell, "cutoff frequency is not on the Filter page")
+        var knob = findChild(cell, "musicalKnob")
+        verify(knob)
+
+        // Depths are raw 0-126 around a musical zero of 63, so a centred LFO
+        // must draw nothing at all.
+        testEditor.sectionParameters.edit("tone.filter_lfo1_depth", testEditor.selectedTone, 63)
+        testEditor.sectionParameters.edit("tone.filter_lfo2_depth", testEditor.selectedTone, 63)
+        tryCompare(knob, "modDepth", 0)
+
+        // A real depth reaches the knob it actually moves...
+        testEditor.sectionParameters.edit("tone.filter_lfo1_depth", testEditor.selectedTone, 126)
+        tryVerify(function() { return knob.modDepth > 0 })
+
+        // ...and the opposite depth reaches the other way.
+        testEditor.sectionParameters.edit("tone.filter_lfo1_depth", testEditor.selectedTone, 0)
+        tryVerify(function() { return knob.modDepth < 0 })
+
+        // A parameter no documented LFO destination points at stays clean.
+        var other = findChild(panel, "parameter-tone.resonance")
+        if (other) {
+            var otherKnob = findChild(other, "musicalKnob")
+            if (otherKnob)
+                compare(otherKnob.modDepth, 0, "resonance is not an LFO destination")
+        }
     }
 }

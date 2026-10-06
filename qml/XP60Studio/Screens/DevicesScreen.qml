@@ -81,32 +81,35 @@ Item {
                 Layout.fillWidth: true
                 Layout.leftMargin: root.margin
                 Layout.rightMargin: root.margin
-                implicitHeight: demoInvite.implicitHeight + 2 * Metrics.cardPadding
+                implicitHeight: demoInvite.implicitHeight + 2 * Metrics.panelPadding
 
                 RowLayout {
                     id: demoInvite
                     anchors {
                         left: parent.left; right: parent.right; top: parent.top
-                        margins: Metrics.cardPadding
+                        margins: Metrics.panelPadding
                     }
-                    spacing: Metrics.spacingMd
+                    spacing: Metrics.gapMd
 
-                    ColumnLayout {
+                    // One line, not a heading over a wrapping paragraph. A
+                    // wrapping Text in a RowLayout reports the implicit height
+                    // it would have unwrapped, so the card sized itself too
+                    // short and the second line spilled past its own border.
+                    XpLabel {
                         Layout.fillWidth: true
-                        spacing: Metrics.spacingXs
-
-                        XpLabel {
-                            text: qsTr("Try without hardware")
-                            role: "subtitle"
-                            font.weight: Typography.weightMedium
-                        }
-                        XpLabel {
-                            Layout.fillWidth: true
-                            text: qsTr("Explore the editor and device workflows with a simulated XP-60. Nothing is sent to real MIDI ports.")
-                            role: "caption"
-                            muted: true
-                            wrapMode: Text.WordWrap
-                        }
+                        Layout.alignment: Qt.AlignVCenter
+                        text: qsTr("Try without hardware")
+                        role: "body"
+                        font.weight: Typography.weightMedium
+                        elide: Text.ElideRight
+                    }
+                    XpLabel {
+                        Layout.fillWidth: true
+                        Layout.alignment: Qt.AlignVCenter
+                        text: qsTr("A simulated XP-60 — nothing is sent to real MIDI ports.")
+                        role: "caption"
+                        muted: true
+                        elide: Text.ElideRight
                     }
 
                     XpButton {
@@ -137,13 +140,16 @@ Item {
                 Layout.leftMargin: root.margin
                 Layout.rightMargin: root.margin
                 columns: root.twoColumns ? 2 : 1
-                columnSpacing: Metrics.spacingLg
-                rowSpacing: Metrics.spacingLg
+                columnSpacing: Metrics.gapMd
+                rowSpacing: Metrics.gapMd
 
                 CurrentSoundPanel {
                     devices: root.devices
                     Layout.fillWidth: true
-                    Layout.alignment: Qt.AlignTop
+                    // The two panels in this row are read as a pair — reading
+                    // the current sound, then sending one back — so they share
+                    // a baseline instead of ending 25 px apart.
+                    Layout.fillHeight: true
                     Layout.minimumWidth: Metrics.devicesConnectionMinWidth
                 }
 
@@ -151,7 +157,7 @@ Item {
                     devices: root.devices
                     visible: root.devices.writeSupported
                     Layout.fillWidth: true
-                    Layout.alignment: Qt.AlignTop
+                    Layout.fillHeight: true
                     Layout.minimumWidth: Metrics.devicesDiagnosticsMinWidth
                 }
             }
@@ -203,6 +209,12 @@ Item {
                             checked: false
                             Accessible.name: qsTr("Show diagnostics")
                         }
+                        // The chevron promises the whole row is a disclosure,
+                        // so the whole row toggles — not only the switch.
+                        TapHandler {
+                            onTapped: advancedToggle.checked = !advancedToggle.checked
+                        }
+                        HoverHandler { cursorShape: Qt.PointingHandCursor }
                     }
 
                     ColumnLayout {

@@ -46,7 +46,7 @@ Item {
     // still points at one, exactly as the instrument works.
     readonly property bool selected: destination.selected === true
 
-    implicitHeight: 84
+    implicitHeight: 76
     opacity: dragging ? 0.35 : 1
     Behavior on opacity {
         enabled: !Motion.reducedMotion

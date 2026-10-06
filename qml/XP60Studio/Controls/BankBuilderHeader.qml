@@ -34,20 +34,18 @@ RowLayout {
     spacing: Metrics.spacingSm
 
     ColumnLayout {
-        Layout.fillWidth: root.compact
+        Layout.fillWidth: true
         spacing: 2
-        XpLabel { text: qsTr("BANK BUILDER"); role: "overline"; color: Theme.accentText }
 
+        // Identity line: the overline and the bank's state pills share a row.
+        // Pills used to sit beside the name field, where three of them plus
+        // the full toolbar overflowed the window and clipped the primary
+        // action off-screen; beside the overline there is always room.
         RowLayout {
+            Layout.fillWidth: true
             spacing: Metrics.spacingSm
 
-            XpTextField {
-                objectName: "bankName"
-                Layout.preferredWidth: 240
-                text: root.builder.bankName
-                placeholderText: qsTr("Name this bank")
-                onEditingFinished: root.builder.bankName = text
-            }
+            XpLabel { text: qsTr("BANK BUILDER"); role: "overline"; color: Theme.accentText }
             StatusPill {
                 objectName: "bankModified"
                 visible: root.builder.modified
@@ -64,7 +62,7 @@ RowLayout {
             // exactly what was meant.
             StatusPill {
                 objectName: "bankDuplicates"
-                visible: !root.compact && root.builder.duplicateCount > 0
+                visible: root.builder.duplicateCount > 0
                 text: qsTr("%n duplicate(s)", "", root.builder.duplicateCount)
                 tone: "info"
             }
@@ -74,7 +72,7 @@ RowLayout {
             // destinations are committed to USER memory.
             StatusPill {
                 objectName: "bankNeedsBoards"
-                visible: !root.compact && root.builder.expansionSummary.needsBoard > 0
+                visible: root.builder.expansionSummary.needsBoard > 0
                 text: root.builder.expansionSummary.undecided
                       ? qsTr("%n may need a board", "", root.builder.expansionSummary.needsBoard)
                       : qsTr("%n need a board", "", root.builder.expansionSummary.needsBoard)
@@ -86,9 +84,46 @@ RowLayout {
             }
             StatusPill {
                 objectName: "bankMissing"
-                visible: !root.compact && root.builder.missingCount > 0
+                visible: root.builder.missingCount > 0
                 text: qsTr("%n missing patch(es)", "", root.builder.missingCount)
                 tone: "error"
+            }
+            Item { Layout.fillWidth: true }
+        }
+
+        // Name and the bank-level actions share the second row; the field
+        // yields width before any action can clip.
+        RowLayout {
+            Layout.fillWidth: true
+            visible: !root.compact
+            spacing: Metrics.spacingSm
+
+            XpTextField {
+                objectName: "bankName"
+                Layout.fillWidth: true
+                Layout.minimumWidth: 160
+                Layout.maximumWidth: 280
+                Layout.preferredWidth: 240
+                text: root.builder.bankName
+                placeholderText: qsTr("Name this bank")
+                onEditingFinished: root.builder.bankName = text
+            }
+
+            Item { Layout.fillWidth: true }
+
+            DesktopActions {}
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            visible: root.compact
+            spacing: Metrics.spacingSm
+            XpTextField {
+                objectName: "bankNameCompact"
+                Layout.fillWidth: true
+                text: root.builder.bankName
+                placeholderText: qsTr("Name this bank")
+                onEditingFinished: root.builder.bankName = text
             }
         }
 
@@ -113,7 +148,9 @@ RowLayout {
         }
     }
 
-    Item { Layout.fillWidth: true }
+    // The desktop action set, inlined into the name row above.
+    component DesktopActions: RowLayout {
+    spacing: Metrics.spacingSm
 
     // History. The tooltip names the edit, so "Undo" is never a guess.
     XpButton {
@@ -247,5 +284,6 @@ RowLayout {
         compact: true
         variant: "primary"
         onClicked: root.saveAsRequested()
+    }
     }
 }

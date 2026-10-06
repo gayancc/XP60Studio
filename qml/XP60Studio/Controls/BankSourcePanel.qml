@@ -159,6 +159,7 @@ Item {
             XpEmptyState {
                 anchors.fill: parent
                 visible: root.library.count === 0
+                iconName: "library"
                 title: root.library.libraryTotal === 0
                        ? qsTr("The library is empty")
                        : qsTr("No Patch matches this source or search")

@@ -27,7 +27,7 @@ class EditorParameterModel : public QAbstractListModel
 public:
     enum Role {
         NameRole = Qt::UserRole + 1, IdRole, ToneRole, CategoryRole,
-        RawRole, ValueTextRole, MinimumRole, MaximumRole, ChoicesRole,
+        RawRole, ValueTextRole, MinimumRole, MaximumRole, ChoicesRole, BipolarRole,
     };
 
     explicit EditorParameterModel(PatchEditorViewModel& editor, bool expert, QObject* parent = nullptr);

@@ -1,0 +1,25 @@
+---
+description: XP60Studio synthesizer UI — zero text-entry fallback for sound shaping; knobs/envelopes/ranges first
+globs: qml/XP60Studio/**/*.qml
+alwaysApply: false
+---
+
+# Synthesizer UI (XP60Studio)
+
+Full rules: `docs/design/SYNTHESIZER_UI_AGENT_GUIDELINES.md`.
+
+## Non-negotiable for Design / Play musical surfaces
+
+- Do **not** default to `ParameterValueEditor`, `XpSpinField`, `TextField`, or `ComboBox` as the primary control for continuous or musically meaningful params.
+- Prefer `MusicalParamKnob` / `XpKnob`, `EnvelopeEditor`, `KeyboardStrip`, `XpRangeBar`, choice chips, `TonePlaySettingsStrip`, Effects nodes.
+- Exact entry is secondary (readout toggle / Exact disclosure). Keep `objectName`s for tests.
+- Do not invent XP-60 envelope curves, wavetable morphs, or MIDI-CC learn menus the product does not support yet.
+- Reuse Theme / catalog components; match `xp60studio-ui-master-mockup.jpg` composition.
+
+## Allowed primary text/spin
+
+Search, patch name, paths, device/port IDs, Expert raw grids, diagnostics.
+
+## Before finishing UI work
+
+Screenshot with `xp60studio_screenshot`, run relevant `tst_qml`, and note remaining Directive Alpha violations in the UI report if any.

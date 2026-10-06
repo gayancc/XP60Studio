@@ -6,9 +6,14 @@ import XP60Studio
 //
 // Scanning a library is a visual task, so the row is built to be read at a
 // glance: the name leads, the favourite and rating are direct-manipulation
-// controls rather than fields, and the provenance line answers "where did this
-// come from" without the reader opening anything. Everything here is metadata —
-// no Patch parameter is touched from this row.
+// controls rather than fields, and the provenance answers "where did this come
+// from" without the reader opening anything. Everything here is metadata — no
+// Patch parameter is touched from this row.
+//
+// One line, in fixed columns. Two lines per record halved how much of a
+// 128-patch library fitted on screen, and pushing the slot and source under the
+// name meant nothing lined up down the list — the eye had to re-find each field
+// on every row instead of running down a column.
 Rectangle {
     id: root
 
@@ -32,7 +37,7 @@ Rectangle {
     signal favouriteToggled()
     signal ratingPicked(int value)
 
-    height: 52
+    height: Metrics.listRowHeight
     radius: Metrics.radiusSm
     color: selected ? Theme.selection : (hover.hovered ? Theme.surfaceHover : "transparent")
     border.width: selected ? 1 : 0
@@ -46,12 +51,14 @@ Rectangle {
     TapHandler { onTapped: root.clicked() }
 
     RowLayout {
-        anchors { fill: parent; leftMargin: Metrics.spacingSm; rightMargin: Metrics.spacingSm }
-        spacing: Metrics.spacingSm
+        anchors { fill: parent; leftMargin: Metrics.gap; rightMargin: Metrics.gap }
+        spacing: Metrics.gap
 
         // Favourite is one tap, and reads as on/off without a label.
         XpIcon {
             objectName: "libraryRowFavourite"
+            implicitWidth: Metrics.iconSizeSm
+            implicitHeight: Metrics.iconSizeSm
             name: root.favourite ? "star-filled" : "star"
             color: root.favourite ? Theme.accentText : Theme.textMuted
             opacity: root.favourite || hover.hovered ? 1 : 0.45
@@ -62,62 +69,71 @@ Rectangle {
             Behavior on opacity { NumberAnimation { duration: Motion.durationFast } }
         }
 
-        ColumnLayout {
-            Layout.fillWidth: true
-            spacing: 1
-
-            XpLabel {
-                text: root.name
-                Layout.fillWidth: true
-                elide: Text.ElideRight
-                font.weight: root.selected ? Typography.weightMedium : Typography.weightRegular
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: Metrics.spacingXs
-                // Where it came from, in the order a librarian asks: the slot
-                // it occupied, then the file or device it arrived in.
-                XpLabel { text: root.slotLabel; role: "caption"; secondary: true }
-                XpLabel {
-                    text: root.sourceName
-                    role: "caption"
-                    secondary: true
-                    Layout.fillWidth: true
-                    elide: Text.ElideRight
-                }
-            }
-        }
-
-        // Whether this will play on the instrument the musician declared.
-        // "unknown" is a warning rather than an error on purpose: it means
-        // XP60Studio has not been told enough, not that the Patch is broken.
-        StatusPill {
-            objectName: "libraryRowCompatibility"
-            visible: root.compatibility !== "internal"
-            text: root.compatibility === "missing" ? qsTr("NEEDS BOARD")
-                  : root.compatibility === "available" ? qsTr("EXP")
-                  : root.compatibility === "unscanned" ? qsTr("NOT ANALYSED")
-                                                       : qsTr("EXP?")
-            tone: root.compatibility === "missing" ? "error"
-                  : root.compatibility === "available" ? "success" : "warning"
-            showDot: false
-            Accessible.description: root.compatibilityLabel
-        }
-
-        // The user's own classification, shown only when they set it.
-        StatusPill {
-            visible: root.category.length > 0
-            text: root.category
-            tone: "neutral"
-            showDot: false
-        }
-
         XpLabel {
-            visible: root.tags.length > 0
-            text: root.tags.length === 1 ? "#" + root.tags[0] : qsTr("%n tags", "", root.tags.length)
+            text: root.name
+            Layout.fillWidth: true
+            Layout.minimumWidth: 120
+            elide: Text.ElideRight
+            font.weight: root.selected ? Typography.weightMedium : Typography.weightRegular
+        }
+
+        // Where it came from, in the order a librarian asks: the slot it
+        // occupied, then the file or device it arrived in. Fixed widths so the
+        // two read as columns down the list.
+        XpLabel {
+            text: root.slotLabel
+            role: "mono"
+            secondary: true
+            Layout.preferredWidth: 74
+            elide: Text.ElideRight
+        }
+        XpLabel {
+            text: root.sourceName
             role: "caption"
             secondary: true
+            Layout.preferredWidth: 168
+            elide: Text.ElideRight
+        }
+
+        // Badges keep a fixed column even when a row has none. Letting the
+        // group size itself made the name column absorb the difference, so the
+        // slot and source moved from row to row and stopped being columns.
+        RowLayout {
+            Layout.preferredWidth: 132
+            Layout.fillWidth: false
+            spacing: Metrics.gapXs
+                Item { Layout.fillWidth: true }
+
+            // Whether this will play on the instrument the musician declared.
+            // "unknown" is a warning rather than an error on purpose: it means
+            // XP60Studio has not been told enough, not that the Patch is broken.
+            StatusPill {
+                objectName: "libraryRowCompatibility"
+                visible: root.compatibility !== "internal"
+                text: root.compatibility === "missing" ? qsTr("NEEDS BOARD")
+                      : root.compatibility === "available" ? qsTr("EXP")
+                      : root.compatibility === "unscanned" ? qsTr("NOT ANALYSED")
+                                                           : qsTr("EXP?")
+                tone: root.compatibility === "missing" ? "error"
+                      : root.compatibility === "available" ? "success" : "warning"
+                showDot: false
+                Accessible.description: root.compatibilityLabel
+            }
+
+            // The user's own classification, shown only when they set it.
+            StatusPill {
+                visible: root.category.length > 0
+                text: root.category
+                tone: "neutral"
+                showDot: false
+            }
+
+            XpLabel {
+                visible: root.tags.length > 0
+                text: root.tags.length === 1 ? "#" + root.tags[0] : qsTr("%n tags", "", root.tags.length)
+                role: "caption"
+                secondary: true
+            }
         }
 
         // Five stars, each directly clickable. Clicking the current rating
@@ -129,6 +145,8 @@ Rectangle {
                 model: 5
                 delegate: XpIcon {
                     required property int index
+                    implicitWidth: Metrics.iconSizeSm
+                    implicitHeight: Metrics.iconSizeSm
                     name: root.rating > index ? "star-filled" : "star"
                     color: root.rating > index ? Theme.accentText : Theme.textMuted
                     opacity: root.rating > index ? 1 : (hover.hovered ? 0.5 : 0.2)

@@ -4,10 +4,11 @@ import XP60Studio
 
 // One Tone's contribution to the current Patch, on the Dashboard.
 //
-// The mockup draws these as meters reading in dB. The XP-60 stores a Tone level
-// as a 0-127 value and the manual gives no conversion to decibels, so inventing
-// one here would put a number on screen that the instrument never said. The bar
-// therefore shows the level as what it is, and the readout is the XP value.
+// The mockup draws these as vertical meters reading in dB. The XP-60 stores a
+// Tone level as a 0-127 value and the manual gives no conversion to decibels,
+// so inventing one here would put a number on screen that the instrument never
+// said. The meter therefore keeps the mockup's shape — a vertical column that
+// makes four Tones comparable at a glance — and reads in XP values.
 Rectangle {
     id: root
 
@@ -47,13 +48,15 @@ Rectangle {
     ColumnLayout {
         id: column
         anchors {
-            left: parent.left; right: parent.right; top: parent.top
+            left: parent.left; right: parent.right
+            top: parent.top; bottom: parent.bottom
             margins: Metrics.spacingSm
         }
         spacing: 2
 
         RowLayout {
             Layout.fillWidth: true
+            Layout.fillHeight: false
             spacing: Metrics.spacingXs
             XpLabel {
                 text: qsTr("TONE %1").arg(root.toneNumber)
@@ -85,34 +88,53 @@ Rectangle {
             elide: Text.ElideRight
         }
 
-        // Level as a proportion of the XP range, with the raw value beside it.
-        RowLayout {
+        // Level as a proportion of the XP range. The only item here that grows,
+        // so whatever height the Dashboard has spare becomes meter resolution
+        // rather than empty card.
+        Rectangle {
             Layout.fillWidth: true
+            Layout.fillHeight: true
             Layout.topMargin: Metrics.spacingXs
-            spacing: Metrics.spacingXs
+            Layout.minimumHeight: 44
+            radius: Metrics.radiusSm
+            color: Theme.surfaceSunken
+            border.width: 1
+            border.color: Theme.borderSubtle
+            clip: true
 
-            Rectangle {
-                Layout.fillWidth: true
-                implicitHeight: 6
-                radius: 3
-                color: Theme.surfaceSunken
+            // Quarter marks, so two Tones can be compared without reading the
+            // numbers. Not a dB scale — the XP-60 does not give one.
+            Repeater {
+                model: 3
                 Rectangle {
-                    width: parent.width * Math.max(0, Math.min(1, root.level / 127))
-                    height: parent.height
-                    radius: parent.radius
-                    color: root.toneTint
-                    opacity: root.audible ? 1.0 : 0.5
-                    Behavior on width {
-                        enabled: !Motion.reducedMotion
-                        NumberAnimation { duration: Motion.durationNormal; easing.type: Motion.easingStandard }
-                    }
+                    required property int index
+                    anchors { left: parent.left; right: parent.right }
+                    y: Math.round(parent.height * (index + 1) / 4)
+                    height: 1
+                    color: Theme.borderSubtle
                 }
             }
+
+            Rectangle {
+                anchors { left: parent.left; right: parent.right; bottom: parent.bottom; margins: 2 }
+                height: Math.max(2, (parent.height - 4)
+                        * Math.max(0, Math.min(1, root.level / 127)))
+                radius: 2
+                color: root.toneTint
+                opacity: root.audible ? 1.0 : 0.5
+                Behavior on height {
+                    enabled: !Motion.reducedMotion
+                    NumberAnimation { duration: Motion.durationNormal; easing.type: Motion.easingStandard }
+                }
+            }
+
             XpLabel {
                 objectName: "toneLevelValue"
+                anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 4 }
                 text: root.tone ? root.tone.levelText : ""
                 role: "mono"
                 font.weight: Typography.weightMedium
+                color: Theme.textPrimary
             }
         }
     }

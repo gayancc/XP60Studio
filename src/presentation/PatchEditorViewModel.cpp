@@ -1338,11 +1338,17 @@ QVariantList PatchEditorViewModel::toneSettings() const
         row.insert(QStringLiteral("minimum"), descriptor.rawMin);
         row.insert(QStringLiteral("maximum"), descriptor.rawMax);
         row.insert(QStringLiteral("isEnum"), descriptor.isEnumeration());
+        QStringList choices;
+        for (const auto label : descriptor.enumLabels) {
+            choices.append(toQString(label));
+        }
+        row.insert(QStringLiteral("choices"), choices);
         rows.append(row);
     };
     add(CommonParameter::BendRangeUp);
     add(CommonParameter::BendRangeDown);
     add(CommonParameter::PortamentoSwitch);
+    add(CommonParameter::PortamentoMode);
     add(CommonParameter::PortamentoTime);
     add(CommonParameter::KeyAssignMode);
     return rows;

@@ -25,6 +25,7 @@ Read the documents relevant to the task before changing code:
 - `docs/design/COMPONENT_CATALOG.md` — reusable XP60Studio component system
 - `docs/design/SCREEN_AND_FEATURE_MAP.md` — feature-to-screen mapping and mockup references
 - `docs/design/UI_ACCEPTANCE_CRITERIA.md` — visual/interaction acceptance rules and screenshot comparison requirements
+- `docs/design/SYNTHESIZER_UI_AGENT_GUIDELINES.md` — synthesizer UI agent contract (zero text-entry fallback for sound shaping)
 
 ## Exact approved UI target
 
@@ -121,6 +122,11 @@ The application must not degrade into a generic CRUD/admin UI merely because sto
 ## Interaction-first and infographic-first UI rule
 
 Visual fidelity to the master mockup is necessary but **not sufficient**. User-facing UI must also be designed as an interactive musical workspace that explains state visually and makes the next useful action obvious.
+
+**Authoritative synthesizer interaction contract (project-scoped):**
+[`docs/design/SYNTHESIZER_UI_AGENT_GUIDELINES.md`](docs/design/SYNTHESIZER_UI_AGENT_GUIDELINES.md)
+and `.cursor/rules/synthesizer-ui.mdc`. Sound-shaping surfaces must not default to
+text/spin entry; knobs, graphs, ranges, and choice chips come first.
 
 The primary surface must be designed from the musician's task and mental model, not from the underlying parameter schema, C++ object structure, MIDI protocol, or database-style field list.
 

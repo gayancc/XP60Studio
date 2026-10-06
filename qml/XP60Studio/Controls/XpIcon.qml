@@ -60,6 +60,9 @@ Canvas {
         case "editor": line([4,20,5,15,16,4,20,8,9,19,4,20]); line([14,6,18,10]); break
         case "banks": box(3,4,18,16); line([3,9,21,9]); line([9,9,9,20]); line([15,9,15,20]); line([3,14,21,14]); break
         case "performance": line([9,17,9,5,19,3,19,15]); circle(6,18,3); circle(16,16,3); break
+        // An SR-JV80 wave board seen from above: the card, its connector pins,
+        // and the label area. Used by the Expansion screen and its nav row.
+        case "expansion": box(3,5,18,12); line([6,17,6,20]); line([10,17,10,20]); line([14,17,14,20]); line([18,17,18,20]); line([6,9,12,9]); circle(17,10,1.4); break
         case "compare": line([3,8,21,8,17,4]); line([21,16,3,16,7,20]); break
         case "devices": box(3,5,18,14); circle(8,12,2); line([14,9,18,9]); line([14,13,18,13]); line([7,22,7,19]); line([17,22,17,19]); break
         case "settings": circle(12,12,4); circle(12,12,8); for(var j=0;j<8;++j) { var a2=j*Math.PI/4; line([12+8*Math.cos(a2),12+8*Math.sin(a2),12+10*Math.cos(a2),12+10*Math.sin(a2)]) } break
@@ -99,6 +102,10 @@ Canvas {
 
         // Domain --------------------------------------------------------------
         case "envelope": line([3,19,7,5,11,11,17,12,21,19]);line([3,3,3,21,22,21]);break
+        // Three panel faders at different settings: the module-header mark for
+        // a group of continuous controls.
+        case "sliders": line([3,7,21,7]);line([3,13,21,13]);line([3,19,21,19]);disc(8,7,2.2);disc(15,13,2.2);disc(6,19,2.2);break
+        case "wave": c.beginPath();c.moveTo(2,12);c.bezierCurveTo(6,2,10,22,14,12);c.bezierCurveTo(17,5,19,17,22,12);c.stroke();break
         case "keyboard": box(2,5,20,14);line([6,5,6,19]);line([10,5,10,19]);line([14,5,14,19]);line([18,5,18,19]);break
         // Direction is carried by the arrow's shape, so IN and OUT stay
         // distinguishable at 14 px and without colour. A circled arrow, which

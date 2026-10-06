@@ -331,7 +331,7 @@ private slots:
         QCOMPARE(f.devices->operations()->data(index, RequestOperationModel::ProgressRole).toDouble(), 1.0);
         QCOMPARE(f.devices->requestsCompleted(), 1);
         QCOMPARE(f.devices->messagesIn(), 1);
-        QCOMPARE(f.devices->sysExHealthText(), QStringLiteral("All good ✓"));
+        QCOMPARE(f.devices->sysExHealthText(), QStringLiteral("All good"));
         QCOMPARE(f.devices->sysExHealthTone(), QStringLiteral("success"));
 
         // Log model has OUT and IN Roland lines.

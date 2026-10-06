@@ -396,9 +396,11 @@ FocusScope {
             visible: root.builder.userWriteBusy || root.builder.userWriteMessage.length > 0
                      || root.builder.bankFetchBusy
             padding: Metrics.spacingMd
+            implicitHeight: userWriteRow.implicitHeight + 2 * Metrics.spacingMd
 
             RowLayout {
-                anchors.fill: parent
+                id: userWriteRow
+                anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter }
                 spacing: Metrics.spacingSm
 
                 StatusPill {
@@ -585,9 +587,11 @@ FocusScope {
                     Layout.fillWidth: true
                     visible: root.builder.comparing
                     padding: Metrics.spacingSm
+                    implicitHeight: comparisonColumn.implicitHeight + 2 * Metrics.spacingSm
 
                     ColumnLayout {
-                        anchors.fill: parent
+                        id: comparisonColumn
+                        anchors { left: parent.left; right: parent.right; top: parent.top }
                         spacing: 2
 
                         RowLayout {
@@ -774,17 +778,18 @@ FocusScope {
 
                     ColumnLayout {
                         anchors.fill: parent
-                        anchors.margins: Metrics.spacingMd
-                        spacing: Metrics.spacingXs
+                        anchors.margins: Metrics.panelPadding
+                        spacing: Metrics.gap
 
                         // SUBGROUP -------------------------------------------
                         RowLayout {
                             Layout.fillWidth: true
                             Layout.minimumWidth: 0
+                            Layout.fillHeight: false
                             Layout.minimumHeight: 34
                             Layout.preferredHeight: 34
                             Layout.maximumHeight: 34
-                            spacing: Metrics.spacingSm
+                            spacing: Metrics.gap
 
                             XpLabel {
                                 Layout.preferredWidth: 68
@@ -824,10 +829,11 @@ FocusScope {
                         RowLayout {
                             Layout.fillWidth: true
                             Layout.minimumWidth: 0
+                            Layout.fillHeight: false
                             Layout.minimumHeight: 34
                             Layout.preferredHeight: 34
                             Layout.maximumHeight: 34
-                            spacing: Metrics.spacingSm
+                            spacing: Metrics.gap
 
                             XpLabel {
                                 Layout.preferredWidth: 68
@@ -866,10 +872,11 @@ FocusScope {
                         // NUMBER ---------------------------------------------
                         RowLayout {
                             Layout.fillWidth: true
+                            Layout.fillHeight: false
                             Layout.minimumHeight: 34
                             Layout.preferredHeight: 34
                             Layout.maximumHeight: 34
-                            spacing: Metrics.spacingSm
+                            spacing: Metrics.gap
 
                             XpLabel {
                                 Layout.preferredWidth: 68
@@ -899,13 +906,16 @@ FocusScope {
                         }
 
                         // The eight destinations -----------------------------
+                        // The one row that grows: the destinations are what the
+                        // panel is for, so spare height becomes a bigger drop
+                        // target rather than four gaps between the selectors.
                         RowLayout {
                             Layout.fillWidth: true
+                            Layout.fillHeight: true
                             Layout.minimumWidth: 0
-                            Layout.minimumHeight: 112
-                            Layout.preferredHeight: 144
-                            Layout.maximumHeight: 144
-                            spacing: Metrics.spacingSm
+                            Layout.minimumHeight: 96
+                            Layout.maximumHeight: 132
+                            spacing: Metrics.gap
 
                             // Empty column keeping the tiles under the NUMBER
                             // buttons: the physical alignment is the thing that
@@ -921,8 +931,8 @@ FocusScope {
                                     objectName: "destination" + modelData.panelLabel
                                     Layout.fillWidth: true
                                     Layout.fillHeight: true
-                                    Layout.minimumHeight: 112
-                                    Layout.maximumHeight: 144
+                                    Layout.minimumHeight: 96
+                                    Layout.maximumHeight: 148
                                     destination: modelData
                                     current: modelData.current === true
                                     dropCandidate: root.dragActive
@@ -943,13 +953,14 @@ FocusScope {
                             }
                         }
 
-                        XpDivider { Layout.fillWidth: true }
+                        XpDivider { Layout.fillWidth: true; Layout.fillHeight: false }
 
                         // The whole bank, as a map ---------------------------
                         BankOverviewMap {
                             id: overview
                             objectName: "bankOverview"
                             Layout.fillWidth: true
+                            Layout.fillHeight: false
                             Layout.preferredHeight: implicitHeight
                             builder: root.builder
                             hoverBank: root.hoverBank
@@ -959,6 +970,12 @@ FocusScope {
                                 root.builder.selectBank(bank)
                             }
                         }
+
+                        // One greedy item at the end. Without it the column's
+                        // leftover height is shared out between the selector
+                        // rows, which opened a gap above and below the
+                        // destinations instead of leaving it under the map.
+                        Item { Layout.fillHeight: true; Layout.minimumHeight: 0 }
                     }
                 }
             }
