@@ -1,0 +1,29 @@
+[package]
+name = "xppatch-midi"
+description = "XP-60 MIDI: transport abstraction, SysEx assembler, request/response client with timeouts, retries, pacing and verification, and a virtual XP-60 for tests."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[features]
+default = ["hardware"]
+# The real MIDI backend (midir). Disable to build and test without any MIDI libraries.
+hardware = ["dep:midir"]
+
+[dependencies]
+xppatch-sysex = { path = "../xppatch-sysex" }
+xppatch-core = { path = "../xppatch-core" }
+thiserror.workspace = true
+midir = { version = "0.10", optional = true }
+
+[dev-dependencies]
+proptest.workspace = true
+
+[lints]
+workspace = true
+
+[[example]]
+name = "probe"
+required-features = ["hardware"]

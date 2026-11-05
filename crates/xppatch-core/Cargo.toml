@@ -1,0 +1,20 @@
+[package]
+name = "xppatch-core"
+description = "XP-60 domain model: parameter map (data-driven), blocks, patch codec. No I/O, no UI."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+xppatch-sysex = { path = "../xppatch-sysex" }
+thiserror.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+
+[lints]
+workspace = true

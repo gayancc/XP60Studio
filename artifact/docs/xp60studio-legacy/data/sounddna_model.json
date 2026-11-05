@@ -1,0 +1,7 @@
+{
+  "format": "xp60studio.sounddna-model/1",
+  "version": "sound-dna/unvalidated-0",
+  "feature_schema": "xp60-patch-features/2",
+  "unavailable_reason": "No perceptual dimensions have passed the corpus, listener-reliability, holdout, and transformation gates yet.",
+  "dimensions": []
+}

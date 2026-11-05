@@ -1,0 +1,17 @@
+[package]
+name = "xppatch-library"
+description = "The patch library: SQLite storage, .syx import and export, tags, search, duplicate detection."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+xppatch-sysex = { path = "../xppatch-sysex" }
+xppatch-core = { path = "../xppatch-core" }
+thiserror.workspace = true
+rusqlite = { version = "0.32", features = ["bundled"] }
+
+[lints]
+workspace = true

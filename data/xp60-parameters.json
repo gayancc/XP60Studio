@@ -1,0 +1,4867 @@
+{
+ "schema": 1,
+ "model": "XP-60",
+ "provenance": [
+  "Parameters, offsets, encodings and raw ranges: Roland XP-60/XP-80 owner's manual, MIDI Implementation, Parameter Address Map,",
+  "via the legacy XP60Studio transcription (read-only source). Status of every row: documentation-derived.",
+  "Cross-checked against a real XP-60 user bank (128 patches, 74,752 values, 0 out of range) and the Patch Base XP-80 samples.",
+  "NOT confirmed by this project on hardware. Owner confirmation is required before any row is called verified."
+ ],
+ "message": {
+  "manufacturer": 65,
+  "model_id": 106,
+  "default_device_id": 16,
+  "rq1": 17,
+  "dt1": 18
+ },
+ "limits": {
+  "max_dt1_data_to_device": 128,
+  "min_dt1_gap_ms": 20,
+  "first_response_timeout_ms": 1500
+ },
+ "regions": [
+  {
+   "id": "system",
+   "base": "00 00 00 00",
+   "temporary": false
+  },
+  {
+   "id": "temp_performance",
+   "base": "01 00 00 00",
+   "temporary": true
+  },
+  {
+   "id": "temp_patch_part",
+   "base": "02 00 00 00",
+   "temporary": true,
+   "stride": "00 01 00 00",
+   "count": 16
+  },
+  {
+   "id": "temp_patch",
+   "base": "03 00 00 00",
+   "temporary": true
+  },
+  {
+   "id": "user_performance",
+   "base": "10 00 00 00",
+   "temporary": false,
+   "stride": "00 01 00 00",
+   "count": 32
+  },
+  {
+   "id": "user_rhythm",
+   "base": "10 40 00 00",
+   "temporary": false,
+   "stride": "00 01 00 00",
+   "count": 2
+  },
+  {
+   "id": "user_patch",
+   "base": "11 00 00 00",
+   "temporary": false,
+   "stride": "00 01 00 00",
+   "count": 128
+  }
+ ],
+ "layouts": {
+  "patch": [
+   {
+    "block": "patch_common",
+    "offset": "00 00"
+   },
+   {
+    "block": "patch_tone",
+    "offset": "10 00"
+   },
+   {
+    "block": "patch_tone",
+    "offset": "12 00"
+   },
+   {
+    "block": "patch_tone",
+    "offset": "14 00"
+   },
+   {
+    "block": "patch_tone",
+    "offset": "16 00"
+   }
+  ],
+  "performance": [
+   {
+    "block": "performance_common",
+    "offset": "00 00"
+   },
+   {
+    "block": "performance_part",
+    "offset": "10 00"
+   },
+   {
+    "block": "performance_part",
+    "offset": "11 00"
+   },
+   {
+    "block": "performance_part",
+    "offset": "12 00"
+   },
+   {
+    "block": "performance_part",
+    "offset": "13 00"
+   },
+   {
+    "block": "performance_part",
+    "offset": "14 00"
+   },
+   {
+    "block": "performance_part",
+    "offset": "15 00"
+   },
+   {
+    "block": "performance_part",
+    "offset": "16 00"
+   },
+   {
+    "block": "performance_part",
+    "offset": "17 00"
+   },
+   {
+    "block": "performance_part",
+    "offset": "18 00"
+   },
+   {
+    "block": "performance_part",
+    "offset": "19 00"
+   },
+   {
+    "block": "performance_part",
+    "offset": "1A 00"
+   },
+   {
+    "block": "performance_part",
+    "offset": "1B 00"
+   },
+   {
+    "block": "performance_part",
+    "offset": "1C 00"
+   },
+   {
+    "block": "performance_part",
+    "offset": "1D 00"
+   },
+   {
+    "block": "performance_part",
+    "offset": "1E 00"
+   },
+   {
+    "block": "performance_part",
+    "offset": "1F 00"
+   }
+  ]
+ },
+ "blocks": [
+  {
+   "id": "patch_common",
+   "family": "patch",
+   "name": "Patch Common",
+   "size": 73,
+   "params": [
+    {
+     "id": "patch_name_1",
+     "name": "Patch Name 1",
+     "offset": 0,
+     "bytes": 1,
+     "encoding": "ascii",
+     "min": 32,
+     "max": 127,
+     "display": "character"
+    },
+    {
+     "id": "patch_name_2",
+     "name": "Patch Name 2",
+     "offset": 1,
+     "bytes": 1,
+     "encoding": "ascii",
+     "min": 32,
+     "max": 127,
+     "display": "character"
+    },
+    {
+     "id": "patch_name_3",
+     "name": "Patch Name 3",
+     "offset": 2,
+     "bytes": 1,
+     "encoding": "ascii",
+     "min": 32,
+     "max": 127,
+     "display": "character"
+    },
+    {
+     "id": "patch_name_4",
+     "name": "Patch Name 4",
+     "offset": 3,
+     "bytes": 1,
+     "encoding": "ascii",
+     "min": 32,
+     "max": 127,
+     "display": "character"
+    },
+    {
+     "id": "patch_name_5",
+     "name": "Patch Name 5",
+     "offset": 4,
+     "bytes": 1,
+     "encoding": "ascii",
+     "min": 32,
+     "max": 127,
+     "display": "character"
+    },
+    {
+     "id": "patch_name_6",
+     "name": "Patch Name 6",
+     "offset": 5,
+     "bytes": 1,
+     "encoding": "ascii",
+     "min": 32,
+     "max": 127,
+     "display": "character"
+    },
+    {
+     "id": "patch_name_7",
+     "name": "Patch Name 7",
+     "offset": 6,
+     "bytes": 1,
+     "encoding": "ascii",
+     "min": 32,
+     "max": 127,
+     "display": "character"
+    },
+    {
+     "id": "patch_name_8",
+     "name": "Patch Name 8",
+     "offset": 7,
+     "bytes": 1,
+     "encoding": "ascii",
+     "min": 32,
+     "max": 127,
+     "display": "character"
+    },
+    {
+     "id": "patch_name_9",
+     "name": "Patch Name 9",
+     "offset": 8,
+     "bytes": 1,
+     "encoding": "ascii",
+     "min": 32,
+     "max": 127,
+     "display": "character"
+    },
+    {
+     "id": "patch_name_10",
+     "name": "Patch Name 10",
+     "offset": 9,
+     "bytes": 1,
+     "encoding": "ascii",
+     "min": 32,
+     "max": 127,
+     "display": "character"
+    },
+    {
+     "id": "patch_name_11",
+     "name": "Patch Name 11",
+     "offset": 10,
+     "bytes": 1,
+     "encoding": "ascii",
+     "min": 32,
+     "max": 127,
+     "display": "character"
+    },
+    {
+     "id": "patch_name_12",
+     "name": "Patch Name 12",
+     "offset": 11,
+     "bytes": 1,
+     "encoding": "ascii",
+     "min": 32,
+     "max": 127,
+     "display": "character"
+    },
+    {
+     "id": "efx_type",
+     "name": "EFX Type",
+     "offset": 12,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 39,
+     "display": "1..40"
+    },
+    {
+     "id": "efx_parameter_1",
+     "name": "EFX Parameter 1",
+     "offset": 13,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "effect-specific; map gives raw 0..127"
+    },
+    {
+     "id": "efx_parameter_2",
+     "name": "EFX Parameter 2",
+     "offset": 14,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "effect-specific; map gives raw 0..127"
+    },
+    {
+     "id": "efx_parameter_3",
+     "name": "EFX Parameter 3",
+     "offset": 15,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "effect-specific; map gives raw 0..127"
+    },
+    {
+     "id": "efx_parameter_4",
+     "name": "EFX Parameter 4",
+     "offset": 16,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "effect-specific; map gives raw 0..127"
+    },
+    {
+     "id": "efx_parameter_5",
+     "name": "EFX Parameter 5",
+     "offset": 17,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "effect-specific; map gives raw 0..127"
+    },
+    {
+     "id": "efx_parameter_6",
+     "name": "EFX Parameter 6",
+     "offset": 18,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "effect-specific; map gives raw 0..127"
+    },
+    {
+     "id": "efx_parameter_7",
+     "name": "EFX Parameter 7",
+     "offset": 19,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "effect-specific; map gives raw 0..127"
+    },
+    {
+     "id": "efx_parameter_8",
+     "name": "EFX Parameter 8",
+     "offset": 20,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "effect-specific; map gives raw 0..127"
+    },
+    {
+     "id": "efx_parameter_9",
+     "name": "EFX Parameter 9",
+     "offset": 21,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "effect-specific; map gives raw 0..127"
+    },
+    {
+     "id": "efx_parameter_10",
+     "name": "EFX Parameter 10",
+     "offset": 22,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "effect-specific; map gives raw 0..127"
+    },
+    {
+     "id": "efx_parameter_11",
+     "name": "EFX Parameter 11",
+     "offset": 23,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "effect-specific; map gives raw 0..127"
+    },
+    {
+     "id": "efx_parameter_12",
+     "name": "EFX Parameter 12",
+     "offset": 24,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "effect-specific; map gives raw 0..127"
+    },
+    {
+     "id": "efx_output_assign",
+     "name": "EFX Output Assign",
+     "offset": 25,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 2,
+     "display": "MIX, DIR, `<OUTPUT-2>`"
+    },
+    {
+     "id": "efx_mix_out_send_level",
+     "name": "EFX Mix Out Send Level",
+     "offset": 26,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "efx_chorus_send_level",
+     "name": "EFX Chorus Send Level",
+     "offset": 27,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "efx_reverb_send_level",
+     "name": "EFX Reverb Send Level",
+     "offset": 28,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "efx_control_source_1",
+     "name": "EFX Control Source 1",
+     "offset": 29,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 10,
+     "display": "OFF, SYS-CTRL1, SYS-CTRL2, MODULATION, BREATH, FOOT, VOLUME, PAN, EXPRESSION, PITCH BEND, AFTERTOUCH"
+    },
+    {
+     "id": "efx_control_depth_1",
+     "name": "EFX Control Depth 1",
+     "offset": 30,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 126,
+     "display": "-63..+63"
+    },
+    {
+     "id": "efx_control_source_2",
+     "name": "EFX Control Source 2",
+     "offset": 31,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 10,
+     "display": "OFF, SYS-CTRL1, SYS-CTRL2, MODULATION, BREATH, FOOT, VOLUME, PAN, EXPRESSION, PITCH BEND, AFTERTOUCH"
+    },
+    {
+     "id": "efx_control_depth_2",
+     "name": "EFX Control Depth 2",
+     "offset": 32,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 126,
+     "display": "-63..+63"
+    },
+    {
+     "id": "chorus_level",
+     "name": "Chorus Level",
+     "offset": 33,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "chorus_rate",
+     "name": "Chorus Rate",
+     "offset": 34,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "chorus_depth",
+     "name": "Chorus Depth",
+     "offset": 35,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "chorus_pre_delay",
+     "name": "Chorus Pre-Delay",
+     "offset": 36,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "chorus_feedback",
+     "name": "Chorus Feedback",
+     "offset": 37,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "chorus_output",
+     "name": "Chorus Output",
+     "offset": 38,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 2,
+     "display": "MIX, REVERB, MIX+REV"
+    },
+    {
+     "id": "reverb_type",
+     "name": "Reverb Type",
+     "offset": 39,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 7,
+     "display": "ROOM1, ROOM2, STAGE1, STAGE2, HALL1, HALL2, DELAY, PAN-DLY"
+    },
+    {
+     "id": "reverb_level",
+     "name": "Reverb Level",
+     "offset": 40,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "reverb_time",
+     "name": "Reverb Time",
+     "offset": 41,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "reverb_hf_damp",
+     "name": "Reverb HF Damp",
+     "offset": 42,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 17,
+     "display": "200, 250, 315, 400, 500, 630, 800, 1000, 1250, 1600, 2000, 2500, 3150, 4000, 5000, 6300, 8000, BYPASS"
+    },
+    {
+     "id": "delay_feedback",
+     "name": "Delay Feedback",
+     "offset": 43,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "patch_tempo",
+     "name": "Patch Tempo",
+     "offset": 44,
+     "bytes": 2,
+     "encoding": "nibble",
+     "min": 20,
+     "max": 250,
+     "display": "20..250"
+    },
+    {
+     "id": "patch_level",
+     "name": "Patch Level",
+     "offset": 46,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "patch_pan",
+     "name": "Patch Pan",
+     "offset": 47,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "L64..63R"
+    },
+    {
+     "id": "analog_feel",
+     "name": "Analog Feel",
+     "offset": 48,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "bend_range_up",
+     "name": "Bend Range Up",
+     "offset": 49,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 12,
+     "display": "0..12"
+    },
+    {
+     "id": "bend_range_down",
+     "name": "Bend Range Down",
+     "offset": 50,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 48,
+     "display": "0..-48"
+    },
+    {
+     "id": "key_assign_mode",
+     "name": "Key Assign Mode",
+     "offset": 51,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "POLY, SOLO"
+    },
+    {
+     "id": "solo_legato",
+     "name": "Solo Legato",
+     "offset": 52,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "OFF, ON"
+    },
+    {
+     "id": "portamento_switch",
+     "name": "Portamento Switch",
+     "offset": 53,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "OFF, ON"
+    },
+    {
+     "id": "portamento_mode",
+     "name": "Portamento Mode",
+     "offset": 54,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "NORMAL, LEGATO"
+    },
+    {
+     "id": "portamento_type",
+     "name": "Portamento Type",
+     "offset": 55,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "RATE, TIME"
+    },
+    {
+     "id": "portamento_start",
+     "name": "Portamento Start",
+     "offset": 56,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "PITCH, NOTE"
+    },
+    {
+     "id": "portamento_time",
+     "name": "Portamento Time",
+     "offset": 57,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "patch_control_source_2",
+     "name": "Patch Control Source 2",
+     "offset": 58,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 15,
+     "display": "OFF, SYS-CTRL1, SYS-CTRL2, MODULATION, BREATH, FOOT, VOLUME, PAN, EXPRESSION, PITCH BEND, AFTERTOUCH, LFO1, LFO2, VELOCITY, KEYFOLLOW, PLAYMATE"
+    },
+    {
+     "id": "patch_control_source_3",
+     "name": "Patch Control Source 3",
+     "offset": 59,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 15,
+     "display": "OFF, SYS-CTRL1, SYS-CTRL2, MODULATION, BREATH, FOOT, VOLUME, PAN, EXPRESSION, PITCH BEND, AFTERTOUCH, LFO1, LFO2, VELOCITY, KEYFOLLOW, PLAYMATE"
+    },
+    {
+     "id": "efx_control_hold_peak",
+     "name": "EFX Control Hold/Peak",
+     "offset": 60,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 2,
+     "display": "OFF, HOLD, PEAK"
+    },
+    {
+     "id": "control_1_hold_peak",
+     "name": "Control 1 Hold/Peak",
+     "offset": 61,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 2,
+     "display": "OFF, HOLD, PEAK"
+    },
+    {
+     "id": "control_2_hold_peak",
+     "name": "Control 2 Hold/Peak",
+     "offset": 62,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 2,
+     "display": "OFF, HOLD, PEAK"
+    },
+    {
+     "id": "control_3_hold_peak",
+     "name": "Control 3 Hold/Peak",
+     "offset": 63,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 2,
+     "display": "OFF, HOLD, PEAK"
+    },
+    {
+     "id": "velocity_range_switch",
+     "name": "Velocity Range Switch",
+     "offset": 64,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "OFF, ON"
+    },
+    {
+     "id": "octave_shift",
+     "name": "Octave Shift",
+     "offset": 65,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 6,
+     "display": "-3..+3"
+    },
+    {
+     "id": "stretch_tune_depth",
+     "name": "Stretch Tune Depth",
+     "offset": 66,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 3,
+     "display": "OFF, 1..3"
+    },
+    {
+     "id": "voice_priority",
+     "name": "Voice Priority",
+     "offset": 67,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "LAST, LOUDEST"
+    },
+    {
+     "id": "structure_type_1_2",
+     "name": "Structure Type 1&2",
+     "offset": 68,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 9,
+     "display": "1..10"
+    },
+    {
+     "id": "booster_1_2",
+     "name": "Booster 1&2",
+     "offset": 69,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 3,
+     "display": "0, +6, +12, +18"
+    },
+    {
+     "id": "structure_type_3_4",
+     "name": "Structure Type 3&4",
+     "offset": 70,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 9,
+     "display": "1..10"
+    },
+    {
+     "id": "booster_3_4",
+     "name": "Booster 3&4",
+     "offset": 71,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 3,
+     "display": "0, +6, +12, +18"
+    },
+    {
+     "id": "clock_source",
+     "name": "Clock Source",
+     "offset": 72,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "PATCH, SEQUENCER"
+    }
+   ]
+  },
+  {
+   "id": "patch_tone",
+   "family": "patch",
+   "name": "Patch Tone",
+   "size": 129,
+   "params": [
+    {
+     "id": "tone_switch",
+     "name": "Tone Switch",
+     "offset": 0,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "OFF, ON"
+    },
+    {
+     "id": "wave_group_type",
+     "name": "Wave Group Type",
+     "offset": 1,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 2,
+     "display": "INT, `<PCM>`, EXP"
+    },
+    {
+     "id": "wave_group_id",
+     "name": "Wave Group ID",
+     "offset": 2,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "wave_number",
+     "name": "Wave Number",
+     "offset": 3,
+     "bytes": 2,
+     "encoding": "nibble",
+     "min": 0,
+     "max": 254,
+     "display": "001..255"
+    },
+    {
+     "id": "wave_gain",
+     "name": "Wave Gain",
+     "offset": 5,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 3,
+     "display": "-6, 0, +6, +12"
+    },
+    {
+     "id": "fxm_switch",
+     "name": "FXM Switch",
+     "offset": 6,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "OFF, ON"
+    },
+    {
+     "id": "fxm_color",
+     "name": "FXM Color",
+     "offset": 7,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 3,
+     "display": "1..4"
+    },
+    {
+     "id": "fxm_depth",
+     "name": "FXM Depth",
+     "offset": 8,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 15,
+     "display": "1..16"
+    },
+    {
+     "id": "tone_delay_mode",
+     "name": "Tone Delay Mode",
+     "offset": 9,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 7,
+     "display": "NORMAL, HOLD, PLAYMATE, CLOCK-SYNC, `<TAP-SYNC>`, KEY-OFF-N, KEY-OFF-D, TEMPO-SYNC"
+    },
+    {
+     "id": "tone_delay_time",
+     "name": "Tone Delay Time",
+     "offset": 10,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "velocity_cross_fade",
+     "name": "Velocity Cross Fade",
+     "offset": 11,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "velocity_range_lower",
+     "name": "Velocity Range Lower",
+     "offset": 12,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 1,
+     "max": 127,
+     "display": "1..Upper"
+    },
+    {
+     "id": "velocity_range_upper",
+     "name": "Velocity Range Upper",
+     "offset": 13,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 1,
+     "max": 127,
+     "display": "Lower..127"
+    },
+    {
+     "id": "keyboard_range_lower",
+     "name": "Keyboard Range Lower",
+     "offset": 14,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "C-1..Upper"
+    },
+    {
+     "id": "keyboard_range_upper",
+     "name": "Keyboard Range Upper",
+     "offset": 15,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "Lower..G9"
+    },
+    {
+     "id": "redamper_control_switch",
+     "name": "Redamper Control Switch",
+     "offset": 16,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "OFF, ON"
+    },
+    {
+     "id": "volume_control_switch",
+     "name": "Volume Control Switch",
+     "offset": 17,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "OFF, ON"
+    },
+    {
+     "id": "hold_1_control_switch",
+     "name": "Hold-1 Control Switch",
+     "offset": 18,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "OFF, ON"
+    },
+    {
+     "id": "bender_control_switch",
+     "name": "Bender Control Switch",
+     "offset": 19,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "OFF, ON"
+    },
+    {
+     "id": "pan_control_switch",
+     "name": "Pan Control Switch",
+     "offset": 20,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 2,
+     "display": "OFF, CONTINUOUS, KEY-ON"
+    },
+    {
+     "id": "controller_1_destination_1",
+     "name": "Controller 1 Destination 1",
+     "offset": 21,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 18,
+     "display": "see Tone footnote 3"
+    },
+    {
+     "id": "controller_1_depth_1",
+     "name": "Controller 1 Depth 1",
+     "offset": 22,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 126,
+     "display": "-63..+63"
+    },
+    {
+     "id": "controller_1_destination_2",
+     "name": "Controller 1 Destination 2",
+     "offset": 23,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 18,
+     "display": "see Tone footnote 3"
+    },
+    {
+     "id": "controller_1_depth_2",
+     "name": "Controller 1 Depth 2",
+     "offset": 24,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 126,
+     "display": "-63..+63"
+    },
+    {
+     "id": "controller_1_destination_3",
+     "name": "Controller 1 Destination 3",
+     "offset": 25,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 18,
+     "display": "see Tone footnote 3"
+    },
+    {
+     "id": "controller_1_depth_3",
+     "name": "Controller 1 Depth 3",
+     "offset": 26,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 126,
+     "display": "-63..+63"
+    },
+    {
+     "id": "controller_1_destination_4",
+     "name": "Controller 1 Destination 4",
+     "offset": 27,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 18,
+     "display": "see Tone footnote 3"
+    },
+    {
+     "id": "controller_1_depth_4",
+     "name": "Controller 1 Depth 4",
+     "offset": 28,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 126,
+     "display": "-63..+63"
+    },
+    {
+     "id": "controller_2_destination_1",
+     "name": "Controller 2 Destination 1",
+     "offset": 29,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 18,
+     "display": "see Tone footnote 3"
+    },
+    {
+     "id": "controller_2_depth_1",
+     "name": "Controller 2 Depth 1",
+     "offset": 30,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 126,
+     "display": "-63..+63"
+    },
+    {
+     "id": "controller_2_destination_2",
+     "name": "Controller 2 Destination 2",
+     "offset": 31,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 18,
+     "display": "see Tone footnote 3"
+    },
+    {
+     "id": "controller_2_depth_2",
+     "name": "Controller 2 Depth 2",
+     "offset": 32,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 126,
+     "display": "-63..+63"
+    },
+    {
+     "id": "controller_2_destination_3",
+     "name": "Controller 2 Destination 3",
+     "offset": 33,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 18,
+     "display": "see Tone footnote 3"
+    },
+    {
+     "id": "controller_2_depth_3",
+     "name": "Controller 2 Depth 3",
+     "offset": 34,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 126,
+     "display": "-63..+63"
+    },
+    {
+     "id": "controller_2_destination_4",
+     "name": "Controller 2 Destination 4",
+     "offset": 35,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 18,
+     "display": "see Tone footnote 3"
+    },
+    {
+     "id": "controller_2_depth_4",
+     "name": "Controller 2 Depth 4",
+     "offset": 36,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 126,
+     "display": "-63..+63"
+    },
+    {
+     "id": "controller_3_destination_1",
+     "name": "Controller 3 Destination 1",
+     "offset": 37,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 18,
+     "display": "see Tone footnote 3"
+    },
+    {
+     "id": "controller_3_depth_1",
+     "name": "Controller 3 Depth 1",
+     "offset": 38,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 126,
+     "display": "-63..+63"
+    },
+    {
+     "id": "controller_3_destination_2",
+     "name": "Controller 3 Destination 2",
+     "offset": 39,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 18,
+     "display": "see Tone footnote 3"
+    },
+    {
+     "id": "controller_3_depth_2",
+     "name": "Controller 3 Depth 2",
+     "offset": 40,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 126,
+     "display": "-63..+63"
+    },
+    {
+     "id": "controller_3_destination_3",
+     "name": "Controller 3 Destination 3",
+     "offset": 41,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 18,
+     "display": "see Tone footnote 3"
+    },
+    {
+     "id": "controller_3_depth_3",
+     "name": "Controller 3 Depth 3",
+     "offset": 42,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 126,
+     "display": "-63..+63"
+    },
+    {
+     "id": "controller_3_destination_4",
+     "name": "Controller 3 Destination 4",
+     "offset": 43,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 18,
+     "display": "see Tone footnote 3"
+    },
+    {
+     "id": "controller_3_depth_4",
+     "name": "Controller 3 Depth 4",
+     "offset": 44,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 126,
+     "display": "-63..+63"
+    },
+    {
+     "id": "lfo1_waveform",
+     "name": "LFO1 Waveform",
+     "offset": 45,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 7,
+     "display": "see Tone footnote 4"
+    },
+    {
+     "id": "lfo1_key_trigger",
+     "name": "LFO1 Key Trigger",
+     "offset": 46,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "OFF, ON"
+    },
+    {
+     "id": "lfo1_rate",
+     "name": "LFO1 Rate",
+     "offset": 47,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "lfo1_offset",
+     "name": "LFO1 Offset",
+     "offset": 48,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 4,
+     "display": "see Tone footnote 5"
+    },
+    {
+     "id": "lfo1_delay_time",
+     "name": "LFO1 Delay Time",
+     "offset": 49,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "lfo1_fade_mode",
+     "name": "LFO1 Fade Mode",
+     "offset": 50,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 3,
+     "display": "see Tone footnote 6"
+    },
+    {
+     "id": "lfo1_fade_time",
+     "name": "LFO1 Fade Time",
+     "offset": 51,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "lfo1_external_sync",
+     "name": "LFO1 External Sync",
+     "offset": 52,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 2,
+     "display": "see Tone footnote 7"
+    },
+    {
+     "id": "lfo2_waveform",
+     "name": "LFO2 Waveform",
+     "offset": 53,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 7,
+     "display": "see Tone footnote 4"
+    },
+    {
+     "id": "lfo2_key_trigger",
+     "name": "LFO2 Key Trigger",
+     "offset": 54,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "OFF, ON"
+    },
+    {
+     "id": "lfo2_rate",
+     "name": "LFO2 Rate",
+     "offset": 55,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "lfo2_offset",
+     "name": "LFO2 Offset",
+     "offset": 56,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 4,
+     "display": "see Tone footnote 5"
+    },
+    {
+     "id": "lfo2_delay_time",
+     "name": "LFO2 Delay Time",
+     "offset": 57,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "lfo2_fade_mode",
+     "name": "LFO2 Fade Mode",
+     "offset": 58,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 3,
+     "display": "see Tone footnote 6"
+    },
+    {
+     "id": "lfo2_fade_time",
+     "name": "LFO2 Fade Time",
+     "offset": 59,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "lfo2_external_sync",
+     "name": "LFO2 External Sync",
+     "offset": 60,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 2,
+     "display": "see Tone footnote 7"
+    },
+    {
+     "id": "coarse_tune",
+     "name": "Coarse Tune",
+     "offset": 61,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 96,
+     "display": "-48..+48"
+    },
+    {
+     "id": "fine_tune",
+     "name": "Fine Tune",
+     "offset": 62,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 100,
+     "display": "-50..+50"
+    },
+    {
+     "id": "random_pitch_depth",
+     "name": "Random Pitch Depth",
+     "offset": 63,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 30,
+     "display": "see Tone footnote 8"
+    },
+    {
+     "id": "pitch_keyfollow",
+     "name": "Pitch Keyfollow",
+     "offset": 64,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 15,
+     "display": "see Tone footnote 9"
+    },
+    {
+     "id": "pitch_envelope_depth",
+     "name": "Pitch Envelope Depth",
+     "offset": 65,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 24,
+     "display": "-12..+12"
+    },
+    {
+     "id": "pitch_envelope_velocity_sens",
+     "name": "Pitch Envelope Velocity Sens",
+     "offset": 66,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 125,
+     "display": "-100..+150"
+    },
+    {
+     "id": "pitch_envelope_velocity_time1",
+     "name": "Pitch Envelope Velocity Time1",
+     "offset": 67,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 14,
+     "display": "see Tone footnote 10"
+    },
+    {
+     "id": "pitch_envelope_velocity_time4",
+     "name": "Pitch Envelope Velocity Time4",
+     "offset": 68,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 14,
+     "display": "see Tone footnote 10"
+    },
+    {
+     "id": "pitch_envelope_time_keyfollow",
+     "name": "Pitch Envelope Time Keyfollow",
+     "offset": 69,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 14,
+     "display": "see Tone footnote 10"
+    },
+    {
+     "id": "pitch_envelope_time_1",
+     "name": "Pitch Envelope Time 1",
+     "offset": 70,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "pitch_envelope_time_2",
+     "name": "Pitch Envelope Time 2",
+     "offset": 71,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "pitch_envelope_time_3",
+     "name": "Pitch Envelope Time 3",
+     "offset": 72,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "pitch_envelope_time_4",
+     "name": "Pitch Envelope Time 4",
+     "offset": 73,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "pitch_envelope_level_1",
+     "name": "Pitch Envelope Level 1",
+     "offset": 74,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 126,
+     "display": "-63..+63"
+    },
+    {
+     "id": "pitch_envelope_level_2",
+     "name": "Pitch Envelope Level 2",
+     "offset": 75,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 126,
+     "display": "-63..+63"
+    },
+    {
+     "id": "pitch_envelope_level_3",
+     "name": "Pitch Envelope Level 3",
+     "offset": 76,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 126,
+     "display": "-63..+63"
+    },
+    {
+     "id": "pitch_envelope_level_4",
+     "name": "Pitch Envelope Level 4",
+     "offset": 77,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 126,
+     "display": "-63..+63"
+    },
+    {
+     "id": "pitch_lfo1_depth",
+     "name": "Pitch LFO1 Depth",
+     "offset": 78,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 126,
+     "display": "-63..+63"
+    },
+    {
+     "id": "pitch_lfo2_depth",
+     "name": "Pitch LFO2 Depth",
+     "offset": 79,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 126,
+     "display": "-63..+63"
+    },
+    {
+     "id": "filter_type",
+     "name": "Filter Type",
+     "offset": 80,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 4,
+     "display": "see Tone footnote 11"
+    },
+    {
+     "id": "cutoff_frequency",
+     "name": "Cutoff Frequency",
+     "offset": 81,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "cutoff_keyfollow",
+     "name": "Cutoff Keyfollow",
+     "offset": 82,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 15,
+     "display": "see Tone footnote 9"
+    },
+    {
+     "id": "resonance",
+     "name": "Resonance",
+     "offset": 83,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "resonance_velocity_sens",
+     "name": "Resonance Velocity Sens",
+     "offset": 84,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 125,
+     "display": "-100..+150"
+    },
+    {
+     "id": "filter_envelope_depth",
+     "name": "Filter Envelope Depth",
+     "offset": 85,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 126,
+     "display": "-63..+63"
+    },
+    {
+     "id": "filter_envelope_velocity_curve",
+     "name": "Filter Envelope Velocity Curve",
+     "offset": 86,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 6,
+     "display": "1..7"
+    },
+    {
+     "id": "filter_envelope_velocity_sens",
+     "name": "Filter Envelope Velocity Sens",
+     "offset": 87,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 125,
+     "display": "-100..+150"
+    },
+    {
+     "id": "filter_envelope_velocity_time1",
+     "name": "Filter Envelope Velocity Time1",
+     "offset": 88,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 14,
+     "display": "see Tone footnote 10"
+    },
+    {
+     "id": "filter_envelope_velocity_time4",
+     "name": "Filter Envelope Velocity Time4",
+     "offset": 89,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 14,
+     "display": "see Tone footnote 10"
+    },
+    {
+     "id": "filter_envelope_time_keyfollow",
+     "name": "Filter Envelope Time Keyfollow",
+     "offset": 90,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 14,
+     "display": "see Tone footnote 10"
+    },
+    {
+     "id": "filter_envelope_time_1",
+     "name": "Filter Envelope Time 1",
+     "offset": 91,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "filter_envelope_time_2",
+     "name": "Filter Envelope Time 2",
+     "offset": 92,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "filter_envelope_time_3",
+     "name": "Filter Envelope Time 3",
+     "offset": 93,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "filter_envelope_time_4",
+     "name": "Filter Envelope Time 4",
+     "offset": 94,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "filter_envelope_level_1",
+     "name": "Filter Envelope Level 1",
+     "offset": 95,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "filter_envelope_level_2",
+     "name": "Filter Envelope Level 2",
+     "offset": 96,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "filter_envelope_level_3",
+     "name": "Filter Envelope Level 3",
+     "offset": 97,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "filter_envelope_level_4",
+     "name": "Filter Envelope Level 4",
+     "offset": 98,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "filter_lfo1_depth",
+     "name": "Filter LFO1 Depth",
+     "offset": 99,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 126,
+     "display": "-63..+63"
+    },
+    {
+     "id": "filter_lfo2_depth",
+     "name": "Filter LFO2 Depth",
+     "offset": 100,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 126,
+     "display": "-63..+63"
+    },
+    {
+     "id": "tone_level",
+     "name": "Tone Level",
+     "offset": 101,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "bias_direction",
+     "name": "Bias Direction",
+     "offset": 102,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 3,
+     "display": "see Tone footnote 13"
+    },
+    {
+     "id": "bias_position",
+     "name": "Bias Position",
+     "offset": 103,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "C-1..G9"
+    },
+    {
+     "id": "bias_level",
+     "name": "Bias Level",
+     "offset": 104,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 14,
+     "display": "see Tone footnote 10"
+    },
+    {
+     "id": "level_envelope_velocity_curve",
+     "name": "Level Envelope Velocity Curve",
+     "offset": 105,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 6,
+     "display": "1..7"
+    },
+    {
+     "id": "level_envelope_velocity_sens",
+     "name": "Level Envelope Velocity Sens",
+     "offset": 106,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 125,
+     "display": "-100..+150"
+    },
+    {
+     "id": "level_envelope_velocity_time1",
+     "name": "Level Envelope Velocity Time1",
+     "offset": 107,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 14,
+     "display": "see Tone footnote 10"
+    },
+    {
+     "id": "level_envelope_velocity_time4",
+     "name": "Level Envelope Velocity Time4",
+     "offset": 108,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 14,
+     "display": "see Tone footnote 10"
+    },
+    {
+     "id": "level_envelope_time_keyfollow",
+     "name": "Level Envelope Time Keyfollow",
+     "offset": 109,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 14,
+     "display": "see Tone footnote 10"
+    },
+    {
+     "id": "level_envelope_time_1",
+     "name": "Level Envelope Time 1",
+     "offset": 110,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "level_envelope_time_2",
+     "name": "Level Envelope Time 2",
+     "offset": 111,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "level_envelope_time_3",
+     "name": "Level Envelope Time 3",
+     "offset": 112,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "level_envelope_time_4",
+     "name": "Level Envelope Time 4",
+     "offset": 113,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "level_envelope_level_1",
+     "name": "Level Envelope Level 1",
+     "offset": 114,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "level_envelope_level_2",
+     "name": "Level Envelope Level 2",
+     "offset": 115,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "level_envelope_level_3",
+     "name": "Level Envelope Level 3",
+     "offset": 116,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "level_lfo1_depth",
+     "name": "Level LFO1 Depth",
+     "offset": 117,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 126,
+     "display": "-63..+63"
+    },
+    {
+     "id": "level_lfo2_depth",
+     "name": "Level LFO2 Depth",
+     "offset": 118,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 126,
+     "display": "-63..+63"
+    },
+    {
+     "id": "tone_pan",
+     "name": "Tone Pan",
+     "offset": 119,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "L64..63R"
+    },
+    {
+     "id": "pan_keyfollow",
+     "name": "Pan Keyfollow",
+     "offset": 120,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 14,
+     "display": "see Tone footnote 10"
+    },
+    {
+     "id": "random_pan_depth",
+     "name": "Random Pan Depth",
+     "offset": 121,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 63,
+     "display": "same as raw"
+    },
+    {
+     "id": "alternate_pan_depth",
+     "name": "Alternate Pan Depth",
+     "offset": 122,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 1,
+     "max": 127,
+     "display": "L63..63R"
+    },
+    {
+     "id": "pan_lfo1_depth",
+     "name": "Pan LFO1 Depth",
+     "offset": 123,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 126,
+     "display": "-63..+63"
+    },
+    {
+     "id": "pan_lfo2_depth",
+     "name": "Pan LFO2 Depth",
+     "offset": 124,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 126,
+     "display": "-63..+63"
+    },
+    {
+     "id": "output_assign",
+     "name": "Output Assign",
+     "offset": 125,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 3,
+     "display": "see Tone footnote 12"
+    },
+    {
+     "id": "mix_efx_send_level",
+     "name": "Mix/EFX Send Level",
+     "offset": 126,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "chorus_send_level",
+     "name": "Chorus Send Level",
+     "offset": 127,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "reverb_send_level",
+     "name": "Reverb Send Level",
+     "offset": 128,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    }
+   ]
+  },
+  {
+   "id": "performance_common",
+   "family": "performance",
+   "name": "Performance Common",
+   "size": 66,
+   "params": [
+    {
+     "id": "performance_name_1",
+     "name": "Performance Name 1",
+     "offset": 0,
+     "bytes": 1,
+     "encoding": "ascii",
+     "min": 32,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "performance_name_2",
+     "name": "Performance Name 2",
+     "offset": 1,
+     "bytes": 1,
+     "encoding": "ascii",
+     "min": 32,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "performance_name_3",
+     "name": "Performance Name 3",
+     "offset": 2,
+     "bytes": 1,
+     "encoding": "ascii",
+     "min": 32,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "performance_name_4",
+     "name": "Performance Name 4",
+     "offset": 3,
+     "bytes": 1,
+     "encoding": "ascii",
+     "min": 32,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "performance_name_5",
+     "name": "Performance Name 5",
+     "offset": 4,
+     "bytes": 1,
+     "encoding": "ascii",
+     "min": 32,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "performance_name_6",
+     "name": "Performance Name 6",
+     "offset": 5,
+     "bytes": 1,
+     "encoding": "ascii",
+     "min": 32,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "performance_name_7",
+     "name": "Performance Name 7",
+     "offset": 6,
+     "bytes": 1,
+     "encoding": "ascii",
+     "min": 32,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "performance_name_8",
+     "name": "Performance Name 8",
+     "offset": 7,
+     "bytes": 1,
+     "encoding": "ascii",
+     "min": 32,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "performance_name_9",
+     "name": "Performance Name 9",
+     "offset": 8,
+     "bytes": 1,
+     "encoding": "ascii",
+     "min": 32,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "performance_name_10",
+     "name": "Performance Name 10",
+     "offset": 9,
+     "bytes": 1,
+     "encoding": "ascii",
+     "min": 32,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "performance_name_11",
+     "name": "Performance Name 11",
+     "offset": 10,
+     "bytes": 1,
+     "encoding": "ascii",
+     "min": 32,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "performance_name_12",
+     "name": "Performance Name 12",
+     "offset": 11,
+     "bytes": 1,
+     "encoding": "ascii",
+     "min": 32,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "efx_source",
+     "name": "EFX Source",
+     "offset": 12,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 15,
+     "display": "PERFORM, 1..9, 11..16"
+    },
+    {
+     "id": "efx_type",
+     "name": "EFX Type",
+     "offset": 13,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 39,
+     "display": "1..40"
+    },
+    {
+     "id": "efx_parameter_1",
+     "name": "EFX Parameter 1",
+     "offset": 14,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "efx_parameter_2",
+     "name": "EFX Parameter 2",
+     "offset": 15,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "efx_parameter_3",
+     "name": "EFX Parameter 3",
+     "offset": 16,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "efx_parameter_4",
+     "name": "EFX Parameter 4",
+     "offset": 17,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "efx_parameter_5",
+     "name": "EFX Parameter 5",
+     "offset": 18,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "efx_parameter_6",
+     "name": "EFX Parameter 6",
+     "offset": 19,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "efx_parameter_7",
+     "name": "EFX Parameter 7",
+     "offset": 20,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "efx_parameter_8",
+     "name": "EFX Parameter 8",
+     "offset": 21,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "efx_parameter_9",
+     "name": "EFX Parameter 9",
+     "offset": 22,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "efx_parameter_10",
+     "name": "EFX Parameter 10",
+     "offset": 23,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "efx_parameter_11",
+     "name": "EFX Parameter 11",
+     "offset": 24,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "efx_parameter_12",
+     "name": "EFX Parameter 12",
+     "offset": 25,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "efx_output_assign",
+     "name": "EFX Output Assign",
+     "offset": 26,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 2,
+     "display": "MIX, DIR, `<OUTPUT-2>`"
+    },
+    {
+     "id": "efx_mix_out_send_level",
+     "name": "EFX Mix Out Send Level",
+     "offset": 27,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "efx_chorus_send_level",
+     "name": "EFX Chorus Send Level",
+     "offset": 28,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "efx_reverb_send_level",
+     "name": "EFX Reverb Send Level",
+     "offset": 29,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "efx_control_source_1",
+     "name": "EFX Control Source 1",
+     "offset": 30,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 10,
+     "display": "OFF, SYS-CTRL1, SYS-CTRL2, MODULATION, BREATH, FOOT, VOLUME, PAN, EXPRESSION, PITCH BEND, AFTERTOUCH"
+    },
+    {
+     "id": "efx_control_depth_1",
+     "name": "EFX Control Depth 1",
+     "offset": 31,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 126,
+     "display": "-63..+63"
+    },
+    {
+     "id": "efx_control_source_2",
+     "name": "EFX Control Source 2",
+     "offset": 32,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 10,
+     "display": "OFF, SYS-CTRL1, SYS-CTRL2, MODULATION, BREATH, FOOT, VOLUME, PAN, EXPRESSION, PITCH BEND, AFTERTOUCH"
+    },
+    {
+     "id": "efx_control_depth_2",
+     "name": "EFX Control Depth 2",
+     "offset": 33,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 126,
+     "display": "-63..+63"
+    },
+    {
+     "id": "chorus_level",
+     "name": "Chorus Level",
+     "offset": 34,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "chorus_rate",
+     "name": "Chorus Rate",
+     "offset": 35,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "chorus_depth",
+     "name": "Chorus Depth",
+     "offset": 36,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "chorus_pre_delay",
+     "name": "Chorus Pre-Delay",
+     "offset": 37,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "chorus_feedback",
+     "name": "Chorus Feedback",
+     "offset": 38,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "chorus_output",
+     "name": "Chorus Output",
+     "offset": 39,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 2,
+     "display": "MIX, REVERB, MIX+REV"
+    },
+    {
+     "id": "reverb_type",
+     "name": "Reverb Type",
+     "offset": 40,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 7,
+     "display": "ROOM1, ROOM2, STAGE1, STAGE2, HALL1, HALL2, DELAY, PAN-DLY"
+    },
+    {
+     "id": "reverb_level",
+     "name": "Reverb Level",
+     "offset": 41,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "reverb_time",
+     "name": "Reverb Time",
+     "offset": 42,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "reverb_hf_damp",
+     "name": "Reverb HF Damp",
+     "offset": 43,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 17,
+     "display": "200, 250, 315, 400, 500, 630, 800, 1000, 1250, 1600, 2000, 2500, 3150, 4000, 5000, 6300, 8000, BYPASS"
+    },
+    {
+     "id": "delay_feedback",
+     "name": "Delay Feedback",
+     "offset": 44,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "performance_tempo",
+     "name": "Performance Tempo",
+     "offset": 45,
+     "bytes": 2,
+     "encoding": "nibble",
+     "min": 20,
+     "max": 250,
+     "display": "same as raw"
+    },
+    {
+     "id": "keyboard_range_switch",
+     "name": "Keyboard Range Switch",
+     "offset": 47,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "OFF, ON"
+    },
+    {
+     "id": "voice_reserve_1",
+     "name": "Voice Reserve 1",
+     "offset": 48,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 64,
+     "display": "same as raw"
+    },
+    {
+     "id": "voice_reserve_2",
+     "name": "Voice Reserve 2",
+     "offset": 49,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 64,
+     "display": "same as raw"
+    },
+    {
+     "id": "voice_reserve_3",
+     "name": "Voice Reserve 3",
+     "offset": 50,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 64,
+     "display": "same as raw"
+    },
+    {
+     "id": "voice_reserve_4",
+     "name": "Voice Reserve 4",
+     "offset": 51,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 64,
+     "display": "same as raw"
+    },
+    {
+     "id": "voice_reserve_5",
+     "name": "Voice Reserve 5",
+     "offset": 52,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 64,
+     "display": "same as raw"
+    },
+    {
+     "id": "voice_reserve_6",
+     "name": "Voice Reserve 6",
+     "offset": 53,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 64,
+     "display": "same as raw"
+    },
+    {
+     "id": "voice_reserve_7",
+     "name": "Voice Reserve 7",
+     "offset": 54,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 64,
+     "display": "same as raw"
+    },
+    {
+     "id": "voice_reserve_8",
+     "name": "Voice Reserve 8",
+     "offset": 55,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 64,
+     "display": "same as raw"
+    },
+    {
+     "id": "voice_reserve_9",
+     "name": "Voice Reserve 9",
+     "offset": 56,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 64,
+     "display": "same as raw"
+    },
+    {
+     "id": "voice_reserve_10",
+     "name": "Voice Reserve 10",
+     "offset": 57,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 64,
+     "display": "same as raw"
+    },
+    {
+     "id": "voice_reserve_11",
+     "name": "Voice Reserve 11",
+     "offset": 58,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 64,
+     "display": "same as raw"
+    },
+    {
+     "id": "voice_reserve_12",
+     "name": "Voice Reserve 12",
+     "offset": 59,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 64,
+     "display": "same as raw"
+    },
+    {
+     "id": "voice_reserve_13",
+     "name": "Voice Reserve 13",
+     "offset": 60,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 64,
+     "display": "same as raw"
+    },
+    {
+     "id": "voice_reserve_14",
+     "name": "Voice Reserve 14",
+     "offset": 61,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 64,
+     "display": "same as raw"
+    },
+    {
+     "id": "voice_reserve_15",
+     "name": "Voice Reserve 15",
+     "offset": 62,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 64,
+     "display": "same as raw"
+    },
+    {
+     "id": "voice_reserve_16",
+     "name": "Voice Reserve 16",
+     "offset": 63,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 64,
+     "display": "same as raw"
+    },
+    {
+     "id": "keyboard_mode",
+     "name": "Keyboard Mode",
+     "offset": 64,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "LAYER, SINGLE"
+    },
+    {
+     "id": "clock_source",
+     "name": "Clock Source",
+     "offset": 65,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "PERFORMANCE, SEQUENCER"
+    }
+   ]
+  },
+  {
+   "id": "performance_part",
+   "family": "performance",
+   "name": "Performance Part",
+   "size": 25,
+   "params": [
+    {
+     "id": "receive_switch",
+     "name": "Receive Switch",
+     "offset": 0,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "OFF, ON"
+    },
+    {
+     "id": "midi_channel",
+     "name": "MIDI Channel",
+     "offset": 1,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 15,
+     "display": "1..16"
+    },
+    {
+     "id": "patch_group_type",
+     "name": "Patch Group Type",
+     "offset": 2,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 2,
+     "display": "USER&PRESET, `<PCM>`, EXP"
+    },
+    {
+     "id": "patch_group_id",
+     "name": "Patch Group ID",
+     "offset": 3,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "patch_number",
+     "name": "Patch Number",
+     "offset": 4,
+     "bytes": 2,
+     "encoding": "nibble",
+     "min": 0,
+     "max": 254,
+     "display": "001..255"
+    },
+    {
+     "id": "part_level",
+     "name": "Part Level",
+     "offset": 6,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "part_pan",
+     "name": "Part Pan",
+     "offset": 7,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "L64..63R"
+    },
+    {
+     "id": "part_coarse_tune",
+     "name": "Part Coarse Tune",
+     "offset": 8,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 96,
+     "display": "-48..+48"
+    },
+    {
+     "id": "part_fine_tune",
+     "name": "Part Fine Tune",
+     "offset": 9,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 100,
+     "display": "-50..+50"
+    },
+    {
+     "id": "output_assign",
+     "name": "Output Assign",
+     "offset": 10,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 4,
+     "display": "MIX, EFX, DIR, `<OUTPUT-2>`, PAT"
+    },
+    {
+     "id": "mix_efx_send_level",
+     "name": "Mix/EFX Send Level",
+     "offset": 11,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "chorus_send_level",
+     "name": "Chorus Send Level",
+     "offset": 12,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "reverb_send_level",
+     "name": "Reverb Send Level",
+     "offset": 13,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "receive_program_change_switch",
+     "name": "Receive Program Change Switch",
+     "offset": 14,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "OFF, ON"
+    },
+    {
+     "id": "receive_volume_switch",
+     "name": "Receive Volume Switch",
+     "offset": 15,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "OFF, ON"
+    },
+    {
+     "id": "receive_hold_1_switch",
+     "name": "Receive Hold-1 Switch",
+     "offset": 16,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "OFF, ON"
+    },
+    {
+     "id": "keyboard_range_lower",
+     "name": "Keyboard Range Lower",
+     "offset": 17,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "C-1..Upper"
+    },
+    {
+     "id": "keyboard_range_upper",
+     "name": "Keyboard Range Upper",
+     "offset": 18,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "Lower..G9"
+    },
+    {
+     "id": "octave_shift",
+     "name": "Octave Shift",
+     "offset": 19,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 6,
+     "display": "-3..+3"
+    },
+    {
+     "id": "local_switch",
+     "name": "Local Switch",
+     "offset": 20,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "OFF, ON"
+    },
+    {
+     "id": "transmit_switch",
+     "name": "Transmit Switch",
+     "offset": 21,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "OFF, ON"
+    },
+    {
+     "id": "transmit_bank_select_group",
+     "name": "Transmit Bank Select Group",
+     "offset": 22,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 7,
+     "display": "PATCH, GROUP1, GROUP2, GROUP3, GROUP4, GROUP5, GROUP6, GROUP7"
+    },
+    {
+     "id": "transmit_volume",
+     "name": "Transmit Volume",
+     "offset": 23,
+     "bytes": 2,
+     "encoding": "nibble",
+     "min": 0,
+     "max": 128,
+     "display": "0..127, OFF"
+    }
+   ]
+  },
+  {
+   "id": "rhythm_common",
+   "family": "rhythm",
+   "name": "Rhythm Common",
+   "size": 12,
+   "params": [
+    {
+     "id": "rhythm_name_1",
+     "name": "Rhythm Name 1",
+     "offset": 0,
+     "bytes": 1,
+     "encoding": "ascii",
+     "min": 32,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "rhythm_name_2",
+     "name": "Rhythm Name 2",
+     "offset": 1,
+     "bytes": 1,
+     "encoding": "ascii",
+     "min": 32,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "rhythm_name_3",
+     "name": "Rhythm Name 3",
+     "offset": 2,
+     "bytes": 1,
+     "encoding": "ascii",
+     "min": 32,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "rhythm_name_4",
+     "name": "Rhythm Name 4",
+     "offset": 3,
+     "bytes": 1,
+     "encoding": "ascii",
+     "min": 32,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "rhythm_name_5",
+     "name": "Rhythm Name 5",
+     "offset": 4,
+     "bytes": 1,
+     "encoding": "ascii",
+     "min": 32,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "rhythm_name_6",
+     "name": "Rhythm Name 6",
+     "offset": 5,
+     "bytes": 1,
+     "encoding": "ascii",
+     "min": 32,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "rhythm_name_7",
+     "name": "Rhythm Name 7",
+     "offset": 6,
+     "bytes": 1,
+     "encoding": "ascii",
+     "min": 32,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "rhythm_name_8",
+     "name": "Rhythm Name 8",
+     "offset": 7,
+     "bytes": 1,
+     "encoding": "ascii",
+     "min": 32,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "rhythm_name_9",
+     "name": "Rhythm Name 9",
+     "offset": 8,
+     "bytes": 1,
+     "encoding": "ascii",
+     "min": 32,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "rhythm_name_10",
+     "name": "Rhythm Name 10",
+     "offset": 9,
+     "bytes": 1,
+     "encoding": "ascii",
+     "min": 32,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "rhythm_name_11",
+     "name": "Rhythm Name 11",
+     "offset": 10,
+     "bytes": 1,
+     "encoding": "ascii",
+     "min": 32,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "rhythm_name_12",
+     "name": "Rhythm Name 12",
+     "offset": 11,
+     "bytes": 1,
+     "encoding": "ascii",
+     "min": 32,
+     "max": 127,
+     "display": "same as raw"
+    }
+   ]
+  },
+  {
+   "id": "rhythm_note",
+   "family": "rhythm",
+   "name": "Rhythm Note",
+   "size": 58,
+   "params": [
+    {
+     "id": "tone_switch",
+     "name": "Tone Switch",
+     "offset": 0,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "OFF, ON"
+    },
+    {
+     "id": "wave_group_type",
+     "name": "Wave Group Type",
+     "offset": 1,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 2,
+     "display": "INT, `<PCM>`, EXP"
+    },
+    {
+     "id": "wave_group_id",
+     "name": "Wave Group ID",
+     "offset": 2,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "wave_number",
+     "name": "Wave Number",
+     "offset": 3,
+     "bytes": 2,
+     "encoding": "nibble",
+     "min": 0,
+     "max": 254,
+     "display": "001..255"
+    },
+    {
+     "id": "wave_gain",
+     "name": "Wave Gain",
+     "offset": 5,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 3,
+     "display": "-6, 0, +6, +12"
+    },
+    {
+     "id": "bend_range",
+     "name": "Bend Range",
+     "offset": 6,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 12,
+     "display": "same as raw"
+    },
+    {
+     "id": "mute_group",
+     "name": "Mute Group",
+     "offset": 7,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 31,
+     "display": "OFF, 1..31"
+    },
+    {
+     "id": "envelope_mode",
+     "name": "Envelope Mode",
+     "offset": 8,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "NO-SUS, SUSTAIN"
+    },
+    {
+     "id": "volume_control_switch",
+     "name": "Volume Control Switch",
+     "offset": 9,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "OFF, ON"
+    },
+    {
+     "id": "hold_1_control_switch",
+     "name": "Hold-1 Control Switch",
+     "offset": 10,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "OFF, ON"
+    },
+    {
+     "id": "pan_control_switch",
+     "name": "Pan Control Switch",
+     "offset": 11,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 2,
+     "display": "OFF, CONTINUOUS, KEY-ON"
+    },
+    {
+     "id": "source_key",
+     "name": "Source Key",
+     "offset": 12,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "C-1..G9"
+    },
+    {
+     "id": "fine_tune",
+     "name": "Fine Tune",
+     "offset": 13,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 100,
+     "display": "-50..+50"
+    },
+    {
+     "id": "random_pitch_depth",
+     "name": "Random Pitch Depth",
+     "offset": 14,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 30,
+     "display": "0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200"
+    },
+    {
+     "id": "pitch_envelope_depth",
+     "name": "Pitch Envelope Depth",
+     "offset": 15,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 24,
+     "display": "-12..+12"
+    },
+    {
+     "id": "pitch_envelope_velocity_sens",
+     "name": "Pitch Envelope Velocity Sens",
+     "offset": 16,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 125,
+     "display": "-100..+150"
+    },
+    {
+     "id": "pitch_envelope_velocity_time",
+     "name": "Pitch Envelope Velocity Time",
+     "offset": 17,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 14,
+     "display": "-100, -70, -50, -40, -30, -20, -10, 0, +10, +20, +30, +40, +50, +70, +100"
+    },
+    {
+     "id": "pitch_envelope_time_1",
+     "name": "Pitch Envelope Time 1",
+     "offset": 18,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "pitch_envelope_time_2",
+     "name": "Pitch Envelope Time 2",
+     "offset": 19,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "pitch_envelope_time_3",
+     "name": "Pitch Envelope Time 3",
+     "offset": 20,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "pitch_envelope_time_4",
+     "name": "Pitch Envelope Time 4",
+     "offset": 21,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "pitch_envelope_level_1",
+     "name": "Pitch Envelope Level 1",
+     "offset": 22,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 126,
+     "display": "-63..+63"
+    },
+    {
+     "id": "pitch_envelope_level_2",
+     "name": "Pitch Envelope Level 2",
+     "offset": 23,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 126,
+     "display": "-63..+63"
+    },
+    {
+     "id": "pitch_envelope_level_3",
+     "name": "Pitch Envelope Level 3",
+     "offset": 24,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 126,
+     "display": "-63..+63"
+    },
+    {
+     "id": "pitch_envelope_level_4",
+     "name": "Pitch Envelope Level 4",
+     "offset": 25,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 126,
+     "display": "-63..+63"
+    },
+    {
+     "id": "filter_type",
+     "name": "Filter Type",
+     "offset": 26,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 4,
+     "display": "OFF, LPF, BPF, HPF, PKG"
+    },
+    {
+     "id": "cutoff_frequency",
+     "name": "Cutoff Frequency",
+     "offset": 27,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "resonance",
+     "name": "Resonance",
+     "offset": 28,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "resonance_velocity_sens",
+     "name": "Resonance Velocity Sens",
+     "offset": 29,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 125,
+     "display": "-100..+150"
+    },
+    {
+     "id": "filter_envelope_depth",
+     "name": "Filter Envelope Depth",
+     "offset": 30,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 126,
+     "display": "-63..+63"
+    },
+    {
+     "id": "filter_envelope_velocity_sens",
+     "name": "Filter Envelope Velocity Sens",
+     "offset": 31,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 125,
+     "display": "-100..+150"
+    },
+    {
+     "id": "filter_envelope_velocity_time",
+     "name": "Filter Envelope Velocity Time",
+     "offset": 32,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 14,
+     "display": "-100, -70, -50, -40, -30, -20, -10, 0, +10, +20, +30, +40, +50, +70, +100"
+    },
+    {
+     "id": "filter_envelope_time_1",
+     "name": "Filter Envelope Time 1",
+     "offset": 33,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "filter_envelope_time_2",
+     "name": "Filter Envelope Time 2",
+     "offset": 34,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "filter_envelope_time_3",
+     "name": "Filter Envelope Time 3",
+     "offset": 35,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "filter_envelope_time_4",
+     "name": "Filter Envelope Time 4",
+     "offset": 36,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "filter_envelope_level_1",
+     "name": "Filter Envelope Level 1",
+     "offset": 37,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "filter_envelope_level_2",
+     "name": "Filter Envelope Level 2",
+     "offset": 38,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "filter_envelope_level_3",
+     "name": "Filter Envelope Level 3",
+     "offset": 39,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "filter_envelope_level_4",
+     "name": "Filter Envelope Level 4",
+     "offset": 40,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "tone_level",
+     "name": "Tone Level",
+     "offset": 41,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "level_envelope_velocity_sens",
+     "name": "Level Envelope Velocity Sens",
+     "offset": 42,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 125,
+     "display": "-100..+150"
+    },
+    {
+     "id": "level_envelope_velocity_time",
+     "name": "Level Envelope Velocity Time",
+     "offset": 43,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 14,
+     "display": "-100, -70, -50, -40, -30, -20, -10, 0, +10, +20, +30, +40, +50, +70, +100"
+    },
+    {
+     "id": "level_envelope_time_1",
+     "name": "Level Envelope Time 1",
+     "offset": 44,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "level_envelope_time_2",
+     "name": "Level Envelope Time 2",
+     "offset": 45,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "level_envelope_time_3",
+     "name": "Level Envelope Time 3",
+     "offset": 46,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "level_envelope_time_4",
+     "name": "Level Envelope Time 4",
+     "offset": 47,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "level_envelope_level_1",
+     "name": "Level Envelope Level 1",
+     "offset": 48,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "level_envelope_level_2",
+     "name": "Level Envelope Level 2",
+     "offset": 49,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "level_envelope_level_3",
+     "name": "Level Envelope Level 3",
+     "offset": 50,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "tone_pan",
+     "name": "Tone Pan",
+     "offset": 51,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "L64..63R"
+    },
+    {
+     "id": "random_pan_depth",
+     "name": "Random Pan Depth",
+     "offset": 52,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 63,
+     "display": "same as raw"
+    },
+    {
+     "id": "alternate_pan_depth",
+     "name": "Alternate Pan Depth",
+     "offset": 53,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 1,
+     "max": 127,
+     "display": "L63..63R"
+    },
+    {
+     "id": "output_assign",
+     "name": "Output Assign",
+     "offset": 54,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 3,
+     "display": "MIX, EFX, DIR, `<OUTPUT-2>`"
+    },
+    {
+     "id": "mix_efx_send_level",
+     "name": "Mix/EFX Send Level",
+     "offset": 55,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "chorus_send_level",
+     "name": "Chorus Send Level",
+     "offset": 56,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "reverb_send_level",
+     "name": "Reverb Send Level",
+     "offset": 57,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    }
+   ]
+  },
+  {
+   "id": "system_common",
+   "family": "system",
+   "name": "System Common",
+   "size": 96,
+   "params": [
+    {
+     "id": "sound_mode",
+     "name": "Sound Mode",
+     "offset": 0,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 2,
+     "display": "PERFORMANCE, PATCH, GM"
+    },
+    {
+     "id": "performance_number",
+     "name": "Performance Number",
+     "offset": 1,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "patch_group_type",
+     "name": "Patch Group Type",
+     "offset": 2,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 2,
+     "display": "USER&PRESET, `<PCM>`, EXP"
+    },
+    {
+     "id": "patch_group_id",
+     "name": "Patch Group ID",
+     "offset": 3,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 1,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "patch_number",
+     "name": "Patch Number",
+     "offset": 4,
+     "bytes": 2,
+     "encoding": "nibble",
+     "min": 0,
+     "max": 254,
+     "display": "001..255"
+    },
+    {
+     "id": "master_tune",
+     "name": "Master Tune",
+     "offset": 6,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 126,
+     "display": "same as raw"
+    },
+    {
+     "id": "scale_tune_switch",
+     "name": "Scale Tune Switch",
+     "offset": 7,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "OFF, ON"
+    },
+    {
+     "id": "efx_switch",
+     "name": "EFX Switch",
+     "offset": 8,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "OFF, ON"
+    },
+    {
+     "id": "chorus_switch",
+     "name": "Chorus Switch",
+     "offset": 9,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "OFF, ON"
+    },
+    {
+     "id": "reverb_switch",
+     "name": "Reverb Switch",
+     "offset": 10,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "OFF, ON"
+    },
+    {
+     "id": "patch_remain",
+     "name": "Patch Remain",
+     "offset": 11,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "OFF, ON"
+    },
+    {
+     "id": "clock_source",
+     "name": "Clock Source",
+     "offset": 12,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "INT, MIDI"
+    },
+    {
+     "id": "tap_control_source",
+     "name": "TAP Control Source",
+     "offset": 13,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 4,
+     "display": "OFF, HOLD-1, SOSTENUTO, SOFT, HOLD-2"
+    },
+    {
+     "id": "hold_control_source",
+     "name": "Hold Control Source",
+     "offset": 14,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 4,
+     "display": "OFF, HOLD-1, SOSTENUTO, SOFT, HOLD-2"
+    },
+    {
+     "id": "peak_control_source",
+     "name": "Peak Control Source",
+     "offset": 15,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 4,
+     "display": "OFF, HOLD-1, SOSTENUTO, SOFT, HOLD-2"
+    },
+    {
+     "id": "volume_control_source",
+     "name": "Volume Control Source",
+     "offset": 16,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "VOLUME, VOL&EXP"
+    },
+    {
+     "id": "aftertouch_source",
+     "name": "Aftertouch Source",
+     "offset": 17,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 2,
+     "display": "CHANNEL, POLY, CH&POLY"
+    },
+    {
+     "id": "system_control_source_1",
+     "name": "System Control Source 1",
+     "offset": 18,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 1,
+     "max": 97,
+     "display": "same as raw"
+    },
+    {
+     "id": "system_control_source_2",
+     "name": "System Control Source 2",
+     "offset": 19,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 1,
+     "max": 97,
+     "display": "same as raw"
+    },
+    {
+     "id": "receive_program_change",
+     "name": "Receive Program Change",
+     "offset": 20,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "OFF, ON"
+    },
+    {
+     "id": "receive_bank_select",
+     "name": "Receive Bank Select",
+     "offset": 21,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "OFF, ON"
+    },
+    {
+     "id": "receive_control_change",
+     "name": "Receive Control Change",
+     "offset": 22,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "OFF, ON"
+    },
+    {
+     "id": "receive_modulation",
+     "name": "Receive Modulation",
+     "offset": 23,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "OFF, ON"
+    },
+    {
+     "id": "receive_volume",
+     "name": "Receive Volume",
+     "offset": 24,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "OFF, ON"
+    },
+    {
+     "id": "receive_hold_1",
+     "name": "Receive Hold-1",
+     "offset": 25,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "OFF, ON"
+    },
+    {
+     "id": "receive_bender",
+     "name": "Receive Bender",
+     "offset": 26,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "OFF, ON"
+    },
+    {
+     "id": "receive_aftertouch",
+     "name": "Receive Aftertouch",
+     "offset": 27,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "OFF, ON"
+    },
+    {
+     "id": "control_channel",
+     "name": "Control Channel",
+     "offset": 28,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 16,
+     "display": "1..16, OFF"
+    },
+    {
+     "id": "patch_receive_channel",
+     "name": "Patch Receive Channel",
+     "offset": 29,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 15,
+     "display": "1..16"
+    },
+    {
+     "id": "rhythm_edit_source",
+     "name": "Rhythm Edit Source",
+     "offset": 30,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "OFF, ON"
+    },
+    {
+     "id": "preview_sound_mode",
+     "name": "Preview Sound Mode",
+     "offset": 31,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "SINGLE, CHORD"
+    },
+    {
+     "id": "preview_note_set_1",
+     "name": "Preview Note Set 1",
+     "offset": 32,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "C-1..G9"
+    },
+    {
+     "id": "preview_velocity_set_1",
+     "name": "Preview Velocity Set 1",
+     "offset": 33,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "preview_note_set_2",
+     "name": "Preview Note Set 2",
+     "offset": 34,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "C-1..G9"
+    },
+    {
+     "id": "preview_velocity_set_2",
+     "name": "Preview Velocity Set 2",
+     "offset": 35,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "preview_note_set_3",
+     "name": "Preview Note Set 3",
+     "offset": 36,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "C-1..G9"
+    },
+    {
+     "id": "preview_velocity_set_3",
+     "name": "Preview Velocity Set 3",
+     "offset": 37,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "preview_note_set_4",
+     "name": "Preview Note Set 4",
+     "offset": 38,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "C-1..G9"
+    },
+    {
+     "id": "preview_velocity_set_4",
+     "name": "Preview Velocity Set 4",
+     "offset": 39,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "transmit_program_change",
+     "name": "Transmit Program Change",
+     "offset": 40,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "OFF, ON"
+    },
+    {
+     "id": "transmit_bank_select",
+     "name": "Transmit Bank Select",
+     "offset": 41,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "OFF, ON"
+    },
+    {
+     "id": "patch_transmit_channel",
+     "name": "Patch Transmit Channel",
+     "offset": 42,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 17,
+     "display": "same as raw"
+    },
+    {
+     "id": "transpose_switch",
+     "name": "Transpose Switch",
+     "offset": 43,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "OFF, ON"
+    },
+    {
+     "id": "transpose_value",
+     "name": "Transpose Value",
+     "offset": 44,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 11,
+     "display": "-5..+6"
+    },
+    {
+     "id": "octave_shift",
+     "name": "Octave Shift",
+     "offset": 45,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 6,
+     "display": "-3..+3"
+    },
+    {
+     "id": "keyboard_velocity",
+     "name": "Keyboard Velocity",
+     "offset": 46,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "keyboard_sens",
+     "name": "Keyboard Sens",
+     "offset": 47,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 2,
+     "display": "LIGHT, STANDARD, HEAVY"
+    },
+    {
+     "id": "aftertouch_sens",
+     "name": "Aftertouch Sens",
+     "offset": 48,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 100,
+     "display": "same as raw"
+    },
+    {
+     "id": "pedal1_assign",
+     "name": "Pedal1 Assign",
+     "offset": 49,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 1,
+     "max": 104,
+     "display": "same as raw"
+    },
+    {
+     "id": "pedal1_output_mode",
+     "name": "Pedal1 Output Mode",
+     "offset": 50,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 3,
+     "display": "OFF, INT, MIDI, INT&MIDI"
+    },
+    {
+     "id": "pedal1_polarity",
+     "name": "Pedal1 Polarity",
+     "offset": 51,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "STANDARD, REVERSE"
+    },
+    {
+     "id": "pedal2_assign",
+     "name": "Pedal2 Assign",
+     "offset": 52,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 1,
+     "max": 104,
+     "display": "same as raw"
+    },
+    {
+     "id": "pedal2_output_mode",
+     "name": "Pedal2 Output Mode",
+     "offset": 53,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 3,
+     "display": "OFF, INT, MIDI, INT&MIDI"
+    },
+    {
+     "id": "pedal2_polarity",
+     "name": "Pedal2 Polarity",
+     "offset": 54,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "STANDARD, REVERSE"
+    },
+    {
+     "id": "c1_assign",
+     "name": "C1 Assign",
+     "offset": 55,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 1,
+     "max": 97,
+     "display": "same as raw"
+    },
+    {
+     "id": "c1_output_mode",
+     "name": "C1 Output Mode",
+     "offset": 56,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 3,
+     "display": "OFF, INT, MIDI, INT&MIDI"
+    },
+    {
+     "id": "c2_assign",
+     "name": "C2 Assign",
+     "offset": 57,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 1,
+     "max": 97,
+     "display": "same as raw"
+    },
+    {
+     "id": "c2_output_mode",
+     "name": "C2 Output Mode",
+     "offset": 58,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 3,
+     "display": "OFF, INT, MIDI, INT&MIDI"
+    },
+    {
+     "id": "hold_pedal_output_mode",
+     "name": "Hold Pedal Output Mode",
+     "offset": 59,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 3,
+     "display": "OFF, INT, MIDI, INT&MIDI"
+    },
+    {
+     "id": "hold_pedal_polarity",
+     "name": "Hold Pedal Polarity",
+     "offset": 60,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "STANDARD, REVERSE"
+    },
+    {
+     "id": "bank_select_group1_switch",
+     "name": "Bank Select Group1 Switch",
+     "offset": 61,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "OFF, ON"
+    },
+    {
+     "id": "bank_select_group1_msb",
+     "name": "Bank Select Group1 MSB",
+     "offset": 62,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "bank_select_group1_lsb",
+     "name": "Bank Select Group1 LSB",
+     "offset": 63,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "bank_select_group2_switch",
+     "name": "Bank Select Group2 Switch",
+     "offset": 64,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "OFF, ON"
+    },
+    {
+     "id": "bank_select_group2_msb",
+     "name": "Bank Select Group2 MSB",
+     "offset": 65,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "bank_select_group2_lsb",
+     "name": "Bank Select Group2 LSB",
+     "offset": 66,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "bank_select_group3_switch",
+     "name": "Bank Select Group3 Switch",
+     "offset": 67,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "OFF, ON"
+    },
+    {
+     "id": "bank_select_group3_msb",
+     "name": "Bank Select Group3 MSB",
+     "offset": 68,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "bank_select_group3_lsb",
+     "name": "Bank Select Group3 LSB",
+     "offset": 69,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "bank_select_group4_switch",
+     "name": "Bank Select Group4 Switch",
+     "offset": 70,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "OFF, ON"
+    },
+    {
+     "id": "bank_select_group4_msb",
+     "name": "Bank Select Group4 MSB",
+     "offset": 71,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "bank_select_group4_lsb",
+     "name": "Bank Select Group4 LSB",
+     "offset": 72,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "bank_select_group5_switch",
+     "name": "Bank Select Group5 Switch",
+     "offset": 73,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "OFF, ON"
+    },
+    {
+     "id": "bank_select_group5_msb",
+     "name": "Bank Select Group5 MSB",
+     "offset": 74,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "bank_select_group5_lsb",
+     "name": "Bank Select Group5 LSB",
+     "offset": 75,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "bank_select_group6_switch",
+     "name": "Bank Select Group6 Switch",
+     "offset": 76,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "OFF, ON"
+    },
+    {
+     "id": "bank_select_group6_msb",
+     "name": "Bank Select Group6 MSB",
+     "offset": 77,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "bank_select_group6_lsb",
+     "name": "Bank Select Group6 LSB",
+     "offset": 78,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "bank_select_group7_switch",
+     "name": "Bank Select Group7 Switch",
+     "offset": 79,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "OFF, ON"
+    },
+    {
+     "id": "bank_select_group7_msb",
+     "name": "Bank Select Group7 MSB",
+     "offset": 80,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "bank_select_group7_lsb",
+     "name": "Bank Select Group7 LSB",
+     "offset": 81,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "pedal3_assign",
+     "name": "Pedal3 Assign",
+     "offset": 82,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 1,
+     "max": 104,
+     "display": "same as raw"
+    },
+    {
+     "id": "pedal3_output_mode",
+     "name": "Pedal3 Output Mode",
+     "offset": 83,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 3,
+     "display": "OFF, INT, MIDI, INT&MIDI"
+    },
+    {
+     "id": "pedal3_polarity",
+     "name": "Pedal3 Polarity",
+     "offset": 84,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "STANDARD, REVERSE"
+    },
+    {
+     "id": "pedal4_assign",
+     "name": "Pedal4 Assign",
+     "offset": 85,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 1,
+     "max": 104,
+     "display": "same as raw"
+    },
+    {
+     "id": "pedal4_output_mode",
+     "name": "Pedal4 Output Mode",
+     "offset": 86,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 3,
+     "display": "OFF, INT, MIDI, INT&MIDI"
+    },
+    {
+     "id": "pedal4_polarity",
+     "name": "Pedal4 Polarity",
+     "offset": 87,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 1,
+     "display": "STANDARD, REVERSE"
+    },
+    {
+     "id": "arpeggio_style",
+     "name": "Arpeggio Style",
+     "offset": 88,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 32,
+     "display": "1..33"
+    },
+    {
+     "id": "arpeggio_motif",
+     "name": "Arpeggio Motif",
+     "offset": 89,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 33,
+     "display": "1..34"
+    },
+    {
+     "id": "arpeggio_beat_pattern",
+     "name": "Arpeggio Beat Pattern",
+     "offset": 90,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 60,
+     "display": "1..61"
+    },
+    {
+     "id": "arpeggio_accent_rate",
+     "name": "Arpeggio Accent Rate",
+     "offset": 91,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 100,
+     "display": "same as raw"
+    },
+    {
+     "id": "arpeggio_shuffle_rate",
+     "name": "Arpeggio Shuffle Rate",
+     "offset": 92,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 50,
+     "max": 90,
+     "display": "same as raw"
+    },
+    {
+     "id": "arpeggio_keyboard_velocity",
+     "name": "Arpeggio Keyboard Velocity",
+     "offset": 93,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "same as raw"
+    },
+    {
+     "id": "arpeggio_octave_range",
+     "name": "Arpeggio Octave Range",
+     "offset": 94,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 6,
+     "display": "-3..+3"
+    },
+    {
+     "id": "arpeggio_part_number",
+     "name": "Arpeggio Part Number",
+     "offset": 95,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 15,
+     "display": "PART1, PART2, PART3, PART4, PART5, PART6, PART7, PART8, PART9, PART10, PART11, PART12, PART13, PART14, PART15, PART16"
+    }
+   ]
+  },
+  {
+   "id": "scale_tune",
+   "family": "system",
+   "name": "Scale Tune",
+   "size": 12,
+   "params": [
+    {
+     "id": "scale_tune_for_c_0000",
+     "name": "Scale Tune for C",
+     "offset": 0,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "-64..+63"
+    },
+    {
+     "id": "scale_tune_for_c_0001",
+     "name": "Scale Tune for C#",
+     "offset": 1,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "-64..+63"
+    },
+    {
+     "id": "scale_tune_for_d_0002",
+     "name": "Scale Tune for D",
+     "offset": 2,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "-64..+63"
+    },
+    {
+     "id": "scale_tune_for_d_0003",
+     "name": "Scale Tune for D#",
+     "offset": 3,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "-64..+63"
+    },
+    {
+     "id": "scale_tune_for_e",
+     "name": "Scale Tune for E",
+     "offset": 4,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "-64..+63"
+    },
+    {
+     "id": "scale_tune_for_f_0005",
+     "name": "Scale Tune for F",
+     "offset": 5,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "-64..+63"
+    },
+    {
+     "id": "scale_tune_for_f_0006",
+     "name": "Scale Tune for F#",
+     "offset": 6,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "-64..+63"
+    },
+    {
+     "id": "scale_tune_for_g_0007",
+     "name": "Scale Tune for G",
+     "offset": 7,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "-64..+63"
+    },
+    {
+     "id": "scale_tune_for_g_0008",
+     "name": "Scale Tune for G#",
+     "offset": 8,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "-64..+63"
+    },
+    {
+     "id": "scale_tune_for_a_0009",
+     "name": "Scale Tune for A",
+     "offset": 9,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "-64..+63"
+    },
+    {
+     "id": "scale_tune_for_a_000a",
+     "name": "Scale Tune for A#",
+     "offset": 10,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "-64..+63"
+    },
+    {
+     "id": "scale_tune_for_b",
+     "name": "Scale Tune for B",
+     "offset": 11,
+     "bytes": 1,
+     "encoding": "seven",
+     "min": 0,
+     "max": 127,
+     "display": "-64..+63"
+    }
+   ]
+  }
+ ]
+}

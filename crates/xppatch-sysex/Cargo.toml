@@ -1,0 +1,17 @@
+[package]
+name = "xppatch-sysex"
+description = "Roland XP-60 SysEx: addresses, checksum, RQ1/DT1 messages, streams and chunking. No I/O, no UI."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+thiserror.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+
+[lints]
+workspace = true

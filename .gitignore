@@ -1,0 +1,20 @@
+# Rust
+/target
+
+# Front end
+node_modules/
+ui/dist/
+ui/src/wasm/pkg/
+
+# The artifact folder: docs are kept in git, the archived legacy app and the reference bundle are not
+/artifact/archive/
+/artifact/Patch Base.app/
+# Roland's downloaded SR-JV80 PDFs (their licence forbids redistribution); scripts/fetch_sr_jv80_lists.py fetches them
+/artifact/references/
+
+# Editors and OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db

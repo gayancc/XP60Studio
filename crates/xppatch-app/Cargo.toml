@@ -1,0 +1,33 @@
+[package]
+name = "xppatch-app"
+description = "XPPatchStudio desktop shell (Tauri 2): exposes the MIDI client to the editor UI."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lib]
+name = "xppatch_app_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[features]
+# Serve the embedded UI (frontendDist) instead of devUrl. The Tauri CLI turns this on for `tauri build`;
+# a plain `cargo build --release` needs `--features custom-protocol`.
+custom-protocol = ["tauri/custom-protocol"]
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+xppatch-sysex = { path = "../xppatch-sysex" }
+xppatch-core = { path = "../xppatch-core" }
+xppatch-midi = { path = "../xppatch-midi", features = ["hardware"] }
+xppatch-library = { path = "../xppatch-library" }
+
+[lints]
+workspace = true

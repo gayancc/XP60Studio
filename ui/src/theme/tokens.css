@@ -1,0 +1,157 @@
+/* XPPatchStudio theme tokens. Dark graphite with one warm accent. Every colour used by the kit comes from here.
+   Neutrals follow measured FL native-plugin values (design language only; nothing copied). */
+:root {
+  --body: #363c40;
+  --body-deep: #2c3135;
+  --caption: #434c51;
+  --well: #46565a;
+  --well-deep: #3a474b;
+  --hint: #3e464b;
+  --edge: #22272a;
+  --edge-light: #5a666b;
+  --text: #d3d7de;
+  --text-dim: #8b959b;
+  --text-faint: #66727a;
+
+  --accent: #ff8a1f;
+  --accent-soft: #c8681a;
+  --accent-ink: #1c1208;
+
+  --ok: #97db3a;
+  --warn: #f0b429;
+  --bad: #ef5350;
+  --info: #4fb3e8;
+
+  /* Tone identity colours (four Tones) */
+  --tone-1: #e0883a;
+  --tone-2: #5a9cc6;
+  --tone-3: #86ad54;
+  --tone-4: #a97bb8;
+
+  --cap-top: #6c777d;
+  --cap-bottom: #3b4348;
+  --track: #232a2d;
+  /* key map lanes, ranges and sliders */
+  --lane-a: #252e33;
+  --lane-b: #2a343a;
+  --lane-col: rgba(0, 0, 0, 0.14);
+  --lane-line: #1b2326;
+  --seam: #52666f;
+  --seam-soft: #37484f;
+  --lane-text: #cfd8dc;
+  --ruler-a: #2d393f;
+  --ruler-b: #263136;
+  --groove-a: #0f1417;
+  --groove-b: #1a2125;
+  --tick: #4a5a62;
+  --tick-major: #6a7b84;
+  --chip-bg: #0e1417;
+  --chip-text: #e6ebee;
+  --chip-edge: #3a4850;
+
+  --radius: 3px;
+  --radius-lg: 4px;
+  --gap: 6px;
+  --font: 'Bahnschrift SemiCondensed', 'Bahnschrift', 'Segoe UI Variable Text', 'Segoe UI', 'Arial Narrow', system-ui,
+    sans-serif;
+  --font-caps: 'Bahnschrift SemiBold SemiCondensed', 'Bahnschrift', 'Arial Narrow', system-ui, sans-serif;
+  --font-mono: 'Cascadia Mono', 'Consolas', ui-monospace, monospace;
+  --focus: 0 0 0 1px var(--accent);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--body-deep);
+  color: var(--text);
+  font: 12px/1.3 var(--font);
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+/* The interface is not a document: clicking and dragging must not select its labels. Text fields keep selection. */
+body {
+  user-select: none;
+  -webkit-user-select: none;
+}
+input,
+textarea,
+[contenteditable] {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+/* No scroll bars anywhere: workspaces are split into tabs so they fit, and the few long lists still take the wheel. */
+* {
+  scrollbar-width: none;
+}
+*::-webkit-scrollbar {
+  display: none;
+}
+
+.caps {
+  font-family: var(--font-caps);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 9.5px;
+  color: var(--text-dim);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* Light theme: the same tokens re-valued. Dark graphite stays the default. */
+:root[data-theme='light'] {
+  --body: #e6e9ec;
+  --body-deep: #d6dbdf;
+  --caption: #cdd3d8;
+  --well: #b9c3ca;
+  --well-deep: #c7cfd5;
+  --hint: #d9dee2;
+  --edge: #98a3aa;
+  --edge-light: #7a858d;
+  --text: #1b2227;
+  --text-dim: #46525a;
+  --text-faint: #66727a;
+  --accent: #c75a00;
+  --accent-soft: #a84b00;
+  --accent-ink: #ffffff;
+  --ok: #3f7d0a;
+  --warn: #a86a00;
+  --bad: #c0302d;
+  --info: #1b7fb5;
+  --cap-top: #f3f5f7;
+  --cap-bottom: #b3bdc4;
+  --track: #c0c9cf;
+  --lane-a: #e1e6e9;
+  --lane-b: #d7dde1;
+  --lane-col: rgba(0, 0, 0, 0.07);
+  --lane-line: #b9c2c8;
+  --seam: #8796a0;
+  --seam-soft: #b3bec5;
+  --lane-text: #36424a;
+  --ruler-a: #dde3e7;
+  --ruler-b: #e6ebee;
+  --groove-a: #a9b4bb;
+  --groove-b: #c3cbd1;
+  --tick: #87949c;
+  --tick-major: #5e6b73;
+  --chip-bg: #2b3338;
+  --chip-text: #f1f4f6;
+  --chip-edge: #1b2226;
+}
+

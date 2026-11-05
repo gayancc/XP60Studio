@@ -1,0 +1,20 @@
+[package]
+name = "xppatch-wasm"
+description = "WebAssembly bindings: the Rust patch codec for the editor UI (browser and Tauri webview)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+xppatch-sysex = { path = "../xppatch-sysex" }
+xppatch-core = { path = "../xppatch-core" }
+serde_json.workspace = true
+wasm-bindgen = "=0.2.130"
+
+# No `[lints] workspace = true` here: wasm-bindgen's generated glue contains `unsafe`, which the workspace forbids.
+# Everything written by hand in this crate is safe; the logic lives in `session.rs` with no wasm types at all.

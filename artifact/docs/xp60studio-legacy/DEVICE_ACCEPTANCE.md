@@ -1,0 +1,141 @@
+# Physical device acceptance — the single final pass
+
+Every check in this project that needs a real Roland XP-60 is deferred to one
+session, run once, with the instrument connected. This document is the index
+for that session: it does not restate the procedures, it links each functional
+area to the document that owns its steps and says what evidence closes it.
+
+**Status: in progress. First physical session 2026-09-04** — areas 2 and 3 pass,
+area 1 partly passes; everything else is still untouched. Evidence is in
+[`HARDWARE_VALIDATION_XP60.md`](HARDWARE_VALIDATION_XP60.md) § Hardware log
+2026-09-04. Nothing was written to the instrument: that session sent RQ1 only.
+
+Nothing in the codebase may be promoted to `HardwareVerified` until the
+relevant row below passes with recorded evidence.
+
+## Why one pass
+
+The user deferred physical validation to final device acceptance on 2026-09-04
+and authorized continued local work. Local development therefore proceeded
+past several hardware gates. The gates did not move — they accumulated here.
+Running them together is deliberate: most of them need the same setup, the same
+backup, and the same temporary-Patch safety discipline, and several of them
+answer each other's open questions from one capture.
+
+## Before anything is connected
+
+| Step | Where |
+|---|---|
+| Record firmware, interface, driver, OS, Device ID, Rx/Tx Exclusive, commit hash | [`HARDWARE_VALIDATION_XP60.md`](HARDWARE_VALIDATION_XP60.md) § Preparation |
+| Back up the instrument's User memory before any write | [`HARDWARE_VALIDATION_XP60.md`](HARDWARE_VALIDATION_XP60.md) § 8, [`PHASE_4_WAVE_BROWSER.md`](PHASE_4_WAVE_BROWSER.md) § Final physical-device acceptance |
+
+Writes are only ever to the **temporary** Patch area (`03 00 00 00`). Permanent
+User memory is not a write target anywhere in the application.
+
+## Functional areas
+
+| # | Functional area | What the session must establish | Owning document | Blocks | Result |
+|---|---|---|---|---|---|
+| 1 | **MIDI transport and connection** | Ports open; a small read returns the expected name; endpoint loss cancels without replay; wrong Device ID, swapped ports and reconnects give useful errors and no false "responding" state | [`MIDI_CONNECTIONS.md`](MIDI_CONNECTIONS.md) § Physical acceptance still required | Phase 1 | **Partly 2026-09-04**: ports open and a small read returns the expected name over a CME U2MIDI Pro. Wrong Device ID and wrong output port both time out cleanly with a useful hint and no false "responding" state. Endpoint loss mid-transfer still untested. |
+| 2 | **Roland protocol foundation** | RQ1 answered; DT1 parsed; checksum valid; device/model IDs as documented; repeated reads stable | [`HARDWARE_VALIDATION_XP60.md`](HARDWARE_VALIDATION_XP60.md) steps 1–7 | Phase 1 | **Passed 2026-09-04**: RQ1 answered in 13-15 ms, DT1 parsed, checksum valid, model ID `6A` single-byte as documented, three consecutive reads byte-identical. |
+| 3 | **DT1 payload size** | Whether the XP-60 sends a 129-byte Tone block in one message or splits at 128 | [`ROLAND_XP60_PROTOCOL_FACTS.md`](protocol/ROLAND_XP60_PROTOCOL_FACTS.md) § 2.1, via [`HARDWARE_VALIDATION_XP60.md`](HARDWARE_VALIDATION_XP60.md) step 7a | Open discrepancy; export chunking | **Passed 2026-09-04**: the XP-60 sends a whole 129-byte Tone block in one DT1; it does not split at 128. Settles `ROLAND_XP60_PROTOCOL_FACTS.md` §2.1. |
+| 4 | **Patch model correctness** | Whole temporary Patch fetches and decodes; decoded name matches the display; parameter spot checks against the instrument's own edit pages | [`HARDWARE_VALIDATION_XP60.md`](HARDWARE_VALIDATION_XP60.md) step 7a | Phase 2 | **Software half passed 2026-09-04**: the whole Patch fetches, correlates and decodes with no structural issues (`"Childlike"`, 4 Tones, wave refs). All 584 parameters decode in range and re-encode byte-exactly across 7 Patches spanning the temporary area and all of User memory. Decoded name matches the display (`Childlike`, step 3 closed). Parameter *meaning* still unverified: the numeric spot checks against the instrument's edit pages remain outstanding. |
+| 5 | **Round trip** | FETCH → DECODE → ENCODE → SEND → FETCH AGAIN → COMPARE with no unexplained differences; permanent memory untouched; snapshot restores | [`HARDWARE_VALIDATION_XP60.md`](HARDWARE_VALIDATION_XP60.md) steps 8, 8a | Phase 3 | **Passed 2026-09-04**: verified 6/6 at default pacing, snapshot restores, permanent memory untouched. Uncovered and fixed a pipelining defect in `fetchPatch`. Step 8a (deliberate mismatch) still needs the front panel. |
+| 6 | **Editor live behaviour** | Audible response, drag latency, note tails under Solo/Mute, A/B switching, interruption during update or read-back, recovery without queued-write replay | [`PHASE_4_LIVE_AUDITION.md`](PHASE_4_LIVE_AUDITION.md) § Verification | Phase 4 M2 | Not started |
+| 7 | **Effect routing** | The routing graph matches what the instrument actually does for MIX, EFX, DIRECT, parallel sends and all three Chorus output modes | [`PHASE_4_EFFECT_ROUTING.md`](PHASE_4_EFFECT_ROUTING.md) § Verification | Phase 4 M2 | Not started |
+| 8 | **EFX parameter slots** | Which Patch Common byte each algorithm's front-panel parameter occupies, and its raw-to-display conversion | [`PHASE_4_EFFECT_ROUTING.md`](PHASE_4_EFFECT_ROUTING.md) § Remaining EFX slot evidence, steps 1–6 | Phase 4 M2 close | **Paused by decision 2026-09-04**, 3 algorithms of 40 mapped (02:OVER-DRIVE, 03:DISTORTION, 04:PHASER). Settled that a control's slot is **per-algorithm**: Pan is byte 2 in DISTORTION/OVER-DRIVE and byte 6 in PHASER, so the printed table cannot be trusted for any algorithm not swept. Remaining 37 need their own sweeps. EFX parameters stay explicitly raw in the editor, which is honest and unblocked; this row is resumable, not failed. |
+| 9 | **Wave bank identifiers** | Group type, group ID and zero-based number at the INT-A/INT-B boundaries; interior names against the display | [`PHASE_4_WAVE_BROWSER.md`](PHASE_4_WAVE_BROWSER.md) § Final physical-device acceptance, steps 1–3 | Phase 4 M3 close; **Use in Tone** | **Passed 2026-09-04**: group ID 1 = INT-A, 2 = INT-B; wave number zero-based (display = raw + 1); INT-B 193 selectable at raw 192. Names confirmed against the display: `Kalimba` and `DC` exact at INT-B 001 and 193. INT-A 255 carried by a 512-reference survey of User memory. |
+| 11 | **Persistent USER-memory write** | Whether the XP-60 honours a DT1 addressed to `11 nn 00 00` at all, whether the read-back equals what was sent, and what User Memory Protect (OM p.46) does to it with the setting ON and OFF. **Destructive**: fetch the destination Patch first and restore it afterwards. | [`PATCH_SYNCHRONIZATION.md`](PATCH_SYNCHRONIZATION.md) §3 U1, §7 | Promotes the write direction in `ROLAND_XP60_PROTOCOL_FACTS.md` §2.4. The feature ships now and proves every write by read-back; this row makes the behaviour a recorded fact rather than a per-run check. | Not started |
+| 12 | **Temporary Patch in Performance mode** | Whether a DT1 to `03 00 00 00` is audible while the instrument is in Performance mode, given that the map has separate Performance-mode temporary Patches at `02 0n 00 00`. Read-only to establish; audition would silently do nothing otherwise. | [`PATCH_SYNCHRONIZATION.md`](PATCH_SYNCHRONIZATION.md) §3 U2 | Audition correctness outside Patch mode | Not started |
+| 13 | **Panel Patch selection is announced** | Selecting a Patch on the front panel transmits Bank Select + Program Change on MIDI OUT, and the temporary area changes accordingly. This is what `DeviceSession::patchSelectionObserved` relies on to mark the application's copy stale. | [`PATCH_SYNCHRONIZATION.md`](PATCH_SYNCHRONIZATION.md) §1.6 C1 | Stale-state detection | Not started |
+| 14 | **Deferred verification** | After a burst of parameter sends made without a read-back, one full five-block read equals the working Patch. Establishes that the `Assumed` state is a safe basis for the next diff. | [`PATCH_SYNCHRONIZATION.md`](PATCH_SYNCHRONIZATION.md) §6 | Real-time editing latency | Not started |
+| 15 | **Wave Group ID to board** | Confirms the mapping XP60Studio ships: Wave Group ID = SR-JV80 catalogue number. **Per installed board, note its number and slot, then:** (1) select one of its waves in a Tone from the front panel and read the Tone back — the group-type byte must be `2` and the group-ID byte must equal the board number, *not* the slot (1..4) and *not* a zero-based index (board − 1); (2) note the wave number the panel shows and confirm the Tone's wave number is `display − 1`, as area 9 established for internal waves; (3) repeat in a second slot with the same board to prove the ID follows the board rather than the socket. Worth doing with a high-numbered board (96..99) if one is to hand, since those are what distinguish the catalogue number from an index. | [`ROLAND_XP60_PROTOCOL_FACTS.md`](protocol/ROLAND_XP60_PROTOCOL_FACTS.md) §7 | Phase 7 expansion intelligence. Nothing is blocked: the catalogue only names groups and pre-fills the picker, and both **Learn** and a manual edit override it. Passing promotes §7 from Corroborated to Hardware-verified. | Not started — **Corroborated** meanwhile: JV PatchEd. — JV-XP transmits 14 for Asia and 97 for Experience III, and all 192 expansion references in the golden fixture resolve to waves that exist on the board of that number (`*Tenor Solo` at group 97 wave 4 is SR-JV80-97's `*Tenor Solo`). |
+| 16 | **Performance read** | An RQ1 walk of `Xp60PerformanceLayout::fetchPlan` returns all seventeen blocks — Common (66 bytes) and Parts 1–16 (25 bytes each) — and the decoded Performance matches the instrument's own Part page: names, MIDI channels, levels, pans, key ranges and Voice Reserve. Confirms the transcribed §1-2 tables against a real instrument rather than against the golden fixture. Seventeen serialised reads is the longest fetch the application performs, so it also exercises the one-request-at-a-time rule (§2.3) harder than a Patch's five. | [`XP60_PERFORMANCE_PARAMETER_MAP.md`](protocol/XP60_PERFORMANCE_PARAMETER_MAP.md) | Phase 8 Performance editor and 16-Part mixer | Not started — decodes cleanly for all 32 Performances in the golden fixture with no range warnings, and round-trips byte for byte |
+| 17 | **Temporary Performance write** | Send an edited Performance to `01 00 00 00` and confirm the instrument's Part page shows the change and sounds it. Establishes that the temporary Performance is writable the way the temporary Patch is, and that a seventeen-block send at the configured pacing is accepted whole. Non-destructive: power-off or selecting another Performance restores it. | [`XP60_PERFORMANCE_PARAMETER_MAP.md`](protocol/XP60_PERFORMANCE_PARAMETER_MAP.md), [`PATCH_SYNCHRONIZATION.md`](PATCH_SYNCHRONIZATION.md) §7 | Phase 8 **Send to XP-60** on the Performance screen | Not started |
+| 18 | **Persistent USER Performance write** | Whether the XP-60 honours a DT1 addressed to `10 nn 00 00`, whether the read-back equals what was sent, and what User Memory Protect does to it. **Destructive**: fetch the destination Performance first and restore it afterwards, exactly as area 11 does for a Patch. | [`PATCH_SYNCHRONIZATION.md`](PATCH_SYNCHRONIZATION.md) §7 | Phase 8 `services::UserPerformanceWrite`, which gives the persistent Performance write the same read-before-write, verify-by-read-back and restore machinery `UserMemoryWrite` gives Patches. It is a separate class so that neither writer can be pointed at the other's addresses. | Not started — the write direction is unconfirmed on hardware, which is exactly why every write is verified at runtime: a destination that reads back differently is reported as a mismatch, and User Memory Protect being ON is named as the likely cause |
+| 19 | **System data** | Read `00 00 00 00` (System Common, 96 bytes) and a Scale Tune block, and compare the decoded values against the instrument's own System pages — Sound Mode, Master Tune, Transpose, the pedal and C1/C2 assignments, and the Arpeggio settings. **The only Parameter Address Map region with no fixture cross-check**: a User bank dump carries no System data, so unlike Patch, Performance and Rhythm nothing local corroborates these tables. Also confirms the seventeen Scale Tune blocks (one per Performance Part at `10 00`…`1F 00`, one for Patch mode at `20 00`) are really addressed that way. Read-only. | [`XP60_SYSTEM_PARAMETER_MAP.md`](protocol/XP60_SYSTEM_PARAMETER_MAP.md) | Any future System editor; nothing ships on these tables yet | Not started |
+| 10 | **Librarian export** | A `.syx` XP60Studio exported is accepted by the instrument and reproduces the Patches it was exported from | [`PHASE_5_LIBRARIAN.md`](PHASE_5_LIBRARIAN.md) § Remaining in this phase | Phase 5 | **Passed 2026-09-04**: an exported `.syx` was accepted by the instrument and reproduced its Patch, 4/4. Also settles that the XP-60 accepts a 128 + 1 split Tone block. |
+
+Areas 8 and 9 are the two that currently block a milestone from closing; the
+rest confirm behaviour that is already implemented and locally tested.
+
+## Tooling for the session
+
+`tools/capture_diff.py` compares a before and an after capture and names every
+Patch byte that moved, resolving each address against the same transcribed
+Parameter Address Map that generates the C++ tables. It accepts a binary `.syx`
+or hex text copied from the Devices screen's Protocol activity panel, and
+prints the DT1 payload sizes each capture used — which is the observation area
+3 needs. Areas 5, 8 and 9 all produce before/after pairs and all use it:
+
+```bash
+tools/capture_diff.py before.syx after.syx --markdown
+```
+
+For the panel-driven areas (8 and 9), `xp60studio_hardware_probe --watch` turns
+the same before/after workflow into one continuous run. It polls the temporary
+Patch and names every parameter that moves as it moves, resolved through the
+same tables that generate the C++ code:
+
+```bash
+xp60studio_hardware_probe --in U2MIDI --out U2MIDI --watch 700
+```
+
+That removes the capture/change/capture/diff cycle per value, which matters
+because areas 8 and 9 need many values each. It is read-only: every poll is an
+RQ1. A changed byte is still only a correlation — what makes it evidence is the
+procedure in the owning document, not the fact that the tool named it.
+
+A changed byte is a correlation, not a proven mapping. The procedures in areas
+8 and 9 are what turn one into evidence.
+
+## Recording results
+
+Append `## Hardware log <date>` to
+[`HARDWARE_VALIDATION_XP60.md`](HARDWARE_VALIDATION_XP60.md) with the raw hex
+for each step, then update:
+
+- the status column in [`ROLAND_XP60_PROTOCOL_FACTS.md`](protocol/ROLAND_XP60_PROTOCOL_FACTS.md);
+- the `VerificationStatus` values in `src/xp60/Xp60Device.cpp`;
+- the milestone status in the owning phase document;
+- the row above, with the date it passed.
+
+Record differences without normalising them away. A capture that disagrees with
+a document is evidence about the document, not a problem to be smoothed over —
+`AGENTS.md`: never hide a mismatch to make a test pass.
+
+## What this pass does not cover
+
+Simulated or fixture-backed results are not evidence here. `FakeXp60`, the demo
+mode's simulated instrument, and the Loopback transport exercise the software
+path only; a screenshot or a passing suite that used them says nothing about
+the instrument. Where a document says LIVE · VERIFIED against a simulated
+device, it describes simulated read-back.
+
+
+## Session log
+
+### 2026-09-04 — first physical session (read-only)
+
+Interface: CME U2MIDI Pro USB-MIDI cable. Device ID 17. Tool:
+`xp60studio_hardware_probe` (`tests/tools/hardware_probe.cpp`), which transmits
+RQ1 only and therefore cannot alter the instrument.
+
+Closed: area 2 in full, area 3 in full, area 1 in part.
+
+Found and fixed in this session:
+
+- **`RolandRequestTracker` completion model was wrong against real hardware.**
+  RQ1 size is an address span over *padded* blocks, not a count of payload
+  bytes, so a multi-block read never reached `isComplete()` and every block
+  after the first was flagged out-of-order. See
+  `ROLAND_XP60_PROTOCOL_FACTS.md` §2.2. Completion is now modelled over the
+  span, and the fix was re-verified against the instrument: Roland's published
+  example reports `Completed, 466 bytes in 17 chunk(s)` with no notes.
+  Single-block reads were never affected, which is why the local suite passed.
+
+Still open before area 4 can close: compare a decoded Patch name and
+spot-checked parameters against the XP-60's **own display**. Reads are
+confirmed to reflect live edit-buffer state (the name changed when the Patch
+was changed on the front panel), but no capture in this session was taken with
+the display read at the same moment.
