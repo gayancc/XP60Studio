@@ -15,10 +15,17 @@ Nothing here is confirmed on the instrument (hardware ledger H-068, H-069).
 | 7 | Chorus Output Assign: MIX, REVERB (to reverb only) or MIX+REV | p.63, p.66 | Text |
 | 8 | Reverb goes to the MIX output | p.64 examples (reverb level only, no reverb output assign exists) | Example |
 | 9 | Structure Type 2 to 10 on a pair makes the first Tone's output settings ignored (combined into the second Tone) | p.62 | Text |
-| 10 | The Tone's own Chorus and Reverb Sends also feed chorus and reverb when the Tone is on EFX | p.63 lists them on the EFX case's screen; every p.64 EFX example sets them to 0, so no example proves the effect | Partly text, unproven: H-069 (a) |
+| 10 | The Tone's own Chorus and Reverb Sends also feed chorus and reverb when the Tone is on EFX | p.61 figure (EFX case: lines 51 and 51 straight to Cho and Rev); the p.64 examples set them to 0 | Figure (see below); still H-069 (a) on the instrument |
 | 11 | An EFX that is fed but whose EFX Output Level is 0 passes nothing on (shown as a dead end) | p.63 "EFX Output Level: volume level of the output sound that passes through EFX"; every p.64 example that uses the EFX sets it to 1-127 | Inferred |
 | 12 | Chorus Level 0 or Reverb Level 0 leaves no sound from that unit (dead end) | p.63, p.66 "volume level of the chorus/reverb sound"; p.64 examples 1-127 | Inferred |
 | 13 | The [EFX], [CHORUS] and [REVERB] panel switches turn each effect on or off | p.62 basic procedure step 1 | Text; **not read by the diagram** (System setting) |
+
+## The manual's figures (read from the page images, p.61-62)
+
+The text alone left rule 10 open; the figures settle it. In every figure a Tone has **three separate lines**: Reverb Send (top, straight to the Reverb block), Chorus Send (middle, straight to
+the Chorus block) and Mix/EFX Send (bottom). Output Assign only chooses where the bottom line ends: the MIX output, the EFX box (whose own three outputs are the EFX Chorus Send, the EFX Reverb Send
+and the EFX Output Level to the output) or, for DIR, a single line to "Direct" with the chorus and reverb lines not drawn at all (p.61). So with Output Assign EFX the Tone's own chorus and reverb
+sends still go to chorus and reverb (p.61 figure shows 51 / 51 / 127 on those lines): rule 10 is supported by the figure. The routing tests reproduce the seven worked examples of p.62.
 
 ## Naming
 

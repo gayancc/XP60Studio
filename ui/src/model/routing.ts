@@ -41,7 +41,24 @@ export interface Edge {
   readonly level: number;
 }
 
+/** One of a Tone's three send lines, as the manual's routing figures draw them (p.62-64). */
+export interface SendLine {
+  readonly level: number;
+  /** on: sound flows; off: level 0; inert: the level is set but does nothing (reason in `why`); ignored: the instrument ignores this Tone. */
+  readonly state: 'on' | 'off' | 'inert' | 'ignored';
+  readonly why?: string;
+}
+
+/** Where a Tone's sound goes: the line that Output Assign points (MIX, EFX or DIR), and its chorus and reverb send lines. */
+export interface ToneRoute {
+  readonly main: SendLine & { readonly to: 'mix' | 'efx' | 'dir' | null };
+  readonly chorus: SendLine;
+  readonly reverb: SendLine;
+}
+
 export interface Routing {
+  /** What each Tone sends where, for a per-Tone indicator. */
+  readonly tones: readonly ToneRoute[];
   /** The connections that carry sound with the current settings. */
   readonly edges: readonly Edge[];
   /** Stages that receive sound from something. */
@@ -74,17 +91,26 @@ export const firstToneIgnored = (structureType: number): boolean => structureTyp
 export function routingOf(input: RoutingInput): Routing {
   const edges: Edge[] = [];
   const inert: { tone: number; id: string; why: string }[] = [];
+  const routes: ToneRoute[] = [];
   const ignored = new Set<NodeId>();
   if (firstToneIgnored(input.structure[0])) ignored.add('tone1');
   if (firstToneIgnored(input.structure[1])) ignored.add('tone3');
 
   input.tones.forEach((t, i) => {
     const node = TONES[i] as NodeId;
-    if (ignored.has(node)) return;
     const out = toneOutputOf(t.assign);
+    const to: 'mix' | 'efx' | 'dir' | null = out === 'MIX' ? 'mix' : out === 'EFX' ? 'efx' : out === 'DIR' ? 'dir' : null;
+    const noSend = out === 'DIR' ? 'Output Assign is DIR: only the direct sound is sent to the DIRECT OUT jack' : 'Output Assign is a value the manual does not list';
+    const line = (level: number, usable: boolean, why?: string): SendLine =>
+      ignored.has(node) ? { level, state: 'ignored' } : level === 0 ? { level, state: 'off' } : !usable ? { level, state: 'inert', why } : { level, state: 'on' };
+    routes.push({
+      main: { ...line(t.mixEfxSend, to !== null, 'Output Assign is a value the manual does not list'), to },
+      chorus: line(t.chorusSend, out === 'MIX' || out === 'EFX', noSend),
+      reverb: line(t.reverbSend, out === 'MIX' || out === 'EFX', noSend),
+    });
+    if (ignored.has(node)) return;
     if (t.mixEfxSend > 0) {
-      const to: NodeId | undefined = out === 'MIX' ? 'mix' : out === 'EFX' ? 'efx' : out === 'DIR' ? 'dir' : undefined;
-      if (to) edges.push({ from: node, to, level: t.mixEfxSend });
+        if (to) edges.push({ from: node, to, level: t.mixEfxSend });
     }
     if (out === 'DIR') {
       if (t.chorusSend > 0) inert.push({ tone: i, id: 'chorus_send_level', why: 'Output Assign is DIR: only the direct sound is sent to the DIRECT OUT jack, so chorus has no effect.' });
@@ -130,5 +156,5 @@ export function routingOf(input: RoutingInput): Routing {
   if (chorusFed && !leaves('chorus')) dead.push({ node: 'chorus', why: 'Chorus Level is 0, so no chorus sound leaves the chorus' });
   if (reverbFed && !leaves('reverb')) dead.push({ node: 'reverb', why: 'Reverb Level is 0, so no reverb sound leaves the reverb' });
 
-  return { edges, used: new Set(edges.map((e) => e.to)), ignoredTones: ignored, inert, deadEnds: dead };
+  return { tones: routes, edges, used: new Set(edges.map((e) => e.to)), ignoredTones: ignored, inert, deadEnds: dead };
 }

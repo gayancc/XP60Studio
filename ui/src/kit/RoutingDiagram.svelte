@@ -10,8 +10,12 @@
     /** The text under each effect stage's name (for example the EFX type). */
     labels: { efx: string; chorus: string; reverb: string };
     onjump?: (node: 'efx' | 'chorus' | 'reverb') => void;
+    /** A Tone (0 to 3) to trace: its own lines are drawn in full with their levels and everything else steps back. */
+    focus?: number | null;
+    /** Called with the Tone under the pointer (or null) so the controls beside the diagram can follow it. */
+    ontrace?: (tone: number | null) => void;
   }
-  let { routing, labels, onjump }: Props = $props();
+  let { routing, labels, onjump, focus = null, ontrace }: Props = $props();
 
   const W = 640;
   const H = 236;
@@ -41,10 +45,15 @@
     const ys = [...lanes.map((d) => LANE[d] ?? 0), ...feeding.map(stub)];
     return ys.length ? { y1: Math.min(...ys), y2: Math.max(...ys) } : null;
   });
+  const focusNode = $derived<NodeId | null>(focus === null ? null : (TONES[focus] ?? null));
+  /** A Tone is in the picture when nothing is traced, or when it is the one traced. */
+  const shown = (t: NodeId): boolean => focusNode === null || focusNode === t;
   const laneColor = (d: NodeId): string => {
     const f = feeders(d);
+    if (focusNode && f.includes(focusNode)) return COLOR[focusNode] ?? 'var(--accent)';
     return f.length === 1 ? (COLOR[f[0] as string] ?? 'var(--accent)') : 'var(--text-dim)';
   };
+  const laneLevel = (d: NodeId): number | null => (focusNode ? (has(focusNode, d)?.level ?? null) : null);
   const lanePath = (d: string): string => {
     const y = LANE[d] ?? 0;
     if (d === 'mix') return `M${RAIL} ${y} H582 V30`;
@@ -77,18 +86,27 @@
 
 <svg viewBox="0 0 {W} {H}" width={W} height={H} role="img" aria-label="Effects routing of this patch, drawn from its settings">
   <defs>
-    <marker id="rt-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L8 4 L0 8 z" class="head" /></marker>
+    <marker id="rt-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L8 4 L0 8 z" class="head" /></marker>
   </defs>
 
   <!-- the shared Tone bus -->
   {#if rail}<line x1={RAIL} x2={RAIL} y1={rail.y1} y2={rail.y2} class="bus" />{/if}
-  {#each feeding as t (t)}<path d="M90 {stub(t)} H{RAIL}" class="stub" style:stroke={COLOR[t]} />{/each}
+  {#each feeding as t (t)}<path d="M90 {stub(t)} H{RAIL}" class="stub" class:back={!shown(t)} style:stroke={COLOR[t]} />{/each}
 
   <!-- one lane per destination, with a dot for each Tone that feeds it -->
   {#each lanes as d (d)}
-    <g class="lane" role="img" aria-label="Lane to {NAMES[d]}" onpointerenter={() => explainLane(d)} onpointerleave={clearHint}>
+    <g class="lane" class:back={focusNode !== null && !feeders(d).includes(focusNode)} role="img" aria-label="Lane to {NAMES[d]}" onpointerenter={() => explainLane(d)} onpointerleave={clearHint}>
       <path d={lanePath(d)} class="edge" style:stroke={laneColor(d)} marker-end="url(#rt-arrow)" />
-      {#each feeders(d) as t, k (t)}<circle cx={RAIL + 16 + k * 13} cy={LANE[d]} r="4.5" style:fill={COLOR[t]} class="chip" />{/each}
+      <!-- one fixed slot per Tone, so which Tone feeds a lane never depends on the others: filled and numbered when it does, a faint ring when it does not -->
+      {#each TONES as t, k (t)}
+        {#if feeders(d).includes(t)}
+          <circle cx={RAIL + 18 + k * 15} cy={LANE[d]} r="6" style:fill={COLOR[t]} class="chip" class:back={!shown(t)} />
+          <text x={RAIL + 18 + k * 15} y={(LANE[d] ?? 0) + 3} text-anchor="middle" class="num" class:back={!shown(t)}>{k + 1}</text>
+        {:else}
+          <circle cx={RAIL + 18 + k * 15} cy={LANE[d]} r="3" class="slot" />
+        {/if}
+      {/each}
+      {#if laneLevel(d) !== null}<text x={Math.min(STAGE_X, 540) - 8} y={(LANE[d] ?? 0) - 6} text-anchor="end" class="lvl">{laneLevel(d)}</text>{/if}
     </g>
   {/each}
 
@@ -114,7 +132,21 @@
 
   <!-- nodes -->
   {#each TONES as t, i (t)}
-    <g class="node" class:dim={routing.ignoredTones.has(t)} role="img" aria-label={NAMES[t]} onpointerenter={() => explain(t)} onpointerleave={clearHint}>
+    <g
+      class="node"
+      class:dim={routing.ignoredTones.has(t)}
+      class:back={!shown(t)}
+      role="img"
+      aria-label={NAMES[t]}
+      onpointerenter={() => {
+        explain(t);
+        ontrace?.(i);
+      }}
+      onpointerleave={() => {
+        clearHint();
+        ontrace?.(null);
+      }}
+    >
       <rect x="6" y={TONE_Y[i]} width="84" height="36" rx="3" class="box" />
       <rect x="6" y={TONE_Y[i]} width="4" height="36" rx="1" style:fill={COLOR[t]} />
       <text x="50" y={(TONE_Y[i] ?? 0) + 22} text-anchor="middle" class="name">{NAMES[t]}</text>
@@ -158,21 +190,38 @@
   }
   .bus {
     stroke: var(--text-dim);
-    stroke-width: 2;
+    stroke-width: 1.25;
     opacity: 0.6;
   }
   .stub {
     fill: none;
-    stroke-width: 2;
+    stroke-width: 1.25;
   }
   .edge {
     fill: none;
-    stroke-width: 2;
+    stroke-width: 1.25;
     stroke-linecap: round;
     stroke-linejoin: round;
   }
   .acc {
     stroke: var(--accent);
+  }
+  .back {
+    opacity: 0.18;
+  }
+  .num {
+    font: 700 8px var(--font-mono);
+    fill: var(--body);
+    pointer-events: none;
+  }
+  .slot {
+    fill: none;
+    stroke: var(--edge);
+    stroke-width: 1;
+  }
+  .lvl {
+    font: 700 11px var(--font-mono);
+    fill: var(--text);
   }
   .broken {
     stroke: var(--text-dim);
