@@ -1,3 +1,4 @@
+import { messages } from '../model/messages.svelte';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Backend, StorageInfo } from '../model/backend';
@@ -20,6 +21,7 @@ describe('storage location panel', () => {
   });
 
   it('sends the typed folder, and says when it will apply', async () => {
+    messages.clear();
     const after: StorageInfo = { ...base, configured: 'D:/xp', custom: true };
     const b = backend(base, async () => after);
     render(StoragePanel, { props: { backend: b } });
@@ -28,10 +30,12 @@ describe('storage location panel', () => {
     await fireEvent.click(screen.getByRole('button', { name: 'Use this folder' }));
     await waitFor(() => expect(b.storageSet).toHaveBeenCalledWith('D:/xp'));
     await screen.findByText('Applies when the app is next started.');
-    expect(screen.getByRole('status').textContent).toContain('nothing was removed');
+    expect(messages.list.map((m) => m.text).join(' | ')).toContain('nothing was removed');
+    expect(screen.queryByRole('status')).toBeNull();
   });
 
   it('puts a refusal in front of the user and keeps the old setting', async () => {
+    messages.clear();
     const b = backend(base, async () => {
       throw 'Give the full path of the folder, for example D:/XP60 data.';
     });
@@ -39,8 +43,9 @@ describe('storage location panel', () => {
     const box = (await screen.findByLabelText('Folder for the library and backups')) as HTMLInputElement;
     await fireEvent.input(box, { target: { value: 'relative' } });
     await fireEvent.click(screen.getByRole('button', { name: 'Use this folder' }));
-    const alert = await screen.findByRole('alert');
-    expect(alert.textContent).toContain('full path');
+    await waitFor(() => expect(messages.list.map((m) => m.text).join(' | ')).toContain('full path'));
+    expect(messages.list.at(-1)?.kind).toBe('error');
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 
   it('can go back to the default folder', async () => {

@@ -8,6 +8,14 @@
   const flow = useServices()?.save;
 
   let open = $state(false);
+  let trigger: HTMLButtonElement | undefined = $state();
+  let pos = $state({ top: 0, right: 0 });
+
+  // The panel is placed against the window (fixed), not inside the top bar, which clips what hangs below it.
+  function place(): void {
+    const r = trigger?.getBoundingClientRect();
+    pos = { top: (r?.bottom ?? 0) + 6, right: Math.max(8, window.innerWidth - (r?.right ?? window.innerWidth)) };
+  }
   let slot = $state(flow?.slot ?? 0);
   let confirmUndo = $state(false);
   let cancelButton: HTMLButtonElement | undefined = $state();
@@ -43,14 +51,17 @@
     <button
       type="button"
       class="open"
+      bind:this={trigger}
       aria-expanded={open}
       aria-controls="save-panel"
       disabled={flow.working}
-      onclick={() => (open ? close() : (open = true))}>Save to synth…</button>
+      onclick={() => (open ? close() : ((open = true), place()))}>Save to synth…</button>
     {#if open}
       <div
         id="save-panel"
         class="panel"
+        style:top="{pos.top}px"
+        style:right="{pos.right}px"
         role="dialog"
         aria-modal="true"
         aria-label="Save to the instrument's User memory"
@@ -76,7 +87,7 @@
         {/if}
 
         {#if flow.phase === 'arming'}
-          <p role="status">Reading {label(flow.slot)} and saving its backup…</p>
+          <div class="row"><button type="button" disabled aria-busy="true">Reading {label(flow.slot)} and backing it up…</button></div>
         {/if}
 
         {#if flow.phase === 'armed' && flow.armed}
@@ -96,18 +107,7 @@
         {/if}
 
         {#if flow.phase === 'writing'}
-          <p role="status">Writing and reading back… keep the instrument connected.</p>
-        {/if}
-
-        {#if flow.phase === 'done' && flow.report}
-          <p class="ok" role="status">
-            Saved: {label(flow.report.slot)} was read back and matches ({flow.report.messages} messages, {flow.report.bytes} bytes).
-          </p>
-        {/if}
-
-        {#if flow.phase === 'failed' && flow.error}
-          <p class="err" role="alert">{flow.error}</p>
-          <p class="dim">If User Memory Protect is on, turn it off on the instrument and try again.</p>
+          <div class="row"><button type="button" disabled aria-busy="true">Writing and reading back… keep the instrument connected</button></div>
         {/if}
 
         {#if flow.last && !flow.working && flow.phase !== 'armed'}
@@ -156,17 +156,15 @@
   }
   button:focus-visible {
     outline: none;
-    box-shadow: var(--focus);
+    background-image: var(--focus-fill);
   }
   button:disabled {
     opacity: 0.4;
     cursor: default;
   }
   .panel {
-    position: absolute;
+    position: fixed;
     z-index: 900;
-    top: calc(100% + 6px);
-    right: 0;
     width: 430px;
     padding: 12px;
     background: var(--caption);
@@ -204,11 +202,5 @@
   .dim {
     color: var(--text-dim);
     word-break: break-all;
-  }
-  .ok {
-    color: var(--ok);
-  }
-  .err {
-    color: var(--bad);
   }
 </style>

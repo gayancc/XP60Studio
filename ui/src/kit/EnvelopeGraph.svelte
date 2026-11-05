@@ -211,8 +211,7 @@
     fill: var(--c);
   }
   .pt:focus-visible {
-    stroke: var(--accent);
-    stroke-width: 2;
+    fill: var(--c);
   }
   .disabled {
     opacity: 0.4;

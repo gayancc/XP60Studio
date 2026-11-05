@@ -25,7 +25,7 @@ use xppatch_sysex::address::{Address, AddressError};
 use xppatch_sysex::chunk::{split_dt1, ChunkError, MAX_DT1_DATA_TO_DEVICE};
 use xppatch_sysex::memory::{
     classify_range, user_patch, user_performance, user_rhythm, MemoryError, WriteKind,
-    PATCH_TONE_OFFSETS, TEMP_PATCH,
+    PATCH_TONE_OFFSETS, SYSTEM, TEMP_PATCH,
 };
 use xppatch_sysex::message::{DeviceId, EncodeError, Message, Parsed};
 
@@ -186,6 +186,20 @@ impl WritePlan {
     /// The name of the patch that will be replaced.
     pub fn occupant_name(&self) -> String {
         self.backup.name()
+    }
+}
+
+/// A planned write of the System settings. It can only be made by reading the settings first, so what is about to be
+/// overwritten is always in hand (to be backed up to disk and, if needed, put back).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SystemWritePlan {
+    backup: Document,
+}
+
+impl SystemWritePlan {
+    /// What the System settings held when the plan was made.
+    pub fn backup(&self) -> &Document {
+        &self.backup
     }
 }
 
@@ -913,6 +927,122 @@ impl<T: MidiTransport> Client<T> {
         self.write_user_slot(plan.slot, &backup, cancel)
     }
 
+    /// First step of writing the System settings: read them. Nothing is written.
+    pub fn plan_system_write(
+        &mut self,
+        cancel: &CancelToken,
+    ) -> Result<SystemWritePlan, ClientError> {
+        let backup = self.fetch_document(DocKind::System, SYSTEM, cancel, &mut |_| {})?;
+        Ok(SystemWritePlan { backup })
+    }
+
+    /// Write `doc` as the System settings (the **permanent** write), then read them back and compare. The settings are
+    /// read again first and must still hold what the plan backed up; if they changed since (a panel edit, another
+    /// program), nothing is written and the plan is stale. Every message must lie inside the System region.
+    pub fn commit_system_write(
+        &mut self,
+        plan: &SystemWritePlan,
+        doc: &Document,
+        cancel: &CancelToken,
+    ) -> Result<SendReport, ClientError> {
+        if doc.kind() != DocKind::System {
+            return Err(ClientError::Refused(
+                "only System settings can be written here".into(),
+            ));
+        }
+        if let Some((block, issue)) = doc.validate().into_iter().next() {
+            return Err(ClientError::Refused(format!(
+                "a System setting is out of range ({block}: {issue:?})"
+            )));
+        }
+        let now = self.fetch_document(DocKind::System, SYSTEM, cancel, &mut |_| {})?;
+        if now != plan.backup {
+            return Err(ClientError::Refused(
+                "the System settings changed since they were backed up; arm the save again".into(),
+            ));
+        }
+        self.write_system(doc, cancel)
+    }
+
+    /// Put back what the plan saved. This is a permanent write too: callers must have decided it is wanted (the
+    /// application checks that the settings still hold what it wrote).
+    pub fn restore_system_backup(
+        &mut self,
+        plan: &SystemWritePlan,
+        cancel: &CancelToken,
+    ) -> Result<SendReport, ClientError> {
+        let backup = plan.backup.clone();
+        self.write_system(&backup, cancel)
+    }
+
+    /// Read the System settings (used by callers that need to compare them with something they wrote).
+    pub fn read_system(&mut self, cancel: &CancelToken) -> Result<Document, ClientError> {
+        self.fetch_document(DocKind::System, SYSTEM, cancel, &mut |_| {})
+    }
+
+    fn write_system(
+        &mut self,
+        doc: &Document,
+        cancel: &CancelToken,
+    ) -> Result<SendReport, ClientError> {
+        let mut messages = Vec::new();
+        for (address, data) in doc.to_dt1(SYSTEM)? {
+            messages.extend(split_dt1(address, &data, MAX_DT1_DATA_TO_DEVICE)?);
+        }
+        for m in &messages {
+            match m {
+                Message::Dt1 { address, data } => {
+                    let lanes = address.bytes();
+                    if classify_range(*address, data.len()) != WriteKind::Permanent
+                        || lanes[0] != 0x00
+                        || lanes[1] != 0x00
+                    {
+                        return Err(ClientError::Refused(format!(
+                            "{} byte(s) at {address} are not inside the System settings",
+                            data.len()
+                        )));
+                    }
+                }
+                Message::Rq1 { .. } => {
+                    return Err(ClientError::Refused(
+                        "a read request in a write batch".into(),
+                    ));
+                }
+            }
+        }
+        let bytes: usize = messages
+            .iter()
+            .map(|m| match m {
+                Message::Dt1 { data, .. } => data.len(),
+                Message::Rq1 { .. } => 0,
+            })
+            .sum();
+        // Once the first message is sent the settings are written to the end and read back: cancelling part way would
+        // leave half-written settings nobody is told about. Cancel is honoured before the first message only.
+        if cancel.is_cancelled() {
+            return Err(ClientError::Cancelled);
+        }
+        for m in &messages {
+            let frame = m.encode(self.cfg.device)?;
+            self.pace();
+            self.port.send(&frame)?;
+            self.last_dt1 = Some(self.port.now());
+        }
+        let echo_window = self.cfg.verify_settle + Duration::from_micros(400 * bytes as u64);
+        self.poll(echo_window)?;
+        let back =
+            self.fetch_document(DocKind::System, SYSTEM, &CancelToken::new(), &mut |_| {})?;
+        let blocks = differing_document_blocks(doc, &back);
+        if !blocks.is_empty() {
+            return Err(ClientError::Mismatch { blocks });
+        }
+        Ok(SendReport {
+            messages: messages.len(),
+            bytes,
+            verified: true,
+        })
+    }
+
     /// Read User patch `slot` (used by callers that need to compare it with something they wrote).
     pub fn read_user_slot(&mut self, slot: u8, cancel: &CancelToken) -> Result<Patch, ClientError> {
         self.fetch_user_patch(slot, cancel, &mut |_| {})
@@ -1099,6 +1229,22 @@ fn inside_patch_blocks(base: Address, address: Address, len: usize) -> bool {
     spans
         .into_iter()
         .any(|(start, size)| rel >= start && rel + len <= start + size)
+}
+
+fn differing_document_blocks(a: &Document, b: &Document) -> Vec<String> {
+    a.blocks()
+        .iter()
+        .zip(b.blocks())
+        .enumerate()
+        .filter(|(_, (x, y))| x != y)
+        .map(|(i, _)| {
+            if i == 0 {
+                "common".to_owned()
+            } else {
+                a.kind().item_label(i - 1)
+            }
+        })
+        .collect()
 }
 
 fn differing_blocks(a: &Patch, b: &Patch) -> Vec<String> {

@@ -1,13 +1,13 @@
 <script lang="ts">
   // Test support: the four-Tone view with the store it expects from its parent.
   import type { PatchStore } from '../model/store.svelte';
-  import type { TonePart } from './TonePanel.svelte';
+  import type { ToneGroup } from './TonePanel.svelte';
   import { provideStore } from './context';
   import AllTonesPanel from './AllTonesPanel.svelte';
 
   interface Props {
     store: PatchStore;
-    part?: TonePart | 'all';
+    part?: ToneGroup;
     onselect?: (i: number) => void;
   }
   let { store, part = 'pitch', onselect = () => {} }: Props = $props();

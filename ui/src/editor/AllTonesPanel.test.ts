@@ -65,10 +65,18 @@ describe('the four-Tone view of a sound section', () => {
     expect(picked).toBe(2);
   });
 
-  it('shows every part of a Tone at once for the whole-Tone page', () => {
-    const { container } = render(AllTonesHarness, { props: { store: make(), part: 'all' } });
-    const col = container.querySelector('.col') as HTMLElement;
-    const text = col.textContent ?? '';
-    for (const title of ['Wave', 'Pitch', 'TVF (filter)', 'TVA (level and pan)', 'LFO 1', 'LFO 2', 'Output']) expect(text, title).toContain(title);
+  it('shows the merged sections: wave and pitch together, filter and amp together, LFOs with the controller routing', () => {
+    const text = (part: 'wavepitch' | 'filteramp' | 'lfomod'): string => {
+      const { container } = render(AllTonesHarness, { props: { store: make(), part } });
+      const t = (container.querySelector('.col') as HTMLElement).textContent ?? '';
+      cleanup();
+      return t;
+    };
+    const wp = text('wavepitch');
+    for (const title of ['Wave', 'Pitch']) expect(wp, title).toContain(title);
+    const fa = text('filteramp');
+    for (const title of ['TVF (filter)', 'TVA (level and pan)']) expect(fa, title).toContain(title);
+    const lm = text('lfomod');
+    for (const title of ['LFO 1', 'LFO 2', 'Controllers']) expect(lm, title).toContain(title);
   });
 });

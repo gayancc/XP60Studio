@@ -20,4 +20,6 @@ pub use doc::{DocKind, Document};
 pub use map::{MapError, ParameterMap};
 pub use patch::{Patch, PatchBlock, PatchError, TONES};
 pub use schema::{BlockDef, Encoding, ParamDef};
-pub use syx::{user_document_bytes, user_patch_bank_bytes, SyxError, SyxImage};
+pub use syx::{
+    system_document_bytes, user_document_bytes, user_patch_bank_bytes, SyxError, SyxImage,
+};

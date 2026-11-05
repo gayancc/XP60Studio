@@ -1,0 +1,309 @@
+// End-to-end check of the built desktop app. It starts target/release/xppatch-app.exe with a throw-away profile, drives the real window over the
+// WebView2 debugging port, and checks what a person would do: open a bank, step through it, edit and undo, export and open the export again, open
+// Performances and Rhythm Sets, import into the Library, open the save panels, and look for clipped or overflowing layout in every tab at two window sizes.
+//
+//   npm run installer-free build first:  npm run build && cargo build -p xppatch-app --release --features custom-protocol
+//   then:                                 npm run e2e
+//
+// It needs no instrument and writes nothing outside a temporary folder. Exit code 0 means every check passed.
+
+import { spawn, execFileSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const here = dirname(fileURLToPath(import.meta.url));
+const root = resolve(here, '..', '..');
+const exe = join(root, 'target', 'release', 'xppatch-app.exe');
+const bank = join(root, 'tests', 'golden', 'xp60-user-bank.syx');
+const PORT = 9333;
+const failures = [];
+const check = (ok, what, detail = '') => {
+  console.log(`${ok ? 'PASS' : 'FAIL'}  ${what}${ok || !detail ? '' : '  -> ' + detail}`);
+  if (!ok) failures.push(what);
+};
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+const profile = mkdtempSync(join(tmpdir(), 'xppatch-e2e-'));
+// Exports normally ask where to save with the system Save dialog; this folder makes the app write them straight there instead (for these checks only).
+const saves = join(profile, 'saves');
+mkdirSync(saves);
+const app = spawn(exe, [], {
+  env: { ...process.env, WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: `--remote-debugging-port=${PORT}`, WEBVIEW2_USER_DATA_FOLDER: profile, XPPATCH_SAVE_DIR: saves },
+  stdio: 'ignore',
+});
+const stop = () => {
+  try {
+    execFileSync('taskkill', ['/pid', String(app.pid), '/t', '/f'], { stdio: 'ignore' });
+  } catch {
+    // already gone
+  }
+  try {
+    rmSync(profile, { recursive: true, force: true });
+  } catch {
+    // the profile is in a temp folder; a leftover is harmless
+  }
+};
+
+async function connect() {
+  for (let i = 0; i < 40; i++) {
+    try {
+      const list = await (await fetch(`http://127.0.0.1:${PORT}/json`)).json();
+      const page = list.find((p) => p.type === 'page');
+      if (page) return page.webSocketDebuggerUrl;
+    } catch {
+      // not up yet
+    }
+    await wait(500);
+  }
+  throw new Error('the app window did not open');
+}
+
+const ws = new WebSocket(await connect());
+await new Promise((r) => (ws.onopen = r));
+let id = 0;
+const pending = new Map();
+const pageErrors = [];
+ws.onmessage = (e) => {
+  const m = JSON.parse(e.data);
+  if (m.id && pending.has(m.id)) pending.get(m.id)(m);
+  else if (m.method === 'Runtime.exceptionThrown') pageErrors.push(m.params.exceptionDetails.exception?.description ?? m.params.exceptionDetails.text);
+  else if (m.method === 'Runtime.consoleAPICalled' && m.params.type === 'error') pageErrors.push(m.params.args.map((a) => a.value ?? a.description).join(' '));
+};
+const send = (method, params = {}) => new Promise((res) => { const i = ++id; pending.set(i, res); ws.send(JSON.stringify({ id: i, method, params })); });
+const js = async (expr) => (await send('Runtime.evaluate', { expression: expr, awaitPromise: true, returnByValue: true })).result?.result?.value;
+const tab = (name, scope = '') => js(`(()=>{const t=[...document.querySelectorAll('${scope}[role=tab]')].find(x=>x.textContent.trim()===${JSON.stringify(name)}); if(t) t.click(); return !!t})()`);
+const setFile = async (label, file) => {
+  const doc = (await send('DOM.getDocument', { depth: -1 })).result.root.nodeId;
+  const node = (await send('DOM.querySelector', { nodeId: doc, selector: `input[type=file][aria-label^="${label}"]` })).result.nodeId;
+  await send('DOM.setFileInputFiles', { nodeId: node, files: [file] });
+};
+const alerts = () => js(`[...document.querySelectorAll('[role=alert]')].map(e=>e.textContent.trim()).filter(Boolean)`);
+const LIST = 'ol[aria-label^="Patches in"] button';
+const layoutProbe = `(()=>{const out=[];const doc=document.scrollingElement; if(doc.scrollWidth>innerWidth+1||doc.scrollHeight>innerHeight+1) out.push('page scrolls');
+  for(const el of document.querySelectorAll('body *')){const cs=getComputedStyle(el); if(cs.display==='none'||cs.visibility==='hidden') continue; const tag=el.tagName.toLowerCase(); if(['svg','path','line','rect','circle','g','polygon','text','defs','canvas'].includes(tag)) continue;
+    const clipsY=el.scrollHeight>el.clientHeight+1&&['hidden','clip'].includes(cs.overflowY)&&el.clientHeight>0; if(clipsY) out.push('clipped '+tag+'.'+String(el.className).split(' ')[0]+' '+el.scrollHeight+'>'+el.clientHeight);}
+  return out})()`;
+
+try {
+  await send('Runtime.enable');
+  await send('DOM.enable');
+  await send('Page.enable');
+  await wait(1500);
+
+  // 1. Open a bank as a patch file, list and sweep every slot
+  await send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 800, deviceScaleFactor: 1, mobile: false });
+  await tab('Patch', 'header ');
+  await setFile('Open a .syx', bank);
+  await wait(2000);
+  await js(`[...document.querySelectorAll('.left [role=tab]')].find(t=>t.textContent.trim()==='Bank')?.click()`);
+  await wait(300);
+  const count = await js(`document.querySelectorAll('${LIST}').length`);
+  check(count === 128, 'the bank lists 128 patches', String(count));
+  const bad = [];
+  for (let i = 0; i < count; i++) {
+    await js(`document.querySelectorAll('${LIST}')[${i}].click()`);
+    await wait(40);
+    const origin = await js(`document.querySelector('.origin')?.textContent`);
+    const a = await alerts();
+    if (a.length || !origin?.includes(`slot ${i + 1}`)) bad.push(i + 1);
+  }
+  check(bad.length === 0, 'every patch opens without a warning', bad.slice(0, 5).join(','));
+
+  // 2. Previous and next
+  await js(`document.querySelectorAll('${LIST}')[10].click()`);
+  await wait(200);
+  await js(`document.querySelector('header button[aria-label="Next patch"]').click()`);
+  await wait(250);
+  const next = await js(`document.querySelector('.origin')?.textContent`);
+  check(next?.includes('slot 12'), 'next patch moves one slot', next);
+
+  // 3. Edit and undo
+  const level = () => js(`document.querySelector('[aria-label="Patch Level"]')?.getAttribute('aria-valuetext')`);
+  await js(`[...document.querySelectorAll('.stage [role=tab]')].find(t=>t.textContent.trim()==='Patch')?.click()`);
+  await wait(300);
+  const before = await level();
+  await js(`(()=>{const k=document.querySelector('[aria-label="Patch Level"]'); k.focus(); k.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowDown',bubbles:true}))})()`);
+  await wait(250);
+  const edited = await level();
+  await js(`[...document.querySelectorAll('header button')].find(b=>b.textContent.trim()==='Undo')?.click()`);
+  await wait(250);
+  check(edited !== before && (await level()) === before, 'an edit changes the value and undo puts it back', `${before} -> ${edited} -> ${await level()}`);
+
+  // 4. Export, open the export, export again: the same bytes
+  // A download started by the page would raise the browser's "download multiple files" permission prompt; exports must not use one.
+  await js(`window.__downloads=0; const oc=HTMLAnchorElement.prototype.click; HTMLAnchorElement.prototype.click=function(){ if(this.download) window.__downloads++; return oc.call(this) }`);
+  const exportOpen = async (menuText) => {
+    for (const f of readdirSync(saves)) rmSync(join(saves, f));
+    await js(`[...document.querySelectorAll('header button')].find(b=>b.textContent.trim()==='File')?.click()`);
+    await wait(250);
+    await js(`[...document.querySelectorAll('button,[role=menuitem]')].find(b=>b.textContent.trim().startsWith(${JSON.stringify(menuText)}))?.click()`);
+    await wait(1200);
+    const files = readdirSync(saves);
+    return files.length === 1 ? readFileSync(join(saves, files[0])).toString('base64') : null;
+  };
+  await js(`document.querySelectorAll('${LIST}')[77].click()`);
+  await wait(300);
+  const first = await exportOpen('Export patch as .syx');
+  check(!!first && Buffer.from(first, 'base64').length > 500, 'a patch exports as a .syx file');
+  const tmpFile = join(profile, 'export.syx');
+  writeFileSync(tmpFile, Buffer.from(first ?? '', 'base64'));
+  await setFile('Open a .syx', tmpFile);
+  await wait(1500);
+  const second = await exportOpen('Export patch as .syx');
+  check(first === second && !!first, 'the export opens again and exports the same bytes');
+  const stackText = async () => (await js(`[...document.querySelectorAll('.stack .msg .text')].map(e=>e.textContent).join(' | ')`)) ?? '';
+  const inCorner = await js(`(()=>{const m=document.querySelector('.stack'); if(!m||!m.querySelector('.msg')) return false; const r=m.getBoundingClientRect(); return r.left<40 && r.bottom>innerHeight-110 && r.bottom<innerHeight})()`);
+  let notice = await stackText();
+  for (let i = 0; i < 15 && !/Saved /.test(notice); i++) {
+    await wait(200);
+    notice = await stackText();
+  }
+  check(/Saved .+\.syx/.test(notice) && !/[\/]/.test(notice), 'after saving, the message shows the file name only, never a folder path', notice);
+  check(inCorner === true, 'the message is in the bottom-left corner above the hint bar');
+  check(((await js(`document.querySelector('header .note, header .err, header .learn, header [role=alert]')?.textContent`)) ?? '') === '', 'the top bar shows no message');
+  check((await js('window.__downloads')) === 0, 'exports are saved by the app, not by a browser download');
+
+  // 5. Performances and Rhythm Sets from the same whole-memory file
+  for (const [mode, expected] of [['Performance', 32], ['Rhythm set', 2]]) {
+    await tab(mode, 'header ');
+    await wait(500);
+    await setFile('Open a .syx', bank);
+    await wait(1800);
+    const n = await js(`document.querySelectorAll('header select option').length`);
+    check(n === expected, `${mode}: the file's ${expected} entries are listed`, String(n));
+    const tabs = await js(`[...document.querySelectorAll('.stage [role=tab]')].map(x=>x.textContent.trim())`);
+    const problems = [];
+    for (const t of tabs) {
+      await tab(t, '.stage ');
+      await wait(200);
+      problems.push(...((await js(layoutProbe)) ?? []).map((p) => `${t}: ${p}`));
+    }
+    check(problems.length === 0, `${mode}: every tab lays out cleanly`, problems.slice(0, 3).join(' | '));
+  }
+
+  // 5b. Menus hang fully visible under the top bar (a clipping parent once cut them to one row)
+  for (const title of ['File', 'Edit', 'View']) {
+    await js(`[...document.querySelectorAll('nav button.title')].find(b=>b.textContent.trim()===${JSON.stringify(title)})?.click()`);
+    await wait(300);
+    const whole = await js(`(()=>{const m=document.querySelector('[role=menu]'); if(!m) return false; const items=[...m.querySelectorAll('button')]; const last=items[items.length-1]; const r=last.getBoundingClientRect(); const e=document.elementFromPoint(r.left+r.width/2, r.top+r.height/2); return !!e?.closest('[role=menu]')})()`);
+    check(whole, `the ${title} menu shows all its items`);
+    await js(`document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true})); window.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}))`);
+    await wait(150);
+  }
+
+  // 5b2. No Patch tab needs a scroll bar in the smallest window (the tabs are merged by what belongs together so that each fits)
+  await send('Emulation.setDeviceMetricsOverride', { width: 1100, height: 700, deviceScaleFactor: 1, mobile: false });
+  await tab('Patch', 'header ');
+  await wait(400);
+  const centreTabs = (await js(`[...document.querySelectorAll('.center [role=tab]')].map(x=>x.textContent.trim())`)) ?? [];
+  const scrolling = [];
+  for (const t of centreTabs) {
+    await tab(t, '.center ');
+    await wait(250);
+    const over = await js(`(()=>{const p=document.querySelector('.center [role=tabpanel]'); return p.scrollHeight-p.clientHeight})()`);
+    if (over > 1) scrolling.push(`${t} (+${over}px)`);
+  }
+  check(centreTabs.length >= 6 && centreTabs.length <= 8 && scrolling.length === 0, `Patch: ${centreTabs.length} tabs (${centreTabs.join(', ')}), none scrolls at 1100x700`, scrolling.join(', '));
+  await send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 800, deviceScaleFactor: 1, mobile: false });
+
+  // 5c. Keyboard focus on a knob, slider or switch must not draw a box, ring, border or tint around it
+  const pressTab = async () => {
+    for (const type of ['keyDown', 'keyUp']) await send('Input.dispatchKeyEvent', { type, key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 });
+    await wait(40);
+  };
+  const focusAudit = async (where) => {
+    await js(`document.activeElement?.blur()`);
+    let checked = 0;
+    const bad = [];
+    for (let i = 0; i < 70; i++) {
+      await pressTab();
+      const r = await js(`(()=>{const e=document.activeElement; if(!e) return null; const role=e.getAttribute('role'); if(!['slider','switch','spinbutton'].includes(role)) return null; const sig=(x)=>{const cs=getComputedStyle(x); return {shadow:cs.boxShadow, outline:cs.outlineStyle==='none'||parseFloat(cs.outlineWidth)===0?'none':cs.outlineStyle+' '+cs.outlineColor, image:cs.backgroundImage, fill:cs.backgroundColor, border:cs.borderTopWidth+' '+cs.borderTopColor}}; const on=sig(e); const svgOn=e.querySelector('svg')?getComputedStyle(e.querySelector('svg')).filter:''; e.blur(); const off=sig(e); e.focus({focusVisible:true}); const parts=Object.keys(on).filter(k=>on[k]!==off[k]).map(k=>k+': '+off[k]+' -> '+on[k]); return {label:e.getAttribute('aria-label'), problems:parts}})()`);
+      if (!r) continue;
+      checked++;
+      if (r.problems.length) bad.push(`${r.label}: ${r.problems.join(', ')}`);
+    }
+    check(checked >= 3 && bad.length === 0, `${where}: focusing ${checked} knobs, sliders and switches draws no ring, box or border`, bad.slice(0, 3).join(' | '));
+  };
+  await tab('Patch', 'header ');
+  await js(`[...document.querySelectorAll('.stage [role=tab]')].find(t=>t.textContent.trim()==='Filter')?.click()`);
+  await wait(300);
+  await focusAudit('Patch > Filter');
+  for (const t of ['Zones', 'Amp', 'LFO', 'Output']) {
+    await js(`[...document.querySelectorAll('.stage [role=tab]')].find(x=>x.textContent.trim()===${JSON.stringify(t)})?.click()`);
+    await wait(250);
+    await focusAudit(`Patch > ${t}`);
+  }
+  await tab('Performance', 'header ');
+  await wait(400);
+  await focusAudit('Performance');
+  await tab('Rhythm set', 'header ');
+  await wait(400);
+  await focusAudit('Rhythm set');
+  await tab('System', 'header ');
+  await js(`[...document.querySelectorAll('.stage [role=tab]')].find(t=>t.textContent.trim()==='Scale tune')?.click()`);
+  await wait(300);
+  await focusAudit('System > Scale tune');
+
+  // 6. Save panels are visible (not clipped by the top bar) and write nothing without an instrument
+  for (const [mode, buttonText, panel] of [['Patch', 'Save to synth…', '#save-panel'], ['System', 'Write to synth…', '#system-save-panel']]) {
+    await tab(mode, 'header ');
+    await wait(500);
+    await js(`[...document.querySelectorAll('header button')].find(b=>b.textContent.trim()===${JSON.stringify(buttonText)})?.click()`);
+    await wait(500);
+    const visible = await js(`(()=>{const p=document.querySelector('${panel}'); if(!p) return false; const r=p.getBoundingClientRect(); return [[r.left+20,r.top+20],[r.right-20,r.bottom-20]].every(([x,y])=>!!document.elementFromPoint(x,y)?.closest('${panel}'))})()`);
+    check(visible, `${mode}: the save panel is fully visible`);
+    await js(`[...document.querySelectorAll('${panel} button')].find(b=>/^1\\./.test(b.textContent.trim()))?.click()`);
+    await wait(500);
+    const msg = await js(`[...document.querySelectorAll('.stack .msg[data-kind=error] .text')].map(e=>e.textContent).join(' | ')`);
+    check(/not connected/.test(msg ?? ''), `${mode}: arming without an instrument is refused, in the corner`, msg);
+    check(((await js(`document.querySelector('${panel} .err, ${panel} .error')?.textContent`)) ?? '') === '', `${mode}: the panel itself shows no error line`);
+    await js(`[...document.querySelectorAll('${panel} button')].find(b=>b.textContent.trim()==='Close')?.click()`);
+    await wait(200);
+  }
+
+  // 7. Library import and the Bank workspace
+  await tab('Library', 'header ');
+  await wait(600);
+  await setFile('Import a .syx', bank);
+  await wait(2000);
+  const staged = await js(`[...document.querySelectorAll('button')].map(b=>b.textContent.trim()).find(t=>/^Import \\d+/.test(t))`);
+  check(staged === 'Import 128', 'the Library previews 128 patches for import', staged);
+  await tab('Bank', 'header ');
+  await wait(600);
+  await setFile('Load a .syx', bank);
+  await wait(1800);
+  const slots = await js(`document.querySelectorAll('[aria-label^="Slot "]').length`);
+  check(slots > 0, 'the Bank workspace shows the loaded bank', String(slots));
+
+  // 8. Layout: every tab of every workspace at two window sizes
+  for (const [w, h] of [[1100, 700], [1280, 800]]) {
+    await send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: false });
+    await wait(500);
+    const problems = [];
+    for (const mode of ['Patch', 'Performance', 'Rhythm set', 'System', 'Library', 'Bank']) {
+      await tab(mode, 'header ');
+      await wait(400);
+      const inner = (await js(`[...document.querySelectorAll('.stage [role=tab]')].map(x=>x.textContent.trim())`)) ?? [];
+      for (const t of ['', ...inner]) {
+        if (t) {
+          await tab(t, '.stage ');
+          await wait(200);
+        }
+        problems.push(...((await js(layoutProbe)) ?? []).map((p) => `${mode}/${t || 'main'}: ${p}`));
+      }
+    }
+    check(problems.length === 0, `layout is clean at ${w}x${h}`, problems.slice(0, 3).join(' | '));
+  }
+
+  check(pageErrors.length === 0, 'no script errors in the window', [...new Set(pageErrors)].slice(0, 2).join(' | '));
+} catch (e) {
+  check(false, 'the run finished', String(e?.stack ?? e));
+} finally {
+  ws.close();
+  stop();
+}
+
+console.log(failures.length ? `\n${failures.length} check(s) failed` : '\nAll checks passed');
+process.exit(failures.length ? 1 : 0);

@@ -56,7 +56,9 @@
     sans-serif;
   --font-caps: 'Bahnschrift SemiBold SemiCondensed', 'Bahnschrift', 'Arial Narrow', system-ui, sans-serif;
   --font-mono: 'Cascadia Mono', 'Consolas', ui-monospace, monospace;
-  --focus: 0 0 0 1px var(--accent);
+  /* Keyboard focus is shown by a tint over the control, never by a ring, border or box. */
+  --focus-tint: color-mix(in srgb, var(--accent) 24%, transparent);
+  --focus-fill: linear-gradient(var(--focus-tint), var(--focus-tint));
 }
 
 * {

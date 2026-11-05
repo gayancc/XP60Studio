@@ -342,7 +342,7 @@
     outline: none;
   }
   .handle:focus-visible {
-    box-shadow: 0 0 0 2px var(--accent);
+    filter: brightness(1.5);
   }
   .oct {
     font: 600 9px var(--font-caps);

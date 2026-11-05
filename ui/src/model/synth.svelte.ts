@@ -4,6 +4,7 @@
 import { invoke, isTauri } from '@tauri-apps/api/core';
 import type { DocKindName } from './catalog';
 import type { LiveTransport } from './transport';
+import { reportError, reportInfo, reportSuccess, reportWarning } from './messages.svelte';
 
 export interface Ports {
   inputs: string[];
@@ -49,9 +50,25 @@ export class SynthService {
   ports = $state<Ports>({ inputs: [], outputs: [] });
   info = $state<Connected | null>(null);
   busy = $state(false);
-  error = $state('');
+  #error = $state('');
+  get error(): string {
+    return this.#error;
+  }
+  /** Setting text here also shows it in the bottom-left corner with every other message. */
+  set error(text: string) {
+    this.#error = text;
+    if (text) reportError(text);
+  }
   /** What the last completed read or check found ("Fetched ..."), shown for a few seconds. */
-  notice = $state('');
+  #notice = $state('');
+  get notice(): string {
+    return this.#notice;
+  }
+  /** Setting text here also shows it in the bottom-left corner with every other message. */
+  set notice(text: string) {
+    this.#notice = text;
+    if (text) reportInfo(text);
+  }
   private noticeTimer: ReturnType<typeof setTimeout> | undefined;
   /** Milliseconds between writes. */
   pacing = $state(20);

@@ -10,13 +10,15 @@ export const MAX_FILE_BYTES = 16 * 1024 * 1024;
 
 export type Destination = 'patch' | 'performance' | 'rhythm' | 'system' | 'library' | 'bank';
 
-/** Open a patch from a `.syx` or `.mid` into the editor (the first patch of a bank; the others via the Bank menu). */
+/** Open the first patch (or Performance, or Rhythm Set, in those workspaces) of a `.syx` or `.mid` into the editor; the others come from the bank picker. */
 export function openPatchFile(store: PatchStore, raw: Uint8Array, fileName: string): void {
   try {
     if (raw.length > MAX_FILE_BYTES) throw new Error(`That file is larger than ${MAX_FILE_BYTES / 1_048_576} MB; a .syx bank is far smaller.`);
     const bytes = asSyx(raw);
-    const names = PatchStore.listSyx(bytes);
-    ui.bank = { file: fileName, bytes, names };
+    const kind = store.kind === 'performance' || store.kind === 'rhythm' ? store.kind : 'patch';
+    const names = PatchStore.listSyx(bytes, kind);
+    if (names.length === 0) throw new Error(`That file holds no ${kind === 'patch' ? 'patches' : kind === 'performance' ? 'Performances' : 'Rhythm Sets'}.`);
+    ui.bank = { kind, file: fileName, bytes, names };
     ui.bankSlot = 0;
     store.loadSyx(bytes, names[0]?.[0] ?? 0, fileName);
   } catch (err) {

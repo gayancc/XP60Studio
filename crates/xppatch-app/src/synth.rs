@@ -6,10 +6,10 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 use std::time::Instant;
 use thiserror::Error;
-use xppatch_core::{DocKind, Patch};
+use xppatch_core::{DocKind, Document, Patch};
 use xppatch_midi::{
     CancelToken, Client, ClientConfig, ClientError, ControlSource, MidiTransport, Progress,
-    WritePlan,
+    SystemWritePlan, WritePlan,
 };
 use xppatch_sysex::message::{DeviceId, ParseError};
 
@@ -38,6 +38,8 @@ pub enum SynthError {
     NotConfirmed(String),
     #[error("User patch {slot} no longer holds what was saved; it was not put back. The earlier patch is in {backup}")]
     SlotChanged { slot: u16, backup: String },
+    #[error("the System settings no longer hold what was saved; they were not put back. The earlier settings are in {backup}")]
+    SystemChanged { backup: String },
     #[error("could not write the backup file ({0}); nothing was changed on the instrument")]
     Backup(String),
     #[error("invalid patch data: {0}")]
@@ -94,6 +96,20 @@ pub struct Synth<T: MidiTransport> {
     last_backup_path: Option<String>,
     /// A planned whole-bank write (every slot read and backed up), armed or not.
     bank: Option<(Vec<WritePlan>, bool, Instant, Vec<u8>)>,
+    /// A planned write of the System settings, armed or not.
+    system: Option<(SystemWritePlan, bool, Instant)>,
+    /// The last System write attempted, kept so it can be undone.
+    system_last: Option<SystemAttempt>,
+    system_backup_path: Option<String>,
+}
+
+/// A System write that was started: what was meant to be written, what it replaced, and where that was backed up.
+struct SystemAttempt {
+    plan: SystemWritePlan,
+    wrote: Document,
+    backup_path: String,
+    /// The write did not verify, so the settings may be a mix of old and new.
+    failed: bool,
 }
 
 /// A save that was started: what was meant to be written, what it replaced, and where that was backed up.
@@ -152,6 +168,22 @@ pub struct BankSaveReport {
     pub cancelled: bool,
 }
 
+/// What arming a System write found and kept.
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub struct ArmedSystemSave {
+    /// Where the current System settings were saved before anything is written.
+    pub backup_path: String,
+}
+
+/// What a completed System write did.
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub struct SystemSaveReport {
+    pub messages: usize,
+    pub bytes: usize,
+    /// The settings were read back and equal what was sent.
+    pub verified: bool,
+}
+
 /// What a completed save did.
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub struct SaveReport {
@@ -193,6 +225,9 @@ impl<T: MidiTransport> Synth<T> {
                 last: None,
                 last_backup_path: None,
                 bank: None,
+                system: None,
+                system_last: None,
+                system_backup_path: None,
             },
             connected,
         ))
@@ -221,6 +256,7 @@ impl<T: MidiTransport> Synth<T> {
     ) -> Result<ArmedSave, SynthError> {
         self.save = None;
         self.bank = None;
+        self.system = None;
         let plan = self.client.plan_user_write(slot, &CancelToken::new())?;
         let device = self.client.config().device;
         let bytes = xppatch_core::user_patch_bank_bytes(
@@ -345,6 +381,133 @@ impl<T: MidiTransport> Synth<T> {
         })
     }
 
+    /// Step one of saving the System settings: read them, write them to `backup_dir` as a `.syx` file (the instrument is
+    /// untouched until that file exists and reads back as exactly what was read), and arm exactly one write.
+    pub fn arm_system_save(
+        &mut self,
+        backup_dir: &Path,
+        stamp: u64,
+    ) -> Result<ArmedSystemSave, SynthError> {
+        self.save = None;
+        self.bank = None;
+        self.system = None;
+        let plan = self.client.plan_system_write(&CancelToken::new())?;
+        let device = self.client.config().device;
+        let bytes = xppatch_core::system_document_bytes(plan.backup(), device, Some(128))
+            .map_err(|e| SynthError::Backup(e.to_string()))?;
+        std::fs::create_dir_all(backup_dir).map_err(|e| SynthError::Backup(e.to_string()))?;
+        let (path, mut file) = create_backup_file(backup_dir, &format!("{stamp}-system"))?;
+        let written = std::io::Write::write_all(&mut file, &bytes).and_then(|()| file.sync_all());
+        drop(file);
+        let verified = written
+            .map_err(|e| e.to_string())
+            .and_then(|()| std::fs::read(&path).map_err(|e| e.to_string()))
+            .and_then(|raw| {
+                let image = xppatch_core::SyxImage::parse(&raw).map_err(|e| e.to_string())?;
+                match image.system_document().map_err(|e| e.to_string())? {
+                    Some(doc) if &doc == plan.backup() => Ok(()),
+                    _ => Err("the backup file does not match what it should hold".to_owned()),
+                }
+            });
+        if let Err(e) = verified {
+            let _ = std::fs::remove_file(&path);
+            return Err(SynthError::Backup(e));
+        }
+        let info = ArmedSystemSave {
+            backup_path: path.display().to_string(),
+        };
+        self.system_backup_path = Some(info.backup_path.clone());
+        self.system = Some((plan, true, Instant::now()));
+        Ok(info)
+    }
+
+    /// Cancel an armed System save without writing anything.
+    pub fn disarm_system_save(&mut self) {
+        if let Some((_, armed, _)) = self.system.as_mut() {
+            *armed = false;
+        }
+    }
+
+    /// Step two: write `block_bytes` (the System settings as concatenated block bytes) and read them back. The save is
+    /// disarmed first, whatever happens, so one arming allows one write; an arming older than a minute is refused, and the
+    /// settings are read again and must still hold what was backed up.
+    pub fn commit_system_save(
+        &mut self,
+        block_bytes: &[u8],
+    ) -> Result<SystemSaveReport, SynthError> {
+        let (plan, armed, since) = self.system.as_mut().ok_or(SynthError::NotArmed)?;
+        if !std::mem::replace(armed, false) {
+            return Err(SynthError::NotArmed);
+        }
+        if since.elapsed() > ARMING_LIFETIME {
+            return Err(SynthError::ArmingExpired);
+        }
+        let plan = plan.clone();
+        let doc = Document::from_block_bytes(DocKind::System, block_bytes)
+            .map_err(|e| SynthError::BadPatch(e.to_string()))?;
+        let backup_path = self.system_backup_path.clone().unwrap_or_default();
+        let result = self
+            .client
+            .commit_system_write(&plan, &doc, &CancelToken::new());
+        let wrote_something = !matches!(
+            result,
+            Err(ClientError::Refused(_)
+                | ClientError::Timeout { .. }
+                | ClientError::Cancelled
+                | ClientError::Patch(_))
+        );
+        if wrote_something {
+            self.system_last = Some(SystemAttempt {
+                plan,
+                wrote: doc,
+                backup_path,
+                failed: result.is_err(),
+            });
+        }
+        let report = result?;
+        Ok(SystemSaveReport {
+            messages: report.messages,
+            bytes: report.bytes,
+            verified: report.verified,
+        })
+    }
+
+    /// Put back the System settings the last save replaced, once. It is refused if the settings no longer hold what that
+    /// save wrote (a later change would be lost), unless the save itself failed part way and they may hold a mix.
+    pub fn restore_system_backup(&mut self) -> Result<SystemSaveReport, SynthError> {
+        let attempt = self
+            .system_last
+            .as_ref()
+            .ok_or(SynthError::NothingToRestore)?;
+        let (plan, failed, wrote, backup) = (
+            attempt.plan.clone(),
+            attempt.failed,
+            attempt.wrote.clone(),
+            attempt.backup_path.clone(),
+        );
+        if !failed {
+            let now = self.client.read_system(&CancelToken::new())?;
+            if now != wrote {
+                return Err(SynthError::SystemChanged { backup });
+            }
+        }
+        let report = self
+            .client
+            .restore_system_backup(&plan, &CancelToken::new())?;
+        self.system_last = None;
+        Ok(SystemSaveReport {
+            messages: report.messages,
+            bytes: report.bytes,
+            verified: report.verified,
+        })
+    }
+
+    /// The transport, for tests that need to change the instrument behind the app's back.
+    #[cfg(test)]
+    fn client_port_mut_for_test(&mut self) -> &mut T {
+        self.client.port_mut()
+    }
+
     /// Read all 128 User patches as `(slot, blocks)`. Reads only.
     pub fn read_bank(
         &mut self,
@@ -421,6 +584,7 @@ impl<T: MidiTransport> Synth<T> {
         self.bank = None;
         // Arming a bank replaces any single-slot arming, so only one write can ever be pending.
         self.save = None;
+        self.system = None;
         let mut confirmed: Vec<u8> = slots_to_write.to_vec();
         confirmed.sort_unstable();
         confirmed.dedup();
@@ -1157,6 +1321,129 @@ mod tests {
         s.arm_user_save(2, &dir, 102).unwrap();
         assert!(matches!(
             s.commit_bank_write(&[(1, bank_patch(0).to_blocks())], &cancel, &mut |_| {}),
+            Err(SynthError::NotArmed)
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    fn system_doc(tune: i32) -> Document {
+        let mut d = Document::init(DocKind::System);
+        d.block_mut(0).unwrap().set("master_tune", tune).unwrap();
+        d
+    }
+
+    fn synth_with_system(tune: i32) -> Synth<VirtualXp60> {
+        let mut d = virtual_synth(0x10);
+        d.load_image(&SyxImage::parse(BANK).unwrap());
+        d.set_document(xppatch_sysex::memory::SYSTEM, &system_doc(tune))
+            .unwrap();
+        Synth::connect(d, 0x10).unwrap().0
+    }
+
+    #[test]
+    fn arming_the_system_settings_saves_them_to_disk_first() {
+        let dir = temp_dir("sysarm");
+        let mut s = synth_with_system(12);
+        let armed = s.arm_system_save(&dir, 2000).unwrap();
+        assert!(armed.backup_path.ends_with("2000-system.syx"));
+        let raw = std::fs::read(&armed.backup_path).unwrap();
+        let doc = SyxImage::parse(&raw).unwrap().system_document().unwrap();
+        assert_eq!(doc, Some(system_doc(12)));
+        // arming again never overwrites the earlier backup
+        let again = s.arm_system_save(&dir, 2000).unwrap();
+        assert!(again.backup_path.ends_with("2000-system-2.syx"));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_system_save_needs_arming_and_one_arming_allows_one_write() {
+        let dir = temp_dir("sysonce");
+        let mut s = synth_with_system(10);
+        assert!(matches!(
+            s.commit_system_save(&system_doc(11).to_block_bytes()),
+            Err(SynthError::NotArmed)
+        ));
+        s.arm_system_save(&dir, 1).unwrap();
+        let report = s
+            .commit_system_save(&system_doc(77).to_block_bytes())
+            .unwrap();
+        assert!(report.verified);
+        assert!(matches!(
+            s.commit_system_save(&system_doc(78).to_block_bytes()),
+            Err(SynthError::NotArmed)
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn disarming_and_bad_data_write_nothing_to_the_system_settings() {
+        let dir = temp_dir("sysbad");
+        let mut s = synth_with_system(10);
+        s.arm_system_save(&dir, 1).unwrap();
+        s.disarm_system_save();
+        assert!(matches!(
+            s.commit_system_save(&system_doc(50).to_block_bytes()),
+            Err(SynthError::NotArmed)
+        ));
+        s.arm_system_save(&dir, 2).unwrap();
+        assert!(matches!(
+            s.commit_system_save(&[1, 2, 3]),
+            Err(SynthError::BadPatch(_))
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn the_last_system_save_can_be_undone_once() {
+        let dir = temp_dir("sysundo");
+        let mut s = synth_with_system(10);
+        assert!(matches!(
+            s.restore_system_backup(),
+            Err(SynthError::NothingToRestore)
+        ));
+        s.arm_system_save(&dir, 1).unwrap();
+        s.commit_system_save(&system_doc(90).to_block_bytes())
+            .unwrap();
+        let report = s.restore_system_backup().unwrap();
+        assert!(report.verified);
+        assert!(matches!(
+            s.restore_system_backup(),
+            Err(SynthError::NothingToRestore)
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn undo_of_a_system_save_is_refused_when_the_settings_changed_since() {
+        let dir = temp_dir("sysundo2");
+        let mut s = synth_with_system(10);
+        s.arm_system_save(&dir, 1).unwrap();
+        s.commit_system_save(&system_doc(90).to_block_bytes())
+            .unwrap();
+        // a panel edit after the save
+        s.client_port_mut_for_test()
+            .set_document(xppatch_sysex::memory::SYSTEM, &system_doc(91))
+            .unwrap();
+        assert!(matches!(
+            s.restore_system_backup(),
+            Err(SynthError::SystemChanged { .. })
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn arming_a_patch_save_drops_a_pending_system_save() {
+        let dir = temp_dir("sysdrop");
+        let mut s = synth_with_system(10);
+        s.arm_system_save(&dir, 1).unwrap();
+        s.arm_user_save(1, &dir, 2).unwrap();
+        assert!(matches!(
+            s.commit_system_save(&system_doc(20).to_block_bytes()),
+            Err(SynthError::NotArmed)
+        ));
+        s.arm_system_save(&dir, 3).unwrap();
+        assert!(matches!(
+            s.commit_user_save(&bank_patch(0).to_blocks()),
             Err(SynthError::NotArmed)
         ));
         let _ = std::fs::remove_dir_all(&dir);

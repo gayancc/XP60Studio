@@ -6,7 +6,7 @@ use thiserror::Error;
 use xppatch_sysex::address::Address;
 use xppatch_sysex::chunk::{split_dt1, ChunkError, MAX_DT1_DATA_TO_DEVICE};
 use xppatch_sysex::memory::{
-    user_patch, user_performance, user_rhythm, MemoryError, TEMP_PATCH, USER_PATCH_COUNT,
+    user_patch, user_performance, user_rhythm, MemoryError, SYSTEM, TEMP_PATCH, USER_PATCH_COUNT,
     USER_PERFORMANCE_COUNT, USER_RHYTHM_COUNT,
 };
 use xppatch_sysex::message::{DeviceId, EncodeError, Message, ParseError};
@@ -117,6 +117,24 @@ impl SyxImage {
         Ok(Some(Patch::from_dt1(TEMP_PATCH, &pieces)?))
     }
 
+    /// The System settings in the image (messages addressed to `00 00 xx xx`), if it holds any. Incomplete or conflicting
+    /// data is an error, as for patches.
+    pub fn system_document(&self) -> Result<Option<Document>, SyxError> {
+        let pieces: Vec<(Address, Vec<u8>)> = self
+            .records
+            .iter()
+            .filter(|r| {
+                let l = r.address.bytes();
+                l[0] == 0x00 && l[1] == 0x00
+            })
+            .map(|r| (r.address, r.data.clone()))
+            .collect();
+        if pieces.is_empty() {
+            return Ok(None);
+        }
+        Ok(Some(Document::from_dt1(DocKind::System, SYSTEM, &pieces)?))
+    }
+
     /// Every complete User Patch in the image, as `(slot 0..=127, patch)`, ordered by slot. Messages for other
     /// regions are ignored. A User Patch with missing data, or a slot whose messages conflict with each other, is an
     /// error rather than being silently dropped or merged.
@@ -215,6 +233,34 @@ pub fn user_document_bytes(
     Ok(out)
 }
 
+/// Serialise the System settings as `.syx` messages (pieces of at most `split` data bytes, never above 128). Other kinds
+/// are refused.
+pub fn system_document_bytes(
+    doc: &Document,
+    device: DeviceId,
+    split: Option<usize>,
+) -> Result<Vec<u8>, SyxError> {
+    if let Some(n) = split {
+        if n > MAX_DT1_DATA_TO_DEVICE {
+            return Err(SyxError::SplitTooLarge(n));
+        }
+    }
+    if doc.kind() != DocKind::System {
+        return Err(SyxError::SlotOutOfRange(0));
+    }
+    let mut out = Vec::new();
+    for (address, data) in doc.to_dt1(SYSTEM)? {
+        let messages = match split {
+            Some(n) => split_dt1(address, &data, n)?,
+            None => vec![Message::Dt1 { address, data }],
+        };
+        for m in messages {
+            out.extend(m.encode(device)?);
+        }
+    }
+    Ok(out)
+}
+
 /// Serialise patches as a User Patch bank `.syx`. With `split = None` each block is one message (the way the XP-60
 /// transmits them); with `Some(n)` blocks are split into pieces of at most `n` data bytes (use 128 to send to the
 /// instrument; more than 128 is refused). Patches holding invalid values are refused.
@@ -247,6 +293,23 @@ pub fn user_patch_bank_bytes(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn system_settings_roundtrip_through_a_file() {
+        let mut doc = Document::init(DocKind::System);
+        doc.block_mut(0).unwrap().set("master_tune", 37).unwrap();
+        let bytes = system_document_bytes(&doc, DeviceId::DEFAULT, Some(128)).unwrap();
+        let back = SyxImage::parse(&bytes).unwrap().system_document().unwrap();
+        assert_eq!(back, Some(doc));
+        // a patch bank holds no System settings, and other kinds are refused
+        let bank = user_patch_bank_bytes(&[(0, Patch::init())], DeviceId::DEFAULT, None).unwrap();
+        assert_eq!(
+            SyxImage::parse(&bank).unwrap().system_document().unwrap(),
+            None
+        );
+        let perf = Document::init(DocKind::Performance);
+        assert!(system_document_bytes(&perf, DeviceId::DEFAULT, None).is_err());
+    }
 
     #[test]
     fn bank_bytes_roundtrip_through_the_image() {

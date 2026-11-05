@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { reportWarning } from '../model/messages.svelte';
   import { tick } from 'svelte';
   import { conflicts, keyOf, search } from '../model/shortcuts';
   import { isAcceptableKey, type KeyMap } from '../model/shortcuts';
@@ -35,6 +36,14 @@
 
   const results = $derived(search(query, items, (i) => `${i.label} ${i.hint}`));
   const clashes = $derived(new Set(conflicts(keys).flatMap(([, ids]) => ids)));
+
+  // Two commands on one key: neither runs. Say so in the corner when a key is shared (the rows stay tinted).
+  $effect(() => {
+    for (const [key, ids] of conflicts(keys)) {
+      const names = ids.map((id) => commands.find((c) => c.id === id)?.label ?? id);
+      reportWarning(`The shortcut ${key} is shared by ${names.join(' and ')}: neither works.`);
+    }
+  });
 
   $effect(() => {
     if (open) {
@@ -156,7 +165,6 @@
                   >
                     {capturing === c.id ? 'Press a key…' : keys[c.id] || 'none'}
                   </button>
-                  {#if clashes.has(c.id)}<span class="warn">shared: neither works</span>{/if}
                 </td>
               </tr>
             {/each}
@@ -263,7 +271,7 @@
   .keybtn:focus-visible,
   .foot button:focus-visible {
     outline: none;
-    box-shadow: var(--focus);
+    background-image: var(--focus-fill);
   }
   h2 {
     margin: 4px 0;
@@ -285,10 +293,5 @@
   }
   tr.clash td {
     background: rgba(239, 83, 80, 0.15);
-  }
-  .warn {
-    color: var(--bad);
-    font-size: 11px;
-    margin-left: 6px;
   }
 </style>

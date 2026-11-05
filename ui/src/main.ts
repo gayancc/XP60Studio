@@ -14,6 +14,7 @@ import { preview } from './model/preview.svelte';
 import { cutFrames } from './model/sendOptions.svelte';
 import { splitFrames } from './model/frames';
 import { SaveFlow } from './model/save.svelte';
+import { SystemSaveFlow } from './model/systemSave.svelte';
 import { MemoryTransport, PacedTransport } from './model/transport';
 import Storybook from './storybook/Storybook.svelte';
 import init, { catalogJson, PatchDoc } from './wasm/pkg/xppatch.js';
@@ -46,8 +47,10 @@ async function start(host: HTMLElement): Promise<void> {
     system: new PatchStore(catalog, transport, 0x10, undefined, 'system'),
   };
   // The three sounds start from the neutral sound (full ranges, first tone on), not from all-minimum values that play
-  // nothing. System settings stay as they are: they stand for the instrument's own memory.
+  // nothing. System settings stand for the instrument's own memory, so they stay at their minimum, except that the keyboard scale starts at equal
+  // temperament rather than -64 cents on every note.
   for (const kind of ['patch', 'performance', 'rhythm'] as const) stores[kind].newPatch();
+  stores.system.newSystemSettings();
   const synth = tauri instanceof TauriTransport ? new SynthService(tauri, transport instanceof PacedTransport ? transport : undefined) : undefined;
   // A Program Change from the panel makes every temporary copy out of date (System settings are unaffected).
   synth?.startStalePolling(() => {
@@ -64,7 +67,7 @@ async function start(host: HTMLElement): Promise<void> {
     controls.attach(tauriControlDeps(() => synth.connected, () => synth.busy), stores, catalog);
     controls.start();
   }
-  const services = desktop ? { library: new LibraryService(tauriBackend), save: new SaveFlow(tauriBackend), bank: new BankService(tauriBackend) } : undefined;
+  const services = desktop ? { library: new LibraryService(tauriBackend), save: new SaveFlow(tauriBackend), systemSave: new SystemSaveFlow(tauriBackend), bank: new BankService(tauriBackend) } : undefined;
   if (synth && services) {
     // Hover audition: a stored patch goes to the instrument's temporary patch and the instrument's own sound is put back.
     preview.attach({

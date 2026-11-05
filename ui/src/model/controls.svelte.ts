@@ -6,6 +6,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { paramInfo, type BlockName, type Catalog, type DocKindName } from './catalog';
 import { bind, describe, find, hears, parseBindings, scaleValue, serializeBindings, unbind, type Binding, type SourceKind } from './controlMap';
 import type { PatchStore } from './store.svelte';
+import { messages, reportInfo } from './messages.svelte';
 
 export interface ControlMove {
   channel: number;
@@ -64,7 +65,15 @@ export class ControlLink {
   bindings = $state<Binding[]>([]);
   /** The parameter waiting for a controller to be moved, or null. */
   learning = $state<ControlTarget | null>(null);
-  notice = $state('');
+  #notice = $state('');
+  get notice(): string {
+    return this.#notice;
+  }
+  /** Setting text here also shows it in the bottom-left corner with every other message. */
+  set notice(text: string) {
+    this.#notice = text;
+    if (text) reportInfo(text);
+  }
 
   private deps: ControlDeps | undefined;
   private stores: Partial<Record<DocKindName, PatchStore>> = {};
@@ -90,14 +99,23 @@ export class ControlLink {
     return b ? describe(b) : null;
   }
 
+  private learnMessage = 0;
+
   learn(target: ControlTarget): void {
+    this.endLearnMessage();
     this.learning = target;
-    this.notice = `Move a controller to link it to ${target.name}.`;
+    // Shown until a controller moves or learning is cancelled.
+    this.learnMessage = messages.hold('info', `Move a controller to link it to ${target.name}.`);
   }
 
   cancelLearn(): void {
-    if (this.learning) this.notice = '';
     this.learning = null;
+    this.endLearnMessage();
+  }
+
+  private endLearnMessage(): void {
+    if (this.learnMessage) messages.dismiss(this.learnMessage);
+    this.learnMessage = 0;
   }
 
   unlink(target: Pick<Binding, 'kind' | 'block' | 'id'>): void {
@@ -163,6 +181,7 @@ export class ControlLink {
       this.bindings = bind(this.bindings, b);
       this.persist();
       this.learning = null;
+      this.endLearnMessage();
       this.notice = `${learning.name} is linked to ${describe(b)}.`;
       return;
     }

@@ -54,6 +54,10 @@
     border: 1px solid var(--edge);
     border-top: 0;
     border-radius: 0 0 var(--radius-lg) var(--radius-lg);
-    overflow: hidden;
+    /* Content that does not fit scrolls here instead of being cut off (a note or a longer name can add a line in a small window). */
+    overflow-x: hidden;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--edge-light) transparent;
   }
 </style>

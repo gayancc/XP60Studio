@@ -85,7 +85,7 @@
   }
   button:focus-visible {
     outline: none;
-    box-shadow: var(--focus);
+    background-image: var(--focus-fill);
   }
   svg {
     width: 9px;

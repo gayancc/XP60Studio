@@ -76,7 +76,7 @@
   }
   .caption:focus-visible {
     outline: none;
-    box-shadow: inset var(--focus);
+    background-image: var(--focus-fill);
   }
   .chev {
     display: inline-block;

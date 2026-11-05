@@ -94,7 +94,10 @@
   }
   .sw:focus-visible {
     outline: none;
-    box-shadow: var(--focus);
+  }
+  .sw:focus-visible i {
+    filter: brightness(1.5);
+    transform: scale(1.2);
   }
   .sw i {
     width: 11px;
@@ -146,7 +149,7 @@
   }
   .tag:focus-visible {
     outline: none;
-    box-shadow: var(--focus);
+    background-image: var(--focus-fill);
   }
   .body {
     display: flex;

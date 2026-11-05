@@ -2,7 +2,9 @@
   import { onDestroy, onMount, untrack } from 'svelte';
   import { DockPanel, TabPanel, ToggleLed } from '../kit';
   import FactoryPanel from './FactoryPanel.svelte';
-  import { asSyx, download, toMidiFile } from '../model/midiFile';
+  import { asSyx, toMidiFile } from '../model/midiFile';
+  import { saveFile } from '../model/saveFile';
+  import { say } from '../model/ui.svelte';
   import { buildFolders, findFolder, normaliseTag, pathParts, topOf } from '../model/folders';
   import { planRename, summarise } from '../model/nameReplace';
   import { preview } from '../model/preview.svelte';
@@ -129,7 +131,7 @@
     const bytes = await lib?.exportVisible(store.deviceId);
     if (!bytes) return;
     try {
-      download('xppatch-library.mid', toMidiFile(bytes));
+      say(await saveFile('xppatch-library.mid', toMidiFile(bytes)));
     } catch (e) {
       if (lib) lib.error = e instanceof Error ? e.message : String(e);
     }
@@ -138,12 +140,7 @@
   async function exportVisible(): Promise<void> {
     const bytes = await lib?.exportVisible(store.deviceId);
     if (!bytes) return;
-    const url = URL.createObjectURL(new Blob([bytes as BlobPart], { type: 'application/octet-stream' }));
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'xppatch-library-bank.syx';
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    say(await saveFile('xppatch-library-bank.syx', bytes));
   }
 
   async function addCurrent(): Promise<void> {
@@ -161,6 +158,7 @@
     <section class="list">
       <TabPanel tabs={groupTabs} selected={groupIndex} name="Library groups" meta="{lib.rows.length} of {lib.total}" onchange={pickGroup}>
        {#snippet children()}
+       <div class="listbody">
         {#if openFolder && showTrail}
           <div class="crumbs" role="group" aria-label="Folders in {openFolder.name}">
             {#each trail as t, i (t.path)}
@@ -197,8 +195,6 @@
           <button type="button" onclick={exportVisibleMid} disabled={lib.busy || lib.rows.length === 0} title="The same patches as a Standard MIDI File">Export .mid</button>
           <button type="button" onclick={addCurrent} disabled={lib.busy} title="Store the patch open in the editor">Add current patch</button>
         </div>
-        {#if preview.enabled}<p class="notice" role="status">{preview.playing !== null ? 'Sounding on the temporary patch. Leaving the list puts the previous sound back.' : 'Rest the pointer on a patch to hear it on the instrument (temporary patch only).'}</p>{/if}
-        {#if preview.error}<p class="error" role="alert">{preview.error}</p>{/if}
         {#if lib.staged}
           <div class="staged" role="group" aria-label="File to import">
             <p>
@@ -211,8 +207,6 @@
             </div>
           </div>
         {/if}
-        {#if lib.notice}<p class="notice" role="status">{lib.notice}</p>{/if}
-        {#if lib.error}<p class="error" role="alert">{lib.error}</p>{/if}
         <ul class="rows" aria-label="Stored patches">
           {#each lib.rows as r (r.id)}
             <li class:sel={lib.selectedId === r.id} onpointerenter={() => preview.hover(r.id)} onpointerleave={() => preview.unhover()}>
@@ -233,6 +227,7 @@
             <li class="empty">{lib.total === 0 && !lib.text && !lib.tag ? 'The library is empty. Import a .syx bank to start.' : 'No patches match.'}</li>
           {/each}
         </ul>
+       </div>
        {/snippet}
       </TabPanel>
     </section>
@@ -322,6 +317,22 @@
     gap: 10px;
     padding: 10px;
     min-height: 0;
+    /* one row as tall as the window leaves, so the lists scroll inside it instead of pushing the page past the window */
+    grid-template-rows: minmax(0, 1fr);
+  }
+  .list {
+    display: flex;
+    flex-direction: column;
+  }
+  .list > :global(.tp) {
+    flex: 1;
+    min-height: 0;
+  }
+  .listbody {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
   }
   .work > :global(*) {
     min-height: 0;
@@ -369,7 +380,7 @@
   }
   button:focus-visible {
     outline: none;
-    box-shadow: var(--focus);
+    background-image: var(--focus-fill);
   }
   button:disabled {
     opacity: 0.4;
@@ -388,7 +399,8 @@
     list-style: none;
     margin: 0;
     padding: 0;
-    max-height: calc(100vh - 270px);
+    flex: 1;
+    min-height: 120px;
     overflow: auto;
     display: flex;
     flex-direction: column;
@@ -452,14 +464,6 @@
   .empty {
     padding: 10px;
     color: var(--text-dim);
-  }
-  .notice {
-    color: var(--ok);
-    margin: 4px 0;
-  }
-  .error {
-    color: var(--bad);
-    margin: 4px 0;
   }
   .actions {
     display: flex;
@@ -552,6 +556,6 @@
   }
   .crumbs button:focus-visible {
     outline: none;
-    box-shadow: var(--focus);
+    background-image: var(--focus-fill);
   }
 </style>

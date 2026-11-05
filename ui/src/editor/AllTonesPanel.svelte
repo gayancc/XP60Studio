@@ -3,12 +3,12 @@
   import { waveLabel } from '../model/factory';
   import { blockTitle } from '../model/labels';
   import { useStore } from './context';
-  import TonePanel, { type TonePart } from './TonePanel.svelte';
+  import TonePanel, { type ToneGroup } from './TonePanel.svelte';
 
   // One sound section for all four Tones at once, so the same parameters can be compared and set across Tones without switching between them. A Tone that is off is
   // dimmed but still editable. Clicking a Tone's heading selects it, as the Tone cards do.
   interface Props {
-    part: TonePart | 'all';
+    part: ToneGroup;
     colors: readonly string[];
     selected: number;
     onselect: (index: number) => void;
@@ -86,7 +86,7 @@
   }
   .head:focus-visible {
     outline: none;
-    box-shadow: inset var(--focus);
+    background-image: var(--focus-fill);
   }
   .head i {
     width: 9px;

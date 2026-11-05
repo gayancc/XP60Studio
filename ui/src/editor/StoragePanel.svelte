@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { errorText, reportError, reportSuccess } from '../model/messages.svelte';
   import type { Backend, StorageInfo } from '../model/backend';
 
   interface Props {
@@ -11,7 +12,6 @@
   let info = $state<StorageInfo | null>(null);
   let path = $state('');
   let busy = $state(false);
-  let message = $state('');
   let failed = $state(false);
 
   const pending = $derived(info !== null && info.configured !== info.in_use);
@@ -22,7 +22,7 @@
       path = info.custom ? info.configured : '';
     } catch (e) {
       failed = true;
-      message = e instanceof Error ? e.message : String(e);
+      reportError(errorText(e));
     }
   }
 
@@ -31,14 +31,13 @@
   async function apply(dir: string | null): Promise<void> {
     busy = true;
     failed = false;
-    message = '';
     try {
       info = await backend.storageSet(dir);
       path = info.custom ? info.configured : '';
-      message = dir === null ? 'Back to the default folder from the next start.' : 'Saved. The library and backups were copied there; nothing was removed from the old folder.';
+      reportSuccess(dir === null ? 'Back to the default folder from the next start.' : 'Saved. The library and backups were copied there; nothing was removed from the old folder.');
     } catch (e) {
       failed = true;
-      message = typeof e === 'string' ? e : e instanceof Error ? e.message : String(e);
+      reportError(errorText(e));
     } finally {
       busy = false;
     }
@@ -65,7 +64,6 @@
   {:else if !failed}
     <p class="note">Loading…</p>
   {/if}
-  {#if message}<p class:err={failed} class="note" role={failed ? 'alert' : 'status'}>{message}</p>{/if}
   <p class="note">Choosing a folder copies the library and the backup files into it (an existing library there is kept as it is). Nothing is moved or deleted.</p>
 </div>
 
@@ -126,8 +124,5 @@
     margin: 0;
     color: var(--text-dim);
     font-size: 11px;
-  }
-  .err {
-    color: var(--bad);
   }
 </style>

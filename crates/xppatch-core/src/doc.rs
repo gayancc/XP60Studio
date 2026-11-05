@@ -178,6 +178,33 @@ impl Document {
         }
     }
 
+    /// The concatenated bytes of every block in transmission order (what [`Document::from_block_bytes`] takes back).
+    pub fn to_block_bytes(&self) -> Vec<u8> {
+        self.blocks
+            .iter()
+            .flat_map(|b| b.bytes().iter().copied())
+            .collect()
+    }
+
+    /// Rebuild a document from [`Document::to_block_bytes`]. The length must be exactly right.
+    pub fn from_block_bytes(kind: DocKind, bytes: &[u8]) -> Result<Document, PatchError> {
+        let mut doc = Document::init(kind);
+        let expected: usize = doc.blocks.iter().map(|b| b.bytes().len()).sum();
+        if bytes.len() != expected {
+            return Err(PatchError::Incomplete {
+                block: "document".to_owned(),
+                missing: expected.saturating_sub(bytes.len()),
+            });
+        }
+        let mut at = 0;
+        for block in &mut doc.blocks {
+            let def = block.def();
+            *block = BlockBuf::from_bytes(def, &bytes[at..at + def.size])?;
+            at += def.size;
+        }
+        Ok(doc)
+    }
+
     pub fn kind(&self) -> DocKind {
         self.kind
     }

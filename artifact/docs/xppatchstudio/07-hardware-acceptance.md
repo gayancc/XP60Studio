@@ -108,6 +108,20 @@ fixture and the manual transcription.
 | H-058 | 4 | The wave named on a Tone card matches the wave the instrument plays: group type 0 with group ID 1 is INT-A and 2 is INT-B; group type 2 with group ID n is SR-JV80 board n | step a few Tones through INT-A, INT-B and an installed expansion board on the instrument's panel and compare the wave name it shows with the one the app shows; for expansion also check the board number against the card in the slot; note which Preset bank a Part's Patch Group ID and Number select (not yet known, so no Preset names are shown in the Part dropdowns) |
 | H-059 | 4 | TO CONFIRM BEFORE ANY LABELS ARE SHOWN: a controller source or assignment value is the controller number: raw 7 is CC07, raw 96 is PITCH BEND, raw 97 is AFTERTOUCH, and (for pedals) raw 98 to 104 are PROG-UP, PROG-DOWN, START/STOP, PUNCH-I/O, TAP-TEMPO, OCT-UP, OCT-DOWN | set System Control Source 1, a Pedal Assign and Controller 1 Assign to a few of these values from the app and read the instrument's panel; try one number the manual does not offer (6 or 40) and note what the instrument does |
 
+### Writing the System settings (PERM)
+
+Risk: this replaces the instrument's System settings. Each item is preceded by the app's own backup of the settings (a `.syx` file in the backups folder); run them in this order and stop at the first unexpected result.
+The System settings include MIDI channels and switches: use a harmless value first (Master Tune by one step), never a channel or receive switch, until H-061 to H-063 pass.
+
+| ID | Phase | What to confirm | Procedure | Expected | Status |
+|---|---|---|---|---|---|
+| H-061 | 8 | Arming reads the System settings (`00 00 00 00` and the Scale Tune block at `00 00 10 00` to `00 00 1B 00`) and writes a backup that equals what was read | System workspace, Write to synth, step 1; open the backup file in the app (File > Open does not take System files: compare it by exporting the System settings from the app and checking both files hold the same messages) | the backup file exists, reads back as the same settings, nothing changed on the instrument | NOT RUN |
+| H-062 | 8 | Writing changed System settings works and reads back equal | change Master Tune by one step, write (step 2) | the panel shows the new tune; the app reports "read back and match" | NOT RUN |
+| H-063 | 8 | Undo puts the earlier settings back, and is refused when something changed since | undo the write; then change a System setting on the instrument panel and try an undo of a later write | the tune returns; the second undo is refused with the backup path | NOT RUN |
+| H-064 | 8 | With User Memory Protect on, the write is reported as a mismatch and the backup stays | turn Memory Protect on, write | the app reports MISMATCH and offers undo; nothing is lost | NOT RUN |
+| H-065 | 8 | The chunking (at most 128 data bytes, 20 ms apart) is accepted for the System addresses, and the Scale Tune block (12 x 17 bytes) is written whole | write after changing one Scale Tune value | read-back equal, the other 11 notes unchanged | NOT RUN |
+| H-066 | 8 | Files exported by File > Export (a Performance or Rhythm Set in User slot 1; the System settings) are accepted by the instrument or another librarian when sent as they are | send an exported Performance file with a SysEx librarian to a spare User Performance slot (after a backup) | the Performance appears with the same name and values | NOT RUN |
+
 ## Changelog of this ledger
 
 - 2026-11-03: created. Seeded from Phase 1 unverified items, the legacy hardware observations (20 ms gap, 128-byte write
@@ -138,3 +152,4 @@ fixture and the manual transcription.
 ### H-060 EFX tempo-synced values (note lengths such as "1/2 trip")
 Patch Base shows some EFX times (e.g. Triple Tap Delay "Delay-C") as note lengths when the Patch clock source is synced. The Owner's Manual gives no table mapping the raw
 value to note lengths, so the app shows the raw number. On the XP-60: set Delay-C through its range with the clock synced and record the note lengths shown on the LCD; then add the table.
+- 2026-11-05 (System write, export of Performances, Rhythm Sets and System settings): added H-061 to H-066. The ceremony (read, back up and verify the file, arm, write, read back, undo) is tested against the virtual XP-60 and in the interface; that the XP-60 accepts these writes at the System addresses is the open question.

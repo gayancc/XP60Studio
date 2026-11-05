@@ -16,12 +16,14 @@
   const STRUCTURE_BOOSTERS = new Set(Object.values(STRUCTURE_PAIRS).map((p) => p.booster));
 
   interface Props {
-    sections: readonly CommonSection[];
+    sections?: readonly CommonSection[];
+    /** Groups arranged in columns, each column stacked top to bottom, so a short group never leaves a gap beside a tall one. */
+    columns?: readonly (readonly CommonSection[])[];
     /** Show the name field above the groups. */
     showName?: boolean;
   }
 
-  let { sections, showName = false }: Props = $props();
+  let { sections = [], columns, showName = false }: Props = $props();
   const store = useStore();
 
   const idsOf = (s: CommonSection): string[] => commonParams(store.catalog.common, s);
@@ -58,21 +60,42 @@
   </label>
   {/if}
 
-  {#each sections as s (s)}
+  {#snippet group(s: CommonSection)}
     <GroupFrame title={commonSectionTitle(s)}>
-      {#each idsOf(s) as id (id)}
-        {#if s === 'structure' && STRUCTURE_PAIRS[id]}
-          <StructureControl title={STRUCTURE_PAIRS[id].title} typeId={id} boosterId={STRUCTURE_PAIRS[id].booster} tones={STRUCTURE_PAIRS[id].tones} />
-        {:else if id === 'efx_type'}
-          <EfxTypePick block="common" {id} />
-        {:else if id.startsWith('efx_parameter_')}
-          <EfxParam block="common" {id} />
-        {:else if !(s === 'structure' && STRUCTURE_BOOSTERS.has(id))}
-          <ParamControl block="common" {id} />
-        {/if}
-      {/each}
+      {#if s === 'structure'}
+        {#each idsOf(s) as id (id)}
+          {#if !STRUCTURE_PAIRS[id] && !STRUCTURE_BOOSTERS.has(id)}<ParamControl block="common" {id} />{/if}
+        {/each}
+        <div class="pair">
+          {#each idsOf(s) as id (id)}
+            {#if STRUCTURE_PAIRS[id]}
+              <StructureControl title={STRUCTURE_PAIRS[id].title} typeId={id} boosterId={STRUCTURE_PAIRS[id].booster} tones={STRUCTURE_PAIRS[id].tones} />
+            {/if}
+          {/each}
+        </div>
+      {:else}
+        {#each idsOf(s) as id (id)}
+          {#if id === 'efx_type'}
+            <EfxTypePick block="common" {id} />
+          {:else if id.startsWith('efx_parameter_')}
+            <EfxParam block="common" {id} />
+          {:else}
+            <ParamControl block="common" {id} />
+          {/if}
+        {/each}
+      {/if}
     </GroupFrame>
-  {/each}
+  {/snippet}
+
+  {#if columns}
+    <div class="cols">
+      {#each columns as col, i (i)}
+        <div class="col">{#each col as s (s)}{@render group(s)}{/each}</div>
+      {/each}
+    </div>
+  {:else}
+    {#each sections as s (s)}{@render group(s)}{/each}
+  {/if}
 </div>
 
 <style>
@@ -84,6 +107,27 @@
   }
   .name {
     grid-column: 1 / -1;
+  }
+  .cols {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 10px;
+    align-items: start;
+  }
+  .col {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+  }
+  .pair {
+    flex: 1 1 100%;
+    min-width: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 14px;
+    align-items: start;
   }
   .name {
     display: flex;

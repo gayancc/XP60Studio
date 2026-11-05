@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { describeStructure, STRUCTURE_TYPES, structureOf } from './structure';
+import { describeStructure, STRUCTURE_TYPES, structureLegend, structureOf, structureRole } from './structure';
 
 const kinds = (type: number, kind: string): number => structureOf(type).nodes.filter((n) => n.kind === kind).length;
 
@@ -79,5 +79,20 @@ describe('the ten Structure types', () => {
         expect(n.y).toBeLessThanOrEqual(64);
       }
     }
+  });
+
+  it('explains every type, and says what the first Tone’s amplifier does where the manual says it does something', () => {
+    for (const t of STRUCTURE_TYPES) expect(structureRole(t).length, `type ${t}`).toBeGreaterThan(30);
+    for (const t of [2, 4, 5, 6, 9, 10]) expect(structureRole(t), `type ${t}`).toMatch(/first Tone’s amplifier/);
+    expect(structureRole(1)).not.toMatch(/amplifier sets/);
+    expect(structureRole(11)).toBe('');
+  });
+
+  it('lists the parts a type is drawn with', () => {
+    expect(structureLegend(1)).toBe('WG wave generator · TVF filter · TVA amplifier');
+    expect(structureLegend(3)).toContain('B booster');
+    expect(structureLegend(3)).not.toContain('ring');
+    expect(structureLegend(7)).toContain('R ring modulator');
+    expect(structureLegend(2)).not.toContain('booster');
   });
 });

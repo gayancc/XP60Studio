@@ -1,9 +1,9 @@
 // The patch being edited: its values, undo history, live-edit pipeline and sync state. The codec is the Rust one (wasm);
 // this class only coordinates.
 
-import { PatchDoc, syxNames } from '../wasm/pkg/xppatch.js';
+import { PatchDoc, docSyxNames, syxNames } from '../wasm/pkg/xppatch.js';
 import { paramInfo, type BlockName, type Catalog, type DocKindName } from './catalog';
-import { KIND_TITLES, docFromBlocks, newDoc, paramAddressOf, type DocApi } from './kinds';
+import { KIND_TITLES, docFromBlocks, docFromSyxSlot, newDoc, paramAddressOf, type DocApi } from './kinds';
 import { blockTitle } from './labels';
 import { diff, initChanges, morph, type Change } from './tools';
 import { changedParams, sameBytes, splitFrames } from './frames';
@@ -12,6 +12,7 @@ import { LiveQueue, type QueueStats } from './liveQueue';
 import { cutFrames } from './sendOptions.svelte';
 import type { LiveTransport } from './transport';
 import type { SyncState } from '../kit/syncState';
+import { reportError, reportInfo, reportSuccess, reportWarning } from './messages.svelte';
 
 /** More changed parameters than this in one step go out as a whole send instead of single frames. */
 export const BULK_LIVE_LIMIT = 24;
@@ -32,7 +33,15 @@ export class PatchStore {
   position = $state(0);
   /** Description of the open sound's origin ("Preview bank, slot 12"). */
   origin = $state('New patch');
-  error = $state('');
+  #error = $state('');
+  get error(): string {
+    return this.#error;
+  }
+  /** Setting text here also shows it in the bottom-left corner with every other message. */
+  set error(text: string) {
+    this.#error = text;
+    if (text) reportError(text);
+  }
 
   /** The two A/B slots (snapshots), and which one the editor is showing. */
   ab = $state<{ a: Uint8Array | null; b: Uint8Array | null; active: 'a' | 'b' }>({ a: null, b: null, active: 'a' });
@@ -439,6 +448,23 @@ export class PatchStore {
     }
   }
 
+  /**
+   * A System document that has not been read from an instrument. Everything is at its minimum except the keyboard scale, which starts at equal temperament
+   * (0 cents on every note) instead of -64, so a page that has not been read never shows, or offers to write, a scale nobody chose.
+   */
+  newSystemSettings(): void {
+    const doc = newDoc(this.kind);
+    for (const c of initChanges(this.catalog, this.kind)) {
+      if (!c.block.startsWith('tune')) continue;
+      try {
+        doc.set(c.block, c.id, c.value);
+      } catch {
+        // A parameter the document refuses keeps its minimum.
+      }
+    }
+    this.open(doc, 'New System settings');
+  }
+
   newPatch(): void {
     // A new sound starts from the neutral sound, not from all-minimum values (which play nothing). It is the opened
     // baseline, so it neither counts as an edit nor lands in the undo history.
@@ -454,20 +480,23 @@ export class PatchStore {
   }
 
   loadSyx(bytes: Uint8Array, slot: number, fileName: string): void {
-    if (this.kind !== 'patch') {
-      this.error = 'Only patches can be opened from a .syx bank here.';
+    if (this.kind === 'system') {
+      this.error = 'System settings have no slots in a .syx file.';
       return;
     }
     try {
-      this.open(PatchDoc.fromSyxSlot(bytes, slot), `${fileName}, slot ${slot + 1}`);
+      const doc = this.kind === 'patch' ? PatchDoc.fromSyxSlot(bytes, slot) : docFromSyxSlot(this.kind, bytes, slot);
+      this.open(doc, `${fileName}, slot ${slot + 1}`);
       this.error = '';
     } catch (e) {
       this.error = e instanceof Error ? e.message : String(e);
     }
   }
 
-  static listSyx(bytes: Uint8Array): Array<[number, string]> {
-    return JSON.parse(syxNames(bytes)) as Array<[number, string]>;
+  /** `[slot, name]` for what a `.syx` file holds of this kind: patches, or Performances, or Rhythm Sets. */
+  static listSyx(bytes: Uint8Array, kind: DocKindName = 'patch'): Array<[number, string]> {
+    const json = kind === 'patch' ? syxNames(bytes) : docSyxNames(kind, bytes);
+    return JSON.parse(json) as Array<[number, string]>;
   }
 
   /** Send the whole patch to the instrument's temporary patch, replacing any single edits still waiting. */

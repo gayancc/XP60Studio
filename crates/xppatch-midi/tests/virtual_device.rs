@@ -933,3 +933,102 @@ fn a_cancel_inside_a_slot_is_ignored_until_that_slot_is_finished_and_verified() 
     assert_eq!(d.patch_at(user_patch(1).unwrap()).unwrap(), bank()[1].1);
     assert_eq!(d.patch_at(user_patch(0).unwrap()).unwrap(), named("Z"));
 }
+
+// ---- writing the System settings ----
+
+fn system_doc(tune: i32) -> xppatch_core::Document {
+    let mut d = xppatch_core::Document::init(xppatch_core::DocKind::System);
+    d.block_mut(0).unwrap().set("master_tune", tune).unwrap();
+    d
+}
+
+fn device_with_system(doc: &xppatch_core::Document) -> VirtualXp60 {
+    let mut d = device();
+    d.set_document(xppatch_sysex::memory::SYSTEM, doc).unwrap();
+    d
+}
+
+#[test]
+fn the_system_settings_are_planned_written_and_read_back() {
+    let old = system_doc(10);
+    let mut c = client(device_with_system(&old));
+    let cancel = CancelToken::new();
+    let plan = c.plan_system_write(&cancel).unwrap();
+    assert_eq!(plan.backup(), &old);
+    // Planning only reads: every message sent so far is an RQ1 (command byte 0x11).
+    assert!(c.port().sent.iter().all(|(_, f)| f.get(4) == Some(&0x11)));
+
+    let new = system_doc(90);
+    let report = c.commit_system_write(&plan, &new, &cancel).unwrap();
+    assert!(report.verified);
+    let d = c.into_port();
+    assert_eq!(d.stats.fast_writes_dropped, 0);
+    assert_eq!(d.stats.oversize_writes_dropped, 0);
+    let mut again = client(d);
+    assert_eq!(again.read_system(&cancel).unwrap(), new);
+    // nothing outside the System region was touched
+    assert_eq!(
+        again.into_port().patch_at(user_patch(3).unwrap()).unwrap(),
+        bank()[3].1
+    );
+}
+
+#[test]
+fn system_settings_the_instrument_ignores_are_reported_and_can_be_put_back() {
+    let old = system_doc(20);
+    let mut d = device_with_system(&old);
+    d.faults.ignore_writes = true; // what User Memory Protect looks like on the wire
+    let mut c = client(d);
+    let cancel = CancelToken::new();
+    let plan = c.plan_system_write(&cancel).unwrap();
+    let err = c
+        .commit_system_write(&plan, &system_doc(99), &cancel)
+        .unwrap_err();
+    assert!(matches!(err, ClientError::Mismatch { .. }), "{err:?}");
+    c.port_mut().faults.ignore_writes = false;
+    let restored = c.restore_system_backup(&plan, &cancel).unwrap();
+    assert!(restored.verified);
+    assert_eq!(c.read_system(&cancel).unwrap(), old);
+}
+
+#[test]
+fn a_system_write_is_refused_when_the_settings_changed_since_they_were_backed_up() {
+    let mut c = client(device_with_system(&system_doc(30)));
+    let cancel = CancelToken::new();
+    let plan = c.plan_system_write(&cancel).unwrap();
+    // someone turns a knob on the instrument between arming and writing
+    c.port_mut()
+        .set_document(xppatch_sysex::memory::SYSTEM, &system_doc(31))
+        .unwrap();
+    let before = c.port().stats.writes_applied;
+    let err = c
+        .commit_system_write(&plan, &system_doc(50), &cancel)
+        .unwrap_err();
+    assert!(matches!(err, ClientError::Refused(_)), "{err:?}");
+    assert_eq!(c.port().stats.writes_applied, before);
+}
+
+#[test]
+fn a_system_write_refuses_other_kinds_and_cancels_before_the_first_message() {
+    let mut c = client(device_with_system(&system_doc(5)));
+    let cancel = CancelToken::new();
+    let plan = c.plan_system_write(&cancel).unwrap();
+    let sent = c.port().sent.len();
+    let perf = xppatch_core::Document::init(xppatch_core::DocKind::Performance);
+    assert!(matches!(
+        c.commit_system_write(&plan, &perf, &cancel),
+        Err(ClientError::Refused(_))
+    ));
+    assert_eq!(
+        c.port().sent.len(),
+        sent,
+        "nothing was sent for a wrong kind"
+    );
+    let stop = CancelToken::new();
+    stop.cancel();
+    let sent = c.port().sent.len();
+    // the re-read before writing is skipped by a cancelled token only if it checks; either way no DT1 is sent
+    let r = c.commit_system_write(&plan, &system_doc(6), &stop);
+    assert!(r.is_err());
+    assert_eq!(c.port().stats.writes_applied, 0, "{sent}");
+}

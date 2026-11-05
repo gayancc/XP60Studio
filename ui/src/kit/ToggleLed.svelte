@@ -62,12 +62,12 @@
     border-radius: var(--radius);
     cursor: pointer;
   }
-  .toggle:hover:not(:disabled) {
-    background: var(--caption);
+  .toggle:hover:not(:disabled) .caps,
+  .toggle:focus-visible .caps {
+    color: var(--text);
   }
   .toggle:focus-visible {
     outline: none;
-    box-shadow: var(--focus);
   }
   .toggle:disabled {
     opacity: 0.4;

@@ -15,7 +15,7 @@ pub use assembler::{Incoming, MidiEvent, SysExAssembler};
 pub use client::BankWriteReport;
 pub use client::{
     BankFetch, CancelToken, Client, ClientConfig, ClientError, Expect, ProbeInfo, Progress,
-    SendReport, WritePlan,
+    SendReport, SystemWritePlan, WritePlan,
 };
 pub use controls::{ControlChange, ControlDecoder, ControlSource};
 pub use transport::{MidiTransport, TransportError};

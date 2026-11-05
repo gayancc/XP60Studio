@@ -135,7 +135,7 @@
   }
   .tag:focus-visible {
     outline: none;
-    box-shadow: var(--focus);
+    background-image: var(--focus-fill);
   }
   i {
     width: 8px;

@@ -4,8 +4,8 @@
   import { SYNC_STATES } from '../kit/syncState';
   import type { Mode } from '../model/catalog';
   import { KIND_TITLES } from '../model/kinds';
-  import { exportPatch, type ExportFormat } from '../model/exportPatch';
-  import { canStepBank, openBankSlot, stepBankSlot } from '../model/bankNav';
+  import { EXPORT_NOUN, exportPatch, type ExportFormat } from '../model/exportPatch';
+  import { bankOf, canStepBank, openBankSlot, stepBankSlot } from '../model/bankNav';
   import { openPatchFile } from '../model/openFile';
   import type { SynthService } from '../model/synth.svelte';
   import type { KeyMap } from '../model/shortcuts';
@@ -14,6 +14,7 @@
   import { applyTheme, storedTheme, toggled, type Theme } from '../theme/theme';
   import { useStore } from './context';
   import SaveCeremony from './SaveCeremony.svelte';
+  import SystemSaveCeremony from './SystemSaveCeremony.svelte';
   import { tauriBackend } from '../model/backend';
   import { controls } from '../model/controls.svelte';
   import ControlMapPanel from './ControlMapPanel.svelte';
@@ -57,6 +58,7 @@
     openBankSlot(store, i);
   }
 
+  const bank = $derived(bankOf(store.kind));
   const k = (id: string): string => keys[id] ?? '';
 
   // The status readout. While a control is under the pointer it shows that control's value and name, the way the hardware shows
@@ -65,7 +67,7 @@
   const readout = $derived.by(() => {
     const touching = hint.name !== '';
     const link = synth?.connected ? `XP-60 · ID ${synth.info?.device_number ?? '?'}` : 'No instrument';
-    const slot = ui.bank && mode === 'patch' ? `#${String(ui.bankSlot + 1).padStart(3, '0')}` : '';
+    const slot = bankOf(store.kind) && mode === store.kind ? `#${String(ui.bankSlot + 1).padStart(3, '0')}` : '';
     const pending = store.queue.pending + store.queue.inFlight;
     return {
       title: READOUT_TITLES[mode],
@@ -95,10 +97,10 @@
       title: 'File',
       items: [
         { label: 'New', run: () => store.newPatch(), disabled: !editing },
-        { label: 'Open .syx or .mid…', run: () => input?.click(), disabled: mode !== 'patch' },
+        { label: 'Open .syx or .mid…', run: () => input?.click(), disabled: mode !== 'patch' && mode !== 'performance' && mode !== 'rhythm' },
         { separator: true },
-        { label: 'Export patch as .syx…', run: () => void exportOpen('syx'), disabled: mode !== 'patch' },
-        { label: 'Export patch as .mid…', run: () => void exportOpen('mid'), disabled: mode !== 'patch' },
+        { label: `Export ${EXPORT_NOUN[store.kind]} as .syx…`, run: () => void exportOpen('syx'), disabled: !editing },
+        { label: `Export ${EXPORT_NOUN[store.kind]} as .mid…`, run: () => void exportOpen('mid'), disabled: !editing },
       ],
     },
     {
@@ -162,20 +164,16 @@
       {#if synth}{synth.connected ? `XP-60 · ID ${synth.info?.device_number}` : 'No instrument'}{:else}Browser preview{/if}
     </span>
     <div class="spacer" data-tauri-drag-region></div>
-    {#if ui.notice}<span class="note" role="status">{ui.notice}</span>{/if}
-    {#if controls.learning}<span class="learn" role="status">Move a controller to link it to {controls.learning.name} (Esc cancels)</span>{:else if controls.notice}<span class="note" role="status">{controls.notice}</span>{/if}
-    {#if synth?.error}<span class="err" role="alert" title={synth.error}>Synth: {synth.error}</span>{:else if synth?.notice}<span class="note" role="status">{synth.notice}</span>{/if}
-    {#if store.error}<span class="err" role="alert">{store.error}</span>{/if}
-    {#if ui.bank && mode === 'patch'}
+    {#if bank && mode === store.kind}
       <label class="slot">
         <span class="caps">Bank</span>
-        <button type="button" class="step" disabled={!canStepBank(-1)} onclick={() => stepBankSlot(store, -1)} aria-label="Previous patch" title="Previous patch">‹</button>
-        <select aria-label="Patch in {ui.bank.file}" onchange={(e) => choose(e.currentTarget.selectedIndex)}>
-          {#each ui.bank.names as [s, n], i (s)}
+        <button type="button" class="step" disabled={!canStepBank(store.kind, -1)} onclick={() => stepBankSlot(store, -1)} aria-label="Previous patch" title="Previous patch">‹</button>
+        <select aria-label="{store.kind === 'patch' ? 'Patch' : KIND_TITLES[store.kind]} in {bank.file}" onchange={(e) => choose(e.currentTarget.selectedIndex)}>
+          {#each bank.names as [s, n], i (s)}
             <option selected={i === ui.bankSlot}>{String(s + 1).padStart(3, '0')}  {n.trimEnd()}</option>
           {/each}
         </select>
-        <button type="button" class="step" disabled={!canStepBank(1)} onclick={() => stepBankSlot(store, 1)} aria-label="Next patch" title="Next patch">›</button>
+        <button type="button" class="step" disabled={!canStepBank(store.kind, 1)} onclick={() => stepBankSlot(store, 1)} aria-label="Next patch" title="Next patch">›</button>
       </label>
     {/if}
     <span class="origin" title="Where the open sound came from">{store.origin}</span>
@@ -203,6 +201,7 @@
       >Send to synth</button>
     {/if}
     {#if mode === 'patch'}<SaveCeremony />{/if}
+    {#if mode === 'system'}<SystemSaveCeremony />{/if}
   </div>
   </div>
   <XpReadout {...readout} />
@@ -268,7 +267,7 @@
   button:focus-visible,
   select:focus-visible {
     outline: none;
-    box-shadow: var(--focus);
+    background-image: var(--focus-fill);
   }
   button:disabled {
     opacity: 0.4;
@@ -302,29 +301,6 @@
     font-size: 11px;
   }
   .state.ok {
-    color: var(--ok);
-  }
-  .err {
-    flex: 0 1 auto;
-    min-width: 0;
-    color: var(--bad);
-    max-width: 380px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .learn,
-  .note {
-    flex: 0 1 auto;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .learn {
-    color: var(--accent);
-  }
-  .note {
     color: var(--ok);
   }
   .origin {

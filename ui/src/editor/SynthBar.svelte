@@ -89,7 +89,6 @@
     <button type="button" disabled={synth.busy || !synth.ports.inputs.length} onclick={connect}>{synth.busy ? 'Connecting…' : 'Connect'}</button>
     <button type="button" onclick={() => synth.refreshPorts()} title="Look for MIDI ports again">Rescan</button>
   {/if}
-  {#if synth.error}<span class="err" role="alert">{synth.error}</span>{/if}
 </div>
 
 <style>
@@ -111,7 +110,7 @@
   }
   button:focus-visible {
     outline: none;
-    box-shadow: var(--focus);
+    background-image: var(--focus-fill);
   }
   button:disabled {
     opacity: 0.4;
@@ -119,10 +118,6 @@
   }
   .ok {
     color: var(--ok);
-    align-self: center;
-  }
-  .err {
-    color: var(--bad);
     align-self: center;
   }
 </style>

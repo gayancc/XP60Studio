@@ -1,3 +1,4 @@
+import { messages } from '../model/messages.svelte';
 import { tick } from 'svelte';
 import { afterEach, describe, expect, it } from 'vitest';
 import { cleanup, fireEvent, render } from '@testing-library/svelte';
@@ -29,7 +30,8 @@ describe('the installed expansion boards setting', () => {
   });
 
   it('stops at four boards and disables the rest, saying why', async () => {
-    const { getAllByRole, getByRole } = render(ExpansionPanel);
+    messages.clear();
+    const { getAllByRole } = render(ExpansionPanel);
     const boards = getAllByRole('switch');
     for (const b of boards.slice(0, 4)) await fireEvent.click(b);
     expect(expansions.installed).toHaveLength(4);
@@ -37,6 +39,7 @@ describe('the installed expansion boards setting', () => {
     expansions.set(9, true);
     await tick();
     expect(expansions.notice).toContain('4 expansion slots');
-    expect(getByRole('status').textContent).toContain('4 expansion slots');
+    expect(messages.list.map((m) => m.text).join(' | ')).toContain('4 expansion slots');
+    expect(messages.list.at(-1)?.kind).toBe('warning');
   });
 });

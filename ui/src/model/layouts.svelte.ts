@@ -2,6 +2,8 @@
 // between runs, and the user can save it under a name and bring it back. This is the "saved layouts" half of docking: the
 // panels themselves are tabbed rather than free-floating (artifact/docs/xppatchstudio/06 section 8.1).
 
+import { reportError, reportInfo, reportSuccess, reportWarning } from './messages.svelte';
+
 export type WorkspaceMode = 'patch' | 'performance' | 'rhythm' | 'system' | 'library' | 'bank';
 
 export interface Arrangement {
@@ -126,7 +128,15 @@ export const arrangement: Arrangement = $state(load());
 
 class Layouts {
   custom = $state<NamedLayout[]>(parseLayouts(read(LAYOUTS_KEY)));
-  message = $state('');
+  #message = $state('');
+  get message(): string {
+    return this.#message;
+  }
+  /** Setting text here also shows it in the bottom-left corner with every other message. */
+  set message(text: string) {
+    this.#message = text;
+    if (text) reportInfo(text);
+  }
 
   get all(): NamedLayout[] {
     return [...BUILT_IN, ...this.custom];

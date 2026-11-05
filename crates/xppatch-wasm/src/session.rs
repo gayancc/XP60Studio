@@ -241,6 +241,36 @@ impl DocSession {
         Ok(DocSession { doc })
     }
 
+    /// Load User Performance or User Rhythm Set `slot` from the bytes of a `.syx` file (a whole-memory backup holds 32 and 2).
+    pub fn from_syx_slot(kind: &str, bytes: &[u8], slot: u8) -> Result<DocSession> {
+        let found = SyxImage::parse(bytes)?
+            .user_documents(kind_of(kind)?)?
+            .into_iter()
+            .find(|(s, _)| *s == slot)
+            .ok_or_else(|| EditError(format!("slot {slot} is not in this file")))?;
+        Ok(DocSession { doc: found.1 })
+    }
+
+    /// `(slot, name)` for every User Performance or User Rhythm Set in a `.syx` file.
+    pub fn syx_names(kind: &str, bytes: &[u8]) -> Result<Vec<(u8, String)>> {
+        Ok(SyxImage::parse(bytes)?
+            .user_documents(kind_of(kind)?)?
+            .into_iter()
+            .map(|(s, d)| (s, d.name()))
+            .collect())
+    }
+
+    /// The document as a `.syx` file: a Performance or Rhythm Set in User slot 1 (the first of a bank), or the System
+    /// settings, in pieces of at most 128 data bytes so the file can be sent to the instrument as it is.
+    pub fn to_syx(&self, device: u8) -> Result<Vec<u8>> {
+        let id = DeviceId::new(device)?;
+        let kind = self.kind();
+        Ok(match kind {
+            DocKind::System => xppatch_core::system_document_bytes(&self.doc, id, Some(128))?,
+            _ => xppatch_core::user_document_bytes(kind, &[(0, self.doc.clone())], id, Some(128))?,
+        })
+    }
+
     pub fn to_blocks(&self) -> Vec<u8> {
         self.doc
             .blocks()
@@ -502,6 +532,50 @@ mod tests {
         assert!(s
             .set_name("a name that is far too long for twelve")
             .is_err());
+    }
+
+    #[test]
+    fn a_document_exports_as_a_file_that_opens_again() {
+        let bank = include_bytes!("../../../tests/golden/xp60-user-bank.syx");
+        let perf = DocSession::from_syx_slot("performance", bank, 5).unwrap();
+        let file = perf.to_syx(0x10).unwrap();
+        assert_eq!(
+            DocSession::syx_names("performance", &file).unwrap(),
+            vec![(0, perf.name())]
+        );
+        assert_eq!(
+            DocSession::from_syx_slot("performance", &file, 0)
+                .unwrap()
+                .to_blocks(),
+            perf.to_blocks()
+        );
+        let rhythm = DocSession::from_syx_slot("rhythm", bank, 1).unwrap();
+        let file = rhythm.to_syx(0x10).unwrap();
+        assert_eq!(DocSession::syx_names("rhythm", &file).unwrap().len(), 1);
+        let mut system = DocSession::new("system").unwrap();
+        system.set("common", "master_tune", 30).unwrap();
+        let file = system.to_syx(0x10).unwrap();
+        let back = xppatch_core::SyxImage::parse(&file)
+            .unwrap()
+            .system_document()
+            .unwrap();
+        assert_eq!(back.map(|d| d.to_block_bytes()), Some(system.to_blocks()));
+        assert!(perf.to_syx(0x01).is_err(), "device IDs run 0x10 to 0x1F");
+    }
+
+    #[test]
+    fn whole_memory_files_give_their_performances_and_rhythm_sets() {
+        let bank = include_bytes!("../../../tests/golden/xp60-user-bank.syx");
+        let perfs = DocSession::syx_names("performance", bank).unwrap();
+        assert_eq!(perfs.len(), 32);
+        assert_eq!(perfs[0].0, 0);
+        let rhythm = DocSession::syx_names("rhythm", bank).unwrap();
+        assert_eq!(rhythm.len(), 2);
+        let p = DocSession::from_syx_slot("performance", bank, 5).unwrap();
+        assert_eq!(p.name(), perfs[5].1);
+        assert!(DocSession::from_syx_slot("performance", bank, 40).is_err());
+        assert!(DocSession::from_syx_slot("rhythm", bank, 1).is_ok());
+        assert!(DocSession::syx_names("bogus", bank).is_err());
     }
 
     #[test]

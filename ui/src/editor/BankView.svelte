@@ -5,7 +5,10 @@
   import { PatchStore } from '../model/store.svelte';
   import { tauriBackend, type BackupFile } from '../model/backend';
   import { arrangement, tabIn } from '../model/layouts.svelte';
-  import { asSyx, download, toMidiFile } from '../model/midiFile';
+  import { asSyx, toMidiFile } from '../model/midiFile';
+  import { errorText, reportError } from '../model/messages.svelte';
+  import { saveFile } from '../model/saveFile';
+  import { say } from '../model/ui.svelte';
   import { useStore } from './context';
   import { useServices } from './services';
 
@@ -70,19 +73,14 @@
   async function exportBank(): Promise<void> {
     const bytes = await bank?.toSyx(store.deviceId);
     if (!bytes) return;
-    const url = URL.createObjectURL(new Blob([bytes as BlobPart], { type: 'application/octet-stream' }));
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'xppatch-user-bank.syx';
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    say(await saveFile('xppatch-user-bank.syx', bytes));
   }
 
   async function exportBankMid(): Promise<void> {
     const bytes = await bank?.toSyx(store.deviceId);
     if (!bytes) return;
     try {
-      download('xppatch-user-bank.mid', toMidiFile(bytes));
+      say(await saveFile('xppatch-user-bank.mid', toMidiFile(bytes)));
     } catch (e) {
       if (bank) bank.error = e instanceof Error ? e.message : String(e);
     }
@@ -95,7 +93,7 @@
 
   async function backupEverything(): Promise<void> {
     const bytes = await bank?.backupEverything();
-    if (bytes) download('xppatch-user-memory.syx', bytes);
+    if (bytes) say(await saveFile('xppatch-user-memory.syx', bytes));
   }
 
   async function putLibraryPatch(id: number, slot: number): Promise<void> {
@@ -124,25 +122,22 @@
   const rightTabs = ['Slot', 'Library', 'Backups', 'Write'];
   const rtab = $derived(tabIn(arrangement.bankTab, 4));
   let backups = $state<BackupFile[]>([]);
-  let backupError = $state('');
 
   async function loadBackups(): Promise<void> {
-    backupError = '';
     try {
       backups = await tauriBackend.backupsList();
     } catch (e) {
-      backupError = typeof e === 'string' ? e : e instanceof Error ? e.message : String(e);
+      reportError(errorText(e));
     }
   }
 
   async function openBackup(name: string): Promise<void> {
     if (!bank || bank.locked) return;
-    backupError = '';
     try {
       const bytes = asSyx(await tauriBackend.backupRead(name));
       bank.loadFile(bytes, name, PatchStore.listSyx(bytes));
     } catch (e) {
-      backupError = typeof e === 'string' ? e : e instanceof Error ? e.message : String(e);
+      reportError(errorText(e));
     }
   }
 
@@ -184,8 +179,6 @@
           {/if}
         <span class="dim">{bank.source} · {bank.changed.length} changed</span>
       </div>
-      {#if bank.error}<p class="error" role="alert">{bank.error}</p>{/if}
-      {#if bank.libraryNotice}<p class="ok" role="status">{bank.libraryNotice}</p>{/if}
       <TabPanel tabs={pageNames} selected={page} name="User bank pages" onchange={(n) => (arrangement.bankPage = n)}>
         {#snippet children(pg)}
         <div class="grid" role="group" aria-label="User patch slots">
@@ -245,12 +238,8 @@
             </div>
           </div>
         {/if}
-        {#if bank.phase === 'done' && bank.report}
-          <p class="ok" role="status">Written and read back: {bank.report.written.length} slot{bank.report.written.length === 1 ? '' : 's'}.</p>
-        {/if}
       {:else if n === 2}
         <p class="dim">Every save into the instrument first writes what it replaces to a file here. Open one to look at it in the bank grid; sending it back goes through the normal write steps.</p>
-        {#if backupError}<p class="error" role="alert">{backupError}</p>{/if}
         <ul class="rows" aria-label="Backup files">
           {#each backups as f (f.name)}
             <li>
@@ -351,7 +340,7 @@
   }
   button:focus-visible {
     outline: none;
-    box-shadow: var(--focus);
+    background-image: var(--focus-fill);
   }
   button:disabled {
     opacity: 0.4;
@@ -416,12 +405,6 @@
   .warn {
     color: var(--warn);
     margin: 0 0 8px;
-  }
-  .error {
-    color: var(--bad);
-  }
-  .ok {
-    color: var(--ok);
   }
   .confirm p {
     margin: 4px 0;

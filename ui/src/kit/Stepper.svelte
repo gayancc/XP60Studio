@@ -131,7 +131,7 @@
     outline: none;
   }
   .val:focus-visible {
-    box-shadow: inset var(--focus);
+    color: var(--accent);
   }
   .disabled {
     opacity: 0.4;

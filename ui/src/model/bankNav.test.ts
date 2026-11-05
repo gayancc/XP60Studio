@@ -32,12 +32,12 @@ describe('moving through the open bank', () => {
 
   it('steps forwards and backwards and stops at both ends', () => {
     const store = make();
-    expect(canStepBank(-1)).toBe(false);
+    expect(canStepBank('patch', -1)).toBe(false);
     expect(stepBankSlot(store, -1)).toBe(false);
     expect(stepBankSlot(store, 1)).toBe(true);
     expect(ui.bankSlot).toBe(1);
     ui.bankSlot = 127;
-    expect(canStepBank(1)).toBe(false);
+    expect(canStepBank('patch', 1)).toBe(false);
     expect(stepBankSlot(store, 1)).toBe(false);
     expect(ui.bankSlot).toBe(127);
   });
@@ -47,7 +47,7 @@ describe('moving through the open bank', () => {
     expect(openBankSlot(store, 500)).toBe(false);
     ui.bank = null;
     expect(openBankSlot(store, 0)).toBe(false);
-    expect(canStepBank(1)).toBe(false);
+    expect(canStepBank('patch', 1)).toBe(false);
     expect(stepBankSlot(store, 1)).toBe(false);
   });
 });

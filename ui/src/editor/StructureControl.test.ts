@@ -1,3 +1,5 @@
+import { tick } from 'svelte';
+import { messages } from '../model/messages.svelte';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { cleanup, fireEvent, render } from '@testing-library/svelte';
 import { readFileSync } from 'node:fs';
@@ -88,11 +90,16 @@ describe('the structure control', () => {
     store.set('common', 'structure_type_1_2', 1); // type 2
     store.set('tone1', 'tone_switch', 1);
     store.set('tone2', 'tone_switch', 0);
+    messages.clear();
     const { container, rerender } = render(StructureHarness, { props: { store } });
-    expect(container.querySelector('.note')?.textContent).toContain('plays as type 1');
+    await tick();
+    expect(messages.list.map((m) => m.text).join(' | ')).toContain('plays as type 1');
+    expect(container.querySelector('.note')).toBeNull(); // no message line inside the control
+    messages.clear();
     store.set('tone2', 'tone_switch', 1);
     await rerender({ store });
-    expect(container.querySelector('.note')).toBeNull();
+    await tick();
+    expect(messages.list).toHaveLength(0);
     store.set('tone2', 'tone_switch', 0);
     store.set('common', 'structure_type_1_2', 0); // type 1 itself needs no note
     await rerender({ store });

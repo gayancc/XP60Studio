@@ -1,6 +1,8 @@
 // Which SR-JV80 Wave Expansion boards are physically installed in the owner's keyboard. The wave picker lists only these
 // (besides the instrument's own waves). The XP-60 takes four boards (EXP-A to EXP-D). Kept in the app's own settings.
 
+import { reportError, reportInfo, reportSuccess, reportWarning } from './messages.svelte';
+
 export const MAX_BOARDS = 4;
 const KEY = 'xppatch.installedExpansions';
 
@@ -25,7 +27,15 @@ export function parseInstalled(text: string | null): number[] {
 export class ExpansionSettings {
   installed = $state<number[]>([]);
   /** Why the last change was refused, or ''. */
-  notice = $state('');
+  #notice = $state('');
+  get notice(): string {
+    return this.#notice;
+  }
+  /** Setting text here also shows it in the bottom-left corner with every other message. */
+  set notice(text: string) {
+    this.#notice = text;
+    if (text) reportWarning(text);
+  }
 
   constructor(private readonly storage?: Storage2) {
     try {

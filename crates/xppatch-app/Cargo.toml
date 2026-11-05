@@ -28,6 +28,7 @@ xppatch-sysex = { path = "../xppatch-sysex" }
 xppatch-core = { path = "../xppatch-core" }
 xppatch-midi = { path = "../xppatch-midi", features = ["hardware"] }
 xppatch-library = { path = "../xppatch-library" }
+tauri-plugin-dialog = "2"
 
 [lints]
 workspace = true

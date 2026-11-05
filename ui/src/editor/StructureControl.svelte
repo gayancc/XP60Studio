@@ -1,8 +1,9 @@
 <script lang="ts">
   import { tick } from 'svelte';
   import { clearHint, showHint } from '../kit/hint.svelte';
+  import { reportInfo } from '../model/messages.svelte';
   import StructureDiagram from '../kit/StructureDiagram.svelte';
-  import { describeStructure, STRUCTURE_TYPES } from '../model/structure';
+  import { describeStructure, STRUCTURE_TYPES, structureLegend, structureRole } from '../model/structure';
   import { useStore } from './context';
   import ParamControl from './ParamControl.svelte';
 
@@ -18,11 +19,17 @@
   let { title, typeId, boosterId, tones }: Props = $props();
   const store = useStore();
 
+  const laneNames = $derived<readonly [string, string]>([tones[0].replace('tone', 'TONE '), tones[1].replace('tone', 'TONE ')]);
   const type = $derived(store.get('common', typeId) + 1);
   /** Owner's Manual p.49: the Booster gain only matters for types 3 and 4. */
   const boosterUsed = $derived(type === 3 || type === 4);
   /** Owner's Manual p.49: "In a selection of TYPE2-10, turning off one Tone will make the other Tone have a TYPE1 structure." */
   const oneToneOff = $derived(type > 1 && tones.some((t) => store.get(t, 'tone_switch') !== 1));
+
+  // When a Tone of a pair is off, this pair plays as type 1: say so once when that becomes true.
+  $effect(() => {
+    if (oneToneOff) reportInfo(`${title}: one of these Tones is off, so the other plays as type 1.`);
+  });
 
   let open = $state(false);
   let trigger: HTMLButtonElement | undefined = $state();
@@ -32,8 +39,8 @@
 
   async function show(): Promise<void> {
     const r = trigger?.getBoundingClientRect();
-    const W = 520;
-    const H = 360;
+    const W = 770;
+    const H = 540;
     const left = Math.max(8, Math.min(r?.left ?? 8, window.innerWidth - W - 8));
     const below = (r?.bottom ?? 0) + 4;
     pos = { left, top: below + H > window.innerHeight - 8 ? Math.max(8, (r?.top ?? 0) - H - 4) : below };
@@ -56,7 +63,7 @@
   }
 
   function keydown(e: KeyboardEvent): void {
-    const moves: Record<string, number> = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: 2, ArrowUp: -2 };
+    const moves: Record<string, number> = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: 3, ArrowUp: -3 };
     if (e.key === 'Escape') {
       e.preventDefault();
       e.stopPropagation();
@@ -101,16 +108,15 @@
       onfocus={announce}
       onblur={clearHint}
     >
-      <StructureDiagram {type} width={170} labels={false} />
+      <StructureDiagram {type} width={260} captions={laneNames} />
       <span class="num">TYPE {type}</span>
     </button>
     <span class="boost" class:unused={!boosterUsed} title={boosterUsed ? '' : 'The booster gain only applies to structure types 3 and 4'}>
       <ParamControl block="common" id={boosterId} />
     </span>
   </div>
-  {#if oneToneOff}
-    <p class="note" role="status">One of these Tones is off, so the other plays as type 1.</p>
-  {/if}
+  <p class="role">{structureRole(type)}</p>
+  <p class="legend">{structureLegend(type)}</p>
 </div>
 
 {#if open}
@@ -120,11 +126,12 @@
       {#each STRUCTURE_TYPES as t (t)}
         <button type="button" class="cell" class:on={t === type} data-type={t} aria-pressed={t === type} aria-label="Type {t}. {describeStructure(t)}" onclick={() => choose(t)} onpointerenter={() => (hi = t)}>
           <span class="n">TYPE {t}</span>
-          <StructureDiagram type={t} width={236} />
+          <StructureDiagram type={t} width={236} captions={['TONE 1 (3)', 'TONE 2 (4)']} />
         </button>
       {/each}
     </div>
-    <p class="desc">{describeStructure(hi)}</p>
+    <p class="desc"><b>{describeStructure(hi)}</b> {structureRole(hi)}</p>
+    <p class="legend pad">{structureLegend(hi)}</p>
   </div>
 {/if}
 
@@ -136,8 +143,9 @@
   }
   .row {
     display: flex;
+    flex-wrap: wrap;
     align-items: flex-end;
-    gap: 10px;
+    gap: 6px 10px;
   }
   .trig {
     display: flex;
@@ -159,7 +167,7 @@
   }
   .trig:focus-visible {
     outline: none;
-    box-shadow: var(--focus);
+    background-image: var(--focus-fill);
   }
   .boost.unused {
     opacity: 0.4;
@@ -167,10 +175,23 @@
   .boost.unused :global(*) {
     pointer-events: none;
   }
-  .note {
+  .role,
+  .legend {
     margin: 0;
-    color: var(--warn);
+    max-width: 330px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    color: var(--text-dim);
     font-size: 10.5px;
+    line-height: 1.35;
+  }
+  .legend {
+    font: 600 9px var(--font-caps);
+    letter-spacing: 0.06em;
+    color: var(--text-faint);
+  }
+  .legend.pad {
+    padding: 0 12px 10px;
   }
   .num {
     font: 600 9.5px var(--font-caps);
@@ -179,7 +200,9 @@
   .pop {
     position: fixed;
     z-index: 950;
-    width: 520px;
+    width: 770px;
+    max-height: calc(100vh - 16px);
+    overflow-y: auto;
     display: flex;
     flex-direction: column;
     background: var(--body);
@@ -207,7 +230,7 @@
   }
   .grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 1fr 1fr;
     gap: 6px;
     padding: 8px;
   }
@@ -234,7 +257,7 @@
   }
   .cell:focus-visible {
     outline: none;
-    box-shadow: var(--focus);
+    background-image: var(--focus-fill);
   }
   .n {
     font: 600 9.5px var(--font-caps);

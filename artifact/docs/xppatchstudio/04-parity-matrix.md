@@ -24,7 +24,7 @@ Evidence codes refer to `02-feature-catalog.md` (CONFIRMED / INFERRED / NOT FOUN
 | A8 | Fetch-complete notice | CONFIRMED | Midi request tracker + hint bar | 2 | IMPLEMENTED (needs hardware to see it on a real read): progress, state chip and a six-second notice in the top bar after a fetch ("Fetched ...") or a verify (match or mismatch) |
 | A9 | On-screen keyboard | CONFIRMED | UI control kit (keyboard) | 3, 4 | IMPLEMENTED, needs hardware (playable on-screen and computer keyboard; H-051c) |
 | B1 | Single-patch editor, rename | CONFIRMED | xppatch-core model + UI Patch view (tone rows, section windows) | 4 | IMPLEMENTED, needs hardware (H-025 to H-029) |
-| B2 | Non-bank single-instance editor (system) | CONFIRMED | UI System editor | 5 | IMPLEMENTED, needs hardware for reading and local editing (H-042); writing System memory is OPEN |
+| B2 | Non-bank single-instance editor (system) | CONFIRMED | UI System editor | 5 | IMPLEMENTED (needs hardware: H-042, H-061 to H-065): reading and local editing as before; **writing is now built**: System workspace > Write to synth reads the settings, writes a verified backup file, asks for a second explicit confirmation, writes, reads back and offers an undo (the same steps as saving a patch), tested against the virtual XP-60 |
 | B3 | Fetch from synth | CONFIRMED | Midi request/response, Sysex RQ1 | 2 | IMPLEMENTED, needs hardware (H-010 to H-017) |
 | B4 | Send to synth (temp) | CONFIRMED | Midi + Sysex DT1, queue | 2 | IMPLEMENTED, needs hardware (H-020, H-021) |
 | B5 | Save to synth slot | CONFIRMED | Midi + Library backup-before-write, confirm dialog | 2, 6 | IMPLEMENTED, needs hardware for patches (H-030 to H-039) |
@@ -69,8 +69,23 @@ Evidence codes refer to `02-feature-catalog.md` (CONFIRMED / INFERRED / NOT FOUN
 | F6 | Performance 16-part rack | owner-requested | Core/Sysex/UI | 5 | IMPLEMENTED, needs hardware (H-040, H-044, H-047) |
 | F7 | Rhythm-set per-key view | owner-requested | Core/Sysex/UI | 5 | IMPLEMENTED, needs hardware (H-041, H-045, H-046) |
 
+
+### G. Added from the Patch Base screen audit and the bulk-file test (2026-11-04 and 05)
+
+| ID | Function | Evidence | Status |
+|---|---|---|---|
+| G1 | Structure type chooser (ten wirings with diagrams, booster only for types 3 and 4, a note when a Tone is off) | Patch Base Common screen; manual p.49 | DONE (no instrument involved) |
+| G2 | EFX type list and named parameters for all 40 types | Patch Base Common screen; manual EFX appendix | IMPLEMENTED (needs hardware: H-060): values are raw numbers except gains, balance and HF damp; tempo-synced note lengths are not in the manual |
+| G3 | One Tone on one page, and all four Tones of a section side by side | Patch Base Tone screens | DONE |
+| G4 | Previous/next patch and a list of the patches of the open bank | Patch Base toolbar and bank list | DONE |
+| G5 | Export the open patch, Performance, Rhythm Set or the System settings as `.syx` or `.mid` | Patch Base toolbar (share) | IMPLEMENTED (needs hardware: H-066): patch export is byte-identical to the source slot in tests |
+| G6 | Open Performances and Rhythm Sets from a `.syx` (a whole-memory backup holds 32 and 2) | found by loading a real backup | DONE (no instrument involved) |
+| G7 | Windows installer with a choice of install folder, and a release workflow | owner request | DONE (not yet run end to end; unsigned) |
+| G8 | Controller destination names (Pitch, Cutoff, Pitch LFO1, ...) | manual pp.60-61 | DONE; controller numbers stay raw until H-059 |
+| G9 | Scale tune page: values readable on every note, on/off switch on the page, Patch mode and Performance parts, manual preset scales, copy between Parts | manual p.89 (Tune display); owner request | DONE for the page; writing the scale to the instrument goes through the System write (H-061 to H-065) |
+
 Every SysEx-dependent row (A2, A3, B1 to B7, B16, C1 to C7, D3, D6, F6, F7) now has a **draft address map**
 (`03-xp60-protocol.md`, `03a-parameter-map-draft.md`) cross-checked against a real XP-60 bank. They still need the
 owner's hardware confirmation.
 
-Status count (2026-11-04, 54 rows): 19 DONE, 31 IMPLEMENTED needing hardware, 1 PARTIAL, 0 OPEN, 3 PROPOSED WON'T-DO.
+Status count (2026-11-05, 63 rows): 26 DONE, 33 IMPLEMENTED needing hardware, 1 PARTIAL, 0 OPEN, 3 PROPOSED WON'T-DO. The 9 rows of section G were added after the audit of 2026-11-04; B2 now includes the System write.

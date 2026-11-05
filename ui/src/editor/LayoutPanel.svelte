@@ -36,7 +36,6 @@
   <div class="row">
     <button type="button" onclick={() => layouts.reset()}>Reset layout</button>
   </div>
-  {#if layouts.message}<p class="note" role="status">{layouts.message}</p>{/if}
   <p class="note">A layout remembers the workspace and the tab shown in each one. The window opens the way you left it.</p>
 </div>
 

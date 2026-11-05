@@ -66,3 +66,29 @@ describe('opening a picked or dropped file', () => {
     expect(carriesFiles(undefined)).toBe(false);
   });
 });
+
+describe('opening a whole-memory file in the Performance and Rhythm Set workspaces', () => {
+  const memory = new Uint8Array(readFileSync('../tests/golden/xp60-user-bank.syx'));
+
+  it('lists the 32 Performances and opens the first', () => {
+    const store = new PatchStore(catalog, new MemoryTransport(), 0x10, undefined, 'performance');
+    openPatchFile(store, memory, 'memory.syx');
+    expect(store.error).toBe('');
+    expect(ui.bank?.kind).toBe('performance');
+    expect(ui.bank?.names).toHaveLength(32);
+    expect(store.origin).toContain('memory.syx, slot 1');
+    expect(store.name.trim()).toBe(ui.bank?.names[0]?.[1].trim());
+  });
+
+  it('lists the 2 Rhythm Sets', () => {
+    const store = new PatchStore(catalog, new MemoryTransport(), 0x10, undefined, 'rhythm');
+    openPatchFile(store, memory, 'memory.syx');
+    expect(ui.bank?.names).toHaveLength(2);
+  });
+
+  it('says so when the file holds none of what the workspace edits', () => {
+    const store = new PatchStore(catalog, new MemoryTransport(), 0x10, undefined, 'system');
+    openPatchFile(store, memory, 'memory.syx');
+    expect(store.error).not.toBe('');
+  });
+});

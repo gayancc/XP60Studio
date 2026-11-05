@@ -256,7 +256,7 @@
   }
   .trig:focus-visible {
     outline: none;
-    box-shadow: var(--focus);
+    background-image: var(--focus-fill);
   }
   .nm {
     flex: 1;
@@ -365,7 +365,7 @@
   }
   .src:focus-visible {
     outline: none;
-    box-shadow: var(--focus);
+    background-image: var(--focus-fill);
   }
   .l {
     font: 600 11.5px var(--font-caps);

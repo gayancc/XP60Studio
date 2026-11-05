@@ -194,3 +194,44 @@ export function describeStructure(type: number): string {
       return '';
   }
 }
+
+/**
+ * What the Owner's Manual says each type is for and what Tone 1's (or 3's) amplifier does in it (Chapter 3, Structure display). The manual's wording is not
+ * copied; the facts are: the filters of types 2, 4, 5 and 6 combine, the amplifier of the first Tone sets the balance between the two Tones in types 2 and 4 and the
+ * ring modulation depth or amount in types 5, 6, 9 and 10, and the booster of types 3 and 4 distorts the waveform.
+ */
+export function structureRole(type: number): string {
+  switch (type) {
+    case 1:
+      return 'Keeps the two Tones apart: use it to leave PCM sounds as they are, or to build separate sounds and layer them.';
+    case 2:
+      return 'The two filters work together to shape the sound more strongly. The first Tone’s amplifier sets the volume balance between the two Tones.';
+    case 3:
+      return 'The mix of both Tones is filtered, then a booster distorts the waveform. Set the booster gain with Booster.';
+    case 4:
+      return 'The two filters work together and a booster distorts the waveform. The first Tone’s amplifier sets the balance between the Tones and the booster level.';
+    case 5:
+      return 'The two filters work together and ring modulation adds upper harmonics. The first Tone’s amplifier sets the ring modulation depth.';
+    case 6:
+      return 'Like type 5, with the second Tone mixed in as well. The first Tone’s amplifier sets how much of the ring-modulated sound is heard.';
+    case 7:
+      return 'The first Tone, after its filter, and the second Tone go through the ring modulator to add harmonics.';
+    case 8:
+      return 'Like type 7, and the ring-modulated result is mixed with the second Tone.';
+    case 9:
+      return 'Both Tones are filtered and go through the ring modulator. The first Tone’s amplifier sets the balance between the Tones and the ring modulation depth.';
+    case 10:
+      return 'Like type 9, and the ring-modulated result is mixed with the second Tone. The first Tone’s amplifier sets how much of the ring-modulated sound is heard.';
+    default:
+      return '';
+  }
+}
+
+/** The parts used in a type's drawing, for a legend: WG wave generator, TVF filter, TVA amplifier, and B or R where the type has them. */
+export function structureLegend(type: number): string {
+  const kinds = new Set(structureOf(type).nodes.map((n) => n.kind));
+  const parts = ['WG wave generator', 'TVF filter', 'TVA amplifier'];
+  if (kinds.has('booster')) parts.push('B booster');
+  if (kinds.has('ring')) parts.push('R ring modulator');
+  return parts.join(' · ');
+}

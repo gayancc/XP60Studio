@@ -36,7 +36,6 @@
   <div class="grid">{#each main as b (b.number)}{@render board(b)}{/each}</div>
   <h4>Promotional and regional boards</h4>
   <div class="grid">{#each other as b (b.number)}{@render board(b)}{/each}</div>
-  {#if expansions.notice}<p class="warn" role="status">{expansions.notice}</p>{/if}
 </div>
 
 <style>
@@ -77,11 +76,6 @@
     font-size: 10.5px;
     line-height: 1.35;
   }
-  .warn {
-    margin: 0;
-    color: var(--warn);
-    font-size: 10.5px;
-  }
   .grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -112,7 +106,7 @@
   }
   .b:focus-visible {
     outline: none;
-    box-shadow: var(--focus);
+    background-image: var(--focus-fill);
   }
   .b.on {
     background: color-mix(in srgb, var(--accent) 14%, var(--body-deep));

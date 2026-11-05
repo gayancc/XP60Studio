@@ -1,8 +1,11 @@
 // Small bits of UI state that must survive switching between the workspaces (each workspace is re-created on a switch).
 
+import { messages } from './messages.svelte';
 import type { Clip } from './tools';
 
 export interface BankState {
+  /** What the file's slots hold; patches unless it was opened in the Performance or Rhythm Set workspace. */
+  kind?: 'patch' | 'performance' | 'rhythm';
   file: string;
   bytes: Uint8Array;
   names: Array<[number, string]>;
@@ -20,8 +23,6 @@ export interface UiState {
   /** The last thing copied with Copy tone / Copy section. */
   clip: Clip | null;
   paletteOpen: boolean;
-  /** A short message about something that just finished ("Copied ..."). */
-  notice: string;
 }
 
 export const ui: UiState = $state({
@@ -34,14 +35,9 @@ export const ui: UiState = $state({
   tools: { strength: 0.3, amount: 0.1, allBlocks: false, seed: 1, morph: 0 },
   clip: null,
   paletteOpen: false,
-  notice: '',
 });
 
-let noticeTimer: ReturnType<typeof setTimeout> | undefined;
-
-/** Show `text` in the top bar for a few seconds. */
+/** Tell the person something short that just finished ("Copied ..."). It appears in the bottom-left corner with every other message. */
 export function say(text: string, ms = 5000): void {
-  clearTimeout(noticeTimer);
-  ui.notice = text;
-  noticeTimer = setTimeout(() => (ui.notice = ''), ms);
+  messages.report('info', text, ms);
 }

@@ -31,6 +31,21 @@ export function newDoc(kind: DocKindName): DocApi {
   return kind === 'patch' ? new PatchDoc() : new Doc(kind);
 }
 
+/** Open slot `slot` of the Performances or Rhythm Sets in a `.syx` file (whole-memory backups hold 32 and 2). */
+export function docFromSyxSlot(kind: 'performance' | 'rhythm', bytes: Uint8Array, slot: number): DocApi {
+  return Doc.fromSyxSlot(kind, bytes, slot);
+}
+
+/** A Performance, Rhythm Set or the System settings as `.syx` bytes (a Performance or Rhythm Set in User slot 1). */
+export function docToSyx(kind: 'performance' | 'rhythm' | 'system', blocks: Uint8Array, device: number): Uint8Array {
+  const doc = Doc.fromBlocks(kind, blocks);
+  try {
+    return doc.toSyx(device);
+  } finally {
+    doc.free();
+  }
+}
+
 export function docFromBlocks(kind: DocKindName, bytes: Uint8Array): DocApi {
   return kind === 'patch' ? PatchDoc.fromBlocks(bytes) : Doc.fromBlocks(kind, bytes);
 }

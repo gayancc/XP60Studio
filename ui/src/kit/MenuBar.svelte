@@ -25,6 +25,14 @@
 
   let { menus, name = 'Menu' }: Props = $props();
   let open = $state<number | null>(null);
+  /** Where the open menu hangs: against the window, because the bar sits in a row that clips anything below it. */
+  let at = $state({ left: 0, top: 0 });
+
+  function openAt(i: number, title: HTMLElement): void {
+    const r = title.getBoundingClientRect();
+    at = { left: Math.max(4, Math.min(r.left, window.innerWidth - 300)), top: r.bottom + 1 };
+    open = i;
+  }
   let root: HTMLElement | undefined = $state();
 
   function pick(item: MenuItem): void {
@@ -57,15 +65,15 @@
         class:open={open === i}
         aria-haspopup="true"
         aria-expanded={open === i}
-        onclick={() => (open = open === i ? null : i)}
-        onpointerenter={() => {
-          if (open !== null) open = i;
+        onclick={(e) => (open === i ? (open = null) : openAt(i, e.currentTarget))}
+        onpointerenter={(e) => {
+          if (open !== null) openAt(i, e.currentTarget);
         }}>{m.title}</button>
       {#if open === i}
         {#if m.panel}
-          <div class="drop panel">{@render m.panel()}</div>
+          <div class="drop panel" style:left="{at.left}px" style:top="{at.top}px">{@render m.panel()}</div>
         {:else}
-          <ul class="drop" role="menu" aria-label={m.title}>
+          <ul class="drop" role="menu" aria-label={m.title} style:left="{at.left}px" style:top="{at.top}px">
             {#each m.items ?? [] as it, j (j)}
               {#if it.separator}
                 <li class="sep" role="separator"></li>
@@ -115,12 +123,13 @@
   }
   .title:focus-visible {
     outline: none;
-    box-shadow: var(--focus);
+    background-image: var(--focus-fill);
   }
   .drop {
-    position: absolute;
-    top: calc(100% + 1px);
-    left: 0;
+    position: fixed;
+    z-index: 950;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
     min-width: 220px;
     margin: 0;
     padding: 3px;

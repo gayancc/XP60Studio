@@ -1,0 +1,79 @@
+# Builds the Windows installer and attaches it to a GitHub release.
+#
+#   git tag v0.1.0 && git push origin v0.1.0      (the tag must match the version in Cargo.toml)
+#
+# Or run it by hand from the Actions tab to get the installer as a build artifact without publishing.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows-installer:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the tag matches the app version
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          version=$(grep -m1 '^version' Cargo.toml | sed 's/.*"\(.*\)".*/\1/')
+          if [ "v$version" != "${GITHUB_REF_NAME}" ]; then
+            echo "Tag ${GITHUB_REF_NAME} does not match Cargo.toml version $version"; exit 1
+          fi
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - uses: Swatinem/rust-cache@v2
+
+      # The codec is compiled to WebAssembly for the UI; the CLI version must match the wasm-bindgen crate in Cargo.lock.
+      - name: Install wasm-bindgen CLI
+        shell: bash
+        run: |
+          version=$(grep -A1 'name = "wasm-bindgen"$' Cargo.lock | grep version | sed 's/.*"\(.*\)".*/\1/')
+          cargo install wasm-bindgen-cli --version "$version" --locked
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+
+      - name: Install UI dependencies
+        working-directory: ui
+        run: npm ci
+
+      - name: Test
+        working-directory: ui
+        run: |
+          npm run wasm
+          npm test
+
+      - name: Build the installer
+        working-directory: ui
+        run: npm run installer
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: XPPatchStudio-windows-installer
+          path: target/release/bundle/nsis/*-setup.exe
+          if-no-files-found: error
+
+      - name: Publish the release
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" target/release/bundle/nsis/*-setup.exe \
+            --title "XPPatchStudio ${GITHUB_REF_NAME}" \
+            --generate-notes \
+            --notes "Windows installer: download the setup file, run it, choose the install location and follow the steps. Nothing is written to a connected XP-60 until you save to it from the app."

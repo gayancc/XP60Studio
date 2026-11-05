@@ -45,6 +45,11 @@ function fake(overrides: Partial<Backend> = {}): Backend {
     disarmSave: vi.fn(never),
     commitSave: vi.fn(never),
     restoreSave: vi.fn(never),
+    armSystemSave: vi.fn(never),
+    disarmSystemSave: vi.fn(never),
+    commitSystemSave: vi.fn(never),
+    restoreSystemSave: vi.fn(never),
+    saveFile: vi.fn(never),
     readBank: vi.fn(async () =>
       Array.from({ length: SLOTS }, (_, i): [number, Uint8Array] => [i, blocks(`Slot ${i + 1}`, i)]),
     ),

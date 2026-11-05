@@ -39,6 +39,16 @@ export interface SaveReport {
   verified: boolean;
 }
 
+export interface ArmedSystemSave {
+  backup_path: string;
+}
+
+export interface SystemSaveReport {
+  messages: number;
+  bytes: number;
+  verified: boolean;
+}
+
 export interface ArmedBank {
   backup_path: string;
   names: string[];
@@ -97,6 +107,13 @@ export interface Backend {
   disarmSave(): Promise<void>;
   commitSave(patch: Uint8Array): Promise<SaveReport>;
   restoreSave(): Promise<SaveReport>;
+  /** Writing the System settings: read and back them up, then write once, with a way back. */
+  /** Ask where to save a file (the system Save dialog) and write it; the path, or null when the user cancelled. */
+  saveFile(name: string, bytes: Uint8Array): Promise<string | null>;
+  armSystemSave(): Promise<ArmedSystemSave>;
+  disarmSystemSave(): Promise<void>;
+  commitSystemSave(blocks: Uint8Array): Promise<SystemSaveReport>;
+  restoreSystemSave(): Promise<SystemSaveReport>;
   readBank(): Promise<Array<[number, Uint8Array]>>;
   /** All of User memory the editor has a map for (patches, performances, rhythm sets) as one `.syx`; nothing is written. */
   backupAll(): Promise<Uint8Array>;
@@ -137,6 +154,11 @@ export const tauriBackend: Backend = {
   disarmSave: () => invoke('midi_disarm_save'),
   commitSave: (patch) => invoke('midi_commit_save', { patch: Array.from(patch) }),
   restoreSave: () => invoke('midi_restore_save'),
+  saveFile: (name, bytes) => invoke('save_file', { name, bytes: Array.from(bytes) }),
+  armSystemSave: () => invoke('midi_arm_system_save'),
+  disarmSystemSave: () => invoke('midi_disarm_system_save'),
+  commitSystemSave: (blocks) => invoke('midi_commit_system_save', { blocks: Array.from(blocks) }),
+  restoreSystemSave: () => invoke('midi_restore_system_save'),
   backupAll: async () => new Uint8Array(await invoke<number[]>('midi_backup_all')),
   readBank: async () => {
     const rows = await invoke<Array<[number, number[]]>>('midi_read_bank');

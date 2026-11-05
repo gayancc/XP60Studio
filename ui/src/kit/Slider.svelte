@@ -131,8 +131,12 @@
   .slider.vertical {
     cursor: ns-resize;
   }
-  .slider:focus-visible {
-    box-shadow: var(--focus);
+  .slider:focus-visible .thumb,
+  .slider:focus-visible .fill {
+    filter: brightness(1.4);
+  }
+  .slider:focus-visible .caps {
+    color: var(--text);
   }
   .track {
     position: relative;

@@ -17,10 +17,7 @@
 <div class="map">
   <span class="caps">MIDI controller map</span>
   {#if controls.learning}
-    <p class="learn" role="status">
-      Move a controller to link it to <b>{controls.learning.name}</b>.
-      <button type="button" onclick={() => controls.cancelLearn()}>Cancel</button>
-    </p>
+    <p class="learn"><button type="button" onclick={() => controls.cancelLearn()}>Cancel linking</button></p>
   {/if}
   {#if controls.bindings.length === 0}
     <p class="note">Nothing is linked yet. Right-click a knob and choose Link to MIDI CC, then move a controller on your keyboard or on the XP-60.</p>

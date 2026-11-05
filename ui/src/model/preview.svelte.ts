@@ -2,6 +2,8 @@
 // patch so it can be played, and when the pointer leaves put back what the instrument had. Only temporary memory is
 // touched (never User memory), and only when the user has switched the feature on.
 
+import { reportError, reportInfo, reportSuccess, reportWarning } from './messages.svelte';
+
 /** What the service needs from the outside, so it can be tested without an instrument. */
 export interface PreviewDeps {
   connected: () => boolean;
@@ -25,7 +27,15 @@ export class PreviewService {
   enabled = $state(false);
   /** The stored patch currently sounding in the temporary area, or null. */
   playing = $state<number | null>(null);
-  error = $state('');
+  #error = $state('');
+  get error(): string {
+    return this.#error;
+  }
+  /** Setting text here also shows it in the bottom-left corner with every other message. */
+  set error(text: string) {
+    this.#error = text;
+    if (text) reportError(text);
+  }
 
   private deps: PreviewDeps | undefined;
   /** The instrument's own temporary patch from before the first preview of this hover session. */

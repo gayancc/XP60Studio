@@ -3,6 +3,104 @@
 Process note (owner decision): hardware testing is one dedicated phase at the end. Items that need the instrument
 are tracked in `docs/07-hardware-acceptance.md` and updated every phase; nothing here is run on hardware before then.
 
+## README rewritten; envelope extras aligned (2026-11-05)
+
+- **README** rewritten: features by editor, the seven Patch tabs, System settings and Scale tune, an **Interface conventions** section recording the owner's rules (desktop-first, every message bottom-left only, no box/ring/border around controls, tabs merged by signal path without scroll bars, no unexplained empty space), safety, install, the launcher, architecture, quality and roadmap. Screenshots of the Zones and output tab, Filter and amp, and the light theme were retaken from the repository's own golden bank.
+- **Fixed:** the velocity time and time key follow drop-downs under an envelope were scattered, some beside the knobs and some on the next row. The small knobs now sit in one row and the drop-downs in a grid of equal columns directly under it, in both the filter and the amplifier frames.
+
+## Patch tabs merged by what belongs together; empty spaces removed (2026-11-05)
+
+- **What the blank box was:** the whole-Tone page I added (the "Tone" tab) laid its frames out in a grid; the Pitch frame beside Wave was taller, so everything below Wave had to wait under it, leaving an empty rectangle. It was never a feature. That tab scrolled in a small window, which defeats its purpose, so it is **removed**; the merged tabs below give the same reach without a scroll bar.
+- **Thirteen Patch tabs became seven, merged along the signal path** (measured; none scrolls at the smallest window, 1100x700, and `npm run e2e` now fails if one does):
+  Zones and output (where each Tone plays and where its sound goes) | Wave and pitch (the sound source) | Filter and amp (the two shaping stages, side by side) | LFO and modulation (both LFOs, then the controller routing) | Patch (patch, play, portamento and the patch's controllers) | Structure (how the Tones are joined) | Effects (effect, chorus and reverb).
+  Patch-wide pages stay apart from the pages that follow the selected Tone, so a tab never mixes the two. The "Selected Tone / All 4 Tones" switch works on the three sound tabs.
+- **Gaps removed:** the Patch page and the merged pages now use columns (a short group no longer leaves a hole beside a tall one); an envelope's extra controls sit beside its graph in a wide frame instead of leaving a blank area; the two Structure pictures sit side by side with the booster below each.
+- Saved layouts that named a tab by position keep working (the position is clamped to the new, shorter list).
+
+## No box, ring or border around knobs or any focused control (2026-11-05)
+
+- **Fixed:** my earlier change drew a tinted square behind a knob that had keyboard focus (visible around the A knob of Scale tune). Knobs, sliders, switches, steppers, the Tone on/off dot, envelope points and key-range handles now show keyboard focus by **the control itself lighting up** (a brighter cap, thumb, dot or handle, and a brighter label); nothing is drawn around them. The LED switch no longer gets a box when hovered either; its label brightens.
+- **Everywhere else:** the focus ring (`--focus`, a 1 px accent box-shadow) is gone from the whole app. Buttons, tabs, menu titles, drop-downs, list rows and the like show keyboard focus by a soft tint laid over the control (`--focus-fill`), which keeps a selected control's own colour. 29 files changed.
+- `npm run e2e` now tabs through the Filter, Zones, Amp, LFO and Output tabs, Performance, Rhythm set and Scale tune, and fails if focusing any knob, slider, switch or spinner changes its shadow, outline, background or border (it compares each control focused and unfocused, so static artwork is not flagged). 8 checks, all passing; the focused knob looked at in the real window.
+
+## Every message in the bottom-left corner (2026-11-05)
+
+- **Owner rule:** every error, warning, piece of information, confirmation and validation message appears in the bottom-left corner of the window and nowhere else. New `messages` centre (`model/messages.svelte.ts`) and a `MessageStack` at the bottom left above the hint bar: each message has a kind tag (Error, Warning, Info, Done), wraps, can be dismissed with a button, and goes away by itself (info 5 s, done 4.5 s, warning 9 s, errors 20 s); the same text again renews the message instead of stacking; at most four show.
+- **Everything is routed there.** The services (patch, performance, rhythm and system stores, bank, library, controller links, expansion boards, layouts, hear-on-hover, synth connection, the patch and System save flows) report whenever they set an error or notice, so the many places that already set them needed no change; `say()` reports too. Removed from the views: the top bar's notices and errors, the Bank, Library, Synth, Expansion, Layout and Storage message lines, the save panels' result and error lines, the controller-learning line, the structure note ("one of these Tones is off"), the Scale tune state lines, the shortcut-clash badge and the System page's permanent-memory banner (now a warning shown when the System page opens). While a save is reading or writing, the step button says so (disabled) instead of a status line. The advice about User Memory Protect follows a failed write as a warning.
+- **What stays in place, on purpose:** the question a confirmation asks before something permanent, progress meters, live readouts (state chip, the readout in the top bar), the "needs the desktop app" pages, the find-and-replace preview summary, and static help text. `messageDiscipline.test.ts` fails if a new message line (role alert or status) appears anywhere else, and `npm run e2e` checks the corner position and that the top bar and the save panels show no message line.
+- 13 new tests; 7 existing tests now check the corner messages instead of inline text. Checked in the real window.
+
+## No folder paths in the top bar (2026-11-05)
+
+- **Fixed:** after an export the top bar showed the whole file path, cut off at the window edge ("Saved C:/Users/.../AppData/Local/Te..."). It now says "Saved ALL RIGHT.syx", the file name only. `npm run e2e` checks that the notice after saving has no folder separator. The backup path in the save panels stays, because there it is information you need.
+
+## Scale tune: no border, aligned, starts at equal temperament (2026-11-05)
+
+- **No outline on knobs.** A knob that has keyboard focus or is being edited was ringed by an orange border; it is now shown by a soft tint behind it (every knob in the app, in line with the rule that selected things use a tint, never a border). On this page the key of the note being hovered, focused or edited is tinted too.
+- **Alignment and spacing:** the keyboard on this page is drawn with seven equal white keys (112 px) and five black keys, so every natural note's knob is centred under its own white key and every sharp's knob is centred over its black key (measured in the real window: all 12 knob centres equal their key centres, naturals exactly 112 px apart). Each knob has its readout and its note name arranged the same way above and below the keys, with
+  the name nearest the keys on both sides and the same 6 px to the keyboard; the old drawing placed knobs by the visible part of each key, which spaced them unevenly (128, 111, 111, 122, 140, 122 px).
+- **Fixed:** a System page that had not been read from an instrument showed -64 cents on every note (all-minimum values), which would be written to the instrument if saved. The keyboard scale now starts at equal temperament (0 cents on every note), as an unedited new document; everything else on the System page still starts at its minimum. 3 new tests.
+
+## Scale tune page redesigned (2026-11-05)
+
+- System > Scale tune now has **big knobs with the value readable on every note** (+16, −8, 0 cents) over and under a keyboard drawing, replacing the 30 px knobs with no values. Above them: the **Scale tune on/off switch** with a line saying what off means
+  (equal temperament; your values are kept, not used), an **Applies to** choice (Patch mode, or Performance parts with a 1 to 16 grid that marks Parts whose scale is not equal), and three **Start from** chips: Equal (reset), Pure with tonic C, and Arabian,
+  whose values are the manual's own example table (Owner's Manual p.89, checked against the printed page). Below: *Copy to the other Parts…* and *Copy from Patch mode…*, each asking before it replaces anything. Every preset, reset or copy is one undo step; double-click a knob resets it.
+- Built after a mockup with vertical bars was rejected; this keeps the knobs and the keyboard drawing. 6 model tests and 7 page tests; layout checked at 1280x800 and 1100x700.
+- Not added (offered, not chosen): moving Master Tune and Master Key Shift here, and a "hear the note" button.
+
+## Top menus no longer cut off (2026-11-05)
+
+- **Fixed:** the File, Edit, Synth, Controllers, Settings, Layouts and View menus were clipped to one row by the top bar (the Edit menu showed only "Undo"). The same clipping that hid the save panels: the bar's rows hide anything that hangs below them. Menus and their panels are now placed against the window
+  at the position of their title, clamped to the window, and scroll if the window is very short. Checked in the real window: all seven menus fully visible and inside the window. `npm run e2e` now fails if the File, Edit or View menu is cut off, and 3 menu tests were added.
+
+## Structure diagrams with their text (2026-11-05)
+
+- The structure picker's diagrams had no text: the small one in the Patch tab had its WG/TVF/TVA labels switched off and no Tone names. Every diagram now shows **WG, TVF, TVA, B and R on its boxes**, each lane is named (**TONE 1 / TONE 2**, or **TONE 3 / TONE 4**; the chooser shows
+  "TONE 1 (3)" and "TONE 2 (4)" since it stands for both pairs), and under the panel's diagram there is a legend of the parts and what the type is for, including what the first Tone's amplifier does (balance, booster level, ring modulation depth), written from the Owner's
+  Manual p.49 text. The chooser is three columns with the same text for the highlighted type, and the "one of these Tones is off" note now wraps instead of being cut off.
+- **Wiring checked** type by type against the manual's descriptions and against the ten figures (kept as evidence only): types 1 to 10 match, including the booster before the first filter in type 4 and between the filters in type 3, the ring modulator in 5 to 10, and the second Tone's direct path in types 6, 8 and 10. No wiring change was needed.
+- 2 new tests. Checked in the real window at 1280x800: the chooser fits without scrolling.
+
+## Exports use the system Save dialog (2026-11-05)
+
+- **Fixed:** exporting a second file raised the browser permission prompt "tauri.localhost wants to: Download multiple files" (Block / Allow). Every export (patch, Performance, Rhythm Set, System settings, bank, library, whole-memory backup)
+  now goes through one `saveFile` helper and the app's `save_file` command, which asks where to save with the system *Save As* dialog (`tauri-plugin-dialog`) and writes the file from Rust; no browser download is used any more.
+  The file name is checked (plain name, `.syx` or `.mid`, no folders). Cancelling the dialog writes nothing and says so.
+- `npm run e2e` sets `XPPATCH_SAVE_DIR` so the app writes exports straight into a temporary folder without a dialog, and a new check fails if any export starts a page download. Confirmed in the real window that the *Save As* dialog opens.
+
+## Writing the System settings, more exports, an end-to-end check (2026-11-05)
+
+- **System settings can be written to the instrument.** System workspace > *Write to synth...* reads the settings, writes them to a backup `.syx` file and reads that file back to be sure it holds exactly what was read, asks for a second explicit
+  confirmation, writes (at most 128 data bytes per message, paced, only inside the System region), reads back and compares, and offers *Undo the last write* (refused if the settings changed since). One arming allows one write; arming a patch or
+  bank save drops it. Built as `plan_system_write` / `commit_system_write` / `restore_system_backup` in `xppatch-midi`, `arm/commit/restore_system_save` in the app, and `SystemSaveFlow` and `SystemSaveCeremony` in the interface. 4 client tests against the virtual XP-60, 6 application tests, a codec round-trip test,
+  11 flow tests and 4 panel tests in the interface; hardware items H-061 to H-065 stay NOT RUN. Not marked done.
+- **Export of a Performance, a Rhythm Set and the System settings** (File > Export ... as .syx / .mid), alongside the patch export; the new `Doc.toSyx`, `SyxImage::system_document` and `system_document_bytes`. Hardware item H-066.
+- **Bug found while testing the new panel:** the save panels hung from the top bar, whose rows clip what hangs below them, so they could be cut off. They are now placed against the window and verified fully visible.
+- **Layout bugs found by the new end-to-end check at 1100x700:** a Tab panel's content was cut off (it now scrolls), and the Library list used a fixed `100vh - 270px` height that overflowed with an import preview open (it now fills the space it is given).
+- **`npm run e2e`** (ui/e2e/run.mjs): drives the built app over the WebView2 debugging port, 19 checks (bank, previous/next, edit and undo, export and re-open byte for byte, Performance and Rhythm Set files, Library preview, save panels, layout of every tab at 1100x700 and 1280x800, script errors). All pass.
+- **`npm run coverage`**: interface line coverage measured at 56.6% (statements 51%), with most views at 0% in unit tests and covered only by the end-to-end check. Rust coverage was not measured (cargo-llvm-cov is not installed here).
+- Docs: parity matrix gets section G (8 rows) and B2's System write, the roadmap table and the README are brought up to date, and ledger rows H-061 to H-066 are added.
+- Found and recorded, not changed: the Library holds patches only, so Performances and Rhythm Sets can be exported and re-opened as files but not stored in it.
+
+## Whole-memory files open in the Performance and Rhythm Set workspaces (2026-11-05)
+
+- Found by loading a real whole-memory backup (`xp_50_Bulk_2.syx`: 128 patches, 32 Performances, 2 Rhythm Sets): the patches loaded and exported byte for byte, but the Performances
+  and Rhythm Sets in the same file could not be opened. **File > Open** now works in those workspaces too (the codec already read them; new `docSyxNames` and `Doc.fromSyxSlot` bindings),
+  with the header picker and previous/next buttons listing the file's Performances or Rhythm Sets. One file is open at a time, and a Performance file is not offered in the Patch workspace.
+- Checked in the running app with that file: all 128 patches open one after another without errors, every tab of four of them renders without clipping, the four-Tone view shows four columns,
+  patch export is byte-identical to the file's own slots (0, 3, 77, 127), the Library imports 128 (104 new, 24 already stored), the Bank workspace loads it, all 32 Performances and both
+  Rhythm Sets open from the picker, and previous/next move one slot. One edit and one undo step back by one knob step as designed. 3 new UI tests, 1 new Rust test.
+
+## Windows installer and release workflow (2026-11-05)
+
+- `npm run installer` (in `ui/`) builds a standard NSIS setup, `XPPatchStudio_<version>_x64-setup.exe` (about 3 MB): welcome, install for all users or current user, **choose the install
+  folder**, Start menu folder, finish; Start menu shortcut, an entry under Settings > Apps with uninstall; the WebView2 runtime is fetched when missing.
+- `.github/workflows/release.yml`: pushing a `vX.Y.Z` tag (it must match the `Cargo.toml` version) runs the UI tests, builds the installer and publishes it on a GitHub release;
+  it can also be run by hand to get the installer as a build artifact. The Tauri CLI is now a dev dependency of `ui/`.
+- Not done: code signing (SmartScreen will warn on first run) and a macOS build, which needs an `.icns` icon, an Apple developer identity and notarisation.
+- The installer was built and its NSIS script inspected (install-mode, folder and Start menu pages are in the flow), but the setup was not run end to end here.
+
 ## Export of the open patch (2026-11-04)
 
 - Line-by-line check of the toolbar in the Patch Base screens against the app found one missing function, export of the patch being edited. **File > Export patch as .syx / .mid**

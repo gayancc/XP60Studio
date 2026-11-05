@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { HintBar } from '../kit';
+  import { HintBar, MessageStack } from '../kit';
   import { blockInfo, isNameCharacter, type Mode } from '../model/catalog';
   import { blockNames } from '../model/kinds';
   import { blockTitle, contextOf } from '../model/labels';
@@ -193,6 +193,8 @@
     />
   </div>
 </div>
+
+<MessageStack />
 
 <CommandPalette
   open={ui.paletteOpen}

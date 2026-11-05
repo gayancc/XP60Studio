@@ -178,6 +178,25 @@ pub fn read_backup(dir: &Path, name: &str) -> Result<Vec<u8>, String> {
     std::fs::read(&path).map_err(|e| format!("The backup could not be read: {e}"))
 }
 
+/// A file name for a file the user is asked to save: plain letters, digits, spaces and `. _ -`, no folders, at most 120
+/// characters, and an extension (`syx`, `mid`). Anything else is refused rather than cleaned up, so a name that was
+/// never meant to be a path cannot become one.
+pub fn safe_export_name(name: &str) -> Result<String, String> {
+    let ok_char = |c: char| c.is_ascii_alphanumeric() || matches!(c, ' ' | '.' | '_' | '-');
+    let ext_ok = name
+        .rsplit_once('.')
+        .is_some_and(|(stem, ext)| !stem.is_empty() && matches!(ext, "syx" | "mid"));
+    if name.is_empty()
+        || name.len() > 120
+        || !name.chars().all(ok_char)
+        || name.starts_with('.')
+        || !ext_ok
+    {
+        return Err(format!("'{name}' is not a file name this app can save"));
+    }
+    Ok(name.to_owned())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -338,5 +357,32 @@ mod tests {
         assert!(read_backup(&d, "missing.syx")
             .unwrap_err()
             .contains("no longer exists"));
+    }
+
+    #[test]
+    fn export_names_are_plain_file_names_with_a_known_extension() {
+        assert_eq!(
+            safe_export_name("ALL RIGHT TA.syx").unwrap(),
+            "ALL RIGHT TA.syx"
+        );
+        assert_eq!(
+            safe_export_name("xppatch-user-bank.mid").unwrap(),
+            "xppatch-user-bank.mid"
+        );
+        for bad in [
+            "",
+            ".syx",
+            "a.exe",
+            "a",
+            "../x.syx",
+            "a/b.syx",
+            "a\\b.syx",
+            "C:x.syx",
+            "a:b.syx",
+            "con\0.syx",
+        ] {
+            assert!(safe_export_name(bad).is_err(), "{bad:?}");
+        }
+        assert!(safe_export_name(&format!("{}.syx", "a".repeat(130))).is_err());
     }
 }

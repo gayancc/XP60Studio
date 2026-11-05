@@ -28,6 +28,13 @@ pub fn syx_names(bytes: &[u8]) -> Result<String, JsError> {
     serde_json::to_string(&names).map_err(|e| JsError::new(&e.to_string()))
 }
 
+/// Names of the Performances (`"performance"`) or Rhythm Sets (`"rhythm"`) in a `.syx` file, as JSON `[[slot, name], ...]`.
+#[wasm_bindgen(js_name = docSyxNames)]
+pub fn doc_syx_names(kind: &str, bytes: &[u8]) -> Result<String, JsError> {
+    let names = DocSession::syx_names(kind, bytes).map_err(js)?;
+    serde_json::to_string(&names).map_err(|e| JsError::new(&e.to_string()))
+}
+
 /// The SysEx messages of a `.syx` file as a Standard MIDI File (one event per message, spaced for the instrument).
 #[wasm_bindgen(js_name = syxToSmf)]
 pub fn syx_to_smf(bytes: &[u8]) -> Result<Vec<u8>, JsError> {
@@ -160,6 +167,19 @@ impl Doc {
         Ok(Doc {
             inner: DocSession::from_blocks(kind, bytes).map_err(js)?,
         })
+    }
+
+    #[wasm_bindgen(js_name = fromSyxSlot)]
+    pub fn from_syx_slot(kind: &str, bytes: &[u8], slot: u8) -> Result<Doc, JsError> {
+        Ok(Doc {
+            inner: DocSession::from_syx_slot(kind, bytes, slot).map_err(js)?,
+        })
+    }
+
+    /// The document as `.syx` bytes (a Performance or Rhythm Set in User slot 1, or the System settings).
+    #[wasm_bindgen(js_name = toSyx)]
+    pub fn to_syx(&self, device: u8) -> Result<Vec<u8>, JsError> {
+        self.inner.to_syx(device).map_err(js)
     }
 
     #[wasm_bindgen(js_name = byteLen)]

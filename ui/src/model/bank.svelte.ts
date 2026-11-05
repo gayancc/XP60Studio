@@ -4,6 +4,7 @@
 import { PatchDoc } from '../wasm/pkg/xppatch.js';
 import type { ArmedBank, Backend, BankSaveReport, Progress } from './backend';
 import { normaliseTag } from './folders';
+import { reportError, reportInfo, reportSuccess, reportWarning } from './messages.svelte';
 
 export const SLOTS = 128;
 
@@ -41,7 +42,15 @@ export class BankService {
   progress = $state<Progress | null>(null);
   armed = $state<ArmedBank | null>(null);
   report = $state<BankSaveReport | null>(null);
-  error = $state('');
+  #error = $state('');
+  get error(): string {
+    return this.#error;
+  }
+  /** Setting text here also shows it in the bottom-left corner with every other message. */
+  set error(text: string) {
+    this.#error = text;
+    if (text) reportError(text);
+  }
   selected = $state(0);
   /** Where the loaded bank came from, for the title. */
   source = $state('Empty');
@@ -163,7 +172,15 @@ export class BankService {
   }
 
   /** What the last "add to library" did, for the notice. */
-  libraryNotice = $state('');
+  #libraryNotice = $state('');
+  get libraryNotice(): string {
+    return this.#libraryNotice;
+  }
+  /** Setting text here also shows it in the bottom-left corner with every other message. */
+  set libraryNotice(text: string) {
+    this.#libraryNotice = text;
+    if (text) reportSuccess(text);
+  }
 
   /**
    * File every patch in the grid into the Library under the folder `folder` (a tag, so "Synth/2026-11-04" nests). A patch the

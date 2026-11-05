@@ -68,7 +68,7 @@
   }
   button:focus-visible {
     outline: none;
-    box-shadow: var(--focus);
+    background-image: var(--focus-fill);
   }
   .pill button {
     border: 1px solid var(--edge);

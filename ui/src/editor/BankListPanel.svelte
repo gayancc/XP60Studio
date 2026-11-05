@@ -1,10 +1,11 @@
 <script lang="ts">
-  import { canStepBank, openBankSlot, stepBankSlot } from '../model/bankNav';
+  import { bankOf, canStepBank, openBankSlot, stepBankSlot } from '../model/bankNav';
   import { ui } from '../model/ui.svelte';
   import { useStore } from './context';
 
   // The patches of the bank that is open in the editor, as a list to jump around in. The bank is whatever .syx file was opened or dropped; nothing here talks to the instrument.
   const store = useStore();
+  const bank = $derived(bankOf(store.kind));
   let list: HTMLOListElement | undefined = $state();
 
   $effect(() => {
@@ -14,16 +15,16 @@
   });
 </script>
 
-{#if ui.bank}
+{#if bank}
   <div class="bl">
     <div class="bar">
-      <button type="button" disabled={!canStepBank(-1)} onclick={() => stepBankSlot(store, -1)} aria-label="Previous patch" title="Previous patch">‹</button>
-      <span class="file" title={ui.bank.file}>{ui.bank.file}</span>
-      <span class="count">{ui.bankSlot + 1} / {ui.bank.names.length}</span>
-      <button type="button" disabled={!canStepBank(1)} onclick={() => stepBankSlot(store, 1)} aria-label="Next patch" title="Next patch">›</button>
+      <button type="button" disabled={!canStepBank(store.kind, -1)} onclick={() => stepBankSlot(store, -1)} aria-label="Previous patch" title="Previous patch">‹</button>
+      <span class="file" title={bank.file}>{bank.file}</span>
+      <span class="count">{ui.bankSlot + 1} / {bank.names.length}</span>
+      <button type="button" disabled={!canStepBank(store.kind, 1)} onclick={() => stepBankSlot(store, 1)} aria-label="Next patch" title="Next patch">›</button>
     </div>
-    <ol bind:this={list} aria-label="Patches in {ui.bank.file}">
-      {#each ui.bank.names as [slot, name], i (slot)}
+    <ol bind:this={list} aria-label="Patches in {bank.file}">
+      {#each bank.names as [slot, name], i (slot)}
         <li>
           <button type="button" class:on={i === ui.bankSlot} aria-current={i === ui.bankSlot ? 'true' : undefined} onclick={() => openBankSlot(store, i)}>
             <span class="n">{String(slot + 1).padStart(3, '0')}</span><span class="nm">{name.trimEnd() || '(unnamed)'}</span>
@@ -70,7 +71,7 @@
   }
   .bar button:focus-visible {
     outline: none;
-    box-shadow: var(--focus);
+    background-image: var(--focus-fill);
   }
   .file {
     flex: 1;
@@ -120,7 +121,7 @@
   }
   li button:focus-visible {
     outline: none;
-    box-shadow: inset var(--focus);
+    background-image: var(--focus-fill);
   }
   .n {
     color: var(--text-faint);

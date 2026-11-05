@@ -168,8 +168,12 @@
     border-radius: var(--radius);
     outline: none;
   }
-  .knob:focus-visible {
-    box-shadow: var(--focus);
+  /* Keyboard focus is shown by the knob itself lighting up, never by a box, border or tint around it. */
+  .knob:focus-visible svg {
+    filter: brightness(1.4) saturate(1.15);
+  }
+  .knob:focus-visible .caps {
+    color: var(--text);
   }
   .knob:hover svg path:nth-of-type(2) {
     filter: brightness(1.15);

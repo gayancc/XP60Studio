@@ -7,6 +7,7 @@
 // exactly one write, and the patch that is written is the one frozen when the save was armed.
 
 import type { ArmedSave, Backend, SaveReport } from './backend';
+import { reportError, reportSuccess, reportWarning } from './messages.svelte';
 
 export type SavePhase = 'idle' | 'arming' | 'armed' | 'writing' | 'done' | 'failed';
 
@@ -29,7 +30,15 @@ export class SaveFlow {
   slot = $state(0);
   armed = $state<ArmedSave | null>(null);
   report = $state<SaveReport | null>(null);
-  error = $state('');
+  #error = $state('');
+  get error(): string {
+    return this.#error;
+  }
+  /** Setting text here also shows it in the bottom-left corner with every other message. */
+  set error(text: string) {
+    this.#error = text;
+    if (text) reportError(text);
+  }
   /** The last save, if it can still be undone. */
   last = $state<LastSave | null>(null);
   /** The patch the user confirmed, frozen when the save was armed: later edits in the editor do not change it. */
@@ -122,15 +131,18 @@ export class SaveFlow {
       this.armed = null;
       if (armed) this.last = { slot: armed.slot, backupPath: armed.backup_path, oldName: armed.occupant_name };
       if (!report.verified) {
+        this.protectAdvice();
         this.fail('The slot was written but reading it back did not match (MISMATCH).');
         return false;
       }
       this.phase = 'done';
+      reportSuccess(`Saved to USER:${String(report.slot + 1).padStart(3, '0')}: read back and it matches.`);
       return true;
     } catch (e) {
       // A write may have started, so the earlier patch can still be put back from the backup.
       this.armed = null;
       if (armed) this.last = { slot: armed.slot, backupPath: armed.backup_path, oldName: armed.occupant_name };
+      this.protectAdvice();
       this.fail(message(e));
       return false;
     }
@@ -150,6 +162,7 @@ export class SaveFlow {
         return false;
       }
       this.phase = 'done';
+      reportSuccess('The earlier patch is back in its slot.');
       return true;
     } catch (e) {
       this.fail(`Undo failed: ${message(e)}`);
@@ -162,6 +175,11 @@ export class SaveFlow {
     this.phase = 'idle';
     this.error = '';
     this.report = null;
+  }
+
+  /** A write that fails is often User Memory Protect: say so alongside the error. */
+  private protectAdvice(): void {
+    reportWarning('If User Memory Protect is on, turn it off on the instrument and try again.');
   }
 
   private fail(text: string): void {

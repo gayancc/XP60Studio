@@ -73,7 +73,7 @@
   }
   select:focus-visible {
     outline: none;
-    box-shadow: var(--focus);
+    background-image: var(--focus-fill);
   }
   select:disabled {
     opacity: 0.4;

@@ -3,6 +3,7 @@ import { previewFile } from './openFile';
 // is done in Rust through a `Backend`.
 
 import type { Backend, ImportResult, LibraryFilter, LibraryRow } from './backend';
+import { reportError, reportInfo, reportSuccess, reportWarning } from './messages.svelte';
 
 export const PAGE_SIZE = 200;
 /** Largest .syx file accepted (the backend enforces the same limit). */
@@ -22,8 +23,24 @@ export class LibraryService {
   selectedId = $state<number | null>(null);
   /** Number of operations in flight (a boolean would flip early when two overlap). */
   private inFlight = $state(0);
-  error = $state('');
-  notice = $state('');
+  #error = $state('');
+  get error(): string {
+    return this.#error;
+  }
+  /** Setting text here also shows it in the bottom-left corner with every other message. */
+  set error(text: string) {
+    this.#error = text;
+    if (text) reportError(text);
+  }
+  #notice = $state('');
+  get notice(): string {
+    return this.#notice;
+  }
+  /** Setting text here also shows it in the bottom-left corner with every other message. */
+  set notice(text: string) {
+    this.#notice = text;
+    if (text) reportInfo(text);
+  }
 
   get busy(): boolean {
     return this.inFlight > 0;

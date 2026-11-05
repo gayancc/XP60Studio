@@ -4,17 +4,21 @@
   import { ENVELOPES, envelopeParamIds, toneParams, type EnvelopeSpec, type ToneSection } from '../model/layout';
   import { useStore } from './context';
   import EnvelopeSection from './EnvelopeSection.svelte';
+  import ControllerMatrix from './ControllerMatrix.svelte';
   import ParamControl from './ParamControl.svelte';
 
-  /** One tab of a Tone's sound design. */
+  /** One group of a Tone's sound design. */
   export type TonePart = 'wave' | 'pitch' | 'tvf' | 'tva' | 'lfo' | 'output';
-  /** The Tone page shows every part of one Tone at once. */
-  const ALL_PARTS: readonly TonePart[] = ['wave', 'pitch', 'tvf', 'tva', 'lfo', 'output'];
+  /**
+   * What a tab shows, in signal-flow order: the sound source (wave, then its pitch), the two shaping stages side by side (filter and amplifier), and what moves
+   * the sound (both LFOs, then the controller routing). Each is sized to fit the smallest window without scrolling.
+   */
+  export type ToneGroup = 'wavepitch' | 'filteramp' | 'lfomod' | TonePart;
 
   interface Props {
     block: BlockName;
     color: string;
-    part: TonePart | 'all';
+    part: ToneGroup;
   }
 
   let { block, color, part }: Props = $props();
@@ -71,15 +75,32 @@
   {/if}
 {/snippet}
 
-<div class="tone" style:--tone={color}>
-  {#if part === 'all'}
-    {#each ALL_PARTS as p (p)}{@render section(p)}{/each}
+<div class="tone" class:stack={part === 'wavepitch' || part === 'lfomod'} style:--tone={color}>
+  {#if part === 'wavepitch'}
+    {@render section('wave')}
+    {@render section('pitch')}
+  {:else if part === 'filteramp'}
+    {@render section('tvf')}
+    {@render section('tva')}
+  {:else if part === 'lfomod'}
+    <div class="pair">{@render section('lfo')}</div>
+    <ControllerMatrix {block} {color} />
   {:else}
     {@render section(part)}
   {/if}
 </div>
 
 <style>
+  .tone.stack {
+    display: flex;
+    flex-direction: column;
+  }
+  .pair {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 10px;
+    align-items: start;
+  }
   .tone {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));

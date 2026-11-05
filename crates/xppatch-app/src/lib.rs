@@ -311,6 +311,43 @@ fn midi_restore_save(state: tauri::State<'_, AppState>) -> Result<SaveReport, St
     with_synth(&state, |s| s.restore_user_backup()).map_err(|e| e.to_string())
 }
 
+/// Step one of saving the System settings: read them, write them to a backup file, and arm one save.
+#[tauri::command(async)]
+fn midi_arm_system_save(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, AppState>,
+) -> Result<synth::ArmedSystemSave, String> {
+    let dir = data_dir(&app)?.join("backups");
+    let stamp = u64::try_from(now_secs()).unwrap_or(0);
+    with_synth(&state, |s| s.arm_system_save(&dir, stamp)).map_err(|e| e.to_string())
+}
+
+#[tauri::command(async)]
+fn midi_disarm_system_save(state: tauri::State<'_, AppState>) -> Result<(), String> {
+    with_synth(&state, |s| {
+        s.disarm_system_save();
+        Ok(())
+    })
+    .map_err(|e| e.to_string())
+}
+
+/// Step two: write the System settings (concatenated block bytes) and read them back.
+#[tauri::command(async)]
+fn midi_commit_system_save(
+    state: tauri::State<'_, AppState>,
+    blocks: Vec<u8>,
+) -> Result<synth::SystemSaveReport, String> {
+    with_synth(&state, |s| s.commit_system_save(&blocks)).map_err(|e| e.to_string())
+}
+
+/// Put back the System settings the last save replaced.
+#[tauri::command(async)]
+fn midi_restore_system_save(
+    state: tauri::State<'_, AppState>,
+) -> Result<synth::SystemSaveReport, String> {
+    with_synth(&state, |s| s.restore_system_backup()).map_err(|e| e.to_string())
+}
+
 #[derive(Clone, Serialize)]
 struct ProgressOut {
     what: &'static str,
@@ -608,8 +645,45 @@ fn library_export(
     with_library(&state, |l| l.export_syx(&ids, device))
 }
 
+/// Save a file the user asked for (an export). The window's own download would pop up a browser permission prompt on the second
+/// file; this asks for the place with the system's Save dialog instead. Returns the path written, or `None` when the dialog was
+/// cancelled. With `XPPATCH_SAVE_DIR` set (automated checks only) the file goes straight into that folder with no dialog.
+#[tauri::command(async)]
+fn save_file(
+    app: tauri::AppHandle,
+    name: String,
+    bytes: Vec<u8>,
+) -> Result<Option<String>, String> {
+    use tauri_plugin_dialog::DialogExt;
+    let name = storage::safe_export_name(&name)?;
+    let path = if let Some(dir) = std::env::var_os("XPPATCH_SAVE_DIR") {
+        std::path::PathBuf::from(dir).join(&name)
+    } else {
+        let ext = name.rsplit_once('.').map_or("syx", |(_, e)| e);
+        let kind = if ext == "mid" {
+            "Standard MIDI File"
+        } else {
+            "SysEx file"
+        };
+        let Some(chosen) = app
+            .dialog()
+            .file()
+            .set_file_name(&name)
+            .add_filter(kind, &[ext])
+            .blocking_save_file()
+        else {
+            return Ok(None);
+        };
+        chosen.into_path().map_err(|e| e.to_string())?
+    };
+    std::fs::write(&path, &bytes)
+        .map_err(|e| format!("could not write {}: {e}", path.display()))?;
+    Ok(Some(path.display().to_string()))
+}
+
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .manage(AppState::default())
         .setup(|app| {
             // A library that cannot be opened must not stop the editor; its commands report why.
@@ -650,6 +724,11 @@ pub fn run() {
             midi_disarm_save,
             midi_commit_save,
             midi_restore_save,
+            midi_arm_system_save,
+            save_file,
+            midi_disarm_system_save,
+            midi_commit_system_save,
+            midi_restore_system_save,
             midi_cancel,
             midi_read_bank,
             midi_backup_all,
