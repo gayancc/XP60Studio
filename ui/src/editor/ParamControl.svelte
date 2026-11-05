@@ -4,7 +4,7 @@
   import { paramInfo } from '../model/catalog';
   import { controlFor } from '../model/controlKind';
   import { controls } from '../model/controls.svelte';
-  import { contextOf, shortLabel } from '../model/labels';
+  import { contextOf, displayName, shortLabel, tableNote } from '../model/labels';
   import { isUnlisted, offered } from '../model/unlisted';
   import { useStore } from './context';
 
@@ -26,7 +26,8 @@
   const info = $derived(paramInfo(store.catalog, store.kind, block, id));
   const choice = $derived(info ? controlFor(info) : null);
   const value = $derived(store.get(block, id));
-  const short = $derived(label ?? (info ? shortLabel(info.name) : id));
+  const short = $derived(label ?? (info ? shortLabel(displayName(id, info.name)) : id));
+  const shownName = $derived(info ? displayName(id, info.name) + tableNote(id, info.name) : id);
   const ctx = $derived(contextOf(block, id, store.kind));
   const options = $derived(info?.display.kind === 'options' ? info.display.labels : []);
   const base = $derived(info?.display.kind === 'options' ? info.display.min : 0);
@@ -40,7 +41,7 @@
   const shownOptions = $derived(shownIdx.map((i) => (isUnlisted(id, base + i) ? `${options[i]} (not in manual)` : (options[i] ?? ''))));
   const shownSelected = $derived(shownIdx.indexOf(value - base));
   const putShown = (i: number): void => put(base + (shownIdx[i] ?? 0));
-  const hintName = $derived(inert && info ? `${info.name} (no effect: ${inert})` : (info?.name ?? ''));
+  const hintName = $derived(inert && info ? `${displayName(id, info.name)} (no effect: ${inert})` : shownName);
 
   /** The right-click "Link to MIDI CC" for this parameter, offered only where there is an instrument to listen on. */
   const midi = $derived.by(() => {
@@ -75,7 +76,7 @@
       {midi}
     />
   {:else if choice.type === 'toggle'}
-    <ToggleLed checked={value === 1} label={short} name={info.name} context={ctx} {color} onchange={(on) => put(on ? 1 : 0)} />
+    <ToggleLed checked={value === 1} label={short} name={shownName} context={ctx} {color} onchange={(on) => put(on ? 1 : 0)} />
   {:else if choice.type === 'segmented'}
     <div class="field">
       <span class="caps">{short}</span>
@@ -88,7 +89,7 @@
       max={options.length - 1}
       defaultValue={neutral >= 0 ? neutral : undefined}
       label={short}
-      name={info.name}
+      name={shownName}
       context={ctx}
       format={(i) => options[i] ?? String(i)}
       onchange={(i) => put(base + i)}

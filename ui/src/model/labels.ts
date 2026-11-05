@@ -165,3 +165,15 @@ export function shortLabel(name: string): string {
   for (const [re, to] of REPLACEMENTS) out = out.replace(re, to);
   return out.trim() === '' ? name : out.trim();
 }
+
+/**
+ * Parameters the Owner's Manual's screens call something other than the address table does. The manual outranks the table, so the screen name is the one shown, with the
+ * table name kept in the hint. Order in the manual's parameter list (EFX Output Assign, EFX Output Level, EFX Chorus Send Level, EFX Reverb Send Level) matches the table's
+ * (EFX Output Assign, EFX Mix Out Send Level, EFX Chorus Send Level, EFX Reverb Send Level), which is how the two names are paired; it is not stated outright.
+ */
+const MANUAL_NAMES: Readonly<Record<string, string>> = { efx_mix_out_send_level: 'EFX Output Level' };
+
+/** The name to show for a parameter: the manual's screen name where it differs from the table's. */
+export const displayName = (id: string, tableName: string): string => MANUAL_NAMES[id] ?? tableName;
+/** The table name as a note, when the shown name is the manual's. */
+export const tableNote = (id: string, tableName: string): string => (MANUAL_NAMES[id] ? ` (address table: ${tableName})` : '');

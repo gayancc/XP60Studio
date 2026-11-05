@@ -48,6 +48,8 @@ export interface Routing {
   readonly used: ReadonlySet<NodeId>;
   /** Tones whose output settings the instrument ignores (Structure Type 2 to 10 on the first Tone of a pair). */
   readonly ignoredTones: ReadonlySet<NodeId>;
+  /** Stages that receive sound but pass none on, with the reason (for example an output level of 0). */
+  readonly deadEnds: ReadonlyArray<{ readonly node: NodeId; readonly why: string }>;
   /** Parameters that currently have no effect, by Tone index (0 to 3) and parameter id, each with the manual's reason. */
   readonly inert: ReadonlyArray<{ readonly tone: number; readonly id: string; readonly why: string }>;
 }
@@ -114,5 +116,19 @@ export function routingOf(input: RoutingInput): Routing {
   const reverbFed = edges.some((e) => e.to === 'reverb');
   if (reverbFed && input.reverb.level > 0) edges.push({ from: 'reverb', to: 'mix', level: input.reverb.level });
 
-  return { edges, used: new Set(edges.map((e) => e.to)), ignoredTones: ignored, inert };
+  const dead: { node: NodeId; why: string }[] = [];
+  const leaves = (n: NodeId): boolean => edges.some((e) => e.from === n);
+  if (efxFed && !leaves('efx')) {
+    dead.push({
+      node: 'efx',
+      why:
+        input.efx.mixSend === 0
+          ? 'EFX Output Level (Mix Out Send Level) is 0, so nothing leaves the EFX: at level 0 nothing is sent (manual p.60)'
+          : 'EFX Output Assign is a value the manual does not list, so the sound goes nowhere',
+    });
+  }
+  if (chorusFed && !leaves('chorus')) dead.push({ node: 'chorus', why: 'Chorus Level is 0, so no chorus sound leaves the chorus' });
+  if (reverbFed && !leaves('reverb')) dead.push({ node: 'reverb', why: 'Reverb Level is 0, so no reverb sound leaves the reverb' });
+
+  return { edges, used: new Set(edges.map((e) => e.to)), ignoredTones: ignored, inert, deadEnds: dead };
 }

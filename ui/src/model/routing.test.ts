@@ -71,4 +71,15 @@ describe('effects routing of a patch', () => {
     const r = routingOf(base({ tones: [tone(3, 127, 100), tone(0), tone(0), tone(0)] }));
     expect(r.edges.some((e) => e.from === 'tone1')).toBe(false);
   });
+
+  it('reports an EFX that is fed but whose output level is 0 as a dead end, with the reason', () => {
+    const r = routingOf(base({ tones: [tone(1), tone(1), tone(1), tone(1)], efx: { assign: 0, mixSend: 0, chorusSend: 0, reverbSend: 0 } }));
+    expect(has(r, 'efx', 'mix')).toBe(false);
+    expect(r.deadEnds.map((d) => d.node)).toEqual(['efx']);
+    expect(r.deadEnds[0]?.why).toMatch(/is 0/);
+  });
+
+  it('reports no dead end when the EFX passes sound on', () => {
+    expect(routingOf(base({ tones: [tone(1), tone(0), tone(0), tone(0)] })).deadEnds).toEqual([]);
+  });
 });

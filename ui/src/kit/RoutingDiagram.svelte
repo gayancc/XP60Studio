@@ -55,9 +55,12 @@
   const stageEdge = (from: NodeId, to: NodeId): boolean => !!has(from, to);
   const toMix = $derived(stageEdge('efx', 'mix') || stageEdge('chorus', 'mix') || stageEdge('reverb', 'mix'));
   const active = (n: NodeId): boolean => routing.used.has(n);
+  const dead = (n: NodeId): string | undefined => routing.deadEnds.find((x) => x.node === n)?.why;
 
   function explain(n: NodeId): void {
-    const why = routing.ignoredTones.has(n)
+    const why = dead(n)
+      ? `Nothing leaves it: ${dead(n)}`
+      : routing.ignoredTones.has(n)
       ? 'Ignored: with Structure Type 2 to 10 this Tone is combined into the next one, and its output settings are not used'
       : n === 'efx' || n === 'chorus' || n === 'reverb'
         ? active(n)
@@ -98,6 +101,16 @@
   {#if stageEdge('reverb', 'mix')}<path d="M390 192 H450 V52" class="edge acc" />{/if}
   {#if toMix}<path d="M450 52 H528" class="edge acc" marker-end="url(#rt-arrow)" />{/if}
   {#if stageEdge('efx', 'dir')}<path d="M390 42 H474 V192 H528" class="edge acc" marker-end="url(#rt-arrow)" />{/if}
+
+  <!-- a stage that is fed but passes nothing on ends in a stop, so a lit stage with no way out is never mistaken for a connection -->
+  {#each STAGES as s (s.id)}
+    {#if dead(s.id)}
+      <g class="stop" role="img" aria-label="{s.name} passes nothing on: {dead(s.id)}" onpointerenter={() => showHint({ context: 'Routing', name: `${s.name} output`, value: dead(s.id) ?? '' })} onpointerleave={clearHint}>
+        <path d="M{STAGE_X + STAGE_W} {s.y + 22} H{STAGE_X + STAGE_W + 34}" class="edge broken" />
+        <path d="M{STAGE_X + STAGE_W + 34} {s.y + 15} V{s.y + 29}" class="edge broken" />
+      </g>
+    {/if}
+  {/each}
 
   <!-- nodes -->
   {#each TONES as t, i (t)}
@@ -160,6 +173,13 @@
   }
   .acc {
     stroke: var(--accent);
+  }
+  .broken {
+    stroke: var(--text-dim);
+    stroke-dasharray: 4 4;
+  }
+  .stop {
+    cursor: help;
   }
   .head {
     fill: var(--text-dim);

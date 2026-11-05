@@ -163,3 +163,4 @@ Tone Output Assign raw 3 and EFX Output Assign raw 2 are named `<OUTPUT-2>` in t
 ### H-069 Routing semantics the diagram assumes
 The Routing diagram follows the manual's text. Confirm on the instrument: (a) a Tone on EFX also feeds chorus and reverb by its own sends; (b) the EFX's own chorus and reverb sends act only when EFX Output Assign is MIX; (c) Structure Type 2 to 10 ignores the first Tone's output settings; (d) chorus Output REVERB sends all chorus sound to reverb and none to MIX; (e) the [EFX]/[CHORUS]/[REVERB] switches silence the stage regardless of its settings.
 - 2026-11-05 (Effects routing review): added H-068 and H-069.
+- 2026-11-05 (routing verification): `08-effects-routing-verification.md` lists each routing rule with its manual page and status; rules 10-12 are the ones H-069 must confirm. The manual (p.8) names only two outputs, MIX OUTPUT and DIRECT OUTPUT, which supports H-068.
