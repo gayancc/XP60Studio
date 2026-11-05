@@ -56,6 +56,27 @@
     sans-serif;
   --font-caps: 'Bahnschrift SemiBold SemiCondensed', 'Bahnschrift', 'Arial Narrow', system-ui, sans-serif;
   --font-mono: 'Cascadia Mono', 'Consolas', ui-monospace, monospace;
+  /*
+   * Pop-up menus (every list and menu that opens over the window) in FL Studio 2025's own colours and sizes, MEASURED from pixels of its VIEW menu on 2026-11-05
+   * (evidence: artifact/docs/xppatchstudio/fl-menu-evidence.md): 2 px dark border, light body, 16 px heading bars, 19 px entries, a blue-grey full-width hover fill.
+   */
+  --pop-border: #151e23;
+  --pop-bg: #bbc3c8;
+  --pop-head-bg: #929da4;
+  --pop-head-text: #d7e1da;
+  --pop-text: #01010d;
+  --pop-dim: #525a62;
+  --pop-hover-bg: #5e6c75;
+  --pop-hover-text: #e0efee;
+  --pop-hover-dim: #adbfce;
+  /* Combo-box lists (a plain list of choices): dark, from FL's snap "Line" combo, measured 2026-11-05. */
+  --combo-bg: linear-gradient(#21262b, #1d2327);
+  --combo-border: #0d1216;
+  --combo-text: #a9b7b5;
+  --combo-hover-bg: #7f8b92;
+  --combo-hover-text: #1e2428;
+  --pop-row: 19px;
+  --pop-head: 16px;
   /* Keyboard focus is shown by a tint over the control, never by a ring, border or box. */
   --focus-tint: color-mix(in srgb, var(--accent) 24%, transparent);
   --focus-fill: linear-gradient(var(--focus-tint), var(--focus-tint));

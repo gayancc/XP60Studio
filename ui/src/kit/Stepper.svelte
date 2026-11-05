@@ -5,6 +5,9 @@
   import { clamp } from './gesture';
   import { openMenu } from './menu.svelte';
 
+  // A value stepped with minus and plus, drawn the way the FL Studio family draws its small selectors: a recessed value readout between two flat tiles, no
+  // border. Click a tile to step by one, press and hold to keep stepping (faster the longer it is held), drag up or down on the value, turn the wheel over it,
+  // press the arrow keys, double-click to put it back, right-click for the value menu.
   interface Props {
     value: number;
     min?: number;
@@ -14,6 +17,8 @@
     name?: string;
     context?: string;
     disabled?: boolean;
+    /** Width of the value readout in pixels. */
+    width?: number;
     format?: (value: number) => string;
     onchange?: (value: number) => void;
     onbegin?: () => void;
@@ -29,6 +34,7 @@
     name = label,
     context = '',
     disabled = false,
+    width = 44,
     format,
     onchange,
     onbegin,
@@ -39,7 +45,7 @@
   const shown = $derived(format ? format(value) : String(value));
 
   const publish = (): void =>
-    showHint({ context, name: name || label, value: shown, raw: format && shown !== String(value) ? String(value) : '' });
+    showHint({ context, name: name || label, value: shown, raw: format && shown !== String(value) ? String(value) : '', shortcut: 'Click − or + · hold to repeat · drag or wheel on the value' });
 
   function set(v: number): void {
     const next = clamp(v, min, max);
@@ -49,12 +55,45 @@
     publish();
   }
 
+  /** One change as one undo step (a keyboard activation, which has no press and release to bracket it). */
   function commit(v: number): void {
     if (clamp(v, min, max) === value) return;
     onbegin?.();
     set(v);
     onend?.();
   }
+
+  // Press and hold: the first step is immediate, then after a pause it repeats, speeding up. The whole hold is one undo step.
+  let holdTimer: ReturnType<typeof setTimeout> | undefined;
+  let holding = false;
+  const FIRST_DELAY = 380;
+  const REPEAT = [110, 90, 70, 55, 40];
+
+  function press(dir: 1 | -1, e: PointerEvent): void {
+    if (disabled || e.button !== 0 || holding) return;
+    const target = e.currentTarget as HTMLElement;
+    target.setPointerCapture?.(e.pointerId);
+    holding = true;
+    onbegin?.();
+    set(value + dir);
+    let n = 0;
+    const again = (): void => {
+      if (!holding) return;
+      set(value + dir);
+      holdTimer = setTimeout(again, REPEAT[Math.min(n++ >> 2, REPEAT.length - 1)]);
+    };
+    holdTimer = setTimeout(again, FIRST_DELAY);
+  }
+
+  function release(): void {
+    clearTimeout(holdTimer);
+    if (!holding) return;
+    holding = false;
+    onend?.();
+  }
+
+  // The control removed while a tile is held: stop and close the undo group.
+  $effect(() => () => release());
 
   const opts = $derived({
     range,
@@ -65,15 +104,23 @@
     begin: onbegin,
     end: onend,
     pxFull: 120,
-    onMenu: (x: number, y: number) =>
-      openMenu(x, y, controlMenuItems({ range, get: () => value, set, defaultValue })),
+    onMenu: (x: number, y: number) => openMenu(x, y, controlMenuItems({ range, get: () => value, set, defaultValue })),
   });
 </script>
 
-<div class="stepper" class:disabled>
+<div class="stepper" class:disabled style:--w="{width}px">
   {#if label}<span class="caps">{label}</span>{/if}
   <div class="row">
-    <button type="button" aria-label="Decrease {name || label}" {disabled} tabindex="-1" onclick={() => commit(value - 1)}>−</button>
+    <button
+      type="button"
+      class="tile"
+      aria-label="Decrease {name || label}"
+      disabled={disabled || value <= min}
+      tabindex="-1"
+      onpointerdown={(e) => press(-1, e)}
+      onpointerup={release}
+      onpointercancel={release}
+      onclick={(e) => e.detail === 0 && commit(value - 1)}>−</button>
     <div
       class="val"
       use:valueGestures={opts}
@@ -91,7 +138,16 @@
     >
       {shown}
     </div>
-    <button type="button" aria-label="Increase {name || label}" {disabled} tabindex="-1" onclick={() => commit(value + 1)}>+</button>
+    <button
+      type="button"
+      class="tile"
+      aria-label="Increase {name || label}"
+      disabled={disabled || value >= max}
+      tabindex="-1"
+      onpointerdown={(e) => press(1, e)}
+      onpointerup={release}
+      onpointercancel={release}
+      onclick={(e) => e.detail === 0 && commit(value + 1)}>+</button>
   </div>
 </div>
 
@@ -99,32 +155,58 @@
   .stepper {
     display: inline-flex;
     flex-direction: column;
+    align-items: flex-start;
     gap: 2px;
   }
-  .row {
-    display: inline-flex;
-    border: 1px solid var(--edge);
-    border-radius: var(--radius);
-    background: var(--track);
-    overflow: hidden;
-  }
-  button {
-    background: var(--caption);
-    border: 0;
-    width: 18px;
-    cursor: pointer;
+  .caps {
+    font: 600 10px var(--font-caps);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
     color: var(--text-dim);
   }
-  button:hover:not(:disabled) {
-    color: var(--text);
+  /* No border: the three parts are told apart by their fill, with a hairline of the page showing between them. */
+  .row {
+    display: inline-flex;
+    align-items: stretch;
+    gap: 1px;
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: var(--body-deep);
+  }
+  .tile {
+    width: 22px;
+    padding: 0;
+    border: 0;
+    background: var(--caption);
+    color: var(--text-dim);
+    font: 600 15px/1 var(--font-caps);
+    cursor: pointer;
+    user-select: none;
+    touch-action: none;
+  }
+  .tile:hover:not(:disabled) {
+    color: var(--accent);
     background: var(--well);
   }
+  .tile:active:not(:disabled) {
+    color: var(--accent-ink);
+    background: var(--accent);
+  }
+  .tile:disabled {
+    opacity: 0.35;
+    cursor: default;
+  }
+  .tile:focus-visible {
+    outline: none;
+  }
   .val {
-    min-width: 38px;
-    padding: 2px 6px;
+    min-width: var(--w);
+    padding: 3px 6px;
     text-align: center;
+    background: var(--track);
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: 12px;
+    line-height: 16px;
     cursor: ns-resize;
     user-select: none;
     touch-action: none;

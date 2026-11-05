@@ -132,12 +132,11 @@
     overflow-y: auto;
     min-width: 220px;
     margin: 0;
-    padding: 3px;
+    padding: 0;
     list-style: none;
-    background: var(--caption);
-    border: 1px solid var(--edge-light);
-    border-radius: var(--radius-lg);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    background: var(--pop-bg);
+    color: var(--pop-text);
+    border: 2px solid var(--pop-border);
   }
   .drop.panel {
     padding: 10px;
@@ -148,27 +147,29 @@
     align-items: center;
     gap: 8px;
     width: 100%;
-    padding: 4px 8px;
+    height: var(--pop-row);
+    padding: 0 12px 0 0;
     background: transparent;
     border: 0;
-    border-radius: 2px;
+    border-radius: 0;
     text-align: left;
-    cursor: pointer;
-    color: var(--text);
+    cursor: default;
+    color: var(--pop-text);
   }
   .drop button:hover:not(:disabled),
   .drop button:focus-visible {
-    background: var(--accent);
-    color: var(--accent-ink);
+    background: var(--pop-hover-bg);
+    color: var(--pop-hover-text);
     outline: none;
   }
   .drop button:disabled {
-    color: var(--text-faint);
+    color: var(--pop-dim);
     cursor: default;
   }
   .tick {
-    width: 12px;
-    color: var(--accent);
+    width: 18px;
+    text-align: center;
+    color: inherit;
   }
   button:hover:not(:disabled) .tick {
     color: inherit;
@@ -177,16 +178,15 @@
     flex: 1;
   }
   .hint {
-    color: var(--text-dim);
-    font-family: var(--font-mono);
-    font-size: 10.5px;
+    color: var(--pop-dim);
+    font-size: 11px;
   }
   button:hover:not(:disabled) .hint {
-    color: inherit;
+    color: var(--pop-hover-dim);
   }
   .sep {
     height: 1px;
-    margin: 3px 4px;
-    background: var(--edge);
+    margin: 2px 0;
+    background: var(--pop-head-bg);
   }
 </style>

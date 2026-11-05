@@ -79,6 +79,52 @@ const setFile = async (label, file) => {
   const node = (await send('DOM.querySelector', { nodeId: doc, selector: `input[type=file][aria-label^="${label}"]` })).result.nodeId;
   await send('DOM.setFileInputFiles', { nodeId: node, files: [file] });
 };
+
+// Resize the real application window with the operating system (SetWindowPos on its top-level window), so the page is laid out exactly as a user sees it.
+// The window is also moved to the right-most screen so a test run never covers the main one. The DevTools call Browser.setWindowBounds and Emulation.setDeviceMetricsOverride must NOT be used for this: the first only shrinks the web view inside an
+// unchanged window and the second fakes the viewport, and both leave white, offset content in the visible window.
+const WIN32 = `Add-Type -AssemblyName System.Windows.Forms
+Add-Type @'
+using System; using System.Runtime.InteropServices;
+public class Q {
+  [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
+  [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out R r);
+  [DllImport("user32.dll")] public static extern bool GetClientRect(IntPtr h, out R r);
+  [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int c);
+  [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr h, IntPtr a, int x, int y, int w, int hh, uint f);
+  [StructLayout(LayoutKind.Sequential)] public struct R { public int L, T, Rr, B; }
+}
+'@
+[Q]::SetProcessDPIAware() | Out-Null
+$p = Get-Process -Id ${'$'}{PID} -ErrorAction Stop
+$h = $p.MainWindowHandle
+`;
+async function resizeWindow(width, height) {
+  const dpr = (await js('devicePixelRatio')) || 1;
+  const run = (w, h) => execFileSync('pwsh', ['-NoProfile', '-Command', WIN32.replace('${PID}', String(app.pid)) + `
+[Q]::ShowWindow($h, 9) | Out-Null
+$r = New-Object Q+R; $c = New-Object Q+R
+[Q]::GetWindowRect($h, [ref]$r) | Out-Null; [Q]::GetClientRect($h, [ref]$c) | Out-Null
+$fw = ($r.Rr - $r.L) - $c.Rr; $fh = ($r.B - $r.T) - $c.B
+# The test window opens on the right-most screen, never on the main one the owner works on.
+$s = [System.Windows.Forms.Screen]::AllScreens | Sort-Object { $_.Bounds.X } | Select-Object -Last 1
+[Q]::SetWindowPos($h, [IntPtr]::Zero, $s.WorkingArea.X + 40, $s.WorkingArea.Y + 40, ${w} + $fw, ${h} + $fh, 0x0014) | Out-Null`], { stdio: 'ignore' });
+  let w = Math.round(width * dpr);
+  let h = Math.round(height * dpr);
+  for (let i = 0; i < 4; i++) {
+    run(w, h);
+    await wait(400);
+    const inner = await js('[innerWidth, innerHeight]');
+    if (inner[0] === width && inner[1] === height) return;
+    w += Math.round((width - inner[0]) * dpr);
+    h += Math.round((height - inner[1]) * dpr);
+  }
+  console.log(`note: the window settled at ${await js('innerWidth + "x" + innerHeight')}, not ${width}x${height}`);
+}
+// The real window's client area in physical pixels, to prove the page fills the window a user sees (no white, no offset).
+const clientSize = () =>
+  execFileSync('pwsh', ['-NoProfile', '-Command', WIN32.replace('${PID}', String(app.pid)) + `
+$c = New-Object Q+R; [Q]::GetClientRect($h, [ref]$c) | Out-Null; "$($c.Rr)x$($c.B)"`]).toString().trim();
 const alerts = () => js(`[...document.querySelectorAll('[role=alert]')].map(e=>e.textContent.trim()).filter(Boolean)`);
 const LIST = 'ol[aria-label^="Patches in"] button';
 const layoutProbe = `(()=>{const out=[];const doc=document.scrollingElement; if(doc.scrollWidth>innerWidth+1||doc.scrollHeight>innerHeight+1) out.push('page scrolls');
@@ -93,7 +139,7 @@ try {
   await wait(1500);
 
   // 1. Open a bank as a patch file, list and sweep every slot
-  await send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 800, deviceScaleFactor: 1, mobile: false });
+  await resizeWindow(1280, 800);
   await tab('Patch', 'header ');
   await setFile('Open a .syx', bank);
   await wait(2000);
@@ -171,7 +217,12 @@ try {
     await wait(500);
     await setFile('Open a .syx', bank);
     await wait(1800);
-    const n = await js(`document.querySelectorAll('header select option').length`);
+    // The picker is a drop-down list: open it, count its entries, close it again.
+    await js(`document.querySelector('header .slot [role=combobox]')?.click()`);
+    await wait(250);
+    const n = await js(`document.querySelectorAll('[role=listbox] [role=option]').length`);
+    await js(`document.querySelector('[role=listbox]')?.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}))`);
+    await wait(150);
     check(n === expected, `${mode}: the file's ${expected} entries are listed`, String(n));
     const tabs = await js(`[...document.querySelectorAll('.stage [role=tab]')].map(x=>x.textContent.trim())`);
     const problems = [];
@@ -194,7 +245,7 @@ try {
   }
 
   // 5b2. No Patch tab needs a scroll bar in the smallest window (the tabs are merged by what belongs together so that each fits)
-  await send('Emulation.setDeviceMetricsOverride', { width: 1100, height: 700, deviceScaleFactor: 1, mobile: false });
+  await resizeWindow(1100, 700);
   await tab('Patch', 'header ');
   await wait(400);
   const centreTabs = (await js(`[...document.querySelectorAll('.center [role=tab]')].map(x=>x.textContent.trim())`)) ?? [];
@@ -206,7 +257,7 @@ try {
     if (over > 1) scrolling.push(`${t} (+${over}px)`);
   }
   check(centreTabs.length >= 6 && centreTabs.length <= 8 && scrolling.length === 0, `Patch: ${centreTabs.length} tabs (${centreTabs.join(', ')}), none scrolls at 1100x700`, scrolling.join(', '));
-  await send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 800, deviceScaleFactor: 1, mobile: false });
+  await resizeWindow(1280, 800);
 
   // 5c. Keyboard focus on a knob, slider or switch must not draw a box, ring, border or tint around it
   const pressTab = async () => {
@@ -279,8 +330,13 @@ try {
 
   // 8. Layout: every tab of every workspace at two window sizes
   for (const [w, h] of [[1100, 700], [1280, 800]]) {
-    await send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: false });
+    await resizeWindow(w, h);
     await wait(500);
+    const dprNow = await js('devicePixelRatio');
+    const client = clientSize();
+    check(client === `${Math.round(w * dprNow)}x${Math.round(h * dprNow)}`, `the real window is ${w}x${h} and the page fills it`, client);
+    const origin = await js('(() => { const r = document.body.getBoundingClientRect(); return r.left + "," + r.top })()');
+    check(origin === '0,0', `the page starts at the window's top-left at ${w}x${h}`, origin);
     const problems = [];
     for (const mode of ['Patch', 'Performance', 'Rhythm set', 'System', 'Library', 'Bank']) {
       await tab(mode, 'header ');

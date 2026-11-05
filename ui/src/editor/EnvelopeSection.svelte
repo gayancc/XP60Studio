@@ -98,7 +98,7 @@
   }
   .choices {
     display: grid;
-    grid-template-columns: repeat(auto-fill, 112px);
+    grid-template-columns: repeat(auto-fill, 98px);
     gap: 6px 10px;
     align-items: start;
   }

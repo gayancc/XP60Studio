@@ -62,6 +62,10 @@ describe('control choice', () => {
   it('uses a switch for OFF/ON, a drop-down for long lists, knobs for numbers', () => {
     expect(controlFor(find('tone', 'tone_switch')).type).toBe('toggle');
     expect(controlFor(find('tone', 'controller_1_destination_1')).type).toBe('dropdown');
+    // lists of plain numbers are stepped through with minus and plus
+    expect(controlFor(find('tone', 'cutoff_keyfollow')).type).toBe('stepper');
+    expect(controlFor(find('tone', 'filter_envelope_velocity_time1')).type).toBe('stepper');
+    expect(controlFor(find('tone', 'random_pitch_depth')).type).toBe('stepper');
     expect(controlFor(find('tone', 'lfo1_waveform')).type).toBe('dropdown');
     expect(controlFor(find('tone', 'filter_type')).type).toBe('segmented');
     expect(controlFor(find('tone', 'cutoff_frequency')).type).toBe('knob');

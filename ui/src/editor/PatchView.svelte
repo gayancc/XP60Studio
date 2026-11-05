@@ -10,6 +10,7 @@
   import ToneCard from './ToneCard.svelte';
   import TonePanel, { type ToneGroup } from './TonePanel.svelte';
   import OverviewPanel from './OverviewPanel.svelte';
+  import RoutingPanel from './RoutingPanel.svelte';
   import ZonesPanel from './ZonesPanel.svelte';
   import AllTonesPanel from './AllTonesPanel.svelte';
   import BankListPanel from './BankListPanel.svelte';
@@ -38,16 +39,17 @@
 
   // The big area: what is shaped for the selected Tone, then the settings of the whole patch.
   // Each tab gathers what belongs together in the signal path, and fits the smallest window without a scroll bar.
-  //   Zones and output: where each Tone plays (keys, velocity) and where its sound goes (output and effect sends).
+  //   Zones: where each Tone plays (keys, velocity).
   //   Wave and pitch: the sound source. Filter and amp: the two stages that shape it. LFO and modulation: what moves it.
-  //   Patch: the settings of the whole patch, including its controllers. Structure: how the Tones are joined. Effects: effect, chorus and reverb.
+  //   Patch: the settings of the whole patch, including its controllers. Structure: how the Tones are joined. Routing: where each Tone's sound goes (output and
+  //   effect sends) and the path it takes. Effects: the effect, chorus and reverb themselves.
   const toneTabs: ReadonlyArray<[string, ToneGroup | 'zonesout']> = [
-    ['Zones and output', 'zonesout'],
+    ['Zones', 'zonesout'],
     ['Wave and pitch', 'wavepitch'],
     ['Filter and amp', 'filteramp'],
     ['LFO and modulation', 'lfomod'],
   ];
-  const patchTabs = ['Patch', 'Structure', 'Effects'] as const;
+  const patchTabs = ['Patch', 'Structure', 'Routing', 'Effects'] as const;
   const tabNames = [...toneTabs.map(([n]) => n), ...patchTabs];
   const tab = $derived(tabIn(arrangement.patchTab, tabNames.length));
   /** The sound sections show the selected Tone, or all four Tones side by side. */
@@ -100,10 +102,7 @@
     >
       {#snippet children(i)}
         {#if i === 0}
-          <div class="stackcol">
-            <ZonesPanel {colors} {selected} onselect={(n) => (selected = n)} />
-            <TonePanel {block} {color} part="output" />
-          </div>
+          <ZonesPanel {colors} {selected} onselect={(n) => (selected = n)} />
         {:else if isTone(i)}
           {@const part = (toneTabs[i]?.[1] ?? 'wavepitch') as ToneGroup}
           <div class="toneview">
@@ -121,6 +120,8 @@
           <CommonPanel columns={[['patch', 'play'], ['portamento', 'controllers']]} showName />
         {:else if i === toneTabs.length + 1}
           <CommonPanel sections={['structure']} />
+        {:else if i === toneTabs.length + 2}
+          <RoutingPanel onjump={() => (arrangement.patchTab = tabNames.indexOf('Effects'))} />
         {:else}
           <div class="stackcol">
             <CommonPanel sections={['efx']} />

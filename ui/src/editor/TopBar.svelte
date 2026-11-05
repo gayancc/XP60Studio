@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { MenuBar, Tabs, ToggleLed, XpReadout, type Menu } from '../kit';
+  import { Dropdown, MenuBar, Tabs, ToggleLed, XpReadout, type Menu } from '../kit';
   import { hint } from '../kit/hint.svelte';
   import { SYNC_STATES } from '../kit/syncState';
   import type { Mode } from '../model/catalog';
@@ -165,16 +165,19 @@
     </span>
     <div class="spacer" data-tauri-drag-region></div>
     {#if bank && mode === store.kind}
-      <label class="slot">
+      <div class="slot">
         <span class="caps">Bank</span>
         <button type="button" class="step" disabled={!canStepBank(store.kind, -1)} onclick={() => stepBankSlot(store, -1)} aria-label="Previous patch" title="Previous patch">‹</button>
-        <select aria-label="{store.kind === 'patch' ? 'Patch' : KIND_TITLES[store.kind]} in {bank.file}" onchange={(e) => choose(e.currentTarget.selectedIndex)}>
-          {#each bank.names as [s, n], i (s)}
-            <option selected={i === ui.bankSlot}>{String(s + 1).padStart(3, '0')}  {n.trimEnd()}</option>
-          {/each}
-        </select>
+        <Dropdown
+          options={bank.names.map(([s, n]) => `${String(s + 1).padStart(3, '0')}  ${n.trimEnd()}`)}
+          selected={Math.max(0, ui.bankSlot)}
+          name="{store.kind === 'patch' ? 'Patch' : KIND_TITLES[store.kind]} in {bank.file}"
+          context="Bank"
+          width={140}
+          onchange={(i) => choose(i)}
+        />
         <button type="button" class="step" disabled={!canStepBank(store.kind, 1)} onclick={() => stepBankSlot(store, 1)} aria-label="Next patch" title="Next patch">›</button>
-      </label>
+      </div>
     {/if}
     <span class="origin" title="Where the open sound came from">{store.origin}</span>
   </div>
@@ -250,8 +253,7 @@
     letter-spacing: 0.06em;
     color: var(--accent);
   }
-  button,
-  select {
+  button {
     white-space: nowrap;
     background: var(--well-deep);
     border: 1px solid var(--edge);
@@ -264,8 +266,7 @@
   button:hover:not(:disabled) {
     background: var(--well);
   }
-  button:focus-visible,
-  select:focus-visible {
+  button:focus-visible {
     outline: none;
     background-image: var(--focus-fill);
   }
@@ -282,10 +283,9 @@
     flex: 0 1 190px;
     min-width: 70px;
   }
-  .slot select {
+  .slot :global(.dd) {
     flex: 1;
     min-width: 0;
-    text-overflow: ellipsis;
   }
   .slot .caps {
     flex: none;

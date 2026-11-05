@@ -5,8 +5,7 @@
   import { useStore } from './context';
   import ParamControl from './ParamControl.svelte';
   import StructureControl from './StructureControl.svelte';
-  import EfxParam from './EfxParam.svelte';
-  import EfxTypePick from './EfxTypePick.svelte';
+  import EffectPlugin from './EffectPlugin.svelte';
 
   // The two Structure types are drawn as wiring diagrams with their booster beside them, so the boosters are not listed again on their own.
   const STRUCTURE_PAIRS: Record<string, { title: string; booster: string; tones: readonly [string, string] }> = {
@@ -73,16 +72,10 @@
             {/if}
           {/each}
         </div>
+      {:else if s === 'efx'}
+        <EffectPlugin ids={idsOf(s)} />
       {:else}
-        {#each idsOf(s) as id (id)}
-          {#if id === 'efx_type'}
-            <EfxTypePick block="common" {id} />
-          {:else if id.startsWith('efx_parameter_')}
-            <EfxParam block="common" {id} />
-          {:else}
-            <ParamControl block="common" {id} />
-          {/if}
-        {/each}
+        {#each idsOf(s) as id (id)}<ParamControl block="common" {id} />{/each}
       {/if}
     </GroupFrame>
   {/snippet}

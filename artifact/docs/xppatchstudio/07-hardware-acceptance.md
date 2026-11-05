@@ -153,3 +153,13 @@ The System settings include MIDI channels and switches: use a harmless value fir
 Patch Base shows some EFX times (e.g. Triple Tap Delay "Delay-C") as note lengths when the Patch clock source is synced. The Owner's Manual gives no table mapping the raw
 value to note lengths, so the app shows the raw number. On the XP-60: set Delay-C through its range with the clock synced and record the note lengths shown on the LCD; then add the table.
 - 2026-11-05 (System write, export of Performances, Rhythm Sets and System settings): added H-061 to H-066. The ceremony (read, back up and verify the file, arm, write, read back, undo) is tested against the virtual XP-60 and in the interface; that the XP-60 accepts these writes at the System addresses is the open question.
+
+### H-067 EFX display values not transcribed or only inferred
+The Effects plug-in converts values only where the manual states the range. Open: (a) Peaking 1/2 Q (raw 0-4): the manual's value list was cut off in the scan, so the raw number is shown; (b) Cutoff Frequency (raw 0-16) uses the 200-8000 Hz list by count of entries, not by an explicit table; (c) Rate (0.05-10.0 Hz) and Pre Delay / Delay Time (0-100 ms, 0-500 ms) are non-linear: only the end points are known. On the XP-60: step each through its range and record the LCD readout; then add the tables.
+- 2026-11-05 (Effects plug-in): added H-067.
+
+### H-068 Output Assign raw values not in the manual
+Tone Output Assign raw 3 and EFX Output Assign raw 2 are named `<OUTPUT-2>` in the parameter table but the Owner's Manual only lists MIX, EFX, DIR (Tone) and MIX, DIR (EFX). The app does not offer them. On the XP-60: write raw 3 / raw 2 with a SysEx tool to a temporary patch and record what the instrument does (accepts, ignores, or sounds from another output). Also check whether any factory or user patch holds them.
+### H-069 Routing semantics the diagram assumes
+The Routing diagram follows the manual's text. Confirm on the instrument: (a) a Tone on EFX also feeds chorus and reverb by its own sends; (b) the EFX's own chorus and reverb sends act only when EFX Output Assign is MIX; (c) Structure Type 2 to 10 ignores the first Tone's output settings; (d) chorus Output REVERB sends all chorus sound to reverb and none to MIX; (e) the [EFX]/[CHORUS]/[REVERB] switches silence the stage regardless of its settings.
+- 2026-11-05 (Effects routing review): added H-068 and H-069.

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Knob, Slider, ToggleLed } from '../kit';
+  import { Dropdown, Knob, Slider, ToggleLed } from '../kit';
   import { blockTitle, midiNoteName } from '../model/labels';
   import { ui } from '../model/ui.svelte';
   import { useStore } from './context';
@@ -88,10 +88,14 @@
 
     <div class="row">
       {#if sections.length > 0}
-        <select aria-label="What to copy" bind:value={sectionIndex}>
-          <option value={-1}>Whole {blockLabel}</option>
-          {#each sections as s, i (s.title)}<option value={i}>{s.title} only</option>{/each}
-        </select>
+        <Dropdown
+          options={[`Whole ${blockLabel}`, ...sections.map((s) => `${s.title} only`)]}
+          selected={sectionIndex + 1}
+          name="What to copy"
+          context="Tools"
+          width={170}
+          onchange={(i) => (sectionIndex = i - 1)}
+        />
       {/if}
       <button type="button" onclick={copy}>Copy</button>
       <button type="button" onclick={() => pasteSelected(store)} disabled={!canPaste} title={clip ? `Paste ${clip.label} into ${blockLabel}` : 'Nothing copied yet'}>
@@ -133,8 +137,7 @@
     align-items: flex-end;
     flex-wrap: wrap;
   }
-  button,
-  select {
+  button {
     background: var(--well-deep);
     border: 1px solid var(--edge);
     border-radius: var(--radius);
@@ -146,8 +149,7 @@
   button:hover:not(:disabled) {
     background: var(--well);
   }
-  button:focus-visible,
-  select:focus-visible {
+  button:focus-visible {
     outline: none;
     background-image: var(--focus-fill);
   }

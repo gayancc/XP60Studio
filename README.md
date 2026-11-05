@@ -22,17 +22,18 @@ Windows and macOS desktop application: a Rust core talks to the XP-60 over MIDI,
 ### Patch editor
 
 - **Four Tone cards** with an on/off dot, level, pan and a wave picker (the instrument's own waves, plus the Wave Expansion boards you mark as installed in Settings).
-- **Seven tabs, grouped along the signal path**, each fitting the smallest window without a scroll bar:
+- **Eight tabs, grouped along the signal path**, each fitting the smallest window without a scroll bar:
 
   | Tab | What it holds |
   |---|---|
-  | Zones and output | Key and velocity ranges of every Tone on a shared keyboard, and the selected Tone's output assignment and effect sends |
+  | Zones | Key and velocity ranges of every Tone on a shared keyboard |
   | Wave and pitch | The sound source: wave, FXM and delay, then pitch with its envelope |
   | Filter and amp | The two stages that shape the sound, side by side, each with its envelope |
   | LFO and modulation | Both LFOs, then the controller routing |
   | Patch | Patch settings, play, portamento and the patch's controllers |
   | Structure | How Tones 1 and 2, and 3 and 4, are joined |
-  | Effects | The effect, chorus and reverb |
+  | Routing | Each Tone's Output Assign and its Mix/EFX, chorus and reverb sends, with the path the sound takes drawn from the settings (a send with no effect is dimmed) |
+  | Effects | The effect, chorus and reverb, as one effect plug-in |
 
   A **Selected Tone / All 4 Tones** switch on the three sound tabs lays the same section of all four Tones side by side.
 - **Structure types** are drawn as wiring diagrams (wave generator, filter, amplifier, booster and ring modulator) with a description of what each type does; the
@@ -95,6 +96,8 @@ These rules apply to every screen and are checked by automated tests where a tes
 - **No box, ring or border around a control.** A knob, slider, switch or stepper shows keyboard focus by the control itself lighting up; buttons, tabs and menus show
   it with a soft tint laid over them; selected items are tinted, never outlined. An end-to-end check focuses controls on every editor page and fails on any added
   shadow, outline, fill or border.
+- **Numeric choices are steppers.** A fixed list of plain numbers (key follow, velocity times) is set with a minus and plus stepper, not a drop-down: click to step, hold to repeat,
+  drag or wheel on the value, double-click to reset. Drop-downs are kept for lists of words.
 - **Tabs merge by what belongs together.** Tabs follow the signal path and never mix pages that follow the selected Tone with pages that apply to the whole patch.
   Every Patch tab fits the smallest window without a scroll bar; an end-to-end check enforces it.
 - **No unexplained empty space.** Groups are packed in columns so a short group does not leave a hole beside a tall one, and wide frames place controls beside their

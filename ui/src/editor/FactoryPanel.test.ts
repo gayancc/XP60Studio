@@ -1,5 +1,6 @@
 import { cleanup, fireEvent, render } from '@testing-library/svelte';
 import { afterEach, describe, expect, it } from 'vitest';
+import { choose, entries } from '../test/dropdown';
 import FactoryPanel from './FactoryPanel.svelte';
 
 afterEach(cleanup);
@@ -14,8 +15,8 @@ describe('the factory lists panel', () => {
 
   it('switches bank and narrows the list as you type', async () => {
     const { container, getByLabelText } = render(FactoryPanel);
-    const bank = getByLabelText('Factory bank') as HTMLSelectElement;
-    await fireEvent.change(bank, { target: { value: '4' } });
+    const bank = getByLabelText('Factory bank');
+    await choose(bank, (await entries(bank))[4] ?? '');
     expect(container.querySelector('ol li')?.textContent).toContain('Piano 1');
     await fireEvent.input(getByLabelText('Find in the factory list'), { target: { value: 'piano 1' } });
     const items = [...container.querySelectorAll('ol li')].map((l) => l.textContent ?? '');

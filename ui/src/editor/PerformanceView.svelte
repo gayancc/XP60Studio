@@ -10,8 +10,7 @@
   import ToolsPanel from './ToolsPanel.svelte';
   import ParamControl from './ParamControl.svelte';
   import PartPatchPick from './PartPatchPick.svelte';
-  import EfxParam from './EfxParam.svelte';
-  import EfxTypePick from './EfxTypePick.svelte';
+  import EffectPlugin from './EffectPlugin.svelte';
 
   const store = useStore();
 
@@ -134,9 +133,11 @@
         <div class="stack">
           {#each ['efx', 'chorus', 'reverb'] as const as s (s)}
             <GroupFrame title={performanceCommonTitle(s)}>
-              {#each commonIds(s) as id (id)}
-                {#if id === 'efx_type'}<EfxTypePick block="common" {id} />{:else if id.startsWith('efx_parameter_')}<EfxParam block="common" {id} />{:else}<ParamControl block="common" {id} />{/if}
-              {/each}
+              {#if s === 'efx'}
+                <EffectPlugin ids={commonIds(s)} />
+              {:else}
+                {#each commonIds(s) as id (id)}<ParamControl block="common" {id} />{/each}
+              {/if}
             </GroupFrame>
           {/each}
         </div>
