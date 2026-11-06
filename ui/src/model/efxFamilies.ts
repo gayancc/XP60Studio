@@ -88,10 +88,10 @@ export interface EfxSection {
 
 const RULES: ReadonlyArray<readonly [SectionId, RegExp]> = [
   ['output', /\b(Pan|Post Gain|Balance|Mix Level|Output Level)\b|^Level$|Left Level|Right Level|Center Level|^Level \d$/],
-  ['feedback', /Feedback|HF Damp|Acceleration|Gate Time/],
+  ['feedback', /Feedback|HF Damp|Acceleration|Gate Time|Reverb Time/],
   ['time', /Delay Time|Pre Delay|Reverb Type|Gate-Reverb Type|Pitch Shifter Mode|Coarse Pitch|Fine Pitch/],
   ['motion', /Rate|Depth|Phase|Manual|Resonance|Speed|Separation|Deviation|Step|^Peak$/],
-  ['tone', /Gain|Frequency|Filter Type|^Q$|Peaking\d Q|Amp Simulator|Band|Cutoff/],
+  ['tone', /Gain|Frequency|Filter Type|^Q$|Band Width|Peaking\d Q|Amp Simulator|Band|Cutoff/],
   ['source', /./],
 ];
 const TITLES: Record<SectionId, string> = { source: 'Effect', time: 'Time and pitch', motion: 'Modulation', tone: 'Tone', feedback: 'Feedback', output: 'Output' };

@@ -169,7 +169,7 @@ map cannot drift from the manual unnoticed. Names and display text were read alo
 
 ### Patch Group ID: Roland's table, found (2026-11-04)
 
-The XP-60/XP-80 manual prints only "Patch Group ID 0-127" with no bank table. Roland's **XP-30 and JV-1010 Owner's Manuals** (text PDFs, MIDI Implementation, System
+The XP-60/XP-80 manual prints Patch Group ID as 1-127 (System Common, p.222) and 0-127 (Performance Part, p.223) with no ID-to-bank table; it does print the Group Type names (USER&PRESET, <PCM>, EXP) and its own Bank Select table (p.214: User 80/0, PR-A 81/0, PR-B 81/1, PR-C 81/2, GM 81/3, XP-A to XP-D 84/0-7), which agree with the table below. It has only the groups User, PR-A, PR-B, PR-C, GM; "PR-D (GM)" is the XP-30 label for GM. Roland's **XP-30 and JV-1010 Owner's Manuals** (text PDFs, MIDI Implementation, System
 Common and Performance Part, next to Patch Group ID) print the table. Read from `XP-30_OM.pdf` p.190 and p.193 and `JV-1010_OM.pdf` p.74 and p.77:
 
 | Patch group | Group Type | Group ID | Number (value) |

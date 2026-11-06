@@ -53,8 +53,8 @@ export const EXPANSION_NOTE =
  * Where a Part's Patch lives: Patch Group Type and Patch Group ID as the instrument stores them. Roland prints the table in the XP-30 and JV-1010 Owner's
  * Manuals (MIDI Implementation, System Common, next to Patch Group ID): USER is type 0, ID 1; PR-A to PR-D (GM) are type 0, IDs 3 to 6 (ID 2 is the CARD bank,
  * which those models mark as not present and whose absence does not move the others up); an expansion board is type 2 with the SR-JV80 board number as the ID
- * (XP-A "Session" 9, XP-B "Orchestral" 2, XP-C "Techno" 11). The XP-60/80 manual's page shows only "Patch Group ID 0-127" without that table, so this is the
- * same family's documented scheme, still to be confirmed on the XP-60 itself (ledger H-058).
+ * (XP-A "Session" 9, XP-B "Orchestral" 2, XP-C "Techno" 11). The XP-60/80 manual prints the Group Type names and its Bank Select table (p.214; its fourth preset group is called GM, "PR-D" is the
+ * XP-30's label) but no Group ID table, so the IDs are the same family's documented scheme, still to be confirmed on the XP-60 itself (ledger H-058).
  */
 export interface PatchGroup {
   readonly key: string;

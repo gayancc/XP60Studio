@@ -329,7 +329,7 @@
     },
     {
      "index": 9,
-     "name": "Q",
+     "name": "Band Width",
      "value": 1,
      "why": "band-q: second step of the band-width list"
     },
@@ -595,7 +595,7 @@
     },
     {
      "index": 6,
-     "name": "HiGH Gain",
+     "name": "High Gain",
      "value": 15,
      "why": "gain: 0 dB (raw 15 of 0..30)"
     },
@@ -793,7 +793,7 @@
     },
     {
      "index": 6,
-     "name": "Tremolo Phase",
+     "name": "Chorus Phase",
      "value": 90,
      "why": "phase: 180 degrees, full stereo spread"
     },
@@ -1765,7 +1765,7 @@
     },
     {
      "index": 3,
-     "name": "Gate Time",
+     "name": "Reverb Time",
      "value": 64,
      "why": "gate-time: reverb time, middle"
     },

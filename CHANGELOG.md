@@ -3,6 +3,13 @@
 Process note (owner decision): hardware testing is one dedicated phase at the end. Items that need the instrument
 are tracked in `docs/07-hardware-acceptance.md` and updated every phase; nothing here is run on hardware before then.
 
+## XP-60 manual cross-check (2026-11-06)
+
+- **Checked** against the XP-60/80 Owner's Manual everything earlier sourced from the XP-30 manual: the EFX parameter table, the Patch Group table and the Structure Type wirings. Types, order, counts and display ranges agree; nothing conflicts.
+- **Fixed:** three EFX parameter names (SPECTRUM "Band Width", TREMOLO-CHORUS "Chorus Phase", REVERB "Reverb Time") and a typo ("High Gain"); stale comments that claimed the XP-60/80 manual has the Structure figures or lacks the Group Type names.
+- **Not confirmable from the manual** (added to the hardware ledger): EFX slot order and raw ranges (H-074), Structure wiring details (H-075), the Group ID table (H-058).
+- **LFO tab:** each LFO now has a reference icon per waveform and a live preview of Form, Rate, Offset, Key Trigger, Delay, Fade and Fade Mode (manual p.57-58); the section was re-laid out; clicking anywhere on a Tone card selects it.
+
 ## EFX effects start from proper values (2026-11-06)
 
 - **Cause:** choosing an effect type changed only the type number, so the twelve parameter slots kept the previous type's numbers (a Level of 127 landed in a Pan slot and the sound went hard right), and double-click or Alt-click on a knob reset it to the bottom of its range (a Level to 0, a Pan hard left).

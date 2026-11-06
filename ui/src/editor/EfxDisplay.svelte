@@ -66,7 +66,7 @@
   });
 
   const decay = $derived.by(() => {
-    const gate = norm(/Gate Time|Time$/, 0.5);
+    const gate = norm(/Reverb Time|Gate Time|Time$/, 0.5);
     const pre = norm(/Pre Delay/, 0.1);
     const x0 = 6 + pre * 60;
     const len = 40 + gate * (W - 60 - x0 + 6);

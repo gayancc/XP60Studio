@@ -78,7 +78,7 @@ RULES: list[tuple[str, str, tuple[int, int] | None, object, str]] = [
     ("attack", r"^Attack$", (0, 127), 16, "fast attack"),
     ("release", r"Release Time$", (0, 127), 32, "as one factory patch uses"),
     ("separation", r"Separation$", (0, 127), 64, "middle"),
-    ("gate-time", r"Gate Time$", (0, 127), 64, "reverb time, middle"),
+    ("gate-time", r"Reverb Time$", (0, 127), 64, "reverb time, middle"),
     ("gate-time-gr", r"Gate Time$", (0, 99), 50, "gate time, middle"),
     ("delay", r"Delay Time", (0, 126), 63, "middle of the range (raw 0..126 spans 0 to 500 ms, not linearly)"),
     ("delay-120", r"Delay Time$", (0, 120), 60, "middle of the time range"),

@@ -1,7 +1,8 @@
 // How two Tones are wired together: the ten Structure types of the Owner's Manual (chapter 3: "The Structure parameter determines how Tones 1 and 2 (and 3 and 4)
 // are connected"). Each Tone is a chain: wave generator (WG), filter (TVF), amplifier (TVA); a structure joins the two chains. A "B" box is the booster and an "R" box is
-// the ring modulator. The wiring below is read from the figures in the manual (the XP-30 manual prints them as vectors on p.70; the XP-60/80 manual has the same ten
-// figures). It is the app's own data model, drawn by the app's own diagram.
+// the ring modulator. The wiring below is read from the figures in the XP-30 manual (p.70). The XP-60/80 manual (p.49) describes the ten types in words only and has no such
+// figures, so the details its words do not settle (Type 3 booster position, the dry path of types 6 and 8, the amplifier in the ring path of types 7 and 8) are
+// unconfirmed (ledger H-075). It is the app's own data model, drawn by the app's own diagram.
 
 export type StructureNodeKind = 'wg' | 'tvf' | 'tva' | 'booster' | 'ring' | 'sum';
 

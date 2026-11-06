@@ -1,5 +1,5 @@
 {
- "about": "EFX parameter names per type, from Roland's published Owner's Manual (XP-30; the XP-60/80 uses the same 40 effects). Names and raw ranges only.",
+ "about": "EFX parameter names per type, from Roland's published Owner's Manual (XP-30 table for slot order and raw ranges, names corrected to the XP-60/80 manual; the XP-60/80 uses the same 40 effects). Names and raw ranges only.",
  "types": [
   {
    "type": 1,
@@ -335,7 +335,7 @@
     },
     {
      "index": 9,
-     "name": "Q",
+     "name": "Band Width",
      "raw": [
       0,
       4
@@ -607,7 +607,7 @@
     },
     {
      "index": 6,
-     "name": "HiGH Gain",
+     "name": "High Gain",
      "raw": [
       0,
       30
@@ -809,7 +809,7 @@
     },
     {
      "index": 6,
-     "name": "Tremolo Phase",
+     "name": "Chorus Phase",
      "raw": [
       0,
       90
@@ -1862,7 +1862,7 @@
     },
     {
      "index": 3,
-     "name": "Gate Time",
+     "name": "Reverb Time",
      "raw": [
       0,
       127

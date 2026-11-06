@@ -4,7 +4,11 @@
 Sources (Roland, same family and same 40-type effect engine as the XP-60/80):
   * the Appendix "Correspondence of the EFX Algorithm and Exclusive Address (EFX Parameter 1-12)": parameter 1 to 12 of each type, with its name and raw range;
   * the Appendix "Parameter List": a short name, a full name and the value range as the owner sees it.
-The two are joined by name. Run from the repository root; needs `pip install pypdf` and the XP-30 Owner's Manual in artifact/references/roland-manuals.
+The two are joined by name. Run from the repository root; needs `pip install pypdf` and the XP-30 Owner's Manual (XP-30_OM.pdf) in artifact/references/roland-manuals
+(that file has been replaced there by the XP-60/80 manual, so put the XP-30 PDF back to regenerate).
+
+Slot order and raw ranges come only from the XP-30 table: the XP-60/80 manual lists parameters in display order and gives "0 - 127" for every slot, so they are not
+confirmed for the XP-60 (hardware ledger H-110). Names are corrected to the XP-60/80 Owner's Manual (pp.74-88 and 199-203) by NAME_FIXES below.
 """
 from __future__ import annotations
 
@@ -18,6 +22,15 @@ from pypdf import PdfReader
 ROOT = Path(__file__).resolve().parents[1]
 PDF = ROOT / "artifact" / "references" / "roland-manuals" / "XP-30_OM.pdf"
 OUT = ROOT / "data" / "efx-parameters.json"
+
+
+# (type, XP-30 name) -> XP-60/80 manual name
+NAME_FIXES: dict[tuple[int, str], str] = {
+    (5, "Q"): "Band Width",  # SPECTRUM, manual pp.75 and 199
+    (9, "HiGH Gain"): "High Gain",  # COMPRESSOR, typo
+    (12, "Tremolo Phase"): "Chorus Phase",  # TREMOLO-CHORUS, manual pp.77 and 200
+    (24, "Gate Time"): "Reverb Time",  # REVERB, manual p.201
+}
 
 
 def pages_text(first: int, last: int) -> str:
@@ -48,10 +61,11 @@ def main() -> None:
     types = midi_tables()
     if sorted(types) != list(range(1, 41)):
         sys.exit(f"expected types 1..40, found {sorted(types)}")
-    out = {"about": "EFX parameter names per type, from Roland's published Owner's Manual (XP-30; the XP-60/80 uses the same 40 effects). Names and raw ranges only.", "types": []}
+    out = {"about": "EFX parameter names per type, from Roland's published Owner's Manual (XP-30 table for slot order and raw ranges, names corrected to the XP-60/80 manual; the XP-60/80 uses the same 40 effects). Names and raw ranges only.", "types": []}
     for t in range(1, 41):
         d = types[t]
-        out["types"].append({"type": t, "name": d["name"], "params": d["params"]})
+        params = [{**p, "name": NAME_FIXES.get((t, p["name"]), p["name"])} for p in d["params"]]
+        out["types"].append({"type": t, "name": d["name"], "params": params})
     OUT.write_text(json.dumps(out, ensure_ascii=False, indent=1) + "\n", encoding="utf8")
     print("wrote", OUT.relative_to(ROOT), sum(len(x["params"]) for x in out["types"]), "parameters")
 

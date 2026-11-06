@@ -25,7 +25,7 @@ describe('the ten Structure types', () => {
     }
   });
 
-  it('puts a booster only in types 3 and 4 and a ring modulator only in types 5 to 10, as the manual draws them', () => {
+  it('puts a booster only in types 3 and 4 and a ring modulator only in types 5 to 10, as the manual describes them', () => {
     for (const t of STRUCTURE_TYPES) {
       expect(kinds(t, 'booster'), `booster in type ${t}`).toBe(t === 3 || t === 4 ? 1 : 0);
       expect(kinds(t, 'ring'), `ring modulator in type ${t}`).toBe(t >= 5 ? 1 : 0);

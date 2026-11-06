@@ -134,7 +134,7 @@ export function efxValueText(name: string, range: readonly [number, number], val
     return `${pct > 0 ? '+' : ''}${pct}%`;
   }
   if (/\bPhase$/.test(name) && lo === 0 && hi === 90) return `${value * 2}°`;
-  if (name === 'Q' && lo === 0 && hi === 4) return String(value + 1); // SPECTRUM band width, 1 to 5
+  if (name === 'Band Width' && lo === 0 && hi === 4) return String(value + 1); // SPECTRUM band width, 1 to 5
   return String(value);
 }
 
