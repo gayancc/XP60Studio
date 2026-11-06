@@ -1,9 +1,10 @@
 // What the sound-design buttons, the command palette and the shortcuts do. One place, so they cannot drift apart.
 
 import { PART_BLOCKS, RHYTHM_NOTE_BLOCKS, SCALE_TUNE_BLOCKS, TONE_BLOCKS, type BlockName, type DocKindName } from '../model/catalog';
+import { blockNames } from '../model/kinds';
 import { blockTitle } from '../model/labels';
 import type { PatchStore } from '../model/store.svelte';
-import { copyBlock, initChanges, mutate, pasteClip, randomize, resetChanges } from '../model/tools';
+import { copyBlock, mutate, pasteClip, randomize, resetChanges } from '../model/tools';
 import { ui } from '../model/ui.svelte';
 
 /** The Tone, Part, Key or Scale Tune currently selected in the workspace. */
@@ -28,7 +29,9 @@ function nextSeed(): number {
 const percent = (x: number): string => `${Math.round(x * 100)}%`;
 
 export function runInit(store: PatchStore): void {
-  store.applyMany(initChanges(store.catalog, store.kind), 'Init');
+  // Every value is written out, including those whose neutral setting is the bottom of the range: a sound being initialised is not a blank document, so a
+  // value left out would keep whatever the sound had (an EFX type, a Tone switched on).
+  store.applyMany(blockNames(store.kind).flatMap((b) => resetChanges(store.catalog, store.kind, b)), 'Init');
 }
 
 /** Put one block (a Tone, Part or Key), or only some of its parameters, back at neutral. One undo step. */

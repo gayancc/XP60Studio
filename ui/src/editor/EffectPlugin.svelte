@@ -1,6 +1,6 @@
 <script lang="ts">
   import { Dropdown, Knob, Segmented } from '../kit';
-  import { EFX_TYPES, efxChoices, efxShortName, efxTypeLabel, efxUnitNote, efxValueText, type EfxParam } from '../model/efx';
+  import { EFX_TYPES, efxChoices, efxDefault, efxDefaults, efxShortName, efxTypeLabel, efxUnitNote, efxValueText, type EfxParam } from '../model/efx';
   import { efxBlurb, EFX_FAMILIES, familyOf, masterOf, sectionsOf } from '../model/efxFamilies';
   import { useStore } from './context';
   import EfxDisplay from './EfxDisplay.svelte';
@@ -54,8 +54,10 @@
 
   function pick(n: number): void {
     if (n === stored) return;
+    // A new type starts from its own settings: the parameter slots mean something else now, so the old values must not carry over.
     store.begin('Effects · Type');
     store.set('common', 'efx_type', n);
+    efxDefaults(n).forEach((v, i) => store.set('common', `efx_parameter_${i + 1}`, v));
     store.end();
   }
 
@@ -92,7 +94,7 @@
               max={r[1]}
               size={30}
               color="var(--fx)"
-              defaultValue={r[0]}
+              defaultValue={efxDefault(stored, p.index)}
               label={p.name === 'Output Pan' ? 'Pan' : /Level$/.test(p.name) && !/Mix/.test(p.name) ? 'Level' : 'Dry / wet'}
               name={p.name}
               context="Effects > Parameter {p.index}"
@@ -148,7 +150,7 @@
                     size={30}
                     color="var(--fx)"
                     origin={bipolar(p.name) ? 0.5 : null}
-                    defaultValue={bipolar(p.name) ? Math.round((r[0] + r[1]) / 2) : r[0]}
+                    defaultValue={efxDefault(stored, p.index)}
                     label={s.labels?.[k] ?? efxShortName(p.name)}
                     name={efxUnitNote(p.name, r) ? `${p.name} (${efxUnitNote(p.name, r)})` : p.name}
                     context="Effects > Parameter {p.index}"

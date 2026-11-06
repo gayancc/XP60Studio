@@ -5,6 +5,7 @@ import type { BlockInfo, BlockName, Catalog, DocKindName, ParamInfo } from './ca
 import { blockInfo, isNameCharacter } from './catalog';
 import { blockNames, blockLayout } from './kinds';
 import { bipolarOrigin } from './controlKind';
+import { efxDefault } from './efx';
 
 export interface Change {
   block: BlockName;
@@ -204,6 +205,9 @@ export function resetChanges(catalog: Catalog, kind: DocKindName, block: BlockNa
 }
 
 function initValue(p: ParamInfo, isFirstItem: boolean): number {
+  // An initialised sound has EFX type 1 (STEREO-EQ), so its twelve effect parameters start at that type's own settings, not at the bottom of their ranges.
+  const efxSlot = /^efx_parameter_(\d+)$/.exec(p.id);
+  if (efxSlot) return efxDefault(0, Number(efxSlot[1]));
   if (/^(tone_switch|receive_switch)$/.test(p.id)) return isFirstItem ? 1 : 0;
   // A range that starts empty would play nothing: the upper ends open to the top of the keyboard and of the velocities.
   if (/_range_upper$/.test(p.id)) return p.max;

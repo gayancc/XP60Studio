@@ -3,6 +3,7 @@
 // range. 339 of the 351 parameter names were checked against the XP-60/80 manual's own parameter list (the others differ only in spelling, such as "Over Drive Pan").
 
 import raw from '../../../data/efx-parameters.json';
+import rawDefaults from '../../../data/efx-defaults.json';
 
 export interface EfxParam {
   /** Parameter number, 1 to 12: the stored value is `efx_parameter_<index>`. */
@@ -32,6 +33,20 @@ export function efxParam(stored: number, index: number): EfxParam | undefined {
   const p = efxTypeOf(stored)?.params.find((x) => x.index === index);
   return p && p.raw ? p : undefined;
 }
+
+const defaultsData = rawDefaults as { types: Array<{ type: number; defaults: number[] }> };
+
+/**
+ * The starting value of the twelve parameter slots for a stored EFX type (0 to 39): a pan centred, a gain at 0 dB, a level full, a balance half, and so on. They are
+ * chosen from the names and ranges the manual gives (the manual lists no defaults) and checked against the factory patches; see scripts/build_efx_defaults.py.
+ * A slot the type does not use is 0.
+ */
+export function efxDefaults(stored: number): readonly number[] {
+  return defaultsData.types.find((t) => t.type === stored + 1)?.defaults ?? Array.from({ length: 12 }, () => 0);
+}
+
+/** The starting value of parameter slot `index` (1 to 12) of a type. */
+export const efxDefault = (stored: number, index: number): number => efxDefaults(stored)[index - 1] ?? 0;
 
 /** "19 TRIPLE-TAP-DELAY", for the type list. */
 export const efxTypeLabel = (t: EfxType): string => `${String(t.type).padStart(2, '0')} ${t.name}`;
