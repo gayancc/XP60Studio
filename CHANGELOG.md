@@ -3,6 +3,12 @@
 Process note (owner decision): hardware testing is one dedicated phase at the end. Items that need the instrument
 are tracked in `docs/07-hardware-acceptance.md` and updated every phase; nothing here is run on hardware before then.
 
+## 0.1.0-alpha.1: first alpha release (2026-11-06)
+
+- First public build, published as a GitHub **pre-release** with the Windows installer.
+- **Alpha means:** everything is built and tested against the virtual XP-60 (`xppatch-midi::testing`), the golden bank and the Owner's Manual transcription. Nothing that talks to the instrument is marked done until it passes the hardware session (`artifact/docs/xppatchstudio/07-hardware-acceptance.md`). Back up your User memory before saving to the instrument; every write already makes its own backup first.
+- Not yet: names for expansion-board patches, the c/d sub-groups of expansion boards, a code-signed installer (Windows SmartScreen may warn).
+
 ## Factory names cleaned; installed expansion boards appear in the Bank screen (2026-11-05)
 
 - **19 names carried characters that are not on the instrument** (found by scanning every patch, wave and board name; the list is in the commit): the typographic apostrophe in `60's LeadORG` (PR-A 57) and `Singing'Mini` (USER 69) from the patch-list PDF, and Windows-1252 control codes `0x91`/`0x92` in the SR-JV80 waveform lists (Keyboards of the 60s & 70s: `Farf 8'+2'`, `FarfClar16'A`, `'70s Piano A`, ...; Session: `90's Snare`, `REV 90's Snr`). They are now plain ASCII apostrophes. The generator normalises every name and refuses to write a file with anything outside printable ASCII; a test guards the data too.

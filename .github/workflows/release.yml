@@ -73,7 +73,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "${GITHUB_REF_NAME}" target/release/bundle/nsis/*-setup.exe \
-            --title "XPPatchStudio ${GITHUB_REF_NAME}" \
-            --generate-notes \
-            --notes "Windows installer: download the setup file, run it, choose the install location and follow the steps. Nothing is written to a connected XP-60 until you save to it from the app."
+          notes="Windows installer: download the setup file, run it, choose the install location and follow the steps. Nothing is written to a connected XP-60 until you save to it from the app."
+          flags=""
+          # A tag with a hyphen (v0.1.0-alpha.1) is a pre-release: GitHub marks it so and does not offer it as the latest release.
+          case "${GITHUB_REF_NAME}" in
+            *-*)
+              flags="--prerelease"
+              notes="PRE-RELEASE (alpha). Everything is built and tested against a virtual XP-60 only; features that talk to the instrument are not yet confirmed on real hardware, so expect rough edges and back up your User memory before saving to it. $notes"
+              ;;
+          esac
+          gh release create "${GITHUB_REF_NAME}" target/release/bundle/nsis/*-setup.exe $flags             --title "XPPatchStudio ${GITHUB_REF_NAME}"             --generate-notes             --notes "$notes"

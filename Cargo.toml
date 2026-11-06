@@ -4,7 +4,7 @@ default-members = ["crates/xppatch-sysex", "crates/xppatch-core", "crates/xppatc
 members = ["crates/xppatch-sysex", "crates/xppatch-core", "crates/xppatch-midi", "crates/xppatch-wasm", "crates/xppatch-app", "crates/xppatch-library"]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.1.0-alpha.1"
 edition = "2021"
 rust-version = "1.89"
 license = "UNLICENSED"

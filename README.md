@@ -120,7 +120,7 @@ Writing to the instrument is a deliberate act, never a side effect of editing.
 
 ## Install
 
-Download `XPPatchStudio_<version>_x64-setup.exe` from the [latest release](../../releases/latest) and run it. The setup walks through the usual steps: welcome, install
+Download `XPPatchStudio_<version>_x64-setup.exe` from the [releases page](../../releases) (the first builds are alpha pre-releases, so they are not under "latest") and run it. The setup walks through the usual steps: welcome, install
 for all users or just you, the folder to install into (the default is offered and you can browse to another), a Start menu folder, then Finish. The app appears in the
 Start menu and under *Settings > Apps*, where it can be uninstalled; uninstalling asks whether to delete your library and backups, and keeps them unless you tick the box.
 Windows 10 and 11 only; if the Microsoft WebView2 runtime is missing the setup installs it. The installer is not code-signed yet, so Windows SmartScreen may warn the
@@ -148,7 +148,7 @@ cargo build -p xppatch-app --release --features custom-protocol
 
 `npm run installer` (in `ui/`) builds the installer on its own into `target/release/bundle/nsis/`.
 
-**Releasing (maintainers):** raise `version` in `Cargo.toml` and `crates/xppatch-app/tauri.conf.json`, then `git tag vX.Y.Z && git push origin vX.Y.Z`. The *Release*
+**Releasing (maintainers):** raise `version` in `Cargo.toml`, `crates/xppatch-app/tauri.conf.json` and `ui/package.json`, then `git tag vX.Y.Z && git push origin vX.Y.Z`. A version with a hyphen (`0.1.0-alpha.1`, tag `v0.1.0-alpha.1`) is published as a **pre-release**. The *Release*
 workflow runs the interface tests, builds the installer and attaches it to a GitHub release.
 
 ## Architecture
