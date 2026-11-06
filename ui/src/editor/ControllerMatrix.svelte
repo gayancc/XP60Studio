@@ -25,21 +25,23 @@
   <table class="matrix" aria-label="Controller routing">
     <thead>
       <tr>
-        <th scope="col"></th>
-        {#each slots as s (s)}<th scope="col" class="caps">Slot {s}</th>{/each}
+        <th scope="col" rowspan="2" class="corner"></th>
+        {#each slots as s (s)}<th scope="colgroup" colspan="2" class="slot">Slot {s}</th>{/each}
+      </tr>
+      <tr>
+        {#each slots as s (s)}
+          <th scope="col" class="sub dest">Dest</th>
+          <th scope="col" class="sub depth">Depth</th>
+        {/each}
       </tr>
     </thead>
     <tbody>
       {#each controllers as c (c)}
         <tr>
-          <th scope="row" class="caps">Controller {c}</th>
+          <th scope="row" class="caps rowhead">Controller {c}</th>
           {#each slots as s (s)}
-            <td>
-              <div class="cell">
-                <ParamControl {block} id="controller_{c}_destination_{s}" label="Dest" {color} width={62} />
-                <ParamControl {block} id="controller_{c}_depth_{s}" label="Depth" size={30} {color} />
-              </div>
-            </td>
+            <td class="dest"><ParamControl {block} id="controller_{c}_destination_{s}" label="" {color} width={66} /></td>
+            <td class="depth"><ParamControl {block} id="controller_{c}_depth_{s}" label="" size={30} {color} /></td>
           {/each}
         </tr>
       {/each}
@@ -64,26 +66,63 @@
     align-items: center;
     gap: 6px 18px;
   }
+  /* One row per controller, one band per slot: a "Dest" list and its "Depth" dial share a row, and the captions are said once in the header instead of on every cell. */
   .matrix {
     border-collapse: collapse;
     width: 100%;
+    margin-top: 4px;
   }
-  th.caps {
-    white-space: nowrap;
-    padding-right: 6px;
+  th,
+  td {
+    vertical-align: middle;
+    padding: 0;
   }
-  th {
+  .corner {
+    width: 1%;
+  }
+  .slot {
+    padding: 3px 0 2px 8px;
     text-align: left;
+    font: 600 10px var(--font-caps);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text);
+    border-left: 1px solid var(--edge);
+  }
+  .sub {
+    padding: 0 0 4px;
+    text-align: left;
+    font: 600 9px var(--font-caps);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+  }
+  .sub.dest {
+    padding-left: 8px;
+    border-left: 1px solid var(--edge);
+  }
+  .sub.depth {
+    text-align: center;
+  }
+  .rowhead {
+    padding: 0 12px 0 2px;
+    text-align: left;
+    white-space: nowrap;
     font-weight: normal;
-    padding: 2px 6px 2px 0;
+    color: var(--text-dim);
+  }
+  tbody tr:nth-child(odd) {
+    background: color-mix(in srgb, var(--text) 4%, transparent);
   }
   td {
-    padding: 4px 4px 4px 0;
-    vertical-align: bottom;
+    height: 40px;
   }
-  .cell {
-    display: flex;
-    align-items: flex-end;
-    gap: 2px;
+  td.dest {
+    padding-left: 8px;
+    border-left: 1px solid var(--edge);
+  }
+  td.depth {
+    text-align: center;
+    padding-right: 2px;
   }
 </style>

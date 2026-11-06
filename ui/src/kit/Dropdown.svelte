@@ -35,6 +35,8 @@
   let top = $state(0);
   let minWidth = $state(0);
   let maxHeight = $state(400);
+  /** The list opens above the readout (not enough room below), so it is placed by its measured height. */
+  let up = false;
   /** Keyboard cursor: an index into `options`. */
   let cursor = $state(0);
 
@@ -62,10 +64,12 @@
     const below = window.innerHeight - r.bottom - 8;
     const above = r.top - 8;
     left = r.left;
+    up = false;
     if (below >= 220 || below >= above) {
       top = r.bottom + 2;
       maxHeight = Math.max(120, below);
     } else {
+      up = true;
       top = Math.max(4, r.top - 2 - Math.min(above, order.length * 20 + 40));
       maxHeight = Math.max(120, above);
     }
@@ -80,6 +84,7 @@
     if (menu) {
       const r = menu.getBoundingClientRect();
       left = Math.max(4, Math.min(left, window.innerWidth - r.width - 4));
+      if (up && trigger) top = Math.max(4, trigger.getBoundingClientRect().top - 2 - r.height);
       menu.focus();
       menu.querySelector<HTMLElement>('.row.cur')?.scrollIntoView?.({ block: 'center' });
     }

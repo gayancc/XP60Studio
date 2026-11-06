@@ -123,7 +123,7 @@ export function waveLabel(groupType: number, groupId: number, waveNumber: number
   const name = waveName(groupType, groupId, waveNumber);
   if (name) return name;
   const n = String(waveNumber).padStart(3, '0');
-  if (groupType === 0) return `${groupId === 1 ? 'Internal A' : groupId === 2 ? 'Internal B' : `Group ${groupId}`} · ${n}`;
+  if (groupType === 0 && (groupId === 1 || groupId === 2)) return `${groupId === 1 ? 'Internal A' : 'Internal B'} · ${n}`;
   if (groupType === 2) return `${boardName(groupId) ?? `Board ${groupId}`} · ${n}`;
   return `Wave ${n}`;
 }

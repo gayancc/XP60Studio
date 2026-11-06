@@ -75,15 +75,26 @@ describe('the wave picker', () => {
     const names = (): string[] => getAllByRole('button').filter((b) => b.classList.contains('src')).map((b) => b.textContent ?? '');
     expect(names().join('|')).toContain('Internal A');
     expect(names().join('|')).toContain('Internal B');
-    // the Tone already uses board 1, so it stays visible, flagged as not marked installed
-    expect(names().join('|')).toContain('not marked installed');
+    // the Tone already uses board 1, so it stays visible, flagged as not installed
+    expect(names().join('|')).toContain('not installed');
     await fireEvent.keyDown(getByRole('dialog'), { key: 'Escape' });
     expansions.set(1, true);
     await rerender({ store: make() });
     await fireEvent.click(getByRole('button', { name: /^Wave of Tone 1/ }));
     expect(names().join('|')).toContain('Pop');
-    expect(names().join('|')).not.toContain('not marked installed');
+    expect(names().join('|')).not.toContain('not installed');
     expect(queryByText('Search Pop…')).toBeNull();
+  });
+
+  it('never invents a group: a Tone pointing at no known group shows only the keyboard’s own groups', async () => {
+    const store = make();
+    store.set('tone1', 'wave_group_type', 0);
+    store.set('tone1', 'wave_group_id', 0);
+    const { getByRole, getAllByRole } = render(ToneHarness, { props: { store } });
+    await fireEvent.click(getByRole('button', { name: /^Wave of Tone 1/ }));
+    const names = getAllByRole('button').filter((b) => b.classList.contains('src')).map((b) => b.textContent ?? '').join('|');
+    expect(names).not.toMatch(/Group \d/);
+    expect(names).not.toContain('not listed');
   });
 
   it('picks a wave in one undo step, by click, and writes group type, group and number', async () => {

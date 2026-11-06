@@ -205,6 +205,7 @@ describe('init', () => {
       if (kind === 'patch') {
         expect(doc.get('tone1', 'tone_switch')).toBe(1);
         expect(doc.get('tone2', 'tone_switch')).toBe(0);
+        for (const t of ['tone1', 'tone2', 'tone3', 'tone4'] as const) expect([doc.get(t, 'wave_group_type'), doc.get(t, 'wave_group_id')]).toEqual([0, 1]); // INT-A, a group the keyboard has
         expect(doc.get('tone1', 'tone_level')).toBe(127);
         expect(doc.format('tone1', 'coarse_tune')).toBe('0');
         expect(doc.format('tone1', 'tone_pan')).toBe('0');

@@ -2,7 +2,7 @@
   import { tick } from 'svelte';
   import type { BlockName } from '../model/catalog';
   import { expansionBoards, internalWaveNames, waveLabel } from '../model/factory';
-  import { expansions } from '../model/expansions.svelte';
+  import { expansions, SLOT_NAMES } from '../model/expansions.svelte';
   import { blockTitle } from '../model/labels';
   import { useStore } from './context';
 
@@ -42,20 +42,15 @@
     ];
     for (const n of expansions.installed) {
       const b = board(n);
-      list.push({ key: `E${n}`, label: b?.name ?? `Board ${n}`, sub: `SR-JV80-${String(n).padStart(2, '0')}`, type: 2, id: n, names: b?.waves ?? null, listed: true });
+      const slot = expansions.slotOf(n);
+      const where = slot >= 0 ? `${SLOT_NAMES[slot]} · ` : '';
+      list.push({ key: `E${n}`, label: b?.name ?? `Board ${n}`, sub: `${where}SR-JV80-${String(n).padStart(2, '0')}`, type: 2, id: n, names: b?.waves ?? null, listed: true });
     }
-    // The Tone may already use something the lists above do not offer: keep it visible rather than hiding where it points.
-    if (!list.some((s) => s.type === type && s.id === gid)) {
-      const b = type === 2 ? board(gid) : undefined;
-      list.push({
-        key: `X${type}-${gid}`,
-        label: type === 2 ? (b?.name ?? `Board ${gid}`) : `Group ${type}/${gid}`,
-        sub: type === 2 ? `SR-JV80-${String(gid).padStart(2, '0')} · not marked installed` : 'not listed',
-        type,
-        id: gid,
-        names: type === 2 ? (b?.waves ?? null) : null,
-        listed: false,
-      });
+    // A Tone can point at a board that is not in the keyboard. The instrument cannot select such a group and does not play its waves, so it is shown as unavailable
+    // (nothing here can be chosen from it). Any other pointer the instrument has no name for is not offered as a group at all.
+    if (type === 2 && !list.some((s) => s.type === type && s.id === gid)) {
+      const b = board(gid);
+      list.push({ key: `X${type}-${gid}`, label: b?.name ?? `Board ${gid}`, sub: `SR-JV80-${String(gid).padStart(2, '0')} · not installed`, type, id: gid, names: b?.waves ?? null, listed: false });
     }
     return list;
   });
@@ -106,6 +101,7 @@
   }
 
   function choose(s: Source, n: number): void {
+    if (!s.listed) return; // the instrument cannot select a group of a board that is not installed
     store.begin(`${blockTitle(block)} · Wave`);
     store.set(block, 'wave_group_type', s.type);
     store.set(block, 'wave_group_id', s.id);
@@ -188,12 +184,13 @@
       </nav>
       <div class="list">
         {#if active?.names}
+          {#if !active.listed}<p class="gone">This board is not installed, so the keyboard cannot select its waves and will not play them. Tick it in Settings › Installed expansion boards.</p>{/if}
           <input bind:this={search} type="text" placeholder="Search {active.label}…" aria-label="Search waves" bind:value={query} oninput={() => (hi = 0)} />
           <ul role="listbox" aria-label="{active.label} waves">
             {#each rows as r, i (r.number)}
               {@const here = isCurrent(active) && r.number === num}
               <li role="option" aria-selected={here} class:hi={i === hi} class:cur={here}>
-                <button type="button" tabindex="-1" onpointerenter={() => (hi = i)} onclick={() => choose(active, r.number)}>
+                <button type="button" tabindex="-1" disabled={!active.listed} onpointerenter={() => (hi = i)} onclick={() => choose(active, r.number)}>
                   <span class="num">{String(r.number).padStart(3, '0')}</span>
                   <span class="wn" class:blank={r.name === ''}>{r.name || 'Not printed in Roland’s list'}</span>
                 </button>
@@ -202,6 +199,8 @@
               <li class="none">No wave matches.</li>
             {/each}
           </ul>
+        {:else if active && !active.listed}
+          <div class="byno"><p>This board is not installed, so the keyboard cannot select its waves and will not play them. Tick it in Settings › Installed expansion boards.</p></div>
         {:else if active}
           <div class="byno">
             <p>Roland publishes no waveform list for <b>{active.label}</b>, so its waves are chosen by number and shown as “{active.label} · number”.</p>
@@ -232,6 +231,11 @@
 {/if}
 
 <style>
+  .gone {
+    margin: 0 0 6px;
+    color: var(--text-faint);
+    font-size: 11px;
+  }
   /* No box: the name of the wave is the title of the card, and it is the control. The chevron appears when the pointer is on it. */
   .trig {
     display: flex;

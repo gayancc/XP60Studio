@@ -209,6 +209,8 @@ function initValue(p: ParamInfo, isFirstItem: boolean): number {
   const efxSlot = /^efx_parameter_(\d+)$/.exec(p.id);
   if (efxSlot) return efxDefault(0, Number(efxSlot[1]));
   if (/^(tone_switch|receive_switch)$/.test(p.id)) return isFirstItem ? 1 : 0;
+  // The wave group an initialised Tone points at is the instrument's own INT-A (group ID 1); ID 0 names no group the keyboard has.
+  if (p.id === 'wave_group_id') return 1;
   // A range that starts empty would play nothing: the upper ends open to the top of the keyboard and of the velocities.
   if (/_range_upper$/.test(p.id)) return p.max;
   const origin = bipolarOrigin(p);
