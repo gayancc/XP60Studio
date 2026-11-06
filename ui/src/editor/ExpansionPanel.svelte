@@ -1,6 +1,6 @@
 <script lang="ts">
   import { expansionBoards } from '../model/factory';
-  import { expansions, MAX_BOARDS } from '../model/expansions.svelte';
+  import { expansions, MAX_BOARDS, SLOT_NAMES } from '../model/expansions.svelte';
 
   // Which Wave Expansion boards are in this keyboard. The wave picker offers the instrument's own waves and the waves of the boards
   // ticked here. Expansion boards are read-only and only sound while installed, so this must match what is physically in the slots.
@@ -22,6 +22,7 @@
   >
     <i></i>
     <span class="n">SR-JV80-{String(b.number).padStart(2, '0')}</span>
+    {#if on}<span class="slot">{SLOT_NAMES[expansions.slotOf(b.number)]}</span>{/if}
     <span class="t">{b.name}</span>
     {#if b.waves}<span class="c">{b.waves.length} waves</span>{/if}
   </button>
@@ -32,13 +33,17 @@
     <h3>Installed expansion boards</h3>
     <span class="count" class:full={expansions.full}>{expansions.installed.length} of {MAX_BOARDS} slots</span>
   </header>
-  <p class="dim">Tick the boards that are physically in your keyboard (EXP-A to EXP-D). They are read-only and only sound while installed, so the wave picker offers their waves only when ticked here.</p>
+  <p class="dim">Tick the boards that are physically in your keyboard (EXP-A to EXP-D). They are read-only and only sound while installed, so the wave picker offers their waves only when ticked here. Boards fill EXP-A to EXP-D in the order you tick them: tick them in the order they sit in the keyboard, because the Bank screen's XP-A to XP-D buttons follow that order.</p>
   <div class="grid">{#each main as b (b.number)}{@render board(b)}{/each}</div>
   <h4>Promotional and regional boards</h4>
   <div class="grid">{#each other as b (b.number)}{@render board(b)}{/each}</div>
 </div>
 
 <style>
+  .slot {
+    font: 700 9.5px var(--font-mono);
+    color: var(--accent);
+  }
   .ex {
     display: flex;
     flex-direction: column;

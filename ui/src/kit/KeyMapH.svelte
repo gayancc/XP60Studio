@@ -34,6 +34,8 @@
     onrange?: (id: number, range: KeyRange) => void;
     onbegin?: (id: number) => void;
     onend?: () => void;
+    /** Double-click on a lane puts that owner's range back at the whole keyboard. */
+    onreset?: (id: number) => void;
   }
 
   let {
@@ -47,6 +49,7 @@
     onrange,
     onbegin,
     onend,
+    onreset,
   }: Props = $props();
 
   const GAP = 8;
@@ -72,6 +75,12 @@
   const cancelLater = (h: number): void => (typeof cancelAnimationFrame === 'function' ? cancelAnimationFrame(h) : clearTimeout(h));
 
   const shown = $derived(lanes.map((l) => (live && live.id === l.id ? { ...l, low: live.low, high: live.high } : l)));
+
+  /** The lane whose keys are lit on the keyboard: the one being dragged, else the one under the pointer, else the selected one. */
+  let hoverId = $state<number | null>(null);
+  const active = $derived(shown.find((l) => l.id === (drag?.id ?? hoverId)) ?? shown.find((l) => l.selected) ?? null);
+  const tints = $derived(active && !active.dim ? [{ low: active.low, high: active.high, color: active.color }] : []);
+  const hasSelection = $derived(shown.some((l) => l.selected));
 
   function flush(): void {
     if (frame) cancelLater(frame);
@@ -139,6 +148,7 @@
     const { x, y } = local(e);
     if (!drag) {
       const hover = shown[Math.floor(y / laneHeight)];
+      hoverId = hover?.id ?? null;
       if (hover) {
         announce(hover);
         // Over the middle of a block it can be picked up and moved; at its ends or beside it, an end is set.
@@ -196,7 +206,16 @@
     {/each}
   </div>
   <div class="right">
-    <div class="kb"><PianoKeys width={kbW} height={keyboardHeight} /></div>
+    <div class="kb" style:--c={active?.color ?? 'transparent'}>
+      <PianoKeys width={kbW} height={keyboardHeight} {tints} />
+      {#if active && !active.dim}
+        <!-- the live readout: both ends of the active range ride on top of the keyboard while it is edited -->
+        <span class="chip" class:drag={!!drag} style:left="{Math.min(kbW - 30, Math.max(0, x0(active) - 2))}px">{noteName(active.low)}</span>
+        {#if active.high !== active.low}
+          <span class="chip" class:drag={!!drag} style:left="{Math.min(kbW - 30, Math.max(0, x1(active) - 26))}px">{noteName(active.high)}</span>
+        {/if}
+      {/if}
+    </div>
     <svg
       bind:this={svg}
       class="lanes"
@@ -209,14 +228,19 @@
       onpointermove={move}
       style:cursor={drag ? (drag.mode === 'body' ? 'grabbing' : 'ew-resize') : cursor}
       onpointerup={up}
+      ondblclick={(e) => {
+        const l = shown[Math.floor(local(e).y / laneHeight)];
+        if (l) onreset?.(l.id);
+      }}
       onpointercancel={up}
       onpointerleave={() => {
+        hoverId = null;
         if (!drag) clearHint();
       }}
     >
       {#each shown as l, i (l.id)}
         <rect x="0" y={i * laneHeight} width={kbW} height={laneHeight} fill={i % 2 === 0 ? 'var(--lane-a)' : 'var(--lane-b)'} />
-        {#if l.selected}<rect x="0" y={i * laneHeight} width={kbW} height={laneHeight} fill={l.color} fill-opacity="0.1" />{/if}
+        {#if l.selected}<rect x="0" y={i * laneHeight} width={kbW} height={laneHeight} fill={l.color} fill-opacity="0.16" />{/if}
       {/each}
       <!-- black-key columns are a little darker, as the black-key rows are in a piano roll -->
       {#each columns as n (n)}
@@ -235,7 +259,10 @@
         {@const bx = x0(l)}
         {@const bw = Math.max(5, x1(l) - x0(l))}
         {@const gripFill = l.dim ? 0.25 : 0.9}
-        <rect x={bx} {y} width={bw} height={h} rx="2.5" fill={l.color} fill-opacity={l.dim ? 0.2 : l.selected ? 0.95 : 0.8} stroke="#0e1417" stroke-opacity="0.75" />
+        {#if l.selected && !l.dim}
+          <rect x={bx - 3} y={y - 3} width={bw + 6} height={h + 6} rx="5" fill={l.color} fill-opacity="0.22" pointer-events="none" />
+        {/if}
+        <rect x={bx} {y} width={bw} height={h} rx="2.5" fill={l.color} fill-opacity={l.dim ? 0.2 : l.selected ? 1 : hasSelection ? 0.5 : 0.8} stroke="#0e1417" stroke-opacity="0.75" />
         <rect x={bx + 1} y={y + 1} width={Math.max(0, bw - 2)} height={(h - 2) / 2} rx="1.5" fill="#fff" fill-opacity={l.dim ? 0.03 : 0.16} />
         <!-- raised grips at both ends, each with two grooves, so the block reads as something to take hold of -->
         {#each [bx, bx + bw - 5] as gx, k (k)}
@@ -287,9 +314,33 @@
     min-width: 0;
   }
   .kb {
+    position: relative;
     border: 1px solid var(--edge);
     border-bottom: 0;
     line-height: 0;
+  }
+  .chip {
+    position: absolute;
+    top: 2px;
+    min-width: 26px;
+    padding: 1px 4px;
+    border-radius: 3px;
+    background: var(--c);
+    color: #0e1417;
+    font: 700 10px/12px var(--font-mono);
+    text-align: center;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+    pointer-events: none;
+    transition: transform 0.08s;
+  }
+  .chip.drag {
+    transform: translateY(-1px) scale(1.08);
+  }
+  .g.sel {
+    background: color-mix(in srgb, var(--c) 26%, var(--body-deep));
+  }
+  .g:not(.sel) :global(.tag) {
+    opacity: 0.75;
   }
   .kb :global(svg) {
     cursor: default;

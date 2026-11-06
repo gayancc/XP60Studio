@@ -1132,6 +1132,27 @@ impl<T: MidiTransport> Client<T> {
         Ok(self.port.send(&[status, note, velocity])?)
     }
 
+    /// Ask the instrument to select a sound the way an external keyboard does: Bank Select MSB (controller 0), Bank Select
+    /// LSB (controller 32), then Program Change, all on `channel` 0 to 15. It writes nothing to memory, but the instrument
+    /// replaces its temporary sound with the one chosen, and it only listens when its Receive Program Change and Bank
+    /// Select switches are on. Out-of-range values are refused rather than clipped.
+    pub fn select_sound(
+        &mut self,
+        channel: u8,
+        msb: u8,
+        lsb: u8,
+        program: u8,
+    ) -> Result<(), ClientError> {
+        if channel > 15 || msb > 127 || lsb > 127 || program > 127 {
+            return Err(ClientError::Refused(
+                "channel must be 0 to 15, bank select and program 0 to 127".into(),
+            ));
+        }
+        self.port.send(&[0xB0 | channel, 0, msb])?;
+        self.port.send(&[0xB0 | channel, 32, lsb])?;
+        Ok(self.port.send(&[0xC0 | channel, program])?)
+    }
+
     /// Silence everything on `channel` (All Notes Off, controller 123).
     pub fn all_notes_off(&mut self, channel: u8) -> Result<(), ClientError> {
         if channel > 15 {

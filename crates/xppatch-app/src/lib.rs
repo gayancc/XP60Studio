@@ -183,6 +183,19 @@ fn midi_note(
     with_synth(&state, |s| s.note(channel, note, velocity, on))
 }
 
+/// Select a sound on the instrument with Bank Select and Program Change, as the front panel's own patch buttons do.
+/// Nothing is written to memory; the instrument's temporary sound is replaced.
+#[tauri::command(async)]
+fn midi_select_sound(
+    state: tauri::State<'_, AppState>,
+    channel: u8,
+    msb: u8,
+    lsb: u8,
+    program: u8,
+) -> Result<(), SynthError> {
+    with_synth(&state, |s| s.select_sound(channel, msb, lsb, program))
+}
+
 #[tauri::command(async)]
 fn midi_all_notes_off(state: tauri::State<'_, AppState>, channel: u8) -> Result<(), SynthError> {
     with_synth(&state, |s| s.all_notes_off(channel))
@@ -718,6 +731,7 @@ pub fn run() {
             midi_listen_controls,
             midi_poll_controls,
             midi_note,
+            midi_select_sound,
             midi_set_pacing,
             midi_all_notes_off,
             midi_arm_save,

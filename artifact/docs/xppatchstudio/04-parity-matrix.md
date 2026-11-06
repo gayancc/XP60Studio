@@ -58,7 +58,7 @@ Evidence codes refer to `02-feature-catalog.md` (CONFIRMED / INFERRED / NOT FOUN
 | D10 | Backup files | CONFIRMED | Library backups | 6 | DONE (no instrument involved): backup files are written before every save, and Bank > Backups lists them (newest first) and opens one in the bank grid; sending one back uses the normal write steps |
 | E1 | Per-module editor manager | CONFIRMED | UI (XP-60 only, single module; WON'T-DO multi-module proposed) | n/a | PROPOSED WON'T-DO |
 | E2 | Toolbar customisation | CONFIRMED | UI workspace layouts replace this | 3 | PROPOSED WON'T-DO: the tabbed workspaces and menus replace a customisable toolbar (needs owner approval) |
-| E3 | Find/replace in lists | CONFIRMED | UI | 6 | DONE (no instrument involved): search, and find and replace in the shown patch names with a preview; results that are too long, empty or not plain text are skipped and named |
+| E3 | Find/replace in lists | CONFIRMED | UI | 6 | WON'T-DO (owner decision): find and replace in names was removed; the plain search stays |
 | E4 | Light/dark/system appearance | CONFIRMED | UI theme (dark graphite required; light optional) | 3 | DONE (dark graphite default, light theme switch) |
 | E5 | Licensing, trial, updates | CONFIRMED | n/a | n/a | PROPOSED WON'T-DO |
 | F1 | FL-style dockable/detachable panels + saved layouts | owner-requested | UI DockPanel | 3 | PARTIAL: tabbed, scroll-free workspaces and menus (docs/06 section 8.1), the window reopens as it was left, and named layouts can be saved, applied, deleted and reset (four built in); no free docking or floating windows, which would need a different panel system |

@@ -160,29 +160,6 @@ export class LibraryService {
     return this.run(() => this.backend.libraryRename(id, name));
   }
 
-  /** Apply planned renames one by one (stopping at the first failure) and refresh once. Returns how many were done. */
-  async renameMany(plans: ReadonlyArray<{ id: number; to: string; skip: string | null }>): Promise<number> {
-    const todo = plans.filter((p) => p.skip === null);
-    let done = 0;
-    let failure = '';
-    this.inFlight += 1;
-    try {
-      for (const p of todo) {
-        await this.backend.libraryRename(p.id, p.to);
-        done += 1;
-      }
-    } catch (e) {
-      failure = `${message(e)} (${done} of ${todo.length} renamed before it stopped.)`;
-    } finally {
-      this.inFlight -= 1;
-    }
-    await this.refresh();
-    // Said after the refresh, which clears the previous message when it succeeds.
-    if (failure) this.error = failure;
-    else if (todo.length > 0) this.notice = `Renamed ${done} patch${done === 1 ? '' : 'es'}.`;
-    return done;
-  }
-
   async remove(id: number): Promise<boolean> {
     return this.run(() => this.backend.libraryDelete(id));
   }

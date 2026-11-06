@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { ExpansionSettings, MAX_BOARDS, parseInstalled, type Storage2 } from './expansions.svelte';
 
-const memory = (initial: string | null = null): Storage2 & { value: string | null } => {
-  const s = { value: initial, getItem: () => s.value, setItem: (_k: string, v: string) => void (s.value = v) };
-  return s;
+const memory = (initial: string | null = null): Storage2 => {
+  const m = new Map<string, string>();
+  if (initial !== null) m.set('xppatch.installedExpansions', initial);
+  return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => void m.set(k, v) };
 };
 
 describe('installed expansion boards', () => {
@@ -18,6 +19,20 @@ describe('installed expansion boards', () => {
     s.set(2, true);
     expect(s.installed).toEqual([2, 14]);
     expect(new ExpansionSettings(store).installed).toEqual([2, 14]);
+  });
+
+  it('puts the boards in slots EXP-A to EXP-D in the order they were ticked, and remembers that order', () => {
+    const store = memory();
+    const s = new ExpansionSettings(store);
+    s.set(14, true);
+    s.set(2, true);
+    s.set(9, true);
+    expect(s.slots).toEqual([14, 2, 9]);
+    expect(s.slotOf(2)).toBe(1);
+    expect(s.slotOf(5)).toBe(-1);
+    s.set(14, false);
+    expect(s.slots).toEqual([2, 9]);
+    expect(new ExpansionSettings(store).slots).toEqual([2, 9]);
   });
 
   it('refuses a fifth board, because the instrument has four slots, and says why', () => {

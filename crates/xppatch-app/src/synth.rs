@@ -729,6 +729,17 @@ impl<T: MidiTransport> Synth<T> {
         Ok(self.client.send_note(channel, note, velocity, on)?)
     }
 
+    /// Select a sound by Bank Select and Program Change (`channel` 0 to 15).
+    pub fn select_sound(
+        &mut self,
+        channel: u8,
+        msb: u8,
+        lsb: u8,
+        program: u8,
+    ) -> Result<(), SynthError> {
+        Ok(self.client.select_sound(channel, msb, lsb, program)?)
+    }
+
     pub fn all_notes_off(&mut self, channel: u8) -> Result<(), SynthError> {
         Ok(self.client.all_notes_off(channel)?)
     }

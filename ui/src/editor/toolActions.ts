@@ -3,7 +3,7 @@
 import { PART_BLOCKS, RHYTHM_NOTE_BLOCKS, SCALE_TUNE_BLOCKS, TONE_BLOCKS, type BlockName, type DocKindName } from '../model/catalog';
 import { blockTitle } from '../model/labels';
 import type { PatchStore } from '../model/store.svelte';
-import { copyBlock, initChanges, mutate, pasteClip, randomize } from '../model/tools';
+import { copyBlock, initChanges, mutate, pasteClip, randomize, resetChanges } from '../model/tools';
 import { ui } from '../model/ui.svelte';
 
 /** The Tone, Part, Key or Scale Tune currently selected in the workspace. */
@@ -29,6 +29,11 @@ const percent = (x: number): string => `${Math.round(x * 100)}%`;
 
 export function runInit(store: PatchStore): void {
   store.applyMany(initChanges(store.catalog, store.kind), 'Init');
+}
+
+/** Put one block (a Tone, Part or Key), or only some of its parameters, back at neutral. One undo step. */
+export function resetBlock(store: PatchStore, block: BlockName, label: string, ids?: readonly string[]): void {
+  store.applyMany(resetChanges(store.catalog, store.kind, block, ids), `Reset ${label}`);
 }
 
 export function runRandomize(store: PatchStore): void {

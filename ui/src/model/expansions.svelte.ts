@@ -5,6 +5,8 @@ import { reportError, reportInfo, reportSuccess, reportWarning } from './message
 
 export const MAX_BOARDS = 4;
 const KEY = 'xppatch.installedExpansions';
+const SLOT_KEY = 'xppatch.expansionSlots';
+export const SLOT_NAMES = ['EXP-A', 'EXP-B', 'EXP-C', 'EXP-D'] as const;
 
 export interface Storage2 {
   getItem(key: string): string | null;
@@ -26,6 +28,8 @@ export function parseInstalled(text: string | null): number[] {
 
 export class ExpansionSettings {
   installed = $state<number[]>([]);
+  /** The boards in slot order: the first is in EXP-A (XP-A on the display), then EXP-B and so on. Filled in the order they are ticked. */
+  slots = $state<number[]>([]);
   /** Why the last change was refused, or ''. */
   #notice = $state('');
   get notice(): string {
@@ -40,13 +44,21 @@ export class ExpansionSettings {
   constructor(private readonly storage?: Storage2) {
     try {
       this.installed = parseInstalled(storage?.getItem(KEY) ?? null);
+      const saved = parseInstalled(storage?.getItem(SLOT_KEY) ?? null).filter((n) => this.installed.includes(n));
+      this.slots = [...saved, ...this.installed.filter((n) => !saved.includes(n))];
     } catch {
       this.installed = [];
+      this.slots = [];
     }
   }
 
   has(board: number): boolean {
     return this.installed.includes(board);
+  }
+
+  /** Which slot a board is in (0 for EXP-A), or -1 when it is not installed. */
+  slotOf(board: number): number {
+    return this.slots.indexOf(board);
   }
 
   get full(): boolean {
@@ -63,11 +75,14 @@ export class ExpansionSettings {
         return;
       }
       this.installed = [...this.installed, board].sort((a, b) => a - b);
+      this.slots = [...this.slots, board];
     } else {
       this.installed = this.installed.filter((n) => n !== board);
+      this.slots = this.slots.filter((n) => n !== board);
     }
     try {
       this.storage?.setItem(KEY, JSON.stringify(this.installed));
+      this.storage?.setItem(SLOT_KEY, JSON.stringify(this.slots));
     } catch {
       this.notice = 'The choice could not be saved on this computer.';
     }

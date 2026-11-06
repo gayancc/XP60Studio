@@ -195,6 +195,14 @@ export function initChanges(catalog: Catalog, kind: DocKindName): Change[] {
   return out;
 }
 
+/** Every value of one block (or only `ids` of it) back at its neutral setting, written out in full so nothing is skipped. */
+export function resetChanges(catalog: Catalog, kind: DocKindName, block: BlockName, ids?: readonly string[]): Change[] {
+  const first = blockNames(kind)[1];
+  return blockInfo(catalog, kind, block)
+    .params.filter((p) => !isNameCharacter(p) && (!ids || ids.includes(p.id)))
+    .map((p) => ({ block, id: p.id, value: initValue(p, block === first) }));
+}
+
 function initValue(p: ParamInfo, isFirstItem: boolean): number {
   if (/^(tone_switch|receive_switch)$/.test(p.id)) return isFirstItem ? 1 : 0;
   // A range that starts empty would play nothing: the upper ends open to the top of the keyboard and of the velocities.

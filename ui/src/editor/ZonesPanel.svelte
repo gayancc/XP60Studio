@@ -4,6 +4,8 @@
   import { blockTitle } from '../model/labels';
   import { useStore } from './context';
   import ParamControl from './ParamControl.svelte';
+  import { resetBlock } from './toolActions';
+  import { resetChanges } from '../model/tools';
 
   interface Props {
     colors: readonly string[];
@@ -32,6 +34,16 @@
     })),
   );
 
+  const KEY_IDS = ['keyboard_range_lower', 'keyboard_range_upper'] as const;
+  const VEL_IDS = ['velocity_range_lower', 'velocity_range_upper', 'velocity_cross_fade'] as const;
+  const resetKeys = (i: number): void => resetBlock(store, TONE_BLOCKS[i] as BlockName, `${blockTitle(TONE_BLOCKS[i] as BlockName)} key range`, KEY_IDS);
+  const resetVel = (i: number): void => resetBlock(store, TONE_BLOCKS[i] as BlockName, `${blockTitle(TONE_BLOCKS[i] as BlockName)} velocity`, VEL_IDS);
+  const resetAll = (): void =>
+    store.applyMany(
+      TONE_BLOCKS.flatMap((b) => resetChanges(store.catalog, store.kind, b, [...KEY_IDS, ...VEL_IDS])),
+      'Reset all zones',
+    );
+
   /** Write both ends of a range in an order that never leaves lower above upper, even for a moment. */
   function setRange(block: BlockName, prefix: 'keyboard_range' | 'velocity_range', r: { low: number; high: number }): void {
     const lowId = `${prefix}_lower`;
@@ -48,7 +60,10 @@
 
 <div class="zones">
   <section>
-    <span class="caps">Key range · which keys each tone plays</span>
+    <div class="cap">
+      <span class="caps">Key range · which keys each tone plays</span>
+      <button type="button" class="all" onclick={resetAll} title="Put every Tone's key range, velocity range and cross-fade back at neutral (one undo step)">Reset all zones</button>
+    </div>
     <KeyMapH
       {lanes}
       gutterWidth={GUTTER}
@@ -59,9 +74,11 @@
       onbegin={(i) => store.begin(`${blockTitle(TONE_BLOCKS[i] as BlockName)} · Key range`)}
       onend={() => store.end()}
       onrange={(i, r) => setRange(TONE_BLOCKS[i] as BlockName, 'keyboard_range', r)}
+      onreset={resetKeys}
     >
       {#snippet gutter(l)}
         <button type="button" class="tag" onclick={() => onselect(l.id)} aria-pressed={selected === l.id}><i></i>{l.name}</button>
+        <button type="button" class="rs" title="Reset {l.name} key range to the whole keyboard (double-click the lane does the same)" onclick={() => resetKeys(l.id)}>↺</button>
       {/snippet}
     </KeyMapH>
   </section>
@@ -88,7 +105,10 @@
             onchange={(r) => setRange(block, 'velocity_range', r)}
           />
         </div>
-        <ParamControl {block} id="velocity_cross_fade" label="X-fade" size={20} {color} />
+        <div class="end">
+          <ParamControl {block} id="velocity_cross_fade" label="X-fade" size={20} {color} />
+          <button type="button" class="rs" title="Reset {blockTitle(block)} velocity range and cross-fade" onclick={() => resetVel(i)}>↺</button>
+        </div>
       </div>
     {/each}
   </section>
@@ -117,10 +137,49 @@
     background: var(--body-deep);
   }
   .row.sel {
-    background: color-mix(in srgb, var(--tone) 16%, var(--body-deep));
+    background: color-mix(in srgb, var(--tone) 26%, var(--body-deep));
+  }
+  .row:not(.sel) {
+    opacity: 0.8;
+  }
+  .row.sel .tag {
+    font-weight: 700;
   }
   .bar {
     min-width: 0;
+  }
+  .cap {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .end {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .rs,
+  .all {
+    background: var(--well-deep);
+    border: 1px solid var(--edge);
+    border-radius: var(--radius);
+    color: var(--text-dim);
+    cursor: pointer;
+    font: inherit;
+  }
+  .rs {
+    margin-left: auto;
+    padding: 0 5px;
+    line-height: 16px;
+  }
+  .all {
+    padding: 1px 8px;
+    font-size: 11px;
+  }
+  .rs:hover,
+  .all:hover {
+    background: var(--well);
+    color: var(--text);
   }
   .tag {
     background: transparent;

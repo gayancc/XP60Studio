@@ -16,6 +16,8 @@
     color?: string;
     /** Print the octave name on every C. */
     labels?: boolean;
+    /** Note spans washed with a colour on the keys themselves, for example the keys one Tone plays. */
+    tints?: readonly { low: number; high: number; color: string }[];
     ondown?: (note: number, e: PointerEvent) => void;
     onmove?: (note: number, e: PointerEvent) => void;
     onup?: (e: PointerEvent) => void;
@@ -32,6 +34,7 @@
     marked = null,
     color = 'var(--accent)',
     labels = true,
+    tints = [],
     ondown,
     onmove,
     onup,
@@ -76,6 +79,9 @@
   });
   const naturals = $derived(faces.filter((f) => !f.black));
   const accidentals = $derived(faces.filter((f) => f.black));
+  const tintOf = (note: number): string | null => tints.find((t) => note >= t.low && note <= t.high)?.color ?? null;
+  const tintedNaturals = $derived(naturals.flatMap((f) => { const c = tintOf(f.note); return c ? [{ f, c }] : []; }));
+  const tintedAccidentals = $derived(accidentals.flatMap((f) => { const c = tintOf(f.note); return c ? [{ f, c }] : []; }));
   const octaves = Array.from({ length: 11 }, (_, i) => i * 12);
   /** Rows (from note 0) where a full-width separator is drawn: the C boundary and the E/F boundary. */
   const seams = $derived(octaves.flatMap((c) => [c, c + 5]).filter((r) => r > first && r < last + 1));
@@ -133,6 +139,10 @@
   {#each naturals as f (f.note)}
     <rect x={f.x} y={f.y} width={f.w} height={f.h} fill={fill(f)} />
   {/each}
+  {#each tintedNaturals as t (t.f.note)}
+    <rect x={t.f.x} y={t.f.y} width={t.f.w} height={t.f.h} fill={t.c} fill-opacity="0.62" pointer-events="none" />
+    {#if !vertical}<rect x={t.f.x} y={t.f.h - 3} width={t.f.w} height="3" fill={t.c} pointer-events="none" />{/if}
+  {/each}
   {#each seams as r (r)}
     {#if vertical}
       <line x1="0" x2={width} y1={pos(r)} y2={pos(r)} stroke="#79858b" stroke-width="1" />
@@ -142,6 +152,9 @@
   {/each}
   {#each accidentals as f (f.note)}
     <rect x={f.x + 0.5} y={f.y + 0.5} width={Math.max(2, f.w - 1)} height={Math.max(2, f.h - 1)} rx="1" fill={fill(f)} stroke="#15181a" stroke-width="0.8" />
+  {/each}
+  {#each tintedAccidentals as t (t.f.note)}
+    <rect x={t.f.x + 0.5} y={t.f.y + 0.5} width={Math.max(2, t.f.w - 1)} height={Math.max(2, t.f.h - 1)} rx="1" fill={t.c} fill-opacity="0.8" pointer-events="none" />
   {/each}
 
   {#if showLabels}

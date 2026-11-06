@@ -2,7 +2,6 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { catalogJson, initSync } from '../wasm/pkg/xppatch.js';
 import { parseCatalog, type Catalog } from './catalog';
-import { planRename, summarise } from './nameReplace';
 import { PatchStore } from './store.svelte';
 import { describeSound } from './textExport';
 import { MemoryTransport } from './transport';
@@ -36,43 +35,5 @@ describe('copy as text', () => {
       expect(text).toContain(kind === 'performance' ? 'Part 1' : 'Key');
       expect(text).not.toMatch(/Name \d+:/);
     }
-  });
-});
-
-describe('find and replace in names', () => {
-  const rows = [
-    { id: 1, name: 'Brass Hit   ' },
-    { id: 2, name: 'BRASS Pad   ' },
-    { id: 3, name: 'Strings     ' },
-    { id: 4, name: 'Big Brass 1 ' },
-  ];
-
-  it('finds in any case unless asked to match it, and keeps the rest of the name as it was', () => {
-    const plans = planRename(rows, 'brass', 'Horn');
-    expect(plans.map((p) => [p.id, p.to])).toEqual([[1, 'Horn Hit'], [2, 'Horn Pad'], [4, 'Big Horn 1']]);
-    expect(planRename(rows, 'Brass', 'Horn', true).map((p) => p.id)).toEqual([1, 4]);
-  });
-
-  it('replaces every occurrence in a name', () => {
-    expect(planRename([{ id: 1, name: 'aa a' }], 'a', 'b')[0]?.to).toBe('bb b');
-  });
-
-  it('skips, and says why, a result that is too long, empty or not plain text', () => {
-    const plans = planRename([{ id: 1, name: 'Brass Hit' }, { id: 2, name: 'Brass' }, { id: 3, name: 'X' }], 'Brass', 'Orchestral Brass');
-    expect(plans.find((p) => p.id === 1)?.skip).toBe('too long');
-    expect(planRename([{ id: 2, name: 'Brass' }], 'Brass', '')[0]?.skip).toBe('empty');
-    expect(planRename([{ id: 3, name: 'Hi' }], 'Hi', 'Hé')[0]?.skip).toBe('not plain text');
-  });
-
-  it('plans nothing for an empty search or when nothing changes', () => {
-    expect(planRename(rows, '', 'x')).toEqual([]);
-    expect(planRename(rows, 'Brass', 'Brass', true)).toEqual([]);
-    expect(summarise([])).toBe('No shown name would change.');
-  });
-
-  it('summarises what will happen', () => {
-    const plans = planRename([{ id: 1, name: 'Brass' }, { id: 2, name: 'Brass 2' }, { id: 3, name: 'Big Brass' }], 'Brass', 'Orchestra');
-    expect(summarise(plans)).toBe('2 names will change; 1 skipped (too long).');
-    expect(summarise(planRename([{ id: 1, name: 'Brass' }], 'Brass', 'Horn'))).toBe('1 name will change.');
   });
 });

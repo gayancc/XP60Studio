@@ -3,6 +3,27 @@
 Process note (owner decision): hardware testing is one dedicated phase at the end. Items that need the instrument
 are tracked in `docs/07-hardware-acceptance.md` and updated every phase; nothing here is run on hardware before then.
 
+## Factory names cleaned; installed expansion boards appear in the Bank screen (2026-11-05)
+
+- **19 names carried characters that are not on the instrument** (found by scanning every patch, wave and board name; the list is in the commit): the typographic apostrophe in `60's LeadORG` (PR-A 57) and `Singing'Mini` (USER 69) from the patch-list PDF, and Windows-1252 control codes `0x91`/`0x92` in the SR-JV80 waveform lists (Keyboards of the 60s & 70s: `Farf 8'+2'`, `FarfClar16'A`, `'70s Piano A`, ...; Session: `90's Snare`, `REV 90's Snr`). They are now plain ASCII apostrophes. The generator normalises every name and refuses to write a file with anything outside printable ASCII; a test guards the data too.
+- Boards ticked in Settings now fill the Bank screen's **XP-A to XP-D** buttons (slot order is the order you tick them, shown as EXP-A..D in Settings); an empty slot stays greyed out. Their patches are shown by number: Roland's patch-list PDFs differ per board (some mix in rhythm sets and tempo marks), so names are not read from them yet. Selecting one sends Bank Select 84/0, 2, 4 or 6 (H-072).
+
+## Bank screen laid out like the front panel, patch buttons select on the instrument (2026-11-05)
+
+- The Bank screen now follows the XP-60's own patch selection (Owner's Manual p.26): patch group (USER, PR-A, PR-B, PR-C, GM; XP-A to XP-D greyed until confirmed), sub-group a or b, BANK 1-8 and NUMBER 1-8, with an LCD-style line (`USER:003 name [a13]`) and an 8 x 8 grid of the sub-group that fills the screen. Pressing BANK or NUMBER, clicking a cell or using the arrow keys selects the patch; presets show Roland's factory names, read-only.
+- **Select on the instrument (needs hardware: H-070 to H-072):** with the instrument connected, choosing a patch also sends Bank Select MSB, LSB and Program Change (table from the Owner's Manual p.181) on a chosen channel. Nothing is written to memory. New `xppatch-midi` `select_sound` with a Tauri command, tested against the virtual XP-60 (bytes sent, bad values refused).
+- Find and replace in patch names removed from the Library (owner decision); parity row E3 is WON'T-DO.
+- Rhythm key picker fills the height, sets a key's level by dragging along its row, switches a key on or off by double-click and resets with Alt+click; Zones and Rhythm gained reset buttons; the Zones keyboard lights the keys the selected Tone plays.
+
+## Effects plug-in arranged the way an engineer reads it (2026-11-05)
+
+- Each effect's controls are grouped by **signal flow and by module**, not by the manual's parameter order: an EQ as bands from low to high (Low, Mid 1, Mid 2, High, each a strip of Freq, Q and Gain, then Output); delays as taps (time and level together) then feedback, tone and output; the pitch shifters as voices (coarse, fine, pre-delay, pan) then the mix; the rotary speaker as Horn and Drum then rotor; auto-wah as filter, movement, output; and so on for all 25 single effects. Combinations keep one section per stage. Every parameter a type uses sits in exactly one group (tested).
+- **No wasted space.** The sketch now fills the whole height beside the controls, rows are set explicitly so a group is never stranded on its own line, long labels are shortened ("Pan", "Mix", "Level") and lists of three or more entries are compact drop-downs. The effect's output and controller settings below are two labelled lines ("Effect output", "Controllers") instead of a loose wrap. All 40 effects were measured in the real window: none needs a scroll bar and the widest row uses at most 468 of 468 px.
+- **All 40 effects now have the same treatment**, including the 15 combinations (26 to 40): each stage is its own module in signal order (for example Overdrive, then Chorus), packed into rows by width so no module is stranded alone on a line.
+- **Master controls in one fixed place.** The Output Level, the dry/wet Effect Balance (or Mix) and a single Output Pan are drawn in a master strip under the sketch, the same spot for every effect, instead of as a group that would sit alone at the end of a row. The effect's output and controller settings now sit under the controls on the right, so the sketch simply grows to fill the height. 27 of the 40 effects are a single row of controls; none needs a scroll bar (all 40 measured in the real window).
+- The plug-in could be wider than its group and clip its right edge (Hold/Peak on the EQ); it now always fits and wraps instead.
+- Clicking EFX, chorus or reverb in the routing diagram lights that group's border for about two seconds.
+
 ## Effects routing of a Patch (2026-11-05)
 
 Reviewed against the Owner's Manual pp.60-64 and 75 ("Routing effects", the Output Assign cases and the routing examples). Gaps found and fixed:
@@ -15,6 +36,7 @@ Reviewed against the Owner's Manual pp.60-64 and 75 ("Routing effects", the Outp
 - `artifact/docs/xppatchstudio/08-effects-routing-verification.md` checks every routing rule against the manual page that states it and marks what is only inferred.
 - **Per-Tone route indicators (reworked after review of the manual's figures, p.61-64).** Each Tone's row now shows its three send lines exactly as the manual draws them: where the Mix/EFX line goes (`→ MIX`, `→ EFX` or `→ DIR`, with its level), then `→ CHO` and `→ REV`; a send at 0 is faint, one that does nothing (Output Assign DIR) is struck through, and the first Tone of a combined pair is faint. In the flow diagram each lane has one fixed numbered slot per Tone (filled and numbered when that Tone feeds it, a faint ring when not), so which Tone feeds what no longer depends on the others; pointing at a Tone, in the list or the diagram, traces just its lines with their levels and steps everything else back.
 - The routing model is tested against the manual's seven worked examples (unprocessed direct sound; reverb and chorus in series; EFX only; reverb on the chorus sound with the EFX in parallel; EFX, chorus and reverb in series; chorus and reverb in parallel after the EFX; a Tone on DIR) as well as the per-Tone indicator states.
+- Clicking EFX, chorus or reverb in the routing diagram opens the Effects tab and **lights that group's border** for about two seconds (and scrolls it into view), so it is clear which group to edit.
 - 14 new tests (routing model and panel).
 - **Still open:** the same view for Performances (per-Part output, EFX source) and Rhythm Sets; the [EFX], [CHORUS] and [REVERB] panel switches (System settings) are not read by the diagram; the manual's routing examples are not offered as presets (they give "1-127" and "0" only, so a preset would invent the levels). Hardware ledger H-069.
 

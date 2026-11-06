@@ -29,7 +29,7 @@ _HEADER = re.compile(r"(Roland Corporation|For use with|Waveform List|Waveform L
 
 
 def _clean(name: str) -> str:
-    name = re.sub(r"\s+", " ", name.replace("’", "'")).strip()
+    name = re.sub(r"\s+", " ", name.replace("’", "'").replace("\x91", "'").replace("\x92", "'")).strip()
     return re.sub(r"\s*\*\d*$", "", name)  # Roland's footnote marker ("Bodhran MENU *1")
 
 

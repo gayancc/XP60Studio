@@ -13,7 +13,7 @@ const ALLOWED: Record<string, number> = {
   'kit/XpReadout.svelte': 1,
   // a progress readout while a long operation runs, and a page that says a feature needs the desktop app
   'editor/BankView.svelte': 3, // desktop-only page, progress, and the write confirmation
-  'editor/LibraryView.svelte': 3, // desktop-only page, the find-and-replace preview summary
+  'editor/LibraryView.svelte': 1, // desktop-only page
   // the question a confirmation asks before something permanent (not a result)
   'editor/SaveCeremony.svelte': 1,
   'editor/SystemSaveCeremony.svelte': 1,

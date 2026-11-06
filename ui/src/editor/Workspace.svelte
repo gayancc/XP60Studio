@@ -179,7 +179,7 @@
   {:else if mode === 'library'}
     <LibraryView onopened={() => onmode('patch')} />
   {:else}
-    <BankView onopened={() => onmode('patch')} />
+    <BankView {synth} onopened={() => onmode('patch')} />
   {/if}
   </div>
 

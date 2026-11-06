@@ -6,7 +6,6 @@
   import { saveFile } from '../model/saveFile';
   import { say } from '../model/ui.svelte';
   import { buildFolders, findFolder, normaliseTag, pathParts, topOf } from '../model/folders';
-  import { planRename, summarise } from '../model/nameReplace';
   import { preview } from '../model/preview.svelte';
   import { useStore } from './context';
   import { useServices } from './services';
@@ -55,17 +54,6 @@
   }
 
   let search = $state('');
-  let findText = $state('');
-  let replaceText = $state('');
-  let matchCase = $state(false);
-  const plans = $derived(lib ? planRename(lib.rows, findText, replaceText, matchCase) : []);
-  const doable = $derived(plans.filter((p) => p.skip === null).length);
-
-  async function replaceAll(): Promise<void> {
-    if (!lib || doable === 0) return;
-    await lib.renameMany(plans);
-    findText = '';
-  }
   let newTag = $state('');
   let renameTo = $state('');
   let confirmDelete = $state(false);
@@ -286,23 +274,6 @@
           <p class="dim">Select a patch to see its tags and open it. Double-click a row to open it in the editor.</p>
         {/if}
       </DockPanel>
-      <DockPanel title="Find and replace" meta="names shown" focused={false}>
-        <div class="fr">
-          <input type="text" placeholder="Find in names" aria-label="Find in names" bind:value={findText} />
-          <input type="text" placeholder="Replace with" aria-label="Replace with" maxlength="12" bind:value={replaceText} />
-          <ToggleLed checked={matchCase} label="Match case" name="Match upper and lower case" context="Library" onchange={(on) => (matchCase = on)} />
-          {#if findText !== ''}
-            <p class="dim" role="status">{summarise(plans)}</p>
-            <ul class="preview" aria-label="Names that would change">
-              {#each plans.slice(0, 6) as p (p.id)}
-                <li class:skipped={p.skip !== null}>{p.from} → {p.to}{p.skip ? ` (${p.skip})` : ''}</li>
-              {/each}
-              {#if plans.length > 6}<li class="dim">… and {plans.length - 6} more</li>{/if}
-            </ul>
-          {/if}
-          <button type="button" disabled={lib.busy || doable === 0} onclick={replaceAll}>Replace in {doable} name{doable === 1 ? '' : 's'}</button>
-        </div>
-      </DockPanel>
       <DockPanel title="Factory lists" meta="names only" focused={false} fill>
         <FactoryPanel />
       </DockPanel>
@@ -496,29 +467,6 @@
   }
   .dim {
     color: var(--text-dim);
-  }
-  .fr {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-  .fr input {
-    background: var(--track);
-    color: var(--text);
-    border: 1px solid var(--edge);
-    border-radius: var(--radius);
-    padding: 4px 6px;
-  }
-  .preview {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    font-family: var(--font-mono);
-    font-size: 11px;
-  }
-  .preview .skipped {
-    color: var(--text-faint);
-    text-decoration: line-through;
   }
   .staged {
     padding: 6px 8px;

@@ -2,6 +2,24 @@ import { describe, expect, it } from 'vitest';
 import { bankNote, boardName, EXPANSION_NOTE, expansionBoards, FACTORY_BANKS, factoryBank, factoryPatchName, internalWaveCounts, isFixedBank, PATCH_GROUPS, patchGroupOf, presetPatchName, waveLabel, waveName } from './factory';
 
 describe('the factory lists', () => {
+  it('holds only printable ASCII in every patch, wave and board name (the instrument has no other characters)', () => {
+    const names = [
+      ...FACTORY_BANKS.flatMap((b) => [...factoryBank(b)]),
+      ...expansionBoards.flatMap((b) => [b.name, ...(b.waves ?? [])]),
+    ];
+    for (let n = 1; n <= 255; n++) for (const w of [waveName(0, 1, n), waveName(0, 2, n)]) if (w) names.push(w);
+    const bad = names.filter((n) => /[^ -~]/.test(n));
+    expect(bad).toEqual([]);
+  });
+
+  it("writes the quote in 60's, 90's, '70s and feet marks as a plain apostrophe", () => {
+    expect(factoryPatchName('PR-A', 57)).toBe("60's LeadORG");
+    expect(factoryPatchName('USER', 69)).toBe("Singing'Mini");
+    expect(waveName(2, 8, 133)).toBe("Farf 8'+2'");
+    expect(waveName(2, 8, 185)).toBe("'70s Piano A");
+    expect(waveName(2, 9, 134)).toBe("90's Snare");
+  });
+
   it('holds all five banks of 128 patch names, none blank except where Roland leaves one empty', () => {
     for (const b of FACTORY_BANKS) expect(factoryBank(b), b).toHaveLength(128);
     const blanks = FACTORY_BANKS.flatMap((b) => factoryBank(b).filter((n) => n.trim() === ''));

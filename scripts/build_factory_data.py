@@ -58,7 +58,7 @@ def patch_banks() -> dict[str, list[str]]:
         missing = [i for i in range(1, 129) if i not in rows]
         if missing:
             sys.exit(f"{name}: patch numbers missing from the list: {missing[:5]}")
-        out[name] = [rows[i] for i in range(1, 129)]
+        out[name] = [clean_name(rows[i]) for i in range(1, 129)]
     return out
 
 
@@ -72,8 +72,18 @@ def internal_waves() -> dict[str, list[str]]:
         gaps = [i for i in range(1, top + 1) if i not in d]
         if gaps:
             sys.exit(f"{bank}: wave numbers missing: {gaps[:5]}")
-        out[bank] = [d[i] for i in range(1, top + 1)]
+        out[bank] = [clean_name(d[i]) for i in range(1, top + 1)]
     return out
+
+
+# Roland's lists are typeset text, and the PDF readers hand back typographic quotes (U+2018/2019) and, for the SR-JV80 lists,
+# Windows-1252 bytes read as control characters (0x91/0x92). The instrument itself has plain ASCII names, and the quote is
+# always an apostrophe or a feet mark (60's, 90's, '70s, Farf 8'+2'), so every name is normalised to ASCII before it is stored.
+QUOTES = {"‘": "'", "’": "'", "": "'", "": "'", "“": '"', "”": '"', "": '"', "": '"', "–": "-", "—": "-", " ": " "}
+
+
+def clean_name(text: str) -> str:
+    return "".join(QUOTES.get(c, c) for c in text)
 
 
 def norm(text: str) -> str:
@@ -105,8 +115,20 @@ def expansion_boards() -> list[dict]:
         if names is None and number in csv_waves and number not in problems:
             d = csv_waves[number]
             names = [d[i] for i in range(1, max(d) + 1)]
-        boards.append({"number": number, "name": name, "waves": names})
+        boards.append({"number": number, "name": name, "waves": [clean_name(n) for n in names] if names else names})
     return boards
+
+
+def audit(data: dict) -> list[str]:
+    """Every stored name must be printable ASCII: returns what is not (the build refuses to write a file that has any)."""
+    bad: list[str] = []
+    groups = [("patch " + k, v) for k, v in data["patchBanks"].items()] + [("internal wave " + k, v) for k, v in data["internalWaves"].items()]
+    groups += [(f"board {b['number']} waves", b["waves"]) for b in data["expansionBoards"] if b["waves"]]
+    for label, names in groups:
+        for i, n in enumerate(names, 1):
+            if any(not 32 <= ord(c) < 127 for c in n):
+                bad.append(f"{label} {i}: {n!r}")
+    return bad
 
 
 def build() -> str:

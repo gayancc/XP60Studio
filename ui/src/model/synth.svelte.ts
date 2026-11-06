@@ -163,6 +163,21 @@ export class SynthService {
     }
   }
 
+  /**
+   * Select a sound on the instrument with Bank Select and Program Change (`channel` 0 to 15, `program` 0 to 127). Writes
+   * nothing to memory; the instrument's temporary sound is replaced. Returns whether it was sent.
+   */
+  async selectSound(channel: number, msb: number, lsb: number, program: number): Promise<boolean> {
+    if (!this.connected) return false;
+    try {
+      await invoke('midi_select_sound', { channel, msb, lsb, program });
+      return true;
+    } catch (e) {
+      this.error = message(e);
+      return false;
+    }
+  }
+
   /** Gap between writes in ms (20 to 250). Returns the value in use. */
   async setPacing(ms: number): Promise<number> {
     try {

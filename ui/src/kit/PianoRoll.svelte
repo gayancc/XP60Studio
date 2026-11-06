@@ -46,6 +46,12 @@
     onbegin?: (lane: number) => void;
     onend?: () => void;
     onbar?: (note: number) => void;
+    /** Bar mode: a drag along a key's row sets its level, 0..1 of the strip width. */
+    onlevel?: (note: number, value: number) => void;
+    /** Bar mode: double-click on a key's row switches that key on or off. */
+    ontoggle?: (note: number) => void;
+    /** Bar mode: Alt+click on a key's row puts its level back at the default. */
+    onreset?: (note: number) => void;
     /** Ask for a different first visible note (wheel, overview click). */
     onview?: (first: number) => void;
   }
@@ -67,8 +73,21 @@
     onbegin,
     onend,
     onbar,
+    onlevel,
+    ontoggle,
+    onreset,
     onview,
   }: Props = $props();
+
+  let hoverNote = $state<number | null>(null);
+  let levelDrag: number | null = null;
+  const levelAt = (x: number): number => Math.min(1, Math.max(0, x / stripW));
+  const barOf = (n: number): RollBar | undefined => bars.find((b) => b.note === n);
+  function announceBar(n: number): void {
+    const b = barOf(n);
+    if (!b) return;
+    showHint({ context, name: `${noteName(n)} level${b.dim ? ' (key is off)' : ''}`, value: String(Math.round(b.value * 127)), raw: `${Math.round(b.value * 127)} of 127`, shortcut: 'Click to select the key, drag along the row to set its level' });
+  }
 
   const OVER_W = 10;
   const view = $derived<RollView>({ first, last, height });
@@ -117,6 +136,20 @@
     const note = noteAtRow(view, y);
     if (bars.length > 0) {
       onbar?.(note);
+      if (e.altKey && onreset) {
+        onreset(note);
+        return;
+      }
+      if (!onlevel) return;
+      levelDrag = note;
+      onbegin?.(note);
+      try {
+        strip?.setPointerCapture(e.pointerId);
+      } catch {
+        // No capture: the drag still works while the pointer stays over the strip.
+      }
+      onlevel(note, levelAt(x));
+      announceBar(note);
       return;
     }
     const lane = Math.min(lanes - 1, Math.max(0, Math.floor(x / laneW)));
@@ -140,7 +173,17 @@
   }
 
   function stripMove(e: PointerEvent): void {
-    const { y } = local(e);
+    const { x, y } = local(e);
+    if (bars.length > 0) {
+      if (levelDrag !== null) {
+        onlevel?.(levelDrag, levelAt(x));
+        announceBar(levelDrag);
+      } else {
+        hoverNote = noteAtRow(view, y);
+        announceBar(hoverNote);
+      }
+      return;
+    }
     if (!rangeDrag) {
       const lane = Math.min(lanes - 1, Math.max(0, Math.floor(local(e).x / laneW)));
       const r = ranges.find((b) => b.lane === lane);
@@ -161,6 +204,10 @@
 
   function stripUp(e: PointerEvent): void {
     if (strip?.hasPointerCapture(e.pointerId)) strip.releasePointerCapture(e.pointerId);
+    if (levelDrag !== null) {
+      levelDrag = null;
+      onend?.();
+    }
     if (rangeDrag) {
       rangeDrag = null;
       onend?.();
@@ -183,14 +230,31 @@
     role="group"
     aria-label="{context} ranges"
     onpointerdown={stripDown}
+    ondblclick={(e) => {
+      if (bars.length > 0) ontoggle?.(noteAtRow(view, local(e).y));
+    }}
     onpointermove={stripMove}
     onpointerup={stripUp}
     onpointercancel={stripUp}
+    style:cursor={bars.length > 0 ? 'ew-resize' : 'ns-resize'}
     onpointerleave={() => {
-      if (!rangeDrag) clearHint();
+      hoverNote = null;
+      if (!rangeDrag && levelDrag === null) clearHint();
     }}
   >
     <rect width={stripW} {height} fill="#232b2f" />
+    {#if bars.length > 0}
+      <!-- one row per key: a visible track, a hover row, and the selected row tinted across the whole strip -->
+      {#each bars as b (b.note)}
+        {#if b.note >= first && b.note <= last}
+          {@const ry = yTop(b.note)}
+          <rect x="0" y={ry} width={stripW} height={rh} fill={b.note % 2 === 0 ? '#273035' : '#232b2f'} />
+          <rect x="1" y={ry + 1} width={stripW - 2} height={Math.max(1, rh - 2)} rx="1.5" fill="#12181b" fill-opacity="0.7" />
+          {#if hoverNote === b.note}<rect x="0" y={ry} width={stripW} height={rh} fill="#fff" fill-opacity="0.08" />{/if}
+          {#if b.selected}<rect x="0" y={ry} width={stripW} height={rh} fill="var(--accent)" fill-opacity="0.22" />{/if}
+        {/if}
+      {/each}
+    {/if}
     {#each ranges as r (r.lane)}
       {@const y0 = yOfRow(view, Math.min(r.high, last) + 1)}
       {@const y1 = yOfRow(view, Math.max(r.low, first))}
@@ -206,7 +270,10 @@
     {/each}
     {#each bars as b (b.note)}
       {#if b.note >= first && b.note <= last}
-        <rect x="1" y={yTop(b.note) + 0.5} width={Math.max(2, b.value * (stripW - 2))} height={Math.max(2, rh - 1)} rx="1.5" fill={b.selected ? 'var(--accent)' : b.color} opacity={b.dim ? 0.12 : 1} />
+        <rect x="1" y={yTop(b.note) + 0.5} width={Math.max(2, b.value * (stripW - 2))} height={Math.max(2, rh - 2)} rx="1.5" fill={b.selected ? 'var(--accent)' : b.color} opacity={b.dim ? 0.3 : 1} />
+        {#if b.selected && rh >= 7}
+          <text x={Math.min(stripW - 4, Math.max(24, b.value * (stripW - 2) - 4))} y={yTop(b.note) + rh - 1.5} text-anchor="end" class="val">{Math.round(b.value * 127)}</text>
+        {/if}
       {/if}
     {/each}
   </svg>
@@ -249,6 +316,11 @@
   .over {
     display: block;
     cursor: pointer;
+  }
+  .val {
+    font: 700 8px var(--font-mono);
+    fill: #0e1417;
+    pointer-events: none;
   }
   .blk {
     font: 600 9px var(--font-caps);

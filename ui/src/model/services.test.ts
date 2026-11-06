@@ -164,49 +164,6 @@ const patch = new Uint8Array(590).fill(7);
 const armed = (slot: number): ArmedSave => ({ slot, occupant_name: 'Old Sound', backup_path: 'C:/b/1-user.syx' });
 const report = (slot: number, verified = true): SaveReport => ({ slot, messages: 9, bytes: 590, verified });
 
-describe('LibraryService renameMany', () => {
-  const plan = (id: number, to: string, skip: string | null = null): { id: number; to: string; skip: string | null } => ({ id, to, skip });
-
-  it('renames only what the plan allows, then refreshes once and reports the count', async () => {
-    const b = fakeBackend();
-    const lib = new LibraryService(b);
-    const done = await lib.renameMany([plan(1, 'Horn'), plan(2, 'Way Too Long Name', 'too long'), plan(3, 'Pad')]);
-    expect(done).toBe(2);
-    expect(b.libraryRename).toHaveBeenCalledTimes(2);
-    expect(b.libraryRename).toHaveBeenNthCalledWith(1, 1, 'Horn');
-    expect(b.libraryRename).toHaveBeenNthCalledWith(2, 3, 'Pad');
-    expect(b.libraryList).toHaveBeenCalledTimes(1);
-    expect(lib.notice).toBe('Renamed 2 patches.');
-    expect(lib.error).toBe('');
-    expect(lib.busy).toBe(false);
-  });
-
-  it('stops at the first failure, says how far it got, and still refreshes', async () => {
-    let calls = 0;
-    const b = fakeBackend({
-      libraryRename: vi.fn(async () => {
-        calls += 1;
-        if (calls === 2) throw 'the library is locked';
-      }),
-    });
-    const lib = new LibraryService(b);
-    const done = await lib.renameMany([plan(1, 'A'), plan(2, 'B'), plan(3, 'C')]);
-    expect(done).toBe(1);
-    expect(b.libraryRename).toHaveBeenCalledTimes(2);
-    expect(lib.error).toContain('locked');
-    expect(lib.error).toContain('1 of 3 renamed');
-    expect(b.libraryList).toHaveBeenCalledTimes(1);
-    expect(lib.busy).toBe(false);
-  });
-
-  it('does nothing and sends nothing when every rename is skipped', async () => {
-    const b = fakeBackend();
-    const lib = new LibraryService(b);
-    expect(await lib.renameMany([plan(1, 'x', 'empty')])).toBe(0);
-    expect(b.libraryRename).not.toHaveBeenCalled();
-  });
-});
-
 describe('SaveFlow', () => {
   it('walks idle, armed, writing, done and keeps one undo', async () => {
     const b = fakeBackend({
