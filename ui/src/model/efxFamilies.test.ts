@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { EFX_TYPES, efxChoices, efxValueText } from './efx';
-import { EFX_FAMILIES, efxBlurb, familyOf, sectionsOf } from './efxFamilies';
+import { EFX_FAMILIES, efxBlurb, familyOf, masterOf, sectionsOf } from './efxFamilies';
 
 describe('effect families', () => {
   it('place each of the 40 types in exactly one family', () => {
@@ -13,14 +13,15 @@ describe('effect families', () => {
   it('put every parameter a type uses in exactly one section, in no section if unused', () => {
     for (const t of EFX_TYPES) {
       const used = t.params.filter((p) => p.raw).map((p) => p.index).sort((a, b) => a - b);
-      const placed = sectionsOf(t).flatMap((s) => s.params.map((p) => p.index)).sort((a, b) => a - b);
+      const placed = [...sectionsOf(t).flatMap((s) => s.params), ...masterOf(t)].map((p) => p.index).sort((a, b) => a - b);
       expect(placed, t.name).toEqual(used);
     }
   });
 
   it('split a combination by stage', () => {
     const t = EFX_TYPES[25]!; // 26 OVERDRIVE→CHORUS
-    expect(sectionsOf(t).map((s) => s.title)).toEqual(['Overdrive', 'Chorus', 'Output']);
+    expect(sectionsOf(t).map((s) => s.title)).toEqual(['Overdrive', 'Chorus']);
+    expect(masterOf(t).map((p) => p.name)).toEqual(['Output Level']);
     expect(efxBlurb(t)).toMatch(/into/);
     expect(efxBlurb(EFX_TYPES[37]!)).toMatch(/side by side/);
   });
@@ -43,5 +44,11 @@ describe('manual-backed value text', () => {
     expect(efxValueText('Feedback Level', [0, 98], 98)).toBe('+98%');
     expect(efxValueText('Phase', [0, 90], 90)).toBe('180°');
     expect(efxValueText('Peaking1 Frequency', [0, 16], 16)).toBe('8000 Hz');
+  });
+
+  it('takes the Output Level, and the dry/wet balance of a single effect, out as master controls', () => {
+    expect(masterOf(EFX_TYPES[18]!).map((p) => p.name)).toEqual(['Effect Balance', 'Output Level']); // TRIPLE-TAP-DELAY
+    expect(sectionsOf(EFX_TYPES[18]!).flatMap((s) => s.params).some((p) => /Balance$|Output Level/.test(p.name))).toBe(false);
+    expect(masterOf(EFX_TYPES[27]!).map((p) => p.name)).toEqual(['Output Level']); // 28 OVERDRIVE→DELAY keeps its own Delay Balance in the stage
   });
 });

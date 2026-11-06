@@ -4,13 +4,27 @@
   interface Props {
     title: string;
     color?: string;
+    /** The moment (Date.now()) this group was pointed out; the border lights up briefly when it is recent. 0 or omitted: never. */
+    flash?: number;
     children: Snippet;
   }
 
-  let { title, color = 'var(--accent)', children }: Props = $props();
+  let { title, color = 'var(--accent)', flash = 0, children }: Props = $props();
+
+  // Pointing a group out: after a jump from elsewhere the group's border takes the accent colour for a moment, then fades back, and the group scrolls into view.
+  const SHOWN_FOR = 1800;
+  let lit = $state(false);
+  let el: HTMLFieldSetElement | undefined = $state();
+  $effect(() => {
+    if (!flash || Date.now() - flash > 2500) return;
+    lit = true;
+    el?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' });
+    const t = setTimeout(() => (lit = false), SHOWN_FOR);
+    return () => clearTimeout(t);
+  });
 </script>
 
-<fieldset class="group" style:--tab={color}>
+<fieldset class="group" class:lit bind:this={el} style:--tab={color}>
   <legend><span>{title}</span></legend>
   <div class="body">{@render children()}</div>
 </fieldset>
@@ -23,6 +37,11 @@
     border-radius: var(--radius-lg);
     background: var(--body);
     min-inline-size: 0;
+    transition: border-color 0.7s ease, box-shadow 0.7s ease;
+  }
+  .group.lit {
+    border-color: color-mix(in srgb, var(--accent) 70%, var(--edge));
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
   }
   legend {
     padding: 0;

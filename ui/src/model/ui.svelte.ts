@@ -23,6 +23,8 @@ export interface UiState {
   /** The last thing copied with Copy tone / Copy section. */
   clip: Clip | null;
   paletteOpen: boolean;
+  /** The group to point out after a jump from another tab (for example from the routing diagram): its name and the moment of the jump. */
+  flash: { section: string; at: number } | null;
 }
 
 export const ui: UiState = $state({
@@ -35,6 +37,7 @@ export const ui: UiState = $state({
   tools: { strength: 0.3, amount: 0.1, allBlocks: false, seed: 1, morph: 0 },
   clip: null,
   paletteOpen: false,
+  flash: null,
 });
 
 /** Tell the person something short that just finished ("Copied ..."). It appears in the bottom-left corner with every other message. */

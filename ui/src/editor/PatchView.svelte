@@ -121,7 +121,12 @@
         {:else if i === toneTabs.length + 1}
           <CommonPanel sections={['structure']} />
         {:else if i === toneTabs.length + 2}
-          <RoutingPanel onjump={() => (arrangement.patchTab = tabNames.indexOf('Effects'))} />
+          <RoutingPanel
+            onjump={(node) => {
+              ui.flash = { section: node, at: Date.now() };
+              arrangement.patchTab = tabNames.indexOf('Effects');
+            }}
+          />
         {:else}
           <div class="stackcol">
             <CommonPanel sections={['efx']} />

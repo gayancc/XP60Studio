@@ -9,6 +9,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     include: ['src/**/*.test.ts'],
+    setupFiles: ['src/test/setup.ts'],
     // The randomize-over-many-seeds test is heavy and times out when the machine is busy building.
     testTimeout: 20000,
     coverage: {

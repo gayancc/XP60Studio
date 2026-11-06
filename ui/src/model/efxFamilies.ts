@@ -78,6 +78,12 @@ export interface EfxSection {
   /** Section title; for a combination, the stage it belongs to. */
   readonly title: string;
   readonly params: readonly EfxParam[];
+  /** Draw the controls as a channel strip (one above the other), for a band, tap or voice. */
+  readonly strip?: boolean;
+  /** Short names for the controls, in order, where the group's title already says what they belong to (a band's "Freq", "Q", "Gain"). */
+  readonly labels?: readonly string[];
+  /** The row the group sits in (0 first); a group never shares a row with a group of another row. */
+  readonly row?: number;
 }
 
 const RULES: ReadonlyArray<readonly [SectionId, RegExp]> = [
@@ -103,27 +109,121 @@ export function sectionOf(name: string): SectionId {
 const STAGES = /^(Over ?Drive|Distortion|Enhancer|Chorus|Flanger|Delay)\b/i;
 
 /**
+ * How an engineer reads these effects, in signal-flow order, where the plain "by what the parameter does" grouping would scatter related controls (an EQ band's frequency,
+ * Q and gain; a delay tap's time and level; a pitch-shifter voice's pitch, pre-delay and pan). Each entry is a group of parameter numbers (1 to 12, the manual's order) and
+ * whether to draw it as a strip. A type not listed here uses the generic grouping. Every parameter a type uses must appear exactly once (tested).
+ */
+type Group = { title: string; idx: readonly number[]; strip?: boolean; names?: readonly string[]; row?: number };
+const g = (title: string, idx: readonly number[], row = 0, o: { strip?: boolean; names?: readonly string[] } = {}): Group => ({ title, idx, row, ...o });
+const KF = ['Freq', 'Gain'];
+const KFQ = ['Freq', 'Q', 'Gain'];
+const TL = ['Time', 'Level'];
+
+const LAYOUTS: Record<number, readonly Group[]> = {
+  // 4-band EQ read low to high, like the front panel of a console EQ: one strip per band
+  1: [g('Low', [1, 2], 0, { strip: true, names: KF }), g('Mid 1', [5, 6, 7], 0, { strip: true, names: KFQ }), g('Mid 2', [8, 9, 10], 0, { strip: true, names: KFQ }), g('High', [3, 4], 0, { strip: true, names: KF }), g('Output', [11], 0, { strip: true })],
+  // 8-band graphic EQ: the bands in order, then the width of each, then out
+  5: [g('Band gains', [1, 2, 3, 4, 5, 6, 7, 8], 0, { names: ['1', '2', '3', '4', '5', '6', '7', '8'] }), g('Width', [9], 1)],
+  // distortion: drive, then the amp it goes through, then tone, then out
+  2: [g('Drive', [1]), g('Amp', [3]), g('Tone', [4, 5])],
+  3: [g('Drive', [1]), g('Amp', [3]), g('Tone', [4, 5])],
+  4: [g('Sweep', [1, 2, 3, 4])],
+  6: [g('Enhance', [1]), g('Tone', [3, 4])],
+  // auto-wah: the filter, what moves it (the playing, or an LFO), then out
+  7: [g('Filter', [1, 5, 6]), g('Movement', [4, 2, 3])],
+  // rotary speaker: the horn and the drum each with their speeds, then the speed switch
+  8: [g('Horn (high)', [1, 3, 6, 8], 0, { strip: true, names: ['Slow', 'Fast', 'Accel', 'Level'] }), g('Drum (low)', [2, 4, 7, 9], 0, { strip: true, names: ['Slow', 'Fast', 'Accel', 'Level'] }), g('Rotor', [5, 10], 0, { strip: true })],
+  9: [g('Compression', [1, 2]), g('Tone', [5, 6]), g('Output gain', [4])],
+  10: [g('Limiting', [1, 3, 2]), g('Tone', [6, 7]), g('Output gain', [5])],
+  11: [g('Chorus', [1, 2, 3]), g('Deviation', [4, 5, 6]), g('Output', [7, 8], 1)],
+  12: [g('Chorus', [1, 2, 3]), g('Tremolo', [4, 5, 6]), g('Output', [7, 8], 1)],
+  13: [g('Chorus', [1, 2, 3, 4]), g('Tone', [5, 6]), g('Output', [7, 8], 1)],
+  14: [g('Chorus', [3, 4, 5, 6]), g('Filter', [1, 2]), g('Tone', [8, 9], 1), g('Output', [10, 11], 1)],
+  15: [g('Flanger', [3, 4, 5, 6, 7]), g('Filter', [1, 2], 1), g('Tone', [8, 9], 1), g('Output', [10, 11], 1)],
+  16: [g('Flanger', [1, 2, 3, 4]), g('Step', [5, 6]), g('Tone', [7, 8], 1), g('Output', [9, 10], 1)],
+  // stereo delay: each side with its time and feedback phase, then the feedback, what it is filtered by, and out
+  17: [g('Left', [2, 4], 0, { names: ['Time', 'Phase'] }), g('Right', [3, 5], 0, { names: ['Time', 'Phase'] }), g('Feedback', [1, 6], 1), g('Tone', [7, 8, 9], 1), g('Output', [10, 11], 2)],
+  18: [g('Delay', [2, 3]), g('Feedback', [1, 4, 5]), g('Modulation', [6, 7, 8], 1), g('Tone', [9, 10], 1), g('Output', [11, 12], 1)],
+  // triple tap: each tap with its time and level, then the shared feedback
+  19: [g('Tap left', [1, 6], 0, { strip: true, names: TL }), g('Tap centre', [3, 8], 0, { strip: true, names: TL }), g('Tap right', [2, 7], 0, { strip: true, names: TL }), g('Feedback', [4, 5], 0, { strip: true }), g('Tone', [9, 10], 0, { strip: true }), g('Output', [11, 12], 0, { strip: true })],
+  20: [g('Tap 1', [1, 5], 0, { strip: true, names: TL }), g('Tap 2', [2, 6], 0, { strip: true, names: TL }), g('Tap 3', [3, 7], 0, { strip: true, names: TL }), g('Tap 4', [4, 8], 0, { strip: true, names: TL }), g('Feedback', [9, 10], 0, { strip: true }), g('Output', [11, 12], 0, { strip: true })],
+  21: [g('Delay', [1, 3]), g('Feedback', [2, 4]), g('Tone', [6, 7]), g('Output', [5, 8, 9], 1)],
+  // two-voice pitch shifter: each voice with its pitch, pre-delay and pan, then the mode and the mix between them
+  22: [g('Voice A', [2, 4, 6, 8], 0, { strip: true, names: ['Coarse', 'Fine', 'Pre-delay', 'Pan'] }), g('Voice B', [3, 5, 7, 9], 0, { strip: true, names: ['Coarse', 'Fine', 'Pre-delay', 'Pan'] }), g('Shifter', [1], 0), g('Voice mix', [10], 0)],
+  24: [g('Reverb', [1, 2, 3]), g('Damping and tone', [4, 5, 6]), g('Output', [7, 8], 1)],
+  25: [g('Gate reverb', [1, 2, 3]), g('Tone', [4, 5]), g('Output', [6, 7], 1)],
+  23: [g('Pitch', [1, 2, 3, 4]), g('Feedback', [5]), g('Tone', [7, 8], 1)],
+};
+
+// ---- combinations: each stage is a module in signal order, packed into rows without stranding a module on its own line.
+const KNOB_W = 62;
+const GAP_W = 14;
+const ROW_W = 468;
+/** The label a control gets inside its stage, from the manual's full name ("Chorus Pre Delay Time" in the Chorus module is just "Pre-delay"). */
+const STAGE_LABELS: ReadonlyArray<readonly [RegExp, string]> = [
+  [/Pre Delay Time$/, 'Pre-delay'],
+  [/Feedback Level$/, 'Feedback'],
+  [/Delay Time$/, 'Time'],
+  [/HF Damp$/, 'HF damp'],
+  [/Mix Level$/, 'Mix'],
+  [/Pan$/, 'Pan'],
+  [/Balance$/, 'Balance'],
+  [/Output Level$/, 'Level'],
+  [/(^|\s)Rate$/, 'Rate'],
+  [/Depth$/, 'Depth'],
+  [/Sens$/, 'Sens'],
+  [/Drive$/, 'Drive'],
+];
+const labelOf = (name: string): string => STAGE_LABELS.find(([re]) => re.test(name))?.[1] ?? name;
+
+function combinationSections(used: readonly EfxParam[]): EfxSection[] {
+  const stages = new Map<string, EfxParam[]>();
+  for (const p of used) {
+    const m = p.name === 'Drive' ? ['Overdrive', 'Overdrive'] : STAGES.exec(p.name);
+    const title = /^over ?drive$/i.test(m?.[1] ?? '') ? 'Overdrive' : (m?.[1] ?? 'Effect');
+    stages.set(title, [...(stages.get(title) ?? []), p]);
+  }
+  const mods = [...stages.entries()].filter(([, ps]) => ps.length > 0);
+  let row = 0;
+  let width = 0;
+  return mods.map(([title, params]) => {
+    // a drop-down (HF Damp) is wider than a knob
+    const w = params.length * KNOB_W + (params.some((p) => /HF Damp$/.test(p.name)) ? 36 : 0);
+    if (width > 0 && width + w + GAP_W > ROW_W) {
+      row += 1;
+      width = 0;
+    }
+    width += w + GAP_W;
+    return { title, params, row, labels: params.map((p) => labelOf(p.name)) };
+  });
+}
+
+/**
  * The sections of a type, in order. A combination type is split by stage ("Chorus", "Delay"), then the shared Output Level closes the list. Every used parameter
  * appears in exactly one section.
  */
+/**
+ * The master controls of an effect: the output pan, the dry/wet Effect Balance or Mix Level (single effects) and the Output Level. Every effect has the Level, so it is drawn in one fixed place under the
+ * sketch, like a plug-in's master section, instead of as a group of its own that would sit alone at the end of a row.
+ */
+export const isMaster = (type: EfxType, p: EfxParam): boolean => p.raw !== null && (p.name === 'Output Level' || p.name === 'Level' || (type.type < 26 && (p.name === 'Effect Balance' || p.name === 'Mix Level' || p.name === 'Output Pan')));
+/** Pan first, then the dry/wet control, then the level: the order a channel's output section reads. */
+const masterRank = (p: EfxParam): number => (p.name === 'Output Pan' ? 0 : /Level$/.test(p.name) && !/Mix/.test(p.name) ? 2 : 1);
+export const masterOf = (type: EfxType): EfxParam[] => type.params.filter((p) => isMaster(type, p)).sort((a, b) => masterRank(a) - masterRank(b));
+
 export function sectionsOf(type: EfxType): EfxSection[] {
-  const used = type.params.filter((p) => p.raw !== null);
-  if (type.type >= 26) {
-    const stages = new Map<string, EfxParam[]>();
-    const tail: EfxParam[] = [];
-    for (const p of used) {
-      const m = p.name === 'Drive' ? ['Overdrive', 'Overdrive'] : STAGES.exec(p.name);
-      if (!m || p.name === 'Output Level') {
-        tail.push(p);
-        continue;
-      }
-      const key = /^over ?drive$/i.test(m[1] ?? '') ? 'Overdrive' : (m[1] ?? '');
-      stages.set(key, [...(stages.get(key) ?? []), p]);
-    }
-    const out: EfxSection[] = [...stages].map(([title, params]) => ({ title, params }));
-    if (tail.length) out.push({ title: 'Output', params: tail });
-    return out;
+  const used = type.params.filter((p) => p.raw !== null && !isMaster(type, p));
+  const layout = LAYOUTS[type.type];
+  if (layout) {
+    return layout
+      .map((g) => {
+        // a group keeps its short names aligned with the controls that remain once the master controls are taken out
+        const kept = g.idx.map((i, k) => [used.find((p) => p.index === i), g.names?.[k]] as const).filter((e): e is readonly [EfxParam, string | undefined] => !!e[0]);
+        return { title: g.title, strip: g.strip, row: g.row, params: kept.map((e) => e[0]), labels: g.names ? kept.map((e) => e[1] ?? e[0].name) : undefined };
+      })
+      .filter((sec) => sec.params.length > 0);
   }
+  if (type.type >= 26) return combinationSections(used);
   const by = new Map<SectionId, EfxParam[]>();
   for (const p of used) {
     const id = sectionOf(p.name);

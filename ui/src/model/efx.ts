@@ -40,6 +40,8 @@ export const efxTypeLabel = (t: EfxType): string => `${String(t.type).padStart(2
 const SHORT: ReadonlyArray<readonly [RegExp, string]> = [
   [/\bFrequency\b/g, 'Freq'],
   [/\bOutput Level\b/g, 'Level'],
+  [/\bOutput Pan\b/g, 'Pan'],
+  [/\bMix Level\b/g, 'Mix'],
   [/\bEffect Balance\b/g, 'Balance'],
   [/\bFeedback Level\b/g, 'Feedback'],
   [/\bPre Delay Time\b/g, 'Pre Delay'],

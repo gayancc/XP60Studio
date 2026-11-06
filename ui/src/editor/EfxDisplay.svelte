@@ -8,11 +8,14 @@
     type: EfxType;
     /** The twelve stored parameter values, index 0 = parameter 1. */
     values: readonly number[];
+    /** Size in pixels: the sketch fills the space beside the controls, whatever its height. */
+    width?: number;
+    height?: number;
   }
-  let { type, values }: Props = $props();
+  let { type, values, width = 220, height = 96 }: Props = $props();
 
-  const W = 220;
-  const H = 96;
+  const W = $derived(width);
+  const H = $derived(height);
   const family = $derived(familyOf(type.type).id);
 
   /** Normalised 0..1 value of the first used parameter whose name matches; `fallback` when the type has none. */
@@ -113,15 +116,16 @@
   <line x1="6" x2={W - 6} y1={H / 2} y2={H / 2} class="mid" />
   {#if type.type >= 26}
     {#each stages as s, i (i)}
-      {@const w = 84}
-      {@const x = serial ? 10 + i * 112 : 10 + i * 112}
-      <rect {x} y={serial ? 30 : 12} width={w} height="34" rx="3" class="stage" />
-      <text x={x + w / 2} y={serial ? 51 : 33} text-anchor="middle" class="t">{s.trim().toUpperCase()}</text>
+      {@const w = (W - 30) / 2}
+      {@const x = 10 + i * (w + 10)}
+      {@const top = H / 2 - 17 - (serial ? 0 : 6)}
+      <rect {x} y={top} width={w} height="34" rx="3" class="stage" />
+      <text x={x + w / 2} y={top + 21} text-anchor="middle" class="t">{s.trim().toUpperCase()}</text>
     {/each}
     {#if serial}
-      <path d="M96 47 H120 M114 42 L120 47 L114 52" class="line" />
+      <path d="M{W / 2 - 6} {H / 2} H{W / 2 + 6} M{W / 2 + 1} {H / 2 - 4} L{W / 2 + 6} {H / 2} L{W / 2 + 1} {H / 2 + 4}" class="line" />
     {:else}
-      <text x={W / 2} y="82" text-anchor="middle" class="t dim">SIDE BY SIDE</text>
+      <text x={W / 2} y={H / 2 + 34} text-anchor="middle" class="t dim">SIDE BY SIDE</text>
     {/if}
   {:else if family === 'chorus' || (family === 'filter' && type.type !== 8) || type.type === 8}
     <path d={wave} class="line" />
@@ -136,8 +140,9 @@
     <path d={curve} class="line" />
   {:else if family === 'pitch'}
     {#each pitch as p, i (i)}
-      <rect x={30 + i * 90} y={H / 2 - 8 - (p.st / 12) * 34} width="60" height="16" rx="2" class="bar" />
-      <text x={60 + i * 90} y={H - 6} text-anchor="middle" class="t dim">{p.st > 0 ? '+' : ''}{p.st} st</text>
+      {@const w = (W - 30) / 2}
+      <rect x={10 + i * (w + 10)} y={H / 2 - 8 - (p.st / 12) * (H / 2 - 20)} width={w} height="16" rx="2" class="bar" />
+      <text x={10 + i * (w + 10) + w / 2} y={H - 6} text-anchor="middle" class="t dim">{p.st > 0 ? '+' : ''}{p.st} st</text>
     {/each}
   {:else if family === 'eq'}
     {#each bars as b, i (i)}

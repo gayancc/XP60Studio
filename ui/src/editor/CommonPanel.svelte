@@ -2,6 +2,7 @@
   import { GroupFrame } from '../kit';
   import { commonParams, type CommonSection } from '../model/layout';
   import { commonSectionTitle } from '../model/labels';
+  import { ui } from '../model/ui.svelte';
   import { useStore } from './context';
   import ParamControl from './ParamControl.svelte';
   import StructureControl from './StructureControl.svelte';
@@ -60,7 +61,7 @@
   {/if}
 
   {#snippet group(s: CommonSection)}
-    <GroupFrame title={commonSectionTitle(s)}>
+    <GroupFrame title={commonSectionTitle(s)} flash={ui.flash?.section === s ? ui.flash.at : 0}>
       {#if s === 'structure'}
         {#each idsOf(s) as id (id)}
           {#if !STRUCTURE_PAIRS[id] && !STRUCTURE_BOOSTERS.has(id)}<ParamControl block="common" {id} />{/if}

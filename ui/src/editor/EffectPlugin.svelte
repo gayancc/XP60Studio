@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Dropdown, Knob, Segmented } from '../kit';
   import { EFX_TYPES, efxChoices, efxShortName, efxTypeLabel, efxUnitNote, efxValueText, type EfxParam } from '../model/efx';
-  import { efxBlurb, EFX_FAMILIES, familyOf, sectionsOf } from '../model/efxFamilies';
+  import { efxBlurb, EFX_FAMILIES, familyOf, masterOf, sectionsOf } from '../model/efxFamilies';
   import { useStore } from './context';
   import EfxDisplay from './EfxDisplay.svelte';
   import ParamControl from './ParamControl.svelte';
@@ -24,6 +24,32 @@
   const family = $derived(familyOf(type.type));
   const values = $derived(Array.from({ length: 12 }, (_, i) => store.get('common', `efx_parameter_${i + 1}`)));
   const sections = $derived(sectionsOf(type));
+  const master = $derived(masterOf(type));
+  /** The sections grouped by the row they sit in, top row first. */
+  const rows = $derived.by(() => {
+    const by = new Map<number, typeof sections>();
+    for (const sec of sections) by.set(sec.row ?? 0, [...(by.get(sec.row ?? 0) ?? []), sec]);
+    return [...by.entries()].sort((a, b) => a[0] - b[0]).map(([, v]) => v);
+  });
+  /** Short names for the routing and control settings, so each fits one line under its knob. */
+  const EXTRA_LABELS: Record<string, string> = {
+    efx_output_assign: 'Output',
+    efx_mix_out_send_level: 'Out level',
+    efx_chorus_send_level: 'To chorus',
+    efx_reverb_send_level: 'To reverb',
+    efx_control_source_1: 'Control 1',
+    efx_control_depth_1: 'Depth 1',
+    efx_control_source_2: 'Control 2',
+    efx_control_depth_2: 'Depth 2',
+    efx_control_hold_peak: 'Hold / peak',
+  };
+  /** Where the effect's sound goes, then what moves it: the way an engineer reads a channel's output section and its controller section. */
+  const ROUTING_GROUPS = [
+    { title: 'Effect output', ids: ['efx_output_assign', 'efx_mix_out_send_level', 'efx_chorus_send_level', 'efx_reverb_send_level'] },
+    { title: 'Controllers', ids: ['efx_control_source_1', 'efx_control_depth_1', 'efx_control_source_2', 'efx_control_depth_2', 'efx_control_hold_peak'] },
+  ] as const;
+  const SKETCH_W = 164;
+  let sketchH = $state(0);
   const extras = $derived(ids.filter((id) => id !== 'efx_type' && !id.startsWith('efx_parameter_')));
 
   function pick(n: number): void {
@@ -54,20 +80,46 @@
   </header>
 
   <div class="body">
-    <EfxDisplay {type} {values} />
+    <div class="left">
+      <div class="sketch" bind:clientHeight={sketchH}><EfxDisplay {type} {values} width={SKETCH_W} height={Math.max(sketchH, 84)} /></div>
+      <div class="master" aria-label="Master controls">
+        {#each master as p (p.index)}
+          {#if p.raw}
+            {@const r = p.raw}
+            <Knob
+              value={values[p.index - 1] ?? r[0]}
+              min={r[0]}
+              max={r[1]}
+              size={30}
+              color="var(--fx)"
+              defaultValue={r[0]}
+              label={p.name === 'Output Pan' ? 'Pan' : /Level$/.test(p.name) && !/Mix/.test(p.name) ? 'Level' : 'Dry / wet'}
+              name={p.name}
+              context="Effects > Parameter {p.index}"
+              format={(x) => efxValueText(p.name, r, x)}
+              onchange={(x) => put(p, x)}
+              onbegin={() => store.begin(`Effects · ${p.name}`)}
+              onend={() => store.end()}
+            />
+          {/if}
+        {/each}
+      </div>
+    </div>
     <div class="sections">
-      {#each sections as s (s.title)}
+     {#each rows as line, li (li)}
+      <div class="line">
+      {#each line as s (s.title)}
         <section>
           <h4>{s.title}</h4>
-          <div class="row">
-            {#each s.params as p (p.index)}
+          <div class="row" class:strip={s.strip} class:two={s.strip && s.params.length >= 4}>
+            {#each s.params as p, k (p.index)}
               {#if p.raw}
                 {@const r = p.raw}
                 {@const choices = efxChoices(p.name, r)}
                 {@const v = values[p.index - 1] ?? r[0]}
-                {#if choices && choices.length <= 4}
+                {#if choices && choices.length <= 2}
                   <div class="choice">
-                    <span class="caps">{efxShortName(p.name)}</span>
+                    <span class="caps">{s.labels?.[k] ?? efxShortName(p.name)}</span>
                     <Segmented options={choices} selected={v} name={p.name} context="Effects > {p.name}" onchange={(i) => {
                       store.begin(`Effects · ${p.name}`);
                       put(p, i);
@@ -78,7 +130,7 @@
                   <Dropdown
                     options={choices}
                     selected={v}
-                    label={efxShortName(p.name)}
+                    label={s.labels?.[k] ?? efxShortName(p.name)}
                     name={p.name}
                     context="Effects > {p.name}"
                     width={96}
@@ -97,7 +149,7 @@
                     color="var(--fx)"
                     origin={bipolar(p.name) ? 0.5 : null}
                     defaultValue={bipolar(p.name) ? Math.round((r[0] + r[1]) / 2) : r[0]}
-                    label={efxShortName(p.name)}
+                    label={s.labels?.[k] ?? efxShortName(p.name)}
                     name={efxUnitNote(p.name, r) ? `${p.name} (${efxUnitNote(p.name, r)})` : p.name}
                     context="Effects > Parameter {p.index}"
                     format={(x) => efxValueText(p.name, r, x)}
@@ -111,22 +163,32 @@
           </div>
         </section>
       {/each}
+      </div>
+     {/each}
+    {#if extras.length}
+      <div class="routing">
+        {#each ROUTING_GROUPS as grp (grp.title)}
+          {@const present = grp.ids.filter((id) => extras.includes(id))}
+          {#if present.length}
+            <section>
+              <h4>{grp.title}</h4>
+              <div class="row">{#each present as id (id)}<ParamControl block="common" {id} size={20} label={EXTRA_LABELS[id]} />{/each}</div>
+            </section>
+          {/if}
+        {/each}
+      </div>
+    {/if}
     </div>
   </div>
-
-
-    {#if extras.length}
-    <section class="routing">
-      <h4>Routing and control</h4>
-      <div class="row">{#each extras as id (id)}<ParamControl block="common" {id} size={20} />{/each}</div>
-    </section>
-    {/if}
 </div>
 
 <style>
   .plugin {
     display: flex;
     flex-direction: column;
+    /* Fill the group it sits in, and never be wider than it: its contents wrap instead. */
+    width: 100%;
+    min-width: 0;
     gap: 4px;
   }
   header {
@@ -176,11 +238,40 @@
     gap: 14px;
     align-items: flex-start;
   }
+  .left {
+    flex: none;
+    width: 164px;
+    align-self: stretch;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .sketch {
+    flex: 1;
+    position: relative;
+    min-height: 84px;
+  }
+  .master {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+  }
+  .sketch :global(svg) {
+    position: absolute;
+    inset: 0;
+  }
   .sections {
     display: flex;
-    flex-wrap: wrap;
-    gap: 8px 18px;
+    flex-direction: column;
+    gap: 8px;
     min-width: 0;
+    flex: 1;
+  }
+  .line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 8px 14px;
   }
   h4 {
     margin: 0 0 2px;
@@ -192,8 +283,24 @@
   .row {
     display: flex;
     flex-wrap: wrap;
-    gap: 3px 10px;
+    gap: 3px 6px;
     align-items: flex-end;
+  }
+  /* A channel strip: one control above the other, as a band, tap or voice is laid out on a mixer. */
+  .row.strip {
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+  section {
+    display: flex;
+    flex-direction: column;
+  }
+  /* Four or more in a strip would stand too tall: two columns. */
+  .row.strip.two {
+    display: grid;
+    grid-template-columns: repeat(2, auto);
+    justify-items: center;
   }
   .choice {
     display: flex;
@@ -205,6 +312,12 @@
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--text-dim);
+  }
+  .routing {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 4px 18px;
   }
   .routing .row {
     gap: 0 8px;
