@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Dropdown, Knob, Segmented, Stepper, ToggleLed } from '../kit';
+  import { Dropdown, Knob, LfoGlyph, Segmented, Stepper, ToggleLed } from '../kit';
   import type { BlockName } from '../model/catalog';
   import { paramInfo } from '../model/catalog';
   import { controlFor } from '../model/controlKind';
@@ -55,6 +55,8 @@
   });
 </script>
 
+{#snippet formGlyph(i: number)}<LfoGlyph form={base + (shownIdx[i] ?? 0)} />{/snippet}
+
 {#if info && choice}
   <span class="pc" class:inert={!!inert} data-param="{block}:{id}">
   {#if choice.type === 'knob'}
@@ -97,7 +99,7 @@
       onend={() => store.end()}
     />
   {:else}
-    <Dropdown options={shownOptions} selected={shownSelected} label={short} name={hintName} context={ctx} {width} onchange={putShown} />
+    <Dropdown options={shownOptions} selected={shownSelected} label={short} name={hintName} context={ctx} {width} glyph={/^lfo[12]_waveform$/.test(id) ? formGlyph : undefined} onchange={putShown} />
   {/if}
   </span>
 {/if}

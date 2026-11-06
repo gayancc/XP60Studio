@@ -10,14 +10,17 @@
 
   let { block, color }: Props = $props();
 
-  const switches = ['redamper_control_switch', 'volume_control_switch', 'hold_1_control_switch', 'bender_control_switch', 'pan_control_switch'];
+  const switches = ['redamper_control_switch', 'volume_control_switch', 'hold_1_control_switch', 'bender_control_switch'];
   const controllers = [1, 2, 3];
   const slots = [1, 2, 3, 4];
 </script>
 
 <GroupFrame title="Controllers" {color}>
   <div class="switches">
-    {#each switches as id (id)}<ParamControl {block} {id} {color} />{/each}
+    <div class="toggles">
+      {#each switches as id (id)}<ParamControl {block} {id} {color} />{/each}
+    </div>
+    <ParamControl {block} id="pan_control_switch" {color} width={120} />
   </div>
   <table class="matrix" aria-label="Controller routing">
     <thead>
@@ -47,13 +50,27 @@
 <style>
   .switches {
     display: flex;
-    gap: 6px 14px;
     flex-wrap: wrap;
     align-items: flex-end;
+    justify-content: space-between;
+    gap: 8px 24px;
     width: 100%;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--edge);
+  }
+  .toggles {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 18px;
   }
   .matrix {
     border-collapse: collapse;
+    width: 100%;
+  }
+  th.caps {
+    white-space: nowrap;
+    padding-right: 6px;
   }
   th {
     text-align: left;

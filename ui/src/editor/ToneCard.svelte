@@ -29,7 +29,9 @@
   }
 </script>
 
-<div class="card" class:selected class:off={!on} style:--tone={color}>
+<!-- Pressing anywhere on the card (knobs, switch, empty space) selects the Tone; the tag button keeps keyboard access. -->
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<div class="card" class:selected class:off={!on} style:--tone={color} onpointerdowncapture={() => { if (!selected) onselect(); }}>
   <div class="head">
     <button type="button" class="sw" role="switch" aria-checked={on} aria-label="{blockTitle(block)} on" onclick={toggle} onpointerenter={announce} onpointerleave={clearHint} onfocus={announce} onblur={clearHint}>
       <i></i>

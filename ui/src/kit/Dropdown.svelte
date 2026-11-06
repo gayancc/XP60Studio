@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { tick } from 'svelte';
+  import { tick, type Snippet } from 'svelte';
   import { clearHint, showHint } from './hint.svelte';
 
   // A list picker drawn the FL Studio way: a flat recessed readout that opens a dark flat list, no native widget. Groups are heading bars inside the one list (as in
@@ -20,10 +20,12 @@
     context?: string;
     disabled?: boolean;
     width?: number;
+    /** Optional small drawing shown before an entry's text, in the list and on the readout (receives the index into `options`). */
+    glyph?: Snippet<[number]>;
     onchange?: (index: number) => void;
   }
 
-  let { options, selected = $bindable(), groups, label = '', name = label, context = '', disabled = false, width = 130, onchange }: Props = $props();
+  let { options, selected = $bindable(), groups, label = '', name = label, context = '', disabled = false, width = 130, glyph, onchange }: Props = $props();
 
   const uid = $props.id();
   let trigger: HTMLButtonElement | undefined = $state();
@@ -150,7 +152,7 @@
     onfocus={publish}
     onblur={clearHint}
   >
-    <span class="text">{text}</span>
+    {#if glyph}{@render glyph(selected)}{/if}<span class="text">{text}</span>
     <svg width="8" height="5" viewBox="0 0 8 5" aria-hidden="true"><path d="M0 0h8L4 5z" /></svg>
   </button>
 </div>
@@ -172,7 +174,7 @@
           onclick={() => choose(l.option)}
           onkeydown={() => {}}
         >
-          {#if groups}<span class="tick" aria-hidden="true">{l.option === selected ? '✓' : ''}</span>{/if}{options[l.option]}
+          {#if groups}<span class="tick" aria-hidden="true">{l.option === selected ? '✓' : ''}</span>{/if}{#if glyph}{@render glyph(l.option)}{/if}{options[l.option]}
         </div>
       {/if}
     {/each}
@@ -220,6 +222,7 @@
     cursor: default;
   }
   .text {
+    flex: 1;
     min-width: 0;
     overflow: hidden;
     white-space: nowrap;
@@ -253,6 +256,7 @@
     display: flex;
     align-items: center;
     height: var(--pop-row);
+    gap: 8px;
     padding: 0 14px 0 0;
     color: var(--pop-text);
     white-space: nowrap;
@@ -275,7 +279,7 @@
     color: var(--combo-text);
   }
   .combo .row {
-    padding-left: 4px;
+    padding-left: 6px;
     color: var(--combo-text);
   }
   .combo .row.kb {

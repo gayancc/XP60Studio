@@ -3,6 +3,7 @@
   import type { BlockName } from '../model/catalog';
   import { ENVELOPES, envelopeParamIds, toneParams, type EnvelopeSpec, type ToneSection } from '../model/layout';
   import { useStore } from './context';
+  import LfoSection from './LfoSection.svelte';
   import EnvelopeSection from './EnvelopeSection.svelte';
   import ControllerMatrix from './ControllerMatrix.svelte';
   import ParamControl from './ParamControl.svelte';
@@ -34,8 +35,6 @@
 
   const waveIds = $derived(plain('wave'));
   const outputIds = $derived(plain('output'));
-  const lfo1 = $derived(plain('lfo1'));
-  const lfo2 = $derived(plain('lfo2'));
   const pitch = $derived(plain('pitch', specOf('pitch')));
   const tvf = $derived(plain('tvf', specOf('tvf')));
   const tva = $derived(plain('tva', specOf('tva')));
@@ -62,12 +61,8 @@
       <EnvelopeSection spec={specOf('tva')} {block} {color} />
     </GroupFrame>
   {:else if p === 'lfo'}
-    <GroupFrame title="LFO 1" {color}>
-      {#each lfo1 as id (id)}<ParamControl {block} {id} {color} />{/each}
-    </GroupFrame>
-    <GroupFrame title="LFO 2" {color}>
-      {#each lfo2 as id (id)}<ParamControl {block} {id} {color} />{/each}
-    </GroupFrame>
+    <LfoSection {block} lfo={1} {color} />
+    <LfoSection {block} lfo={2} {color} />
   {:else}
     <GroupFrame title="Output" {color}>
       {#each outputIds as id (id)}<ParamControl {block} {id} {color} />{/each}
@@ -95,7 +90,9 @@
     display: flex;
     flex-direction: column;
   }
+  /* The stack aligns its children to the start, which shrank this row to its content and stacked the two LFOs; the row takes the full width so they sit side by side. */
   .pair {
+    align-self: stretch;
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: 10px;
