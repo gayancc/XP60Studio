@@ -16,6 +16,9 @@ const ALLOWED: Record<string, number> = {
   'editor/LibraryView.svelte': 1, // desktop-only page
   // the question a confirmation asks before something permanent (not a result)
   'editor/SaveCeremony.svelte': 1,
+  // the question asked in place before a bulk is saved over, the bank is replaced by a bulk, or a bulk is deleted (not a result)
+  'editor/BulkSaveBar.svelte': 1,
+  'editor/BulkTree.svelte': 2,
   'editor/SystemSaveCeremony.svelte': 1,
   // the connection readout on the Synth menu
   'editor/SynthBar.svelte': 1,

@@ -65,7 +65,7 @@
       services?.library.stage(first.name, raw);
     } else if (mode === 'bank') {
       try {
-        const { bytes, names } = previewFile(raw);
+        const { bytes, names } = previewFile(raw, first.name);
         services?.bank.loadFile(bytes, first.name, names);
       } catch (err) {
         if (services) services.bank.error = err instanceof Error ? err.message : String(err);

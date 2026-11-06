@@ -1,7 +1,7 @@
 // The patch being edited: its values, undo history, live-edit pipeline and sync state. The codec is the Rust one (wasm);
 // this class only coordinates.
 
-import { PatchDoc, docSyxNames, syxNames } from '../wasm/pkg/xppatch.js';
+import { PatchDoc, docSyxNames, syxNames, syxReport } from '../wasm/pkg/xppatch.js';
 import { paramInfo, type BlockName, type Catalog, type DocKindName } from './catalog';
 import { KIND_TITLES, docFromBlocks, docFromSyxSlot, newDoc, paramAddressOf, type DocApi } from './kinds';
 import { blockTitle } from './labels';
@@ -497,6 +497,11 @@ export class PatchStore {
   static listSyx(bytes: Uint8Array, kind: DocKindName = 'patch'): Array<[number, string]> {
     const json = kind === 'patch' ? syxNames(bytes) : docSyxNames(kind, bytes);
     return JSON.parse(json) as Array<[number, string]>;
+  }
+
+  /** What reading a patch bank file left out: messages skipped as damaged or not XP-60 data, and patch parts reset to initial values. */
+  static syxReport(bytes: Uint8Array): { skipped: number; filled: Array<[number, string]> } {
+    return JSON.parse(syxReport(bytes)) as { skipped: number; filled: Array<[number, string]> };
   }
 
   /** Send the whole patch to the instrument's temporary patch, replacing any single edits still waiting. */

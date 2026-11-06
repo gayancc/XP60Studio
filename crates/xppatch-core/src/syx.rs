@@ -9,7 +9,7 @@ use xppatch_sysex::memory::{
     user_patch, user_performance, user_rhythm, MemoryError, SYSTEM, TEMP_PATCH, USER_PATCH_COUNT,
     USER_PERFORMANCE_COUNT, USER_RHYTHM_COUNT,
 };
-use xppatch_sysex::message::{DeviceId, EncodeError, Message, ParseError};
+use xppatch_sysex::message::{DeviceId, EncodeError, Message, ParseError, Parsed};
 use xppatch_sysex::stream::frames;
 
 /// Largest `.syx` file accepted. A full User Patch bank is about 112 KB; this leaves generous room for whole-synth
@@ -25,6 +25,8 @@ pub enum SyxError {
     UnexpectedRequest { index: usize },
     #[error("the file contains no SysEx messages")]
     Empty,
+    #[error("none of the {skipped} messages in this file is XP-60 data ({reason})")]
+    NoXp60Data { skipped: usize, reason: String },
     #[error("file is {size} bytes, above the {limit} byte limit")]
     TooLarge { size: usize, limit: usize },
     #[error("user patch slot {0} is out of range")]
@@ -40,6 +42,29 @@ pub enum SyxError {
     #[error(transparent)]
     Encode(#[from] EncodeError),
 }
+
+/// A message the lenient reader left out of a file, and why.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SkippedMessage {
+    pub index: usize,
+    pub reason: String,
+}
+
+/// A part of a patch whose messages were missing or damaged in a file, so the part is at its initial values.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FilledPart {
+    /// User patch slot, 0 to 127.
+    pub slot: u8,
+    /// "common" or "tone 1" to "tone 4".
+    pub part: &'static str,
+}
+
+/// The patches of a file with the parts that had to be filled in.
+pub type LenientPatches = (Vec<(u8, Patch)>, Vec<FilledPart>);
+
+const PATCH_PARTS: [&str; 5] = ["common", "tone 1", "tone 2", "tone 3", "tone 4"];
+/// The model ID byte of the XP-60/80 (the first thing a stray file for another instrument gets wrong).
+const XP60_MODEL: u8 = 0x6A;
 
 /// One DT1 message from a file.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -82,6 +107,58 @@ impl SyxImage {
             return Err(SyxError::Empty);
         }
         Ok(SyxImage { records })
+    }
+
+    /// Parse a file the way the instrument reads one: a message that is damaged or is not XP-60 data is skipped (and
+    /// reported) instead of failing the whole file. Only a file with no usable message at all is an error. Use this for
+    /// files a person brings in; [`SyxImage::parse`] stays strict for anything written back to the instrument.
+    pub fn parse_lenient(bytes: &[u8]) -> Result<(SyxImage, Vec<SkippedMessage>), SyxError> {
+        if bytes.len() > MAX_FILE_BYTES {
+            return Err(SyxError::TooLarge {
+                size: bytes.len(),
+                limit: MAX_FILE_BYTES,
+            });
+        }
+        let mut records = Vec::new();
+        let mut skipped: Vec<SkippedMessage> = Vec::new();
+        let mut first_reason = String::new();
+        for (index, frame) in frames(bytes).enumerate() {
+            let reason = match Message::parse(&frame) {
+                Ok(Parsed {
+                    device,
+                    message: Message::Dt1 { address, data },
+                }) => {
+                    records.push(Dt1Record {
+                        device,
+                        address,
+                        data,
+                    });
+                    continue;
+                }
+                Ok(_) => "a data request, not stored data".to_owned(),
+                Err(e) => match (frame.get(1), frame.get(3)) {
+                    (Some(&0x41), Some(&m)) if m != XP60_MODEL => {
+                        format!("for Roland model {m:#04x}, not the XP-60 ({XP60_MODEL:#04x})")
+                    }
+                    _ => e.to_string(),
+                },
+            };
+            if skipped.is_empty() {
+                first_reason.clone_from(&reason);
+            }
+            skipped.push(SkippedMessage { index, reason });
+        }
+        if records.is_empty() {
+            return if skipped.is_empty() {
+                Err(SyxError::Empty)
+            } else {
+                Err(SyxError::NoXp60Data {
+                    skipped: skipped.len(),
+                    reason: first_reason,
+                })
+            };
+        }
+        Ok((SyxImage { records }, skipped))
     }
 
     /// Serialise back to the exact message bytes.
@@ -155,6 +232,52 @@ impl SyxImage {
             out.push((slot, Patch::from_dt1(base, &pieces)?));
         }
         Ok(out)
+    }
+
+    /// Like [`SyxImage::user_patches`], for a file that may have lost messages: a patch whose common block or a Tone has
+    /// missing data gets that part at its initial values (and is listed), instead of the whole file failing. A part that
+    /// arrived complete is never touched. `damaged` is how many messages the reader skipped: a part is only filled in
+    /// when a skipped message can account for it, so a file that was simply cut short is still an error, as before.
+    pub fn user_patches_lenient(&self, damaged: usize) -> Result<LenientPatches, SyxError> {
+        let mut slots: std::collections::BTreeMap<u8, Vec<(Address, Vec<u8>)>> = Default::default();
+        for r in &self.records {
+            let lanes = r.address.bytes();
+            if lanes[0] == 0x11 && lanes[1] < USER_PATCH_COUNT {
+                slots
+                    .entry(lanes[1])
+                    .or_default()
+                    .push((r.address, r.data.clone()));
+            }
+        }
+        let mut out = Vec::with_capacity(slots.len());
+        let mut filled = Vec::new();
+        for (slot, mut pieces) in slots {
+            let base = user_patch(slot)?;
+            for (i, (addr, data)) in Patch::init().to_dt1(base)?.into_iter().enumerate() {
+                let lo = addr.compact();
+                let hi = lo + u32::try_from(data.len()).unwrap_or(u32::MAX);
+                let inside = |a: &Address| (lo..hi).contains(&a.compact());
+                let got: usize = pieces
+                    .iter()
+                    .filter(|(a, _)| inside(a))
+                    .map(|(_, d)| d.len())
+                    .sum();
+                if got < data.len() {
+                    pieces.retain(|(a, _)| !inside(a));
+                    pieces.push((addr, data));
+                    filled.push(FilledPart {
+                        slot,
+                        part: PATCH_PARTS[i],
+                    });
+                }
+            }
+            out.push((slot, Patch::from_dt1(base, &pieces)?));
+        }
+        if filled.len() > damaged {
+            // More parts are missing than damaged messages explain: the file is incomplete, not damaged. Say so.
+            return self.user_patches().map(|p| (p, Vec::new()));
+        }
+        Ok((out, filled))
     }
 
     /// Every complete User Performance (kind Performance, slots 0 to 31) or User Rhythm Set (kind Rhythm, slots 0 and one)
@@ -327,6 +450,96 @@ mod tests {
         assert_eq!(patches.len(), 2);
         assert_eq!((patches[0].0, &patches[0].1), (0, &a));
         assert_eq!((patches[1].0, &patches[1].1), (5, &b));
+    }
+
+    /// A copy of the golden bank with one patch-common message's manufacturer byte and one Tone message's command byte
+    /// damaged, as a transfer error can leave them.
+    fn damaged_bank() -> Vec<u8> {
+        let mut b = BANK_FILE.to_vec();
+        let starts: Vec<usize> = b
+            .iter()
+            .enumerate()
+            .filter(|(_, &x)| x == 0xF0)
+            .map(|(i, _)| i)
+            .collect();
+        let at = |slot: u8, block: u8| {
+            *starts
+                .iter()
+                .find(|&&i| b[i + 5] == 0x11 && b[i + 6] == slot && b[i + 7] == block)
+                .expect("block present")
+        };
+        let common = at(3, 0x00);
+        let tone = at(9, 0x10);
+        b[common + 1] = 0x01; // manufacturer 0x41 -> 0x01
+        b[tone + 4] = 0x02; // command 0x12 -> 0x02
+        b
+    }
+
+    #[test]
+    fn lenient_reading_skips_damaged_messages_where_strict_reading_fails() {
+        let bytes = damaged_bank();
+        assert!(SyxImage::parse(&bytes).is_err());
+        let (image, skipped) = SyxImage::parse_lenient(&bytes).unwrap();
+        assert_eq!(skipped.len(), 2);
+        let (patches, filled) = image.user_patches_lenient(skipped.len()).unwrap();
+        assert_eq!(patches.len(), 128, "every patch is still loaded");
+        assert_eq!(
+            filled,
+            vec![
+                FilledPart {
+                    slot: 3,
+                    part: "common"
+                },
+                FilledPart {
+                    slot: 9,
+                    part: "tone 1"
+                },
+            ]
+        );
+        let good = SyxImage::parse(BANK_FILE).unwrap().user_patches().unwrap();
+        for (slot, p) in &patches {
+            if *slot != 3 && *slot != 9 {
+                assert_eq!(p, &good.iter().find(|(s, _)| s == slot).unwrap().1);
+            }
+        }
+        let b = good.iter().find(|(s, _)| *s == 9).unwrap();
+        let l = patches.iter().find(|(s, _)| *s == 9).unwrap();
+        assert_eq!(
+            l.1.common, b.1.common,
+            "the common block of a patch with a damaged Tone is untouched"
+        );
+    }
+
+    #[test]
+    fn a_file_that_was_cut_short_is_still_an_error() {
+        // cut cleanly between messages: slot 5 has its common block and Tone 1 but not Tones 2 to 4, and nothing was damaged
+        let cut = BANK_FILE
+            .iter()
+            .enumerate()
+            .filter(|(_, &x)| x == 0xF0)
+            .map(|(i, _)| i)
+            .find(|&i| {
+                BANK_FILE[i + 5] == 0x11 && BANK_FILE[i + 6] == 5 && BANK_FILE[i + 7] == 0x12
+            })
+            .expect("slot 5 tone 2 present");
+        let (image, skipped) = SyxImage::parse_lenient(&BANK_FILE[..cut]).unwrap();
+        assert!(skipped.is_empty());
+        assert!(image.user_patches_lenient(skipped.len()).is_err());
+    }
+
+    #[test]
+    fn a_file_for_another_model_is_named_as_such() {
+        // a DT1-shaped message for model 0x00 with device 0x09, as an older Roland instrument sends it
+        let mut f = vec![0xF0, 0x41, 0x09, 0x00, 0x0D, 0x01, 0x02, 0x03, 0x04];
+        f.push(0x76); // Roland checksum of the four data bytes: 128 - (1 + 2 + 3 + 4)
+        f.push(0xF7);
+        match SyxImage::parse_lenient(&f) {
+            Err(SyxError::NoXp60Data { skipped: 1, reason }) => {
+                assert!(reason.contains("not the XP-60"), "{reason}");
+            }
+            other => panic!("{other:?}"),
+        }
+        assert_eq!(SyxImage::parse_lenient(&[]), Err(SyxError::Empty));
     }
 
     #[test]

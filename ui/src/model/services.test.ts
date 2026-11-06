@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { ArmedSave, Backend, LibraryRow, SaveReport } from './backend';
 import { LibraryService } from './library.svelte';
 import { SaveFlow } from './save.svelte';
+import { fakeBulks } from '../test/bulkBackend';
 
 function row(id: number, name: string, extra: Partial<LibraryRow> = {}): LibraryRow {
   return { id, name, tags: [], favourite: false, source: 't', added_at: 1, ...extra };
@@ -12,7 +13,8 @@ function fakeBackend(overrides: Partial<Backend> = {}): Backend {
     throw new Error('not expected');
   };
   return {
-    libraryImport: vi.fn(async () => ({ added: 2, duplicates: 1 })),
+    ...fakeBulks().api,
+    libraryImport: vi.fn(async () => ({ added: 2, duplicates: 1, bulk_id: 1, bulk_name: 'bank' })),
     libraryList: vi.fn(async () => [row(1, 'Alpha'), row(2, 'Beta')]),
     libraryCount: vi.fn(async () => 2),
     libraryTags: vi.fn(async () => [['pad', 2]] as Array<[string, number]>),
@@ -66,7 +68,7 @@ describe('LibraryService', () => {
     lib.tag = 'pad';
     lib.favouritesOnly = true;
     await lib.refresh();
-    expect(b.libraryList).toHaveBeenCalledWith({ text: 'warm', tag: 'pad', favouritesOnly: true, limit: 200, offset: 0 });
+    expect(b.libraryList).toHaveBeenCalledWith({ text: 'warm', tag: 'pad', favouritesOnly: true, bulk: null, limit: 200, offset: 0 });
   });
 
   it('only the newest refresh may update the lists', async () => {
@@ -107,8 +109,8 @@ describe('LibraryService', () => {
     const b = fakeBackend();
     const lib = new LibraryService(b);
     const r = await lib.importFile('bank.syx', new Uint8Array([1]));
-    expect(r).toEqual({ added: 2, duplicates: 1 });
-    expect(lib.notice).toBe('Imported 2 new patches; 1 already in the library.');
+    expect(r).toEqual({ added: 2, duplicates: 1, bulk_id: 1, bulk_name: 'bank' });
+    expect(lib.notice).toBe('Imported "bank": 2 new patches, 1 already in the library (shared, not copied).');
     expect(b.libraryList).toHaveBeenCalled();
     expect(lib.busy).toBe(false);
   });

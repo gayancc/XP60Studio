@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { PatchDoc, initSync, syxNames } from '../wasm/pkg/xppatch.js';
 import type { ArmedBank, Backend, BankSaveReport, Progress } from './backend';
 import { BankService, SLOTS } from './bank.svelte';
+import { fakeBulks } from '../test/bulkBackend';
 
 beforeAll(() => {
   initSync({ module: readFileSync('src/wasm/pkg/xppatch_bg.wasm') });
@@ -24,6 +25,7 @@ function fake(overrides: Partial<Backend> = {}): Backend {
     throw new Error('not expected');
   };
   return {
+    ...fakeBulks().api,
     libraryImport: vi.fn(never),
     libraryList: vi.fn(never),
     libraryCount: vi.fn(never),

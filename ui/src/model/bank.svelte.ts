@@ -54,6 +54,10 @@ export class BankService {
   selected = $state(0);
   /** Where the loaded bank came from, for the title. */
   source = $state('Empty');
+  /** The library bulk this bank was loaded from or last saved as; null when the bank is not in the library. */
+  origin = $state<{ id: number; name: string } | null>(null);
+  /** The patches the bank held when it was last loaded from or saved to the library, to tell what has changed since. */
+  private libraryBaseline = $state<Array<Uint8Array | null>>(Array.from({ length: SLOTS }, () => null));
 
   constructor(private readonly backend: Backend) {}
 
@@ -131,6 +135,33 @@ export class BankService {
     this.slots[b] = sa;
   }
 
+  /** The slots that differ from what the library bulk held when the bank was loaded from or saved to it. */
+  get unsaved(): number[] {
+    return this.slots.flatMap((s, i) => (!sameBytes(s.bytes, this.libraryBaseline[i] ?? null) ? [i] : []));
+  }
+
+  /** The bank now matches the library bulk `id`: remember it as the one to save over, and what it held. */
+  markSaved(id: number, name: string): void {
+    this.origin = { id, name };
+    this.libraryBaseline = this.slots.map((s) => s.bytes?.slice() ?? null);
+    this.source = `Bulk: ${name}`;
+  }
+
+  /** Replace every slot with the patches of a library bulk (`[position, 590 bytes]`); positions it does not hold become empty. */
+  loadFromBulk(id: number, name: string, blocks: Array<[number, Uint8Array]>): number {
+    if (this.locked) return 0;
+    const next: BankSlot[] = Array.from({ length: SLOTS }, emptySlot);
+    this.slots = next;
+    let n = 0;
+    for (const [slot, bytes] of blocks) {
+      if (slot < 0 || slot >= SLOTS) continue;
+      this.setSlot(slot, bytes, 'library');
+      n += 1;
+    }
+    this.markSaved(id, name);
+    return n;
+  }
+
   /** Replace the whole bank from a `.syx` file (a bank file with up to 128 patches); missing slots stay as they were. */
   loadFile(bytes: Uint8Array, fileName: string, list: Array<[number, string]>): number {
     if (this.locked) return 0;
@@ -146,6 +177,7 @@ export class BankService {
       }
     }
     this.source = fileName;
+    this.origin = null; // a file is not a library bulk
     return n;
   }
 

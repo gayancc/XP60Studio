@@ -11,7 +11,7 @@ use synth::{
     ArmedBank, ArmedSave, BankSaveReport, Connected, ControlMove, SaveReport, Synth, SynthError,
 };
 use tauri::{Emitter, Manager};
-use xppatch_library::{Filter, Library};
+use xppatch_library::{Filter, Library, SaveTarget};
 use xppatch_midi::hardware::{list_ports, MidirTransport};
 use xppatch_midi::CancelToken;
 use xppatch_midi::TransportError;
@@ -510,6 +510,8 @@ struct RowOut {
 struct ImportOut {
     added: usize,
     duplicates: usize,
+    bulk_id: i64,
+    bulk_name: String,
 }
 
 fn with_library<R>(
@@ -530,6 +532,7 @@ fn filter_of(
     text: Option<String>,
     tag: Option<String>,
     favourites_only: bool,
+    bulk: Option<i64>,
     limit: Option<u32>,
     offset: u32,
 ) -> Filter {
@@ -537,6 +540,7 @@ fn filter_of(
         text,
         tag,
         favourites_only,
+        bulk,
         limit,
         offset,
     }
@@ -551,6 +555,8 @@ fn library_import(
     with_library(&state, |l| l.import_syx(&bytes, &source, now_secs())).map(|r| ImportOut {
         added: r.added,
         duplicates: r.duplicates,
+        bulk_id: r.bulk_id,
+        bulk_name: r.bulk_name,
     })
 }
 
@@ -560,11 +566,12 @@ fn library_list(
     text: Option<String>,
     tag: Option<String>,
     favourites_only: bool,
+    bulk: Option<i64>,
     limit: Option<u32>,
     offset: u32,
 ) -> Result<Vec<RowOut>, String> {
     with_library(&state, |l| {
-        l.list(&filter_of(text, tag, favourites_only, limit, offset))
+        l.list(&filter_of(text, tag, favourites_only, bulk, limit, offset))
     })
     .map(|rows| {
         rows.into_iter()
@@ -586,9 +593,10 @@ fn library_count(
     text: Option<String>,
     tag: Option<String>,
     favourites_only: bool,
+    bulk: Option<i64>,
 ) -> Result<u64, String> {
     with_library(&state, |l| {
-        l.count(&filter_of(text, tag, favourites_only, None, 0))
+        l.count(&filter_of(text, tag, favourites_only, bulk, None, 0))
     })
 }
 
@@ -656,6 +664,208 @@ fn library_export(
     device: u8,
 ) -> Result<Vec<u8>, String> {
     with_library(&state, |l| l.export_syx(&ids, device))
+}
+
+// ---- bulks: named, ordered sets of up to 128 patches ----
+
+#[derive(Serialize)]
+struct BulkOut {
+    id: i64,
+    name: String,
+    source: String,
+    created_at: i64,
+    updated_at: i64,
+    count: u32,
+}
+
+#[derive(Serialize)]
+struct BulkSlotOut {
+    position: u8,
+    patch_id: i64,
+    name: String,
+}
+
+#[derive(Serialize)]
+struct BulkHitOut {
+    bulk_id: i64,
+    bulk_name: String,
+    position: u8,
+    patch_id: i64,
+    name: String,
+}
+
+#[derive(Serialize)]
+struct RevisionOut {
+    id: i64,
+    saved_at: i64,
+    count: u32,
+}
+
+#[derive(Serialize)]
+struct BulkSaveOut {
+    bulk_id: i64,
+    name: String,
+    added: usize,
+    reused: usize,
+    kept_version: bool,
+}
+
+#[tauri::command(async)]
+fn bulk_list(state: tauri::State<'_, AppState>) -> Result<Vec<BulkOut>, String> {
+    with_library(&state, |l| l.list_bulks()).map(|rows| {
+        rows.into_iter()
+            .map(|b| BulkOut {
+                id: b.id,
+                name: b.name,
+                source: b.source,
+                created_at: b.created_at,
+                updated_at: b.updated_at,
+                count: b.count,
+            })
+            .collect()
+    })
+}
+
+#[tauri::command(async)]
+fn bulk_contents(state: tauri::State<'_, AppState>, id: i64) -> Result<Vec<BulkSlotOut>, String> {
+    with_library(&state, |l| l.bulk_contents(id)).map(|rows| {
+        rows.into_iter()
+            .map(|s| BulkSlotOut {
+                position: s.position,
+                patch_id: s.patch_id,
+                name: s.name,
+            })
+            .collect()
+    })
+}
+
+/// Every patch of a bulk as `(position, 590 bytes of blocks)`, to load it into the bank.
+#[tauri::command(async)]
+fn bulk_blocks(state: tauri::State<'_, AppState>, id: i64) -> Result<Vec<(u8, Vec<u8>)>, String> {
+    with_library(&state, |l| l.bulk_blocks(id))
+}
+
+#[tauri::command(async)]
+fn bulk_search(
+    state: tauri::State<'_, AppState>,
+    text: String,
+    limit: u32,
+) -> Result<Vec<BulkHitOut>, String> {
+    with_library(&state, |l| l.bulk_search(&text, limit)).map(|rows| {
+        rows.into_iter()
+            .map(|h| BulkHitOut {
+                bulk_id: h.bulk_id,
+                bulk_name: h.bulk_name,
+                position: h.position,
+                patch_id: h.patch_id,
+                name: h.name,
+            })
+            .collect()
+    })
+}
+
+#[tauri::command(async)]
+fn bulk_revisions(state: tauri::State<'_, AppState>, id: i64) -> Result<Vec<RevisionOut>, String> {
+    with_library(&state, |l| l.bulk_revisions(id)).map(|rows| {
+        rows.into_iter()
+            .map(|r| RevisionOut {
+                id: r.id,
+                saved_at: r.saved_at,
+                count: r.count,
+            })
+            .collect()
+    })
+}
+
+/// Save the bank's patches (`(slot, 590 bytes)` each) as a new bulk, or over the bulk `overwrite` (its old contents are kept as a version).
+#[tauri::command(async)]
+fn bulk_save(
+    state: tauri::State<'_, AppState>,
+    overwrite: Option<i64>,
+    name: String,
+    patches: Vec<(u8, Vec<u8>)>,
+) -> Result<BulkSaveOut, String> {
+    let target = overwrite.map_or(SaveTarget::New, SaveTarget::Overwrite);
+    with_library(&state, |l| l.save_bulk(target, &name, &patches, now_secs())).map(|r| {
+        BulkSaveOut {
+            bulk_id: r.bulk_id,
+            name: r.name,
+            added: r.added,
+            reused: r.reused,
+            kept_version: r.kept_version,
+        }
+    })
+}
+
+#[tauri::command(async)]
+fn bulk_rename(state: tauri::State<'_, AppState>, id: i64, name: String) -> Result<(), String> {
+    with_library(&state, |l| l.rename_bulk(id, &name, now_secs()))
+}
+
+#[tauri::command(async)]
+fn bulk_duplicate(state: tauri::State<'_, AppState>, id: i64, name: String) -> Result<i64, String> {
+    with_library(&state, |l| l.duplicate_bulk(id, &name, now_secs()))
+}
+
+/// Delete a bulk; returns how many patches went with it (those no other bulk, favourite or tag holds).
+#[tauri::command(async)]
+fn bulk_delete(state: tauri::State<'_, AppState>, id: i64) -> Result<usize, String> {
+    with_library(&state, |l| l.delete_bulk(id))
+}
+
+#[tauri::command(async)]
+fn bulk_place(
+    state: tauri::State<'_, AppState>,
+    bulk: i64,
+    position: u8,
+    patch_id: i64,
+) -> Result<(), String> {
+    with_library(&state, |l| {
+        l.bulk_place(bulk, position, patch_id, now_secs())
+    })
+}
+
+#[tauri::command(async)]
+fn bulk_append(state: tauri::State<'_, AppState>, bulk: i64, patch_id: i64) -> Result<u8, String> {
+    with_library(&state, |l| l.bulk_append(bulk, patch_id, now_secs()))
+}
+
+#[tauri::command(async)]
+fn bulk_clear(state: tauri::State<'_, AppState>, bulk: i64, position: u8) -> Result<(), String> {
+    with_library(&state, |l| l.bulk_clear(bulk, position, now_secs()))
+}
+
+#[tauri::command(async)]
+fn bulk_swap(state: tauri::State<'_, AppState>, bulk: i64, a: u8, b: u8) -> Result<(), String> {
+    with_library(&state, |l| l.bulk_swap(bulk, a, b, now_secs()))
+}
+
+#[tauri::command(async)]
+fn bulk_move(
+    state: tauri::State<'_, AppState>,
+    from_bulk: i64,
+    from_position: u8,
+    to_bulk: i64,
+    to_position: u8,
+) -> Result<(), String> {
+    with_library(&state, |l| {
+        l.bulk_move(
+            (from_bulk, from_position),
+            (to_bulk, to_position),
+            now_secs(),
+        )
+    })
+}
+
+#[tauri::command(async)]
+fn bulk_restore(state: tauri::State<'_, AppState>, bulk: i64, revision: i64) -> Result<(), String> {
+    with_library(&state, |l| l.restore_revision(bulk, revision, now_secs()))
+}
+
+/// The bulk as a User bank `.syx`, each patch at its own position.
+#[tauri::command(async)]
+fn bulk_export(state: tauri::State<'_, AppState>, id: i64, device: u8) -> Result<Vec<u8>, String> {
+    with_library(&state, |l| l.export_bulk(id, device))
 }
 
 /// Save a file the user asked for (an export). The window's own download would pop up a browser permission prompt on the second
@@ -762,6 +972,22 @@ pub fn run() {
             library_rename,
             library_delete,
             library_export,
+            bulk_list,
+            bulk_contents,
+            bulk_blocks,
+            bulk_search,
+            bulk_revisions,
+            bulk_save,
+            bulk_rename,
+            bulk_duplicate,
+            bulk_delete,
+            bulk_place,
+            bulk_append,
+            bulk_clear,
+            bulk_swap,
+            bulk_move,
+            bulk_restore,
+            bulk_export,
             backups_list,
             backup_read,
             storage_info,

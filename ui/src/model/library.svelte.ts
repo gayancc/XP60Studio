@@ -3,6 +3,7 @@ import { previewFile } from './openFile';
 // is done in Rust through a `Backend`.
 
 import type { Backend, ImportResult, LibraryFilter, LibraryRow } from './backend';
+import { BulkService } from './bulks.svelte';
 import { reportError, reportInfo, reportSuccess, reportWarning } from './messages.svelte';
 
 export const PAGE_SIZE = 200;
@@ -20,6 +21,10 @@ export class LibraryService {
   text = $state('');
   tag = $state('');
   favouritesOnly = $state(false);
+  /** Only the patches of this bulk (null: all patches). */
+  bulk = $state<number | null>(null);
+  /** The library as bulks: a bank file kept as a named, ordered set of patches. */
+  readonly bulks: BulkService;
   selectedId = $state<number | null>(null);
   /** Number of operations in flight (a boolean would flip early when two overlap). */
   private inFlight = $state(0);
@@ -49,10 +54,12 @@ export class LibraryService {
   /** A counter so only the newest refresh may update the lists. */
   private ticket = 0;
 
-  constructor(private readonly backend: Backend) {}
+  constructor(private readonly backend: Backend) {
+    this.bulks = new BulkService(backend, () => void this.refresh());
+  }
 
   private filter(offset = 0): LibraryFilter {
-    return { text: this.text.trim(), tag: this.tag, favouritesOnly: this.favouritesOnly, limit: PAGE_SIZE, offset };
+    return { text: this.text.trim(), tag: this.tag, favouritesOnly: this.favouritesOnly, bulk: this.bulk, limit: PAGE_SIZE, offset };
   }
 
   get selected(): LibraryRow | null {
@@ -61,6 +68,8 @@ export class LibraryService {
 
   async refresh(): Promise<void> {
     const mine = ++this.ticket;
+    // The bulk being shown was deleted (or was never there): show every patch again.
+    if (this.bulk !== null && !this.bulks.bulks.some((b) => b.id === this.bulk)) this.bulk = null;
     try {
       const f = this.filter();
       const [rows, total, tags] = await Promise.all([
@@ -100,7 +109,7 @@ export class LibraryService {
   /** Read a file and show what it holds. Nothing is imported until `importStaged`. */
   stage(name: string, raw: Uint8Array): boolean {
     try {
-      const { bytes, names } = previewFile(raw);
+      const { bytes, names } = previewFile(raw, name);
       this.staged = { name, bytes, names };
       this.error = '';
       return true;
@@ -132,8 +141,15 @@ export class LibraryService {
     let result: ImportResult | null = null;
     const ok = await this.run(async () => {
       result = await this.backend.libraryImport(bytes, name);
-      this.notice = `Imported ${result.added} new patch${result.added === 1 ? '' : 'es'}; ${result.duplicates} already in the library.`;
+      this.notice = `Imported "${result.bulk_name}": ${result.added} new patch${result.added === 1 ? '' : 'es'}${
+        result.duplicates > 0 ? `, ${result.duplicates} already in the library (shared, not copied)` : ''
+      }.`;
     });
+    if (ok && result) {
+      const imported: ImportResult = result;
+      this.bulks.open = { ...this.bulks.open, [imported.bulk_id]: true };
+      await this.bulks.refresh();
+    }
     return ok ? result : null;
   }
 
@@ -161,7 +177,9 @@ export class LibraryService {
   }
 
   async remove(id: number): Promise<boolean> {
-    return this.run(() => this.backend.libraryDelete(id));
+    const ok = await this.run(() => this.backend.libraryDelete(id));
+    if (ok) await this.bulks.refresh();
+    return ok;
   }
 
   /** The stored patch as 590 bytes of blocks, or null (with `error` set). */

@@ -72,7 +72,8 @@ impl Session {
 
     /// Load patch `slot` (0 to 127) from the bytes of a `.syx` bank file.
     pub fn from_syx_slot(bytes: &[u8], slot: u8) -> Result<Session> {
-        let patches = SyxImage::parse(bytes)?.user_patches()?;
+        let (image, skipped) = SyxImage::parse_lenient(bytes)?;
+        let (patches, _) = image.user_patches_lenient(skipped.len())?;
         let found = patches
             .into_iter()
             .find(|(s, _)| *s == slot)
@@ -82,11 +83,24 @@ impl Session {
 
     /// `(slot, name)` for every patch in a `.syx` bank file.
     pub fn syx_names(bytes: &[u8]) -> Result<Vec<(u8, String)>> {
-        Ok(SyxImage::parse(bytes)?
-            .user_patches()?
+        let (image, skipped) = SyxImage::parse_lenient(bytes)?;
+        Ok(image
+            .user_patches_lenient(skipped.len())?
+            .0
             .into_iter()
             .map(|(s, p)| (s, p.name()))
             .collect())
+    }
+
+    /// What reading a patch bank file left out: how many messages were skipped as damaged or not XP-60 data, and which
+    /// patch parts were set to initial values because their messages were missing. Empty for a clean file.
+    pub fn syx_report(bytes: &[u8]) -> Result<(usize, Vec<(u8, &'static str)>)> {
+        let (image, skipped) = SyxImage::parse_lenient(bytes)?;
+        let (_, filled) = image.user_patches_lenient(skipped.len())?;
+        Ok((
+            skipped.len(),
+            filled.into_iter().map(|f| (f.slot, f.part)).collect(),
+        ))
     }
 
     pub fn name(&self) -> String {
@@ -504,7 +518,8 @@ mod tests {
         let s = Session::from_syx_slot(BANK, 0).unwrap();
         assert_eq!(s.name(), names[0].1);
         assert!(Session::from_syx_slot(BANK, 200).is_err());
-        assert!(Session::syx_names(&BANK[..100]).is_err());
+        // a file cut short holds no whole patch: an error or an empty list, never a half patch
+        assert!(Session::syx_names(&BANK[..100]).map_or(true, |n| n.is_empty()));
     }
 
     #[test]

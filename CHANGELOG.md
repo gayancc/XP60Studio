@@ -3,6 +3,27 @@
 Process note (owner decision): hardware testing is one dedicated phase at the end. Items that need the instrument
 are tracked in `docs/07-hardware-acceptance.md` and updated every phase; nothing here is run on hardware before then.
 
+## Library bulks: a bank file is kept and shown under its name (2026-11-06)
+
+- **Bulks:** importing a `.syx` bank now makes a *bulk* named after the file, holding up to 128 patches in their slot order. Patches are still stored once, so the same patch can sit in several bulks (importing your eight sample banks stores 935 patches, not 1,024). A name already taken gets a number ("allright (2)"); nothing is overwritten on import. A library made before bulks is grouped into bulks by where its patches came from, once, after a copy of it is saved next to it (`library.before-bulks.bak`).
+- **Right panel, Library tab (Bank workspace):** the bulks are listed with their patch counts and open to their patches in order, with a search across all bulks and the old flat "All patches" list one click away. Each bulk can be loaded into the bank (after asking), renamed, copied, exported as `.syx`, restored from earlier versions, or deleted (after asking; patches only it held go with it, favourites and tagged patches stay). The Library workspace has a bulk filter.
+- **Drag and drop across the library:** patches drag between bulks, from a bulk to the bank grid and from the bank into a bulk, and onto a "new bulk" area. A single patch moves (Alt copies); several picked with Ctrl-click, or a patch from the bank, are copied. A whole bulk dragged onto the bank grid asks before replacing the bank; a bulk dragged onto the new-bulk area is copied. While you drag, the place the drop would land is tinted and a line says what it will do.
+- **Saving the bank:** "Save as new bulk…" keeps the bank under a name; "Save" overwrites the bulk the bank came from, after asking, and shows how many slots changed. Every overwrite, restore and run of edits keeps the previous contents as a version (ten per bulk). The bank shows which bulk it is and whether it has changed since. "Add all to library" now also keeps the bank as a bulk.
+- **Layout:** the Bank workspace's right panel scrolls inside its tab instead of stretching the slot grid.
+- **Tests:** 17 Rust tests (import, shared patches, saving, versions, moves, deleting, search, export round trip, migration) and 31 UI tests (the bulk service, the panel's drags, save bar and versions, the bank grid accepting several patches and bulks). Checked with your real banks: 8 import as bulks of 128, `kasun.syx` is refused as another model's data.
+
+## Bank screen is only for arranging the User bank (2026-11-06)
+
+- **Removed** the Patch group buttons (USER, PR-A to PR-D, XP-A to XP-D) and the read-only preset and expansion views from the Bank workspace. Its purpose is rearranging User patches onto the keyboard's buttons for live play, and the presets and boards are fixed.
+- **Drag guide:** while a library patch or another slot is dragged over a slot, the sub-group, BANK and NUMBER buttons that pick that slot light up as a guide (a tint, no ring); the drop selects the slot so those buttons stay lit.
+
+## Bank files with damaged messages load, like on the keyboard (2026-11-06)
+
+- **Cause:** the reader refused a whole `.syx` file at the first bad message. `allright.syx` (a normal XP-60 bank that the keyboard loads) holds a few damaged messages (a manufacturer byte of 0x01, a model byte of 0x42, a command byte of 0x02), so it failed with "message 17: manufacturer 0x01 is not Roland".
+- **Fix:** files a person brings in (Bank, Library, Patch workspace, drag and drop) are read the way the instrument reads them: a damaged or non-XP-60 message is skipped, and a patch part whose messages were lost is set to its initial values. A bottom-left warning says how many messages were skipped and which patch parts were reset (`allright.syx`: 12 skipped, 9 parts in 8 patches). A file that is merely cut short is still an error, and anything written back to the instrument is still read strictly.
+- **Other model:** `kasun.syx` is data for another Roland model (0x00, not the XP-60's 0x6A), so it cannot be imported; the message now says so instead of blaming the device ID.
+- **Tests:** Rust (a damaged copy of the golden bank, a cut-short file, a foreign-model file) and UI (`damagedBank.test.ts`). The wasm module has to be rebuilt (`npm run wasm`).
+
 ## XP-60 manual cross-check (2026-11-06)
 
 - **Checked** against the XP-60/80 Owner's Manual everything earlier sourced from the XP-30 manual: the EFX parameter table, the Patch Group table and the Structure Type wirings. Types, order, counts and display ranges agree; nothing conflicts.

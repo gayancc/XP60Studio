@@ -28,6 +28,15 @@ pub fn syx_names(bytes: &[u8]) -> Result<String, JsError> {
     serde_json::to_string(&names).map_err(|e| JsError::new(&e.to_string()))
 }
 
+/// What reading a patch bank file left out, as JSON `{"skipped": n, "filled": [[slot, "common" | "tone 1" ..], ...]}`: damaged or
+/// non-XP-60 messages skipped, and patch parts set to initial values because their messages were missing.
+#[wasm_bindgen(js_name = syxReport)]
+pub fn syx_report(bytes: &[u8]) -> Result<String, JsError> {
+    let (skipped, filled) = Session::syx_report(bytes).map_err(js)?;
+    serde_json::to_string(&serde_json::json!({ "skipped": skipped, "filled": filled }))
+        .map_err(|e| JsError::new(&e.to_string()))
+}
+
 /// Names of the Performances (`"performance"`) or Rhythm Sets (`"rhythm"`) in a `.syx` file, as JSON `[[slot, name], ...]`.
 #[wasm_bindgen(js_name = docSyxNames)]
 pub fn doc_syx_names(kind: &str, bytes: &[u8]) -> Result<String, JsError> {

@@ -61,7 +61,15 @@
 
   onMount(() => {
     void lib?.refresh();
+    void lib?.bulks.refresh();
   });
+
+  // A bank file kept in the library is a bulk; choosing one shows only its patches, in their order there.
+  function pickBulk(id: number | null): void {
+    if (!lib) return;
+    lib.bulk = id;
+    void lib.refresh();
+  }
 
   // Leaving the Library while a preview sounds puts the instrument's own sound back.
   onDestroy(() => void preview.stop());
@@ -147,6 +155,15 @@
       <TabPanel tabs={groupTabs} selected={groupIndex} name="Library groups" meta="{lib.rows.length} of {lib.total}" onchange={pickGroup}>
        {#snippet children()}
        <div class="listbody">
+        {#if lib.bulks.bulks.length > 0}
+          <div class="crumbs" role="group" aria-label="Bulks">
+            <span class="sep">Bulk</span>
+            <button type="button" class:on={lib.bulk === null} onclick={() => pickBulk(null)}>All patches</button>
+            {#each lib.bulks.bulks as b (b.id)}
+              <button type="button" class:on={lib.bulk === b.id} onclick={() => pickBulk(b.id)} title="{b.count} patches">{b.name}</button>
+            {/each}
+          </div>
+        {/if}
         {#if openFolder && showTrail}
           <div class="crumbs" role="group" aria-label="Folders in {openFolder.name}">
             {#each trail as t, i (t.path)}

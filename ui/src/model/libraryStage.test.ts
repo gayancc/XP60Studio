@@ -4,6 +4,7 @@ import { initSync } from '../wasm/pkg/xppatch.js';
 import type { Backend } from './backend';
 import { LibraryService } from './library.svelte';
 import { toMidiFile } from './midiFile';
+import { fakeBulks } from '../test/bulkBackend';
 
 const BANK = new Uint8Array(readFileSync('../tests/golden/xp60-user-bank.syx'));
 
@@ -13,7 +14,8 @@ beforeAll(() => {
 
 function backend(overrides: Partial<Backend> = {}): Backend {
   return {
-    libraryImport: vi.fn(async () => ({ added: 128, duplicates: 0 })),
+    ...fakeBulks().api,
+    libraryImport: vi.fn(async () => ({ added: 128, duplicates: 0, bulk_id: 1, bulk_name: 'bank' })),
     libraryList: vi.fn(async () => []),
     libraryCount: vi.fn(async () => 0),
     libraryTags: vi.fn(async () => []),
@@ -46,9 +48,9 @@ describe('previewing a file before it is imported', () => {
     const lib = new LibraryService(b);
     lib.stage('bank.syx', BANK);
     const result = await lib.importStaged();
-    expect(result).toEqual({ added: 128, duplicates: 0 });
+    expect(result).toEqual({ added: 128, duplicates: 0, bulk_id: 1, bulk_name: 'bank' });
     expect(lib.staged).toBeNull();
-    expect(lib.notice).toContain('Imported 128');
+    expect(lib.notice).toContain('Imported "bank": 128 new patches');
   });
 
   it('keeps the preview when the import fails, so it can be retried or cancelled', async () => {

@@ -17,6 +17,8 @@ export interface LibraryFilter {
   text: string;
   tag: string;
   favouritesOnly: boolean;
+  /** Only the patches of this bulk, in their order there (null: all). */
+  bulk: number | null;
   limit: number;
   offset: number;
 }
@@ -24,6 +26,50 @@ export interface LibraryFilter {
 export interface ImportResult {
   added: number;
   duplicates: number;
+  /** The bulk the file became. */
+  bulk_id: number;
+  bulk_name: string;
+}
+
+/** A named, ordered set of up to 128 patches, as a bank file is. */
+export interface BulkRow {
+  id: number;
+  name: string;
+  source: string;
+  created_at: number;
+  updated_at: number;
+  count: number;
+}
+
+/** One patch of a bulk and where it sits (0 to 127). */
+export interface BulkSlot {
+  position: number;
+  patch_id: number;
+  name: string;
+}
+
+/** A search result: a patch and the bulk it is in. */
+export interface BulkHit {
+  bulk_id: number;
+  bulk_name: string;
+  position: number;
+  patch_id: number;
+  name: string;
+}
+
+/** A kept earlier version of a bulk. */
+export interface BulkRevision {
+  id: number;
+  saved_at: number;
+  count: number;
+}
+
+export interface BulkSaveResult {
+  bulk_id: number;
+  name: string;
+  added: number;
+  reused: number;
+  kept_version: boolean;
 }
 
 export interface ArmedSave {
@@ -95,6 +141,25 @@ export interface Backend {
   libraryRename(id: number, name: string): Promise<void>;
   libraryDelete(id: number): Promise<void>;
   libraryExport(ids: number[], device: number): Promise<Uint8Array>;
+  bulkList(): Promise<BulkRow[]>;
+  bulkContents(id: number): Promise<BulkSlot[]>;
+  /** Every patch of a bulk as `[position, 590 bytes]`, to load it into the bank. */
+  bulkBlocks(id: number): Promise<Array<[number, Uint8Array]>>;
+  bulkSearch(text: string, limit: number): Promise<BulkHit[]>;
+  bulkRevisions(id: number): Promise<BulkRevision[]>;
+  /** Save the bank's patches as a new bulk (`overwrite` null) or over an existing one, whose old contents are kept as a version. */
+  bulkSave(overwrite: number | null, name: string, patches: Array<[number, Uint8Array]>): Promise<BulkSaveResult>;
+  bulkRename(id: number, name: string): Promise<void>;
+  bulkDuplicate(id: number, name: string): Promise<number>;
+  /** Delete a bulk; resolves to how many patches went with it. */
+  bulkDelete(id: number): Promise<number>;
+  bulkPlace(bulk: number, position: number, patchId: number): Promise<void>;
+  bulkAppend(bulk: number, patchId: number): Promise<number>;
+  bulkClear(bulk: number, position: number): Promise<void>;
+  bulkSwap(bulk: number, a: number, b: number): Promise<void>;
+  bulkMove(fromBulk: number, fromPosition: number, toBulk: number, toPosition: number): Promise<void>;
+  bulkRestore(bulk: number, revision: number): Promise<void>;
+  bulkExport(id: number, device: number): Promise<Uint8Array>;
   /** The backup files written before saves, newest first. */
   backupsList(): Promise<BackupFile[]>;
   /** The bytes of one backup file. */
@@ -131,7 +196,10 @@ const filterArgs = (f: LibraryFilter) => ({
   text: f.text || null,
   tag: f.tag || null,
   favouritesOnly: f.favouritesOnly,
+  bulk: f.bulk,
 });
+
+const toBytes = (rows: Array<[number, number[]]>): Array<[number, Uint8Array]> => rows.map(([p, b]) => [p, new Uint8Array(b)]);
 
 export const tauriBackend: Backend = {
   libraryImport: (bytes, source) => invoke('library_import', { bytes: Array.from(bytes), source }),
@@ -146,6 +214,23 @@ export const tauriBackend: Backend = {
   libraryRename: (id, name) => invoke('library_rename', { id, name }),
   libraryDelete: (id) => invoke('library_delete', { id }),
   libraryExport: async (ids, device) => new Uint8Array(await invoke<number[]>('library_export', { ids, device })),
+  bulkList: () => invoke('bulk_list'),
+  bulkContents: (id) => invoke('bulk_contents', { id }),
+  bulkBlocks: async (id) => toBytes(await invoke<Array<[number, number[]]>>('bulk_blocks', { id })),
+  bulkSearch: (text, limit) => invoke('bulk_search', { text, limit }),
+  bulkRevisions: (id) => invoke('bulk_revisions', { id }),
+  bulkSave: (overwrite, name, patches) =>
+    invoke('bulk_save', { overwrite, name, patches: patches.map(([slot, bytes]) => [slot, Array.from(bytes)]) }),
+  bulkRename: (id, name) => invoke('bulk_rename', { id, name }),
+  bulkDuplicate: (id, name) => invoke('bulk_duplicate', { id, name }),
+  bulkDelete: (id) => invoke('bulk_delete', { id }),
+  bulkPlace: (bulk, position, patchId) => invoke('bulk_place', { bulk, position, patchId }),
+  bulkAppend: (bulk, patchId) => invoke('bulk_append', { bulk, patchId }),
+  bulkClear: (bulk, position) => invoke('bulk_clear', { bulk, position }),
+  bulkSwap: (bulk, a, b) => invoke('bulk_swap', { bulk, a, b }),
+  bulkMove: (fromBulk, fromPosition, toBulk, toPosition) => invoke('bulk_move', { fromBulk, fromPosition, toBulk, toPosition }),
+  bulkRestore: (bulk, revision) => invoke('bulk_restore', { bulk, revision }),
+  bulkExport: async (id, device) => new Uint8Array(await invoke<number[]>('bulk_export', { id, device })),
   backupsList: () => invoke('backups_list'),
   backupRead: async (name) => new Uint8Array(await invoke<number[]>('backup_read', { name })),
   storageInfo: () => invoke('storage_info'),

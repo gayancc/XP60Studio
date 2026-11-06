@@ -4,6 +4,13 @@
 //! A patch is stored as its 590 bytes of block data (Common then Tone 1 to 4). Two patches are duplicates when those
 //! bytes are identical; the hash only finds candidates quickly and the bytes are always compared.
 
+mod bulk;
+
+pub use bulk::{
+    clean_name, name_from_source, BulkHit, BulkRow, BulkSlot, Revision, SaveReport, SaveTarget,
+    BULK_SLOTS, MAX_BULK_NAME, MAX_REVISIONS,
+};
+
 use rusqlite::{params, Connection, OptionalExtension};
 use std::collections::BTreeMap;
 use thiserror::Error;
@@ -36,6 +43,16 @@ pub enum LibraryError {
     BadTag,
     #[error("that name would duplicate patch {0}")]
     WouldDuplicate(i64),
+    #[error("a bulk name must be 1 to 60 characters with no control characters")]
+    BadBulkName,
+    #[error("a bulk called \"{0}\" already exists")]
+    BulkNameTaken(String),
+    #[error("no bulk with id {0}")]
+    BulkNotFound(i64),
+    #[error("position {0} is not a place in a bulk (1 to 128, one patch each)")]
+    BadPosition(usize),
+    #[error("the bulk already holds 128 patches")]
+    BulkFull,
 }
 
 pub type Result<T> = std::result::Result<T, LibraryError>;
@@ -50,8 +67,13 @@ pub enum AddOutcome {
 /// What an import did.
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct ImportReport {
+    /// Patches that were new to the library.
     pub added: usize,
+    /// Patches that were already stored (the bulk refers to the stored one).
     pub duplicates: usize,
+    /// The bulk the file became.
+    pub bulk_id: i64,
+    pub bulk_name: String,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -60,6 +82,8 @@ pub struct Filter {
     pub text: Option<String>,
     pub tag: Option<String>,
     pub favourites_only: bool,
+    /// Only patches of this bulk, in their order there.
+    pub bulk: Option<i64>,
     pub limit: Option<u32>,
     pub offset: u32,
 }
@@ -124,7 +148,23 @@ fn like_pattern(text: &str) -> String {
 
 impl Library {
     pub fn open(path: &std::path::Path) -> Result<Library> {
-        Library::init(Connection::open(path)?)
+        let conn = Connection::open(path)?;
+        // A library made before bulks existed is grouped into bulks once; keep a copy of it as it was first.
+        let version: i64 = conn.query_row("PRAGMA user_version", [], |r| r.get(0))?;
+        let has_patches = conn
+            .query_row(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'patch'",
+                [],
+                |r| r.get::<_, i64>(0),
+            )
+            .map(|n| n > 0)?;
+        if version < 1 && has_patches {
+            let backup = path.with_extension("before-bulks.bak");
+            if !backup.exists() {
+                conn.execute("VACUUM INTO ?1", params![backup.to_string_lossy()])?;
+            }
+        }
+        Library::init(conn)
     }
 
     /// Write a consistent copy of the whole library to `dest` (which must not exist yet). The open library is untouched.
@@ -155,9 +195,37 @@ impl Library {
                patch_id INTEGER NOT NULL REFERENCES patch(id) ON DELETE CASCADE,
                tag TEXT NOT NULL,
                PRIMARY KEY (patch_id, tag)
+             );
+             CREATE TABLE IF NOT EXISTS bulk (
+               id INTEGER PRIMARY KEY,
+               name TEXT NOT NULL UNIQUE COLLATE NOCASE,
+               source TEXT NOT NULL DEFAULT '',
+               created_at INTEGER NOT NULL,
+               updated_at INTEGER NOT NULL
+             );
+             CREATE TABLE IF NOT EXISTS bulk_patch (
+               bulk_id INTEGER NOT NULL REFERENCES bulk(id) ON DELETE CASCADE,
+               position INTEGER NOT NULL CHECK (position BETWEEN 0 AND 127),
+               patch_id INTEGER NOT NULL REFERENCES patch(id) ON DELETE CASCADE,
+               PRIMARY KEY (bulk_id, position)
+             );
+             CREATE INDEX IF NOT EXISTS bulk_patch_patch ON bulk_patch(patch_id);
+             CREATE TABLE IF NOT EXISTS bulk_revision (
+               id INTEGER PRIMARY KEY,
+               bulk_id INTEGER NOT NULL REFERENCES bulk(id) ON DELETE CASCADE,
+               saved_at INTEGER NOT NULL,
+               slots TEXT NOT NULL
              );",
         )?;
-        Ok(Library { conn })
+        let mut lib = Library { conn };
+        let version: i64 = lib
+            .conn
+            .query_row("PRAGMA user_version", [], |r| r.get(0))?;
+        if version < 1 {
+            lib.migrate_to_bulks()?;
+            lib.conn.execute_batch("PRAGMA user_version = 1")?;
+        }
+        Ok(lib)
     }
 
     /// Store `patch`, unless an identical one is already stored.
@@ -187,35 +255,43 @@ impl Library {
         Ok(AddOutcome::Added(self.conn.last_insert_rowid()))
     }
 
-    /// Import every patch of a `.syx` file: a User Patch bank, or a single patch dump to the temporary patch.
+    /// Import every patch of a `.syx` file as a bulk named after the file: a User Patch bank keeps each patch at its slot, a single
+    /// patch dump to the temporary patch becomes a bulk of one. A name already taken gets a number ("bank (2)"); nothing is
+    /// overwritten. All or nothing.
     pub fn import_syx(&mut self, bytes: &[u8], source: &str, now: i64) -> Result<ImportReport> {
-        let image = SyxImage::parse(bytes)?;
-        let mut patches: Vec<Patch> = image.user_patches()?.into_iter().map(|(_, p)| p).collect();
+        // A file brought in by a person is read the way the instrument reads it: damaged messages are skipped, not fatal.
+        let (image, skipped) = SyxImage::parse_lenient(bytes)?;
+        let mut patches: Vec<(u8, Patch)> = image.user_patches_lenient(skipped.len())?.0;
         if patches.is_empty() {
-            patches.extend(image.temp_patch()?);
+            patches.extend(image.temp_patch()?.map(|p| (0, p)));
         }
         if patches.is_empty() {
             return Err(LibraryError::NoPatches);
         }
-        // All or nothing: a half-imported bank would be confusing.
-        self.conn.execute_batch("BEGIN")?;
-        let mut report = ImportReport::default();
-        for p in &patches {
-            match self.add_patch(p, source, now) {
-                Ok(AddOutcome::Added(_)) => report.added += 1,
-                Ok(AddOutcome::Duplicate(_)) => report.duplicates += 1,
-                Err(e) => {
-                    // Undo the partial import; the original error matters more than a failed rollback.
-                    let _ = self.conn.execute_batch("ROLLBACK");
-                    return Err(e);
+        self.in_tx(|lib| {
+            let (mut added, mut duplicates) = (0, 0);
+            let mut slots = Vec::with_capacity(patches.len());
+            for (slot, p) in &patches {
+                match lib.add_patch(p, source, now)? {
+                    AddOutcome::Added(id) => {
+                        added += 1;
+                        slots.push((*slot, id));
+                    }
+                    AddOutcome::Duplicate(id) => {
+                        duplicates += 1;
+                        slots.push((*slot, id));
+                    }
                 }
             }
-        }
-        if let Err(e) = self.conn.execute_batch("COMMIT") {
-            let _ = self.conn.execute_batch("ROLLBACK");
-            return Err(e.into());
-        }
-        Ok(report)
+            let bulk_name = lib.unique_bulk_name(&name_from_source(source))?;
+            let bulk_id = lib.create_bulk_inner(&bulk_name, source, &slots, now)?;
+            Ok(ImportReport {
+                added,
+                duplicates,
+                bulk_id,
+                bulk_name,
+            })
+        })
     }
 
     pub fn get_patch(&self, id: i64) -> Result<Patch> {
@@ -249,6 +325,12 @@ impl Library {
         if f.favourites_only {
             clauses.push("p.favourite = 1".to_owned());
         }
+        if let Some(bulk) = f.bulk {
+            // An integer, formatted in: nothing a person typed reaches the SQL.
+            clauses.push(format!(
+                "p.id IN (SELECT patch_id FROM bulk_patch WHERE bulk_id = {bulk})"
+            ));
+        }
         let sql = if clauses.is_empty() {
             String::new()
         } else {
@@ -271,9 +353,15 @@ impl Library {
         let (clause, args) = Library::where_clause(f);
         // Never an unbounded list: callers that do not ask for a page get the first 5000.
         let limit = i64::from(f.limit.unwrap_or(5000).min(5000));
+        let order = match f.bulk {
+            Some(bulk) => format!(
+                "(SELECT bp.position FROM bulk_patch bp WHERE bp.bulk_id = {bulk} AND bp.patch_id = p.id), p.id"
+            ),
+            None => "p.name COLLATE NOCASE, p.id".to_owned(),
+        };
         let sql = format!(
             "SELECT p.id, p.name, p.favourite, p.source, p.added_at FROM patch p {clause}
-             ORDER BY p.name COLLATE NOCASE, p.id LIMIT {limit} OFFSET {}",
+             ORDER BY {order} LIMIT {limit} OFFSET {}",
             f.offset
         );
         let mut stmt = self.conn.prepare(&sql)?;
@@ -454,13 +542,8 @@ mod tests {
             unique_count()
         );
         let again = lib.import_syx(BANK, "bank.syx", 200).unwrap();
-        assert_eq!(
-            again,
-            ImportReport {
-                added: 0,
-                duplicates: 128
-            }
-        );
+        assert_eq!((again.added, again.duplicates), (0, 128));
+        assert_eq!(again.bulk_name, "bank (2)");
     }
 
     #[test]
@@ -490,11 +573,8 @@ mod tests {
         let mut lib = library();
         let r = lib.import_syx(&bytes, "single.syx", 5).unwrap();
         assert_eq!(
-            r,
-            ImportReport {
-                added: 1,
-                duplicates: 0
-            }
+            (r.added, r.duplicates, r.bulk_name.as_str()),
+            (1, 0, "single")
         );
         let id = lib.list(&Filter::default()).unwrap()[0].id;
         assert_eq!(lib.get_patch(id).unwrap(), patch);
