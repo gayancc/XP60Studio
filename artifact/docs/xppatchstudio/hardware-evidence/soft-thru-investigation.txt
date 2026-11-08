@@ -1,0 +1,27 @@
+2026-11-07 — Soft Thru source check (H-018 / H-038)
+
+Question: is Soft Thru an XP-60 panel setting, or a PC/interface/loopback concern?
+
+Checked without inventing a feature:
+- XP-60/80 Owner's Manual PDF in-repo (artifact/docs/xp60studio-legacy/XP60-References/XP-60_80_OM.pdf)
+  is a scan with no extractable text in this environment; no Soft Thru hit via text tools.
+- Prior protocol notes (03-xp60-protocol.md, 03a-parameter-map-draft.md, feature catalog, bundle
+  inventory) do not define Soft Thru as an XP-60 control.
+- Parameter map documents Local Switch (OFF/ON) on Performance Part Common (legacy
+  XP60_PERFORMANCE_PARAMETER_MAP.md; data/xp60-parameters.json), not named Soft Thru.
+- Patch Base.app Mach-O binary string scan: no "Soft Thru", "soft thru", "SoftThru", or "MIDI Thru".
+- App client comments (xppatch-midi client.rs) treat Soft Thru as a possible MIDI echo/loopback on
+  the cable/interface path (echo listen window), with a virtual Soft Thru mock in testing.rs.
+
+Conclusion so far: Soft Thru is not evidenced as an XP-60 panel SysEx/feature name in the uploaded
+investigation. H-018 and H-038 remain NOT RUN / blocked until the owner identifies the Soft Thru
+source they intend (MIDI interface software thru, physical loopback, or another device). Do not
+add Soft Thru UI or claim an XP-60 Soft Thru switch without that confirmation.
+
+2026-11-07 hardware path note (echo_probe / H-018-echo-path.txt):
+- Sent a 12-byte temp Tone Level DT1 on FCB1010 OUT while listening on FCB1010 IN for the
+  client's echo window (~0.4 ms/byte + settle).
+- Inbound SysEx frames: 0; exact outbound echo: false.
+- This session's FCB1010 path therefore does not itself provide Soft Thru/loopback echo.
+- Soft Thru ON case remains blocked until the owner names a different Soft Thru source (or
+  confirms there is none for this setup).

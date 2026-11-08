@@ -1,0 +1,249 @@
+PASS connected
+PASS fetched
+PASS baseline: Verify available
+PASS baseline: Verified: the instrument's temporary copy matches this sound.
+PASS Tone 2 switch found (false)
+Tone 2 switch: false -> true
+PASS Tone 2 on/off changed
+PASS Tone 2 switch: Verify available
+PASS Tone 2 switch: Verified: the instrument's temporary copy matches this sound.
+PASS Tone 2 switch restore: Verify available
+PASS Tone 2 switch restore: Verified: the instrument's temporary copy matches this sound.
+PASS Wave and pitch tab
+wave picker: opened
+PASS Wave picker opens
+wave picked: 007 Ac Piano2 fA
+PASS picked a different wave
+PASS Wave picker Tone 1: Verify available
+PASS Wave picker Tone 1: Verified: the instrument's temporary copy matches this sound.
+PASS Structure tab
+PASS Structure dialog opens
+structure type chosen: 2
+PASS chose another structure type
+PASS Structure type 2: Verify available
+PASS Structure type 2: Verified: the instrument's temporary copy matches this sound.
+PASS open Zones
+PASS open Wave and pitch
+Wave and pitch segmented Wave Group Type -> PCM
+PASS Wave and pitch segmented Wave Group Type: Verify available
+PASS Wave and pitch segmented Wave Group Type: Verified: the instrument's temporary copy matches this sound.
+Wave and pitch segmented Wave Gain -> -6
+PASS Wave and pitch segmented Wave Gain: Verify available
+PASS Wave and pitch segmented Wave Gain: Verified: the instrument's temporary copy matches this sound.
+Wave and pitch toggle FXM Switch
+PASS Wave and pitch toggle FXM Switch: Verify available
+PASS Wave and pitch toggle FXM Switch: Verified: the instrument's temporary copy matches this sound.
+Wave and pitch dropdown Tone Delay Mode -> HOLD
+PASS Wave and pitch dropdown Tone Delay Mode: Verify available
+PASS Wave and pitch dropdown Tone Delay Mode: Verified: the instrument's temporary copy matches this sound.
+PASS open Filter and amp
+Filter and amp segmented Filter Type -> OFF
+PASS Filter and amp segmented Filter Type: Verify available
+PASS Filter and amp segmented Filter Type: Verified: the instrument's temporary copy matches this sound.
+Filter and amp segmented Bias Direction -> LOWER
+PASS Filter and amp segmented Bias Direction: Verify available
+PASS Filter and amp segmented Bias Direction: Verified: the instrument's temporary copy matches this sound.
+PASS open LFO and modulation
+LFO and modulation segmented LFO1 Offset -> -100
+PASS LFO and modulation segmented LFO1 Offset: Verify available
+PASS LFO and modulation segmented LFO1 Offset: Verified: the instrument's temporary copy matches this sound.
+LFO and modulation segmented LFO1 External Sync -> CLOCK
+PASS LFO and modulation segmented LFO1 External Sync: Verify available
+PASS LFO and modulation segmented LFO1 External Sync: Verified: the instrument's temporary copy matches this sound.
+LFO and modulation segmented LFO1 Fade Mode -> ON-OUT
+PASS LFO and modulation segmented LFO1 Fade Mode: Verify available
+PASS LFO and modulation segmented LFO1 Fade Mode: Verified: the instrument's temporary copy matches this sound.
+LFO and modulation segmented LFO2 Offset -> -100
+PASS LFO and modulation segmented LFO2 Offset: Verify available
+PASS LFO and modulation segmented LFO2 Offset: Verified: the instrument's temporary copy matches this sound.
+LFO and modulation segmented LFO2 External Sync -> CLOCK
+PASS LFO and modulation segmented LFO2 External Sync: Verify available
+PASS LFO and modulation segmented LFO2 External Sync: Verified: the instrument's temporary copy matches this sound.
+LFO and modulation segmented LFO2 Fade Mode -> ON-OUT
+PASS LFO and modulation segmented LFO2 Fade Mode: Verify available
+PASS LFO and modulation segmented LFO2 Fade Mode: Verified: the instrument's temporary copy matches this sound.
+LFO and modulation toggle Key Trigger
+PASS LFO and modulation toggle Key Trigger: Verify available
+PASS LFO and modulation toggle Key Trigger: Verified: the instrument's temporary copy matches this sound.
+LFO and modulation toggle Redamper Control Switch
+PASS LFO and modulation toggle Redamper Control Switch: Verify available
+PASS LFO and modulation toggle Redamper Control Switch: Verified: the instrument's temporary copy matches this sound.
+LFO and modulation toggle Volume Control Switch
+PASS LFO and modulation toggle Volume Control Switch: Verify available
+PASS LFO and modulation toggle Volume Control Switch: Verified: the instrument's temporary copy matches this sound.
+LFO and modulation toggle Hold-1 Control Switch
+PASS LFO and modulation toggle Hold-1 Control Switch: Verify available
+PASS LFO and modulation toggle Hold-1 Control Switch: Verified: the instrument's temporary copy matches this sound.
+LFO and modulation toggle Bender Control Switch
+PASS LFO and modulation toggle Bender Control Switch: Verify available
+PASS LFO and modulation toggle Bender Control Switch: Verified: the instrument's temporary copy matches this sound.
+LFO and modulation dropdown LFO1 Waveform -> SIN
+PASS LFO and modulation dropdown LFO1 Waveform: Verify available
+PASS LFO and modulation dropdown LFO1 Waveform: Verified: the instrument's temporary copy matches this sound.
+LFO and modulation dropdown LFO2 Waveform -> SIN
+PASS LFO and modulation dropdown LFO2 Waveform: Verify available
+PASS LFO and modulation dropdown LFO2 Waveform: Verified: the instrument's temporary copy matches this sound.
+LFO and modulation dropdown Pan Control Switch -> KEY-ON
+PASS LFO and modulation dropdown Pan Control Switch: Verify available
+PASS LFO and modulation dropdown Pan Control Switch: Verified: the instrument's temporary copy matches this sound.
+LFO and modulation dropdown Controller 1 Destination 1 -> Resonance
+PASS LFO and modulation dropdown Controller 1 Destination 1: Verify available
+PASS LFO and modulation dropdown Controller 1 Destination 1: Verified: the instrument's temporary copy matches this sound.
+LFO and modulation dropdown Controller 1 Destination 2 -> Pitch
+PASS LFO and modulation dropdown Controller 1 Destination 2: Verify available
+PASS LFO and modulation dropdown Controller 1 Destination 2: Verified: the instrument's temporary copy matches this sound.
+LFO and modulation dropdown Controller 1 Destination 3 -> Pitch
+PASS LFO and modulation dropdown Controller 1 Destination 3: Verify available
+PASS LFO and modulation dropdown Controller 1 Destination 3: Verified: the instrument's temporary copy matches this sound.
+LFO and modulation dropdown Controller 1 Destination 4 -> Pitch
+PASS LFO and modulation dropdown Controller 1 Destination 4: Verify available
+PASS LFO and modulation dropdown Controller 1 Destination 4: Verified: the instrument's temporary copy matches this sound.
+LFO and modulation dropdown Controller 2 Destination 1 -> Pitch
+PASS LFO and modulation dropdown Controller 2 Destination 1: Verify available
+PASS LFO and modulation dropdown Controller 2 Destination 1: Verified: the instrument's temporary copy matches this sound.
+LFO and modulation dropdown Controller 2 Destination 2 -> Pitch
+PASS LFO and modulation dropdown Controller 2 Destination 2: Verify available
+PASS LFO and modulation dropdown Controller 2 Destination 2: Verified: the instrument's temporary copy matches this sound.
+LFO and modulation dropdown Controller 2 Destination 3 -> Pitch
+PASS LFO and modulation dropdown Controller 2 Destination 3: Verify available
+PASS LFO and modulation dropdown Controller 2 Destination 3: Verified: the instrument's temporary copy matches this sound.
+LFO and modulation dropdown Controller 2 Destination 4 -> Pitch
+PASS LFO and modulation dropdown Controller 2 Destination 4: Verify available
+PASS LFO and modulation dropdown Controller 2 Destination 4: Verified: the instrument's temporary copy matches this sound.
+LFO and modulation dropdown Controller 3 Destination 1 -> Pitch
+PASS LFO and modulation dropdown Controller 3 Destination 1: Verify available
+PASS LFO and modulation dropdown Controller 3 Destination 1: Verified: the instrument's temporary copy matches this sound.
+LFO and modulation dropdown Controller 3 Destination 2 -> Pitch
+PASS LFO and modulation dropdown Controller 3 Destination 2: Verify available
+PASS LFO and modulation dropdown Controller 3 Destination 2: Verified: the instrument's temporary copy matches this sound.
+LFO and modulation dropdown Controller 3 Destination 3 -> Pitch
+PASS LFO and modulation dropdown Controller 3 Destination 3: Verify available
+PASS LFO and modulation dropdown Controller 3 Destination 3: Verified: the instrument's temporary copy matches this sound.
+LFO and modulation dropdown Controller 3 Destination 4 -> Pan
+PASS LFO and modulation dropdown Controller 3 Destination 4: Verify available
+PASS LFO and modulation dropdown Controller 3 Destination 4: Verified: the instrument's temporary copy matches this sound.
+PASS open Patch
+Patch segmented LFO1 Offset -> -50
+PASS Patch segmented LFO1 Offset: Verify available
+PASS Patch segmented LFO1 Offset: Verified: the instrument's temporary copy matches this sound.
+Patch segmented LFO1 External Sync -> OFF
+PASS Patch segmented LFO1 External Sync: Verify available
+PASS Patch segmented LFO1 External Sync: Verified: the instrument's temporary copy matches this sound.
+Patch segmented LFO1 Fade Mode -> ON-IN
+PASS Patch segmented LFO1 Fade Mode: Verify available
+PASS Patch segmented LFO1 Fade Mode: Verified: the instrument's temporary copy matches this sound.
+Patch segmented LFO2 Offset -> -50
+PASS Patch segmented LFO2 Offset: Verify available
+PASS Patch segmented LFO2 Offset: Verified: the instrument's temporary copy matches this sound.
+Patch segmented LFO2 External Sync -> OFF
+PASS Patch segmented LFO2 External Sync: Verify available
+PASS Patch segmented LFO2 External Sync: Verified: the instrument's temporary copy matches this sound.
+Patch segmented LFO2 Fade Mode -> ON-IN
+PASS Patch segmented LFO2 Fade Mode: Verify available
+PASS Patch segmented LFO2 Fade Mode: Verified: the instrument's temporary copy matches this sound.
+Patch toggle Key Trigger
+PASS Patch toggle Key Trigger: Verify available
+PASS Patch toggle Key Trigger: Verified: the instrument's temporary copy matches this sound.
+Patch toggle Redamper Control Switch
+PASS Patch toggle Redamper Control Switch: Verify available
+PASS Patch toggle Redamper Control Switch: Verified: the instrument's temporary copy matches this sound.
+Patch toggle Volume Control Switch
+PASS Patch toggle Volume Control Switch: Verify available
+PASS Patch toggle Volume Control Switch: Verified: the instrument's temporary copy matches this sound.
+Patch toggle Hold-1 Control Switch
+PASS Patch toggle Hold-1 Control Switch: Verify available
+PASS Patch toggle Hold-1 Control Switch: Verified: the instrument's temporary copy matches this sound.
+Patch toggle Bender Control Switch
+PASS Patch toggle Bender Control Switch: Verify available
+PASS Patch toggle Bender Control Switch: Verified: the instrument's temporary copy matches this sound.
+Patch dropdown LFO1 Waveform -> SAW
+PASS Patch dropdown LFO1 Waveform: Verify available
+PASS Patch dropdown LFO1 Waveform: Verified: the instrument's temporary copy matches this sound.
+Patch dropdown LFO2 Waveform -> SAW
+PASS Patch dropdown LFO2 Waveform: Verify available
+PASS Patch dropdown LFO2 Waveform: Verified: the instrument's temporary copy matches this sound.
+Patch dropdown Pan Control Switch -> 001 Ac Piano1 A
+PASS Patch dropdown Pan Control Switch: Verify available
+PASS Patch dropdown Pan Control Switch: Verified: the instrument's temporary copy matches this sound.
+Patch dropdown Controller 1 Destination 1 -> Off
+PASS Patch dropdown Controller 1 Destination 1: Verify available
+PASS Patch dropdown Controller 1 Destination 1: Verified: the instrument's temporary copy matches this sound.
+Patch dropdown Controller 1 Destination 2 -> Off
+PASS Patch dropdown Controller 1 Destination 2: Verify available
+PASS Patch dropdown Controller 1 Destination 2: Verified: the instrument's temporary copy matches this sound.
+Patch dropdown Controller 1 Destination 3 -> Off
+PASS Patch dropdown Controller 1 Destination 3: Verify available
+PASS Patch dropdown Controller 1 Destination 3: Verified: the instrument's temporary copy matches this sound.
+Patch dropdown Controller 1 Destination 4 -> Off
+PASS Patch dropdown Controller 1 Destination 4: Verify available
+PASS Patch dropdown Controller 1 Destination 4: Verified: the instrument's temporary copy matches this sound.
+Patch dropdown Controller 2 Destination 1 -> Off
+PASS Patch dropdown Controller 2 Destination 1: Verify available
+PASS Patch dropdown Controller 2 Destination 1: Verified: the instrument's temporary copy matches this sound.
+Patch dropdown Controller 2 Destination 2 -> Off
+PASS Patch dropdown Controller 2 Destination 2: Verify available
+PASS Patch dropdown Controller 2 Destination 2: Verified: the instrument's temporary copy matches this sound.
+Patch dropdown Controller 2 Destination 3 -> Off
+PASS Patch dropdown Controller 2 Destination 3: Verify available
+PASS Patch dropdown Controller 2 Destination 3: Verified: the instrument's temporary copy matches this sound.
+Patch dropdown Controller 2 Destination 4 -> Off
+PASS Patch dropdown Controller 2 Destination 4: Verify available
+PASS Patch dropdown Controller 2 Destination 4: Verified: the instrument's temporary copy matches this sound.
+Patch dropdown Controller 3 Destination 1 -> Off
+PASS Patch dropdown Controller 3 Destination 1: Verify available
+PASS Patch dropdown Controller 3 Destination 1: Verified: the instrument's temporary copy matches this sound.
+Patch dropdown Controller 3 Destination 2 -> Off
+PASS Patch dropdown Controller 3 Destination 2: Verify available
+PASS Patch dropdown Controller 3 Destination 2: Verified: the instrument's temporary copy matches this sound.
+Patch dropdown Controller 3 Destination 3 -> Off
+PASS Patch dropdown Controller 3 Destination 3: Verify available
+PASS Patch dropdown Controller 3 Destination 3: Verified: the instrument's temporary copy matches this sound.
+Patch dropdown Controller 3 Destination 4 -> Off
+PASS Patch dropdown Controller 3 Destination 4: Verify available
+PASS Patch dropdown Controller 3 Destination 4: Verified: the instrument's temporary copy matches this sound.
+PASS open Structure
+Structure segmented Booster 1&2 -> +6
+PASS Structure segmented Booster 1&2: Verify available
+PASS Structure segmented Booster 1&2: Verified: the instrument's temporary copy matches this sound.
+Structure segmented Booster 3&4 -> +6
+PASS Structure segmented Booster 3&4: Verify available
+PASS Structure segmented Booster 3&4: Verified: the instrument's temporary copy matches this sound.
+Structure toggle Vel Range Switch
+PASS Structure toggle Vel Range Switch: Verify available
+PASS Structure toggle Vel Range Switch: Verified: the instrument's temporary copy matches this sound.
+PASS open Routing
+Routing segmented Output Assign -> EFX
+PASS Routing segmented Output Assign: Verify available
+PASS Routing segmented Output Assign: Verified: the instrument's temporary copy matches this sound.
+PASS open Effects
+Effects segmented Low Frequency -> 400 Hz
+PASS Effects segmented Low Frequency: Verify available
+PASS Effects segmented Low Frequency: Verified: the instrument's temporary copy matches this sound.
+Effects segmented High Frequency -> 8000 Hz
+PASS Effects segmented High Frequency: Verify available
+PASS Effects segmented High Frequency: Verified: the instrument's temporary copy matches this sound.
+Effects segmented EFX Output Assign -> DIR
+PASS Effects segmented EFX Output Assign: Verify available
+PASS Effects segmented EFX Output Assign: Verified: the instrument's temporary copy matches this sound.
+Effects segmented EFX Control Hold/Peak -> HOLD
+PASS Effects segmented EFX Control Hold/Peak: Verify available
+PASS Effects segmented EFX Control Hold/Peak: Verified: the instrument's temporary copy matches this sound.
+Effects segmented Chorus Output -> REVERB
+PASS Effects segmented Chorus Output: Verify available
+PASS Effects segmented Chorus Output: Verified: the instrument's temporary copy matches this sound.
+Effects dropdown EFX type -> 05 SPECTRUM
+PASS Effects dropdown EFX type: Verify available
+PASS Effects dropdown EFX type: Verified: the instrument's temporary copy matches this sound.
+Effects dropdown EFX Control Source 1 -> SYS-CTRL1
+PASS Effects dropdown EFX Control Source 1: Verify available
+PASS Effects dropdown EFX Control Source 1: Verified: the instrument's temporary copy matches this sound.
+Effects dropdown EFX Control Source 2 -> SYS-CTRL1
+PASS Effects dropdown EFX Control Source 2: Verify available
+PASS Effects dropdown EFX Control Source 2: Verified: the instrument's temporary copy matches this sound.
+Effects dropdown Reverb Type -> HALL1
+PASS Effects dropdown Reverb Type: Verify available
+PASS Effects dropdown Reverb Type: Verified: the instrument's temporary copy matches this sound.
+Effects dropdown Reverb HF Damp -> 5000
+PASS Effects dropdown Reverb HF Damp: Verify available
+PASS Effects dropdown Reverb HF Damp: Verified: the instrument's temporary copy matches this sound.
+NON-SLIDER LIVE PARAM WALK PASSED

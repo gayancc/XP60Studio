@@ -214,14 +214,16 @@ describe('opening patches', () => {
     expect(store.name).toBe('Keep Me');
   });
 
-  it('new patch clears the history and the pending frames', () => {
+  it('new patch clears the history and replaces any pending live frames with the new sound', () => {
     const { store, transport } = make();
     store.set('tone1', 'tone_level', 1);
     store.set('tone1', 'tone_pan', 2);
+    transport.frames.length = 0;
     store.newPatch();
-    vi.advanceTimersByTime(500);
+    vi.advanceTimersByTime(1000);
     expect(store.items).toHaveLength(0);
-    expect(transport.frames.length).toBeLessThanOrEqual(1);
+    // Live edit is on in tests: New is sent whole so the instrument matches the neutral sound.
+    expect(transport.frames.length).toBeGreaterThanOrEqual(9);
   });
 
   it('new patch is the neutral sound: it plays (full ranges, first tone on) yet counts as unedited', () => {
@@ -232,6 +234,19 @@ describe('opening patches', () => {
     expect(store.get('tone4', 'velocity_range_upper')).toBe(127);
     expect(store.items).toHaveLength(0);
     expect(store.canUndo).toBe(false);
+  });
+
+  it('XP-60 Init loads the panel-captured defaults exactly and one Undo restores the prior sound', () => {
+    const { store } = make();
+    store.setName('Before Init');
+    const before = store.snapshot();
+    store.initXp60Patch();
+    const panel = readFileSync('../crates/xppatch-core/data/xp60-init-patch.blocks');
+    expect(Buffer.from(store.snapshot())).toEqual(panel);
+    expect(store.name.trimEnd()).toBe('INIT PATCH');
+    expect(store.items.at(-1)?.label).toBe('XP-60 Init Patch');
+    store.undo();
+    expect(Buffer.from(store.snapshot())).toEqual(Buffer.from(before));
   });
 });
 
@@ -291,6 +306,86 @@ describe('honest sync state', () => {
     store.set('tone1', 'tone_level', 6);
     vi.advanceTimersByTime(100);
     expect(transport.frames).toHaveLength(1);
+  });
+
+  it('an EFX type change is sent as a whole patch with its twelve defaults', () => {
+    const { store, transport } = make();
+    store.set('tone1', 'tone_level', 5);
+    vi.advanceTimersByTime(1000);
+    transport.frames.length = 0;
+    const before = store.get('common', 'efx_type');
+    const next = before === 0 ? 1 : 0;
+    store.applyMany(
+      [
+        { block: 'common', id: 'efx_type', value: next },
+        ...Array.from({ length: 12 }, (_, i) => ({ block: 'common' as const, id: `efx_parameter_${i + 1}`, value: 10 + i })),
+      ],
+      'Effects · Type',
+    );
+    vi.advanceTimersByTime(1000);
+    expect(transport.frames.length).toBeGreaterThanOrEqual(9);
+    expect(store.get('common', 'efx_type')).toBe(next);
+  });
+
+  it('a wave group change is sent as a whole patch so type/id never land alone', () => {
+    const { store, transport } = make();
+    store.set('tone1', 'tone_level', 5);
+    vi.advanceTimersByTime(1000);
+    expect(store.sync).toBe('sent');
+    transport.frames.length = 0;
+    store.applyMany(
+      [
+        { block: 'tone1', id: 'wave_group_type', value: 2 },
+        { block: 'tone1', id: 'wave_group_id', value: 9 },
+        { block: 'tone1', id: 'wave_number', value: 0 },
+      ],
+      'Tone 1 · Wave',
+    );
+    vi.advanceTimersByTime(1000);
+    expect(transport.frames.length).toBeGreaterThanOrEqual(9);
+    expect(store.get('tone1', 'wave_group_type')).toBe(2);
+    expect(store.get('tone1', 'wave_group_id')).toBe(9);
+    expect(store.get('tone1', 'wave_number')).toBe(0);
+  });
+
+  it('wave type/id/number set inside one undo group only go out once, after end()', () => {
+    const { store, transport } = make();
+    prime(store, transport);
+    store.begin('Tone 1 · Wave');
+    store.set('tone1', 'wave_group_type', 2);
+    store.set('tone1', 'wave_group_id', 9);
+    store.set('tone1', 'wave_number', 0);
+    expect(transport.frames).toHaveLength(0);
+    store.end();
+    vi.advanceTimersByTime(1000);
+    expect(transport.frames.length).toBeGreaterThanOrEqual(9);
+  });
+
+  it('opening a file with Live edit on sends the sound immediately, before any Tone click', () => {
+    const { store, transport } = make();
+    store.loadSyx(BANK, 0, 'bank.syx');
+    vi.advanceTimersByTime(1000);
+    expect(transport.frames.length).toBeGreaterThanOrEqual(9);
+    expect(store.sync).toBe('sent');
+    transport.frames.length = 0;
+    const was = store.get('tone2', 'tone_switch');
+    store.set('tone2', 'tone_switch', was === 1 ? 0 : 1);
+    vi.advanceTimersByTime(100);
+    // Base is already on the instrument: a Tone switch is a single live frame, not another whole send.
+    expect(transport.frames).toHaveLength(1);
+    expect(store.get('tone2', 'tone_switch')).toBe(was === 1 ? 0 : 1);
+  });
+
+  it('fetching from the instrument does not send the same sound straight back', () => {
+    const { store, transport } = make();
+    store.loadSyx(BANK, 0, 'bank.syx');
+    vi.advanceTimersByTime(1000);
+    const bytes = store.snapshot();
+    transport.frames.length = 0;
+    store.openFromInstrument(bytes);
+    vi.advanceTimersByTime(500);
+    expect(transport.frames).toHaveLength(0);
+    expect(store.sync).toBe('tempVerified');
   });
 
   it('a sound changed on the panel is stale, and the next edit resends the whole patch', () => {

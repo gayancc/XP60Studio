@@ -1,0 +1,20 @@
+PASS MIDI input selected
+PASS MIDI output selected
+PASS Connect requested
+PASS System fetch requested
+PASS System fetched before editing
+PASS System export saved
+PASS System Sound and mode tab opens
+PASS Master Tune changed by one step locally
+PASS System backup step started
+PASS System backup file equals the original export
+PASS System write explicitly confirmed
+PASS changed System settings written and read back equal
+PASS System undo offered
+PASS System undo confirmed
+PASS System undo read back equal
+PASS restored System settings fetched again
+PASS System export saved
+PASS all System bytes equal the pre-test export
+PASS System window has no script errors
+SYSTEM UI PASSED

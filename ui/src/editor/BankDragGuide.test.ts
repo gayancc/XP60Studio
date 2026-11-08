@@ -69,6 +69,20 @@ describe('dragging a patch over the slot grid', () => {
     expect(slotButton(container, 28).classList.contains('sel')).toBe(true);
   });
 
+  it('sends Bank Select and Program Change on drop when Select on the instrument is on', async () => {
+    const selectSound = vi.fn(async () => true);
+    const synth = { connected: true, selectSound } as unknown as import('../model/synth.svelte').SynthService;
+    const fake = fakeBulks();
+    const backend = new Proxy(fake.api, { get: (t, k) => (k in t ? t[k as keyof typeof t] : vi.fn(async () => [])) }) as unknown as Backend;
+    const store = new PatchStore(parseCatalog(catalogJson()), new MemoryTransport());
+    const bank = new BankService(backend);
+    const services = { bank, library: new LibraryService(backend), save: {}, systemSave: {} } as unknown as Services;
+    const { container } = render(BankViewHarness, { props: { store, services, synth } });
+    await fireEvent.drop(slotButton(container, 28), libraryDrag);
+    expect(bank.selected).toBe(27);
+    expect(selectSound).toHaveBeenCalledWith(0, 80, 0, 27);
+  });
+
   it('puts several dragged patches into the slots that follow the one dropped on', async () => {
     const { container, bank, fake } = setup();
     const ids = [1, 2].map((i) => {

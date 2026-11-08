@@ -11,6 +11,7 @@
   import type { KeyMap } from '../model/shortcuts';
   import { describeSound } from '../model/textExport';
   import { say, ui } from '../model/ui.svelte';
+  import { reportError, reportSuccess } from '../model/messages.svelte';
   import { applyTheme, storedTheme, toggled, type Theme } from '../theme/theme';
   import { useStore } from './context';
   import SaveCeremony from './SaveCeremony.svelte';
@@ -51,7 +52,10 @@
   }
 
   async function exportOpen(format: ExportFormat): Promise<void> {
-    say(await exportPatch(store, tauriBackend, format));
+    const result = await exportPatch(store, tauriBackend, format);
+    if (result.startsWith('Saved ') || result.startsWith('Exported ')) reportSuccess(result);
+    else if (result.startsWith('Could not save ') || result.startsWith('Export failed:')) reportError(result);
+    else say(result);
   }
 
   function choose(i: number): void {
@@ -110,6 +114,7 @@
         { label: 'Redo', hint: k('redo'), run: () => run('redo'), disabled: !store.canRedo || !editing },
         { separator: true },
         { label: 'Init (neutral sound)', hint: k('init'), run: () => run('init'), disabled: !editing },
+        { label: 'XP-60 Init Patch', run: () => store.initXp60Patch(), disabled: !editing || store.kind !== 'patch' },
         { label: 'Randomize', hint: k('randomize'), run: () => run('randomize'), disabled: !editing },
         { label: 'Mutate', hint: k('mutate'), run: () => run('mutate'), disabled: !editing },
         { label: 'Switch A/B', hint: k('ab'), run: () => run('ab'), disabled: !editing },
@@ -296,12 +301,27 @@
   }
   .state {
     flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     white-space: nowrap;
     color: var(--text-dim);
     font-size: 11px;
   }
   .state.ok {
-    color: var(--ok);
+    padding: 2px 7px;
+    border-radius: var(--radius);
+    background: var(--chip-bg);
+    border: 1px solid color-mix(in srgb, var(--ok) 45%, var(--chip-edge));
+    color: var(--chip-text);
+  }
+  .state.ok::before {
+    content: '';
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--ok);
+    box-shadow: 0 0 3px color-mix(in srgb, var(--ok) 70%, transparent);
   }
   .origin {
     flex: 0 1 auto;

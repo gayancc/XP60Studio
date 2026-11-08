@@ -1,0 +1,8 @@
+Run 2026-11-07, TEMP part: writes only to the keyboard's temporary patch (the library refuses anything else); the temporary patch was read first and written back and verified at the end. Ports "FCB1010 IN" / "FCB1010 OUT", device ID 0x10.
+
+tone1.tone_level: 127 -> 90; the keyboard now holds 90; bytes that differ from the original: [("tone1", [101])]; matches the app: true
+tone1.lfo1_waveform: 0 -> 3; the keyboard now holds 3; bytes that differ from the original: [("tone1", [45])]; matches the app: true
+tone1.coarse_tune: 48 -> 40; the keyboard now holds 40; bytes that differ from the original: [("tone1", [61])]; matches the app: true
+tone1.wave_number: 0 -> 12; the keyboard now holds 12; bytes that differ from the original: [("tone1", [4])]; matches the app: true
+
+At the end of the run: original temp patch written back and verified (9 messages)

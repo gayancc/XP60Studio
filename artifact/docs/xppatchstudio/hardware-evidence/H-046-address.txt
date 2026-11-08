@@ -1,0 +1,9 @@
+2026-11-07 — H-046 rhythm note address lane (instrument DT1)
+
+Temporary Rhythm (base 02 09 00 00, name PopDrumSet 2): 64 note DT1 frames,
+third address lane = MIDI notes 35..98, 58 data bytes each.
+User Rhythm 1 (base 10 40 00 00, name HouseDrumSet): same layout.
+
+Panel key-name comparison remains owner observation.
+
+Logs: rhythm-address-temp.txt, rhythm-address-user1.txt

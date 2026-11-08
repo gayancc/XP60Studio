@@ -3,6 +3,67 @@
 Process note (owner decision): hardware testing is one dedicated phase at the end. Items that need the instrument
 are tracked in `docs/07-hardware-acceptance.md` and updated every phase; nothing here is run on hardware before then.
 
+## 0.1.0-alpha.2 (2026-11-07)
+
+Second alpha pre-release. Windows installer is built by the Release workflow on tag `v0.1.0-alpha.2`.
+
+### Highlights
+
+- **Status messages stay in the bottom hint bar.** Errors, warnings and confirmations no longer float over the main view. They queue one-by-one; display time scales with queue size; the clock pauses while a control hint is showing.
+- **Hardware acceptance on a physical XP-60** advanced with evidence under `artifact/docs/xppatchstudio/hardware-evidence/`, continuation inventory (`09-acceptance-continuation.md`) and function device-verification (`10-function-device-verification.md`). User/Perf/Rhythm/System/temp restore paths and many ledger items are recorded; Soft Thru and some owner LCD/audible checks remain open. SysEx parity rows are still not marked DONE without owner confirmation.
+- **Secondary MIDI controller pass-through** (H-076): a second keyboard can forward notes/CC/Program Change/Aftertouch/Pitch Bend to the XP-60; SysEx stays on the primary connection.
+- **Synth strip** redesigned for contrast; port/device choices persist across panel reopen and workspace switches.
+- **XP-60 Init Patch** (H-052) separate from neutral Init, from owner panel DEFAULT captures.
+- **Library hover audition** plays a short middle-C after sending the stored patch; mouse audition path traced on hardware (H-051c).
+- **MIDI tools and probes** for snapshots, bank restore, stale save/undo, select, chunk/gap, System protect, and more (see `crates/xppatch-midi/examples/`).
+
+### Also since 0.1.0-alpha.1
+
+Library bulks (named bank files with versions and drag/drop), Bank workspace focused on User arrangement, damaged-bank import that skips bad messages like the instrument, EFX type defaults, LFO waveform icons, and XP-60/80 manual cross-checks for EFX/Structure/Group naming.
+
+### Alpha reminder
+
+Back up User memory before saving to the instrument. Features that talk to hardware are evidenced in the ledger but instrument-dependent parity is not fully closed.
+
+## Status bar message queue (2026-11-07)
+
+- Errors, warnings and confirmations no longer float as a corner stack over the main view. Every kind of app message is queued and shown one at a time in the bottom hint bar; hover hints still take priority while a control is under the pointer.
+- Display time for the active line scales with queue size (shorter when more are waiting, never below a short minimum). Dismiss advances to the next queued line.
+- The status clock pauses while a control hint covers the line (with a small “waiting” marker), explicit `say(..., ms)` durations stick on the message, and a held MIDI-learn line is never dropped when the queue is full.
+
+## Hardware acceptance continuation (2026-11-07)
+
+- H-052: added a separate XP-60 Init Patch action using identical bytes from two owner-run panel DEFAULT Initializations. Native desktop export, Send/read-back and Undo/restore matched; the existing neutral Init remains available. Successful exports now display their file name in the confirmation stack.
+- Secondary MIDI controller pass-through: a second keyboard input can forward Note/CC/Program Change/Aftertouch/Pitch Bend to the connected XP-60 output (direct or remapped channel 1–16). SysEx stays on the primary connection; long bank ops hold thru and silence hanging notes; Active Sense/Clock filtered by default. Synth strip gains Controller / channel / Start thru controls. Hardware: H-076.
+- Function device-verification matrix (`10-function-device-verification.md`): every inventory operation has DEVICE evidence, DESKTOP classification, or an explicit OWNER/BLOCKED procedure; Nice Piano temp retained after re-checks (select/system/chunk/audition).
+- Synth strip redesigned as a locked high-contrast instrument panel (light ink on deep graphite): connected status is a dark pill with LED + device/patch lines (no lime-on-grey text), action buttons use explicit face/ink colours, Write gap/Chunk use contrast steppers so values stay readable on any theme.
+- Hardware acceptance gates G2 and G8 closed: every ledger item has evidence or an explicit remaining procedure; User/Perf/Rhythm/System/temp match the session backup. Owner Soft Thru / LCD / audible / EFX walks remain listed; SysEx parity rows are not marked DONE.
+- H-068 SysEx half: Tone Output Assign raw 3 and EFX Output Assign raw 2 accepted and read back on temporary memory; neither value appears in the session User bank; Nice Piano restored. Owner still confirms which (if any) physical output `<OUTPUT-2>` uses.
+- Soft Thru path check: FCB1010 shows no exact outbound DT1 echo in the client echo window; Soft Thru ON case still needs an owner-named source.
+- H-073 observation: writing `efx_type` alone via SysEx does not load that type's twelve starting values, so the panel type walk remains required.
+- H-059 SysEx half: Control Source 1 (7/96/97/6), Pedal1 Assign (98/104) and C1 Assign (40) write and read back equal; System restored. Panel LCD labels remain owner before fancy controller names are shown.
+- H-051c mouse path: desktop CDP mouse clicks on the audition keyboard traced Note On/Off, Panic, octave step, Y-position velocity (loud 112 / soft 42), channel-while-holding release and focus-blur release against the connected XP-60. AuditionPanel ignores failed `setPointerCapture` so a note still sounds.
+- H-039 stale save/Undo: `stale_save_probe` proved commit refuse after a post-arm slot rewrite and the Undo guard after a post-save rewrite (SysEx stand-in for panel/other-tool change); User 128 restored to the session baseline; full User bank equals the session backup afterward.
+- H-070: `select_probe` confirmed Bank Select + Program Change for USER/PR-A/PR-B/PR-C/GM; native Bank UI with "Select on the instrument" traced USER 1/10/128 selects; Nice Piano temp restored. Owner LCD check remains.
+- H-050: DT1 gaps of 20 ms and 50 ms both verified equal on a full temporary send; larger gap only slowed the transfer.
+- H-071: with Receive Bank Select written OFF via SysEx, Program Change alone stayed in the current group; a wrong channel selected nothing; System and Nice Piano restored afterward.
+- H-063 stale System Undo: after a verified Master Tune write, a further System change leaves Undo's guard refusing restore; pre-test System restored.
+- H-066: added `Client::write_user_document` for User Performance/Rhythm permanent writes; hardware round-trip copied Performance 1→32 and Rhythm 1→2 with verified restore.
+- H-044: MIDI Channel and keyboard_range_lower single-parameter live edits verified in Performance mode (Sound Mode switched via SysEx stand-in); temp Performance and System restored.
+- H-057: all 32 User Performances and both Rhythm Sets equal the session full-backup file (names included).
+- H-072: XP-A Bank Select (84/0) selected 'St.Concert' with System type=2 id=9 (board 9); Nice Piano restored. Owner panel confirmation remains.
+- H-058: Nice Piano tone wave IDs classified as INT-A under factory mapping rules; panel wave names remain owner.
+- H-023: Client byte-rate throttle (B-05, default off) and configurable DT1 chunk; hardware proved chunk 32 @ 3125 B/s and chunk 128 unthrottled both verify equal on Nice Piano.
+- Library export roundtrip harness (`library_export_roundtrip`) now plans only the ten exported slots and restores those ten first (with retries) before proving the whole bank, so a flaky mid-bank read cannot leave slots 1-10 holding the export. H-037 passed after that change. Soft Thru (H-018/H-038) remains blocked until its source is identified; it is not evidenced as an XP-60 panel setting in the uploaded investigation.
+- Bank Cancel during Read from synth stops within one slot (H-048). `ClientError::Cancelled` no longer claims a temporary-patch residual when a read-only bank fetch is cancelled.
+- Hardware tools: `restore_bank_file` (H-049 MIDI-tool bank restore), `mid_bank_receive` (H-053 `.mid` SysEx receive), `rhythm_address_probe`, `scale_tune_probe`, `write_slot_copy`.
+- Fixed MIDI input/output and device ID resetting when reopening the Synth panel or switching workspaces. Choices now stay with the shared connection service by port name; a temporarily missing port stays selected and unavailable rather than switching to a different output. Regression checks cover panel recreation, port reordering and disappearance; rebuilt desktop reconnect verified on the XP-60.
+- Added repeatable native desktop hardware checks, a read-only full snapshot tool and independent snapshot comparison/recovery. Hardware logs distinguish instrument read-back from owner panel and listening observations.
+- Confirmed panel patch changes reach the app, mark its copy STALE and allow refetch. Exercised a changed-slot Bank write and restore through the backup UI, bank exports, full-memory export, and System Master Tune write/undo with complete System byte comparison.
+- Corrected obsolete desktop test selectors and invisible zero-width border comparisons. Hardware checks validate decoded documents instead of assuming file sizes, frame counts or fixed User patch names; debugger requests now time out and surface script errors.
+- Library hover audition now plays one short middle-C note through MIDI after sending the stored patch. The owner heard Brass from app-generated notes while the XP-60 keys still played its selected Nice Piano; automatic audition makes the Library preview audible without requiring a separate keyboard control. The note is released with Note Off followed by channel All Notes Off, and queued hovers are invalidated when the pointer leaves. Hardware checks now independently read the temporary patch after the app exits, as well as during the preview.
+- Remaining acceptance checks stay open in the hardware ledger and the continuation inventory; instrument-dependent parity rows have not been promoted to DONE.
+
 ## Library bulks: a bank file is kept and shown under its name (2026-11-06)
 
 - **Bulks:** importing a `.syx` bank now makes a *bulk* named after the file, holding up to 128 patches in their slot order. Patches are still stored once, so the same patch can sit in several bulks (importing your eight sample banks stores 935 patches, not 1,024). A name already taken gets a number ("allright (2)"); nothing is overwritten on import. A library made before bulks is grouped into bulks by where its patches came from, once, after a copy of it is saved next to it (`library.before-bulks.bak`).
@@ -547,7 +608,7 @@ every workspace and every tab, looking for overflow, clipping, off-screen elemen
   Scale tune. No note grid: only the keys follow FL.
 - New and the starting documents (patch, performance, rhythm) now begin from the neutral sound, and the neutral sound opens
   the upper ends of key and velocity ranges (it used to leave every range at 0, which plays nothing). Not undoable, not an edit.
-  System settings are untouched. Application defaults, not factory ones (ledger H-052).
+  System settings are untouched. This neutral sound remains separate from the XP-60 panel DEFAULT Init action (ledger H-052).
 - A failed connect now shows its error in the top bar (it used to appear only inside the Synth menu panel, which closes).
 - Build note: a plain `cargo build --release` needs `--features custom-protocol` to embed the UI.
 

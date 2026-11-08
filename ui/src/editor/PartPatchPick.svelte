@@ -49,12 +49,14 @@
   function chooseGroup(i: number): void {
     const o = options[i];
     if (!o) return;
-    store.begin(`${partName} · Patch group`);
-    store.set(block, 'patch_group_type', o.type);
-    store.set(block, 'patch_group_id', o.id);
+    // Type and id together: one undo step, one live update. Sending type alone can point the Part at a missing bank.
+    const changes = [
+      { block, id: 'patch_group_type', value: o.type },
+      { block, id: 'patch_group_id', value: o.id },
+    ];
     // User memory and the Preset banks hold 128 Patches; keep the number inside the new group.
-    if (o.type === 0 && raw > 127) store.set(block, 'patch_number', 127);
-    store.end();
+    if (o.type === 0 && raw > 127) changes.push({ block, id: 'patch_number', value: 127 });
+    store.applyMany(changes, `${partName} · Patch group`);
   }
 
   const chooseNumber = (i: number): void => {

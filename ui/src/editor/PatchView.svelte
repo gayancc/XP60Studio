@@ -113,7 +113,11 @@
             {#if toneView === 1}
               <AllTonesPanel {part} {colors} {selected} onselect={(n) => (selected = n)} />
             {:else}
-              <TonePanel {block} {color} {part} />
+              <!-- Path-stable like Patch Base: remount the Tone editor when the Tone index changes so controls never
+                   keep a gesture open across a SynthPath / block retarget. -->
+              {#key block}
+                <TonePanel {block} {color} {part} />
+              {/key}
             {/if}
           </div>
         {:else if i === toneTabs.length}

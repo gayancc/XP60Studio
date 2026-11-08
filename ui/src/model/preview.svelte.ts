@@ -13,6 +13,8 @@ export interface PreviewDeps {
   readStored: (id: number) => Promise<Uint8Array | null>;
   /** Send these block bytes to the temporary patch. */
   sendTemp: (blocks: Uint8Array) => Promise<void>;
+  /** Sound one brief note through MIDI after the hovered patch arrives. Must release the note even on failure. */
+  audition: () => Promise<void>;
   /** The temporary patch was replaced and could not be put back: cached copies of it are no longer right. */
   markStale: () => void;
 }
@@ -45,6 +47,8 @@ export class PreviewService {
   private leave: ReturnType<typeof setTimeout> | undefined;
   /** Serialises the instrument work so a restore never overtakes the send it follows. */
   private chain: Promise<void> = Promise.resolve();
+  /** Invalidates a queued or in-flight hover when the pointer leaves or moves to a different row. */
+  private generation = 0;
 
   get available(): boolean {
     return this.deps !== undefined;
@@ -64,11 +68,13 @@ export class PreviewService {
     clearTimeout(this.leave);
     clearTimeout(this.dwell);
     if (!this.enabled || !this.deps?.connected() || this.playing === id) return;
-    this.dwell = setTimeout(() => void this.run(() => this.start(id)), DWELL_MS);
+    const generation = ++this.generation;
+    this.dwell = setTimeout(() => void this.run(() => this.start(id, generation)), DWELL_MS);
   }
 
   /** The pointer left the list rows. */
   unhover(): void {
+    this.generation += 1;
     clearTimeout(this.dwell);
     clearTimeout(this.leave);
     if (this.hasSaved || this.playing !== null) this.leave = setTimeout(() => void this.stop(), LEAVE_MS);
@@ -76,6 +82,7 @@ export class PreviewService {
 
   /** Put back what the instrument had, now. Resolves when the instrument has been written to. */
   stop(): Promise<void> {
+    this.generation += 1;
     clearTimeout(this.dwell);
     clearTimeout(this.leave);
     return this.run(() => this.restore());
@@ -86,9 +93,9 @@ export class PreviewService {
     return this.chain;
   }
 
-  private async start(id: number): Promise<void> {
+  private async start(id: number, generation: number): Promise<void> {
     const deps = this.deps;
-    if (!deps || !this.enabled || !deps.connected()) return;
+    if (!deps || generation !== this.generation || !this.enabled || !deps.connected()) return;
     try {
       if (!this.hasSaved) {
         // Remember what is there before the first send; without it nothing could be put back.
@@ -97,14 +104,17 @@ export class PreviewService {
           this.error = 'Preview needs the instrument\'s current sound first, and it could not be read.';
           return;
         }
+        if (generation !== this.generation || !this.enabled) return;
         this.saved = current;
         this.hasSaved = true;
       }
+      if (generation !== this.generation || !this.enabled) return;
       const stored = await deps.readStored(id);
-      if (!stored) return;
+      if (!stored || generation !== this.generation || !this.enabled) return;
       await deps.sendTemp(stored);
       this.playing = id;
       this.error = '';
+      if (generation === this.generation && this.enabled) await deps.audition();
     } catch (e) {
       this.error = e instanceof Error ? e.message : String(e);
     }

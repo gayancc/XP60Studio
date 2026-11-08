@@ -1,0 +1,5 @@
+Run 2026-11-07, TEMP part: writes only to the keyboard's temporary patch (the library refuses anything else); the temporary patch was read first and written back and verified at the end. Ports "FCB1010 IN" / "FCB1010 OUT", device ID 0x10.
+
+480 tone-level edits in 10 s (one every 21.864197ms); last sent 95, the keyboard holds 95; any other byte changed: []
+
+At the end of the run: original temp patch written back and verified (9 messages)

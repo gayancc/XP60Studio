@@ -1,0 +1,13 @@
+2026-11-07 — native desktop app, KL Essential 49 mk3 MIDI as secondary input, FCB1010 IN/OUT as XP-60 primary, device ID 17. XP-60 temp baseline Jimmee Dee.
+
+Native app UI connected and started Controller pass-through. Status: active=true, enabled=true, held=false, filter_realtime=true, input='KL Essential 49 mk3 MIDI', target_channel=null (Direct). Owner played KL keys and heard XP-60 notes; notes stopped on release. Owner moved pitch bend but could not tell whether pitch changed.
+
+App UI changed pass-through channel to Ch 2; status target_channel=1. Owner played the same keys and reported XP-60 silent (its Patch receive channel is 1). App UI restored Direct; owner held a KL key and heard the XP-60.
+
+App started `midi_read_bank` while that key sounded. Status held=true during read; owner confirmed the sustained XP-60 note stopped. The read completed with 128 patches, no error; status then held=false and enabled=true. Owner played KL keys afterward and heard sound again with no hanging notes. UI Stop closed pass-through; status active=false. The harness reported no desktop script exceptions. The interactive Node harness needed Ctrl+C after its assertions because its debugger WebSocket stayed open after app stop; its exit code 1 therefore is not a product test failure. The harness was changed to exit normally after successful stop for future runs.
+
+Separate `verify_snapshot` after the test: User differences [], 32 Performances equal, 2 Rhythm Sets equal, System equal, Jimmee Dee temporary patch equal; SNAPSHOT VERIFICATION PASSED.
+
+Remaining: independently observe physical CC/pitch-bend forwarding and a real-time clock/Active Sense flood. Filter/remap behavior has unit tests and status evidence; no physical flood was injected. H-076 is PARTIAL.
+
+Focused follow-up: native app reopened with Direct KL → XP-60 thru active. Owner held a KL note and confirmed pitch bend changed the XP-60's pitch. Owner then held a note, moved KL modulation upward and back, and confirmed the XP-60 sound changed. UI Stop closed thru, status active=false, no desktop script errors; harness exited 0 after WebView socket cleanup fix. Independent temporary read after this follow-up named Jimmee Dee and its SHA-256 matched the 589-byte session temporary backup. Physical clock/Active Sense flood remains the only H-076 observation not run.

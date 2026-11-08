@@ -1,0 +1,4 @@
+Performances: 32 compared; mismatches []
+RHYTHM 1: 'HouseDrumSet' equal
+RHYTHM 2: 'JazzDrumSet1' equal
+H-057 PASS: all 32 User Performances and 2 User Rhythm Sets equal the backup file byte-for-byte (names included)

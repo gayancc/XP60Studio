@@ -1,0 +1,34 @@
+2026-11-07: native desktop Bank workflow.
+PASS  connected; the editor holds the keyboard's sound (to put in slot 128)
+PASS  the Bank workspace opens
+PASS  Read from synth can be pressed
+PASS  the bank is read and the grid fills  -> 45 s, 64 slots shown for sub-group a
+PASS  subgroup b opens
+PASS  both subgroups contain 64 readable slots  -> Strins, C-Z  Flute, Alto SaxaPHO … C-Z  Flute
+PASS  right after reading, nothing differs from the instrument  -> Instrument · 0 changed
+read time: 45 s
+selected slot 5 then slot 12 with "Select on the instrument" on: the owner should have seen the display change to Brass Sect 1, then to Marimba
+PASS  the permanent write target is User slot 128
+PASS  the editor's patch can be put in the selected slot (128)
+PASS  the bank shows one changed slot  -> Instrument · 1 changed
+PASS  step 1 (back up all 128 and prepare) can be pressed
+confirmation: Backup saved: C:\Users\Gayan\AppData\Roaming\studio.xppatch.app\backups\1794068942-user-bank.syx Replace 1 slot: 128? The slots are locked until you write or cancel. Cancel 2. Write 1 slot
+PASS  the backup on disk decodes all 128 patches before anything is written  -> C:\Users\Gayan\AppData\Roaming\studio.xppatch.app\backups\1794068942-user-bank.syx (88064 bytes, 46 s)
+PASS  it asks before writing and names slot 128
+PASS  step 2 (write) can be pressed
+PASS  the slot is written and read back equal  -> Wrote 1 slot and read each one back: it matches.
+PASS  afterwards nothing differs from the instrument  -> Instrument · 0 changed
+PASS  the new backup is listed and can be opened in the grid  -> 1794068942-user-bank.syx
+PASS  opened, the grid differs from the instrument in exactly slot 128  -> 1794068942-user-bank.syx · 1 changed
+PASS  step 1 again, to put the original back
+PASS  it asks again for one slot
+PASS  step 2 again
+PASS  the original patch is written back and read back equal  -> Wrote 1 slot and read each one back: it matches.
+PASS  Export .syx can be pressed
+PASS  Export .mid can be pressed
+PASS  the bank exports as a .syx decoding all 128 patches  -> xppatch-user-bank.syx 88064 bytes
+PASS  the bank exports as a Standard MIDI File  -> xppatch-user-bank.mid 90906 bytes
+PASS  Back up all memory can be pressed
+FAIL  all memory is backed up to one file (patches, performances, rhythm sets)  -> xppatch-user-memory.syx 112206 bytes, 1314 messages, 75 s
+
+The final FAIL was an incorrect test-harness frame-count heuristic (>1500): the exported 112206-byte file has 1314 frames. Corrected validation decodes all 128 patches + 32 performances + 2 rhythm sets. The bank MIDI export decodes byte-identical to its .syx. No hardware mismatch was observed. Final independent memory comparison is recorded separately.

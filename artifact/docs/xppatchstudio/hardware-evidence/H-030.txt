@@ -1,0 +1,7 @@
+Run 2026-11-07, PERMANENT part, step 1 (example perm_session): User slot 128 only, with User Memory Protect off. A full backup of User patches, performances, rhythm sets and System settings was read and saved first (in the app's backups folder); slot 128 was read, a test patch "HW TEST 128" was written and read back, then the original was written back and read back. Ports "FCB1010 IN" / "FCB1010 OUT", device ID 0x10.
+
+Backup step:
+saved C:\Users\Gayan\AppData\Roaming\studio.xppatch.app\backups\1794064791-hardware-session-full-backup.syx (118336 bytes, 1844 messages) in 75.4942601s: 128 patches, 32 performances, 2 rhythm sets, System settings; the file parses again with 128 patches
+
+slot 128 holds 'Jimmee Dee'; it is backed up in memory and equals the bank read: true
+the slot's own backup file: C:\Users\Gayan\AppData\Roaming\studio.xppatch.app\backups\1794064792-user-128.syx

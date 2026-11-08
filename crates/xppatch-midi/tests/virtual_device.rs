@@ -859,7 +859,10 @@ fn selecting_a_sound_sends_bank_select_msb_lsb_then_program_change() {
     // PR-B patch 10 on channel 1 (index 0): the manual's table gives 81 / 1 and program 10 (wire value 9).
     c.select_sound(0, 81, 1, 9).unwrap();
     let sent: Vec<Vec<u8>> = c.port().sent.iter().map(|(_, b)| b.clone()).collect();
-    assert_eq!(sent, vec![vec![0xB0, 0, 81], vec![0xB0, 32, 1], vec![0xC0, 9]]);
+    assert_eq!(
+        sent,
+        vec![vec![0xB0, 0, 81], vec![0xB0, 32, 1], vec![0xC0, 9]]
+    );
     assert!(c.select_sound(16, 80, 0, 0).is_err());
     assert!(c.select_sound(0, 128, 0, 0).is_err());
     assert!(c.select_sound(0, 80, 128, 0).is_err());

@@ -1,0 +1,12 @@
+warning: unused import: `Patch`
+ --> crates\xppatch-midi\examples\echo_probe.rs:7:20
+  |
+7 | use xppatch_core::{Patch, PatchBlock};
+  |                    ^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+baseline temp 'Nice Piano'
+sent 12 byte DT1; listened 94.3395ms; inbound SysEx frames=0; exact outbound echo=false; other frames=0
+temporary patch restored
+H-018 PATH NOTE: no exact DT1 echo on FCB1010 path in the echo window; Soft Thru ON case still blocked until owner names a Soft Thru source

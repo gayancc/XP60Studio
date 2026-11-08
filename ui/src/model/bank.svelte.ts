@@ -338,6 +338,7 @@ export class BankService {
         return false;
       }
       this.phase = 'done';
+      reportSuccess(`Wrote ${report.written.length} slot${report.written.length === 1 ? '' : 's'} and read each one back: it matches.`);
       return true;
     } catch (e) {
       // Some slots may have been written before this failed: read the bank again to see what the synth holds.

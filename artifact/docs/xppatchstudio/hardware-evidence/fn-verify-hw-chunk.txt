@@ -1,0 +1,21 @@
+PASS starting temporary patch fetched
+PASS starting patch exported
+PASS starting patch export completed
+BASELINE: Nice Piano 589 bytes
+PASS original Chunk preference recorded
+PASS Chunk control set toward 128
+PASS Chunk control reads 128 bytes
+PASS 128: whole-sound send started
+PASS 128: read-back requested
+PASS 128: real temporary patch equals editor
+SEND+READ 128: 942 ms
+PASS Chunk control set toward 32
+PASS Chunk control reads 32 bytes
+PASS 32: whole-sound send started
+PASS 32: read-back requested
+PASS 32: real temporary patch equals editor
+SEND+READ 32: 1202 ms
+PASS no script errors during chunk comparison
+CHUNK COMPARISON PASSED; independent temporary-patch comparison required
+PASS Chunk control set toward 128
+PASS Chunk control reads 128 bytes

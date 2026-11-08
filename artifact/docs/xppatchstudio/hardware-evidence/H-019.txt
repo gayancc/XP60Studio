@@ -1,0 +1,10 @@
+H-019, 2026-11-07 (example port_probe). Nothing was sent to the keyboard: the "silent" output was the PC's own Microsoft GS Wavetable Synth.
+
+bank read with input "FCB1010 IN" and output "Microsoft GS Wavetable Synth" (nothing answers): 0 patches, 3 failures, aborted true, after 18.0 s
+input "", output "FCB1010 OUT": refused: MIDI port error: no MIDI input name given
+input "FCB1010 IN", output "": refused: MIDI port error: no MIDI output name given
+input "no such port", output "FCB1010 OUT": refused: MIDI port error: no MIDI input matching 'no such port'
+input "FCB1010 IN", output "t": refused: MIDI port error: 't' matches several MIDI outputs: Microsoft GS Wavetable Synth, FCB1010 OUT
+
+Reading: the bank read gives up after 3 silent slots (18 s here; the ledger expected about 14 s, so it is a little longer than guessed), and empty, unknown and ambiguous port names are
+refused with a message that lists the candidates.

@@ -1,0 +1,15 @@
+2026-11-07: H-070 native Bank "Select on the instrument" (USER slots)
+
+Command: node ui/e2e/hw-select.mjs
+Log: target/hardware-acceptance/2026-11-07-codex/h070-bank-ui.txt
+
+Connected: XP-60 · ID 17 · "Nice Piano"
+
+With follow toggle on, Bank grid clicks sent midi_select_sound:
+- USER 1:  channel 0, msb 80, lsb 0, program 0
+- USER 10: channel 0, msb 80, lsb 0, program 9
+- USER 128: channel 0, msb 80, lsb 0, program 127
+
+Preset groups covered separately by select_probe (H-070.txt).
+Temp restored to Nice Piano via midi_select_sound PR-A 004; independent probe confirmed Nice Piano.
+Owner LCD name observation remains.

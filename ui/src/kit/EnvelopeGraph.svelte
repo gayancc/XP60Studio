@@ -45,6 +45,11 @@
   let svg: SVGSVGElement | undefined = $state();
   let dragging = $state(-1);
   let hovered = $state(-1);
+  /**
+   * Callbacks frozen for the open drag. A Selected-Tone panel can receive a new `block` while the pointer is down;
+   * keeping the path-scoped handlers from gesture start matches Patch Base's fixed SynthPath for an in-flight edit.
+   */
+  let gesture: { onchange?: (stages: Stage[]) => void; onbegin?: () => void; onend?: () => void } | null = null;
 
   function local(e: PointerEvent): { x: number; y: number } {
     const r = svg?.getBoundingClientRect();
@@ -63,9 +68,10 @@
     const p = local(e);
     const i = hitStage(pts, p.x, p.y, 10);
     if (i < 0) return;
+    gesture = { onchange, onbegin, onend };
     dragging = i;
     svg?.setPointerCapture(e.pointerId);
-    onbegin?.();
+    gesture.onbegin?.();
   }
 
   function move(e: PointerEvent): void {
@@ -88,14 +94,16 @@
     const next = levelLocked[dragging] && cur ? { ...picked, level: cur.level } : picked;
     if (cur && cur.time === next.time && cur.level === next.level) return;
     stages = stages.map((s, i) => (i === dragging ? next : s));
-    onchange?.(stages);
+    (gesture?.onchange ?? onchange)?.(stages);
     publish(dragging);
   }
 
   function cancel(): void {
     if (dragging < 0) return;
     dragging = -1;
-    onend?.();
+    const end = gesture?.onend ?? onend;
+    gesture = null;
+    end?.();
   }
 
   function up(e: PointerEvent): void {
@@ -119,10 +127,11 @@
     else if (e.key === 'ArrowLeft') next = { ...s, time: clamp(s.time - big) };
     if (!next) return;
     e.preventDefault();
-    onbegin?.();
+    const handlers = { onchange, onbegin, onend };
+    handlers.onbegin?.();
     stages = stages.map((x, k) => (k === i ? (next as Stage) : x));
-    onchange?.(stages);
-    onend?.();
+    handlers.onchange?.(stages);
+    handlers.onend?.();
     publish(i);
   }
 </script>

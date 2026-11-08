@@ -1,0 +1,272 @@
+{
+  "commonTotal": 60,
+  "commonCoveredApprox": 27,
+  "toneParamIds": 128,
+  "toneCoveredApprox": 96,
+  "toneInstancesIfAll4": 512,
+  "note": "Coverage is approximate string match against UI evidence labels; false negatives possible for short/ambiguous names.",
+  "uncoveredCommon": [
+    {
+      "id": "efx_parameter_1",
+      "name": "EFX Parameter 1"
+    },
+    {
+      "id": "efx_parameter_2",
+      "name": "EFX Parameter 2"
+    },
+    {
+      "id": "efx_parameter_3",
+      "name": "EFX Parameter 3"
+    },
+    {
+      "id": "efx_parameter_4",
+      "name": "EFX Parameter 4"
+    },
+    {
+      "id": "efx_parameter_5",
+      "name": "EFX Parameter 5"
+    },
+    {
+      "id": "efx_parameter_6",
+      "name": "EFX Parameter 6"
+    },
+    {
+      "id": "efx_parameter_7",
+      "name": "EFX Parameter 7"
+    },
+    {
+      "id": "efx_parameter_8",
+      "name": "EFX Parameter 8"
+    },
+    {
+      "id": "efx_parameter_9",
+      "name": "EFX Parameter 9"
+    },
+    {
+      "id": "efx_parameter_10",
+      "name": "EFX Parameter 10"
+    },
+    {
+      "id": "efx_parameter_11",
+      "name": "EFX Parameter 11"
+    },
+    {
+      "id": "efx_parameter_12",
+      "name": "EFX Parameter 12"
+    },
+    {
+      "id": "bend_range_up",
+      "name": "Bend Range Up"
+    },
+    {
+      "id": "bend_range_down",
+      "name": "Bend Range Down"
+    },
+    {
+      "id": "key_assign_mode",
+      "name": "Key Assign Mode"
+    },
+    {
+      "id": "solo_legato",
+      "name": "Solo Legato"
+    },
+    {
+      "id": "portamento_switch",
+      "name": "Portamento Switch"
+    },
+    {
+      "id": "portamento_mode",
+      "name": "Portamento Mode"
+    },
+    {
+      "id": "portamento_type",
+      "name": "Portamento Type"
+    },
+    {
+      "id": "portamento_start",
+      "name": "Portamento Start"
+    },
+    {
+      "id": "portamento_time",
+      "name": "Portamento Time"
+    },
+    {
+      "id": "patch_control_source_2",
+      "name": "Patch Control Source 2"
+    },
+    {
+      "id": "patch_control_source_3",
+      "name": "Patch Control Source 3"
+    },
+    {
+      "id": "control_1_hold_peak",
+      "name": "Control 1 Hold/Peak"
+    },
+    {
+      "id": "control_2_hold_peak",
+      "name": "Control 2 Hold/Peak"
+    },
+    {
+      "id": "control_3_hold_peak",
+      "name": "Control 3 Hold/Peak"
+    },
+    {
+      "id": "velocity_range_switch",
+      "name": "Velocity Range Switch"
+    },
+    {
+      "id": "octave_shift",
+      "name": "Octave Shift"
+    },
+    {
+      "id": "stretch_tune_depth",
+      "name": "Stretch Tune Depth"
+    },
+    {
+      "id": "voice_priority",
+      "name": "Voice Priority"
+    },
+    {
+      "id": "structure_type_1_2",
+      "name": "Structure Type 1&2"
+    },
+    {
+      "id": "structure_type_3_4",
+      "name": "Structure Type 3&4"
+    },
+    {
+      "id": "clock_source",
+      "name": "Clock Source"
+    }
+  ],
+  "uncoveredTone": [
+    {
+      "id": "tone_switch",
+      "name": "Tone Switch"
+    },
+    {
+      "id": "velocity_range_lower",
+      "name": "Velocity Range Lower"
+    },
+    {
+      "id": "velocity_range_upper",
+      "name": "Velocity Range Upper"
+    },
+    {
+      "id": "keyboard_range_lower",
+      "name": "Keyboard Range Lower"
+    },
+    {
+      "id": "keyboard_range_upper",
+      "name": "Keyboard Range Upper"
+    },
+    {
+      "id": "lfo1_key_trigger",
+      "name": "LFO1 Key Trigger"
+    },
+    {
+      "id": "lfo2_key_trigger",
+      "name": "LFO2 Key Trigger"
+    },
+    {
+      "id": "random_pitch_depth",
+      "name": "Random Pitch Depth"
+    },
+    {
+      "id": "pitch_keyfollow",
+      "name": "Pitch Keyfollow"
+    },
+    {
+      "id": "pitch_envelope_velocity_time1",
+      "name": "Pitch Envelope Velocity Time1"
+    },
+    {
+      "id": "pitch_envelope_velocity_time4",
+      "name": "Pitch Envelope Velocity Time4"
+    },
+    {
+      "id": "pitch_envelope_time_keyfollow",
+      "name": "Pitch Envelope Time Keyfollow"
+    },
+    {
+      "id": "pitch_envelope_level_1",
+      "name": "Pitch Envelope Level 1"
+    },
+    {
+      "id": "pitch_envelope_level_2",
+      "name": "Pitch Envelope Level 2"
+    },
+    {
+      "id": "pitch_envelope_level_3",
+      "name": "Pitch Envelope Level 3"
+    },
+    {
+      "id": "pitch_envelope_level_4",
+      "name": "Pitch Envelope Level 4"
+    },
+    {
+      "id": "cutoff_keyfollow",
+      "name": "Cutoff Keyfollow"
+    },
+    {
+      "id": "filter_envelope_velocity_time1",
+      "name": "Filter Envelope Velocity Time1"
+    },
+    {
+      "id": "filter_envelope_velocity_time4",
+      "name": "Filter Envelope Velocity Time4"
+    },
+    {
+      "id": "filter_envelope_time_keyfollow",
+      "name": "Filter Envelope Time Keyfollow"
+    },
+    {
+      "id": "filter_envelope_level_1",
+      "name": "Filter Envelope Level 1"
+    },
+    {
+      "id": "filter_envelope_level_2",
+      "name": "Filter Envelope Level 2"
+    },
+    {
+      "id": "filter_envelope_level_3",
+      "name": "Filter Envelope Level 3"
+    },
+    {
+      "id": "filter_envelope_level_4",
+      "name": "Filter Envelope Level 4"
+    },
+    {
+      "id": "bias_level",
+      "name": "Bias Level"
+    },
+    {
+      "id": "level_envelope_velocity_time1",
+      "name": "Level Envelope Velocity Time1"
+    },
+    {
+      "id": "level_envelope_velocity_time4",
+      "name": "Level Envelope Velocity Time4"
+    },
+    {
+      "id": "level_envelope_time_keyfollow",
+      "name": "Level Envelope Time Keyfollow"
+    },
+    {
+      "id": "level_envelope_level_1",
+      "name": "Level Envelope Level 1"
+    },
+    {
+      "id": "level_envelope_level_2",
+      "name": "Level Envelope Level 2"
+    },
+    {
+      "id": "level_envelope_level_3",
+      "name": "Level Envelope Level 3"
+    },
+    {
+      "id": "pan_keyfollow",
+      "name": "Pan Keyfollow"
+    }
+  ]
+}

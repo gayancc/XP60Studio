@@ -1,0 +1,7 @@
+Writing Performance 1 'EasternSplit' into User Performance 32 (was 'Power JV')
+H-066 PERFORMANCE PASS: User Performance 32 equals 'EasternSplit'
+H-066 CLEANUP: User Performance 32 restored to 'Power JV'
+Writing Rhythm 1 'HouseDrumSet' into User Rhythm 2 (was 'JazzDrumSet1')
+H-066 RHYTHM PASS: User Rhythm 2 equals 'HouseDrumSet'
+H-066 CLEANUP: User Rhythm 2 restored to 'JazzDrumSet1'
+H-066 HARDWARE PASS (User Performance + Rhythm Set export-shaped DT1 receive)

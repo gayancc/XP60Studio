@@ -102,7 +102,7 @@
     display: inline-flex;
     align-items: center;
     gap: 5px;
-    color: var(--c);
+    color: var(--text);
     font-weight: 700;
     white-space: nowrap;
   }

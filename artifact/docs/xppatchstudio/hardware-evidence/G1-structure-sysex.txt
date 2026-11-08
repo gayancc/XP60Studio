@@ -1,0 +1,8 @@
+baseline temp 'Nice Piano'
+PASS structure_type_1_2=2
+PASS structure_type_1_2=5
+PASS structure_type_1_2=7
+PASS structure_type_3_4=3
+PASS booster_1_2=2
+temporary patch restored
+G1/H-075 SysEx PARTIAL PASS: Structure Type and Booster write/read-back equal; audible wiring remains owner

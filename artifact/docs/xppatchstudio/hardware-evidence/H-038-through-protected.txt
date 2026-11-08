@@ -1,0 +1,5 @@
+2026-11-07 — owner confirmed UTILITY → 5 Protect: Write Operation ON, System Exclusive Message ON, and Sequencer Setup Through ON.
+
+`protect_probe FCB1010 IN FCB1010 OUT 128` attempted to back up User 128 before any write. It failed during `plan_user_write` after three RQ1 attempts, missing block 11 7F 12 00. No “slot 128 holds ... before” line was printed and no DT1 write was sent. Exit code 1.
+
+H-038 cannot be claimed as a physical MISMATCH/unchanged-slot test in this configuration: the prerequisite read fails before the protected write. H-031 separately proves protected writes mismatch with Through OFF; the virtual-device echo regression proves an echoed write cannot fake verification. Owner instructed to return Through and both Protect options OFF, then independent full snapshot read.

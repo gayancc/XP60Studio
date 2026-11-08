@@ -1,0 +1,20 @@
+PASS  the Synth menu opens with the connection controls
+PASS  the MIDI input list offers FCB1010 IN
+PASS  the MIDI output list offers FCB1010 OUT
+PASS  Connect can be pressed
+PASS  the app shows the connected XP-60 at ID 17  -> XP-60 ┬╖ ID 17 ┬╖ ΓÇ£Nice PianoΓÇ¥
+PASS  Fetch sound can be pressed
+PASS  fetching the temporary sound reports it  -> Fetched "Nice Piano" from the instrument.
+PASS  Verify can be pressed
+PASS  the instrument's temporary copy matches what the app holds  -> Verified: the instrument's temporary copy matches this sound.
+all messages: ["Fetched \"Nice Piano\" from the instrument.","Verified: the instrument's temporary copy matches this sound."]
+state chip: TEMP VERIFIED
+PASS  switch to Bank while connected
+PASS  switch back to Patch while connected
+PASS  Disconnect can be pressed
+PASS  after Disconnect the app shows no instrument
+PASS  workspace changes and Disconnect preserve the selected hardware output
+PASS  Connect can be pressed again
+PASS  it reconnects to the XP-60
+PASS  no script errors in the window
+ALL PASSED

@@ -1,0 +1,21 @@
+PASS  connect and fetch the temporary sound  -> Fetched "Nice Piano" from the instrument.
+PASS  Live edit is on
+sound: XPPatchStudio ┬╖ control kit
+PASS  a knob moves in the window  -> 127 -> 121
+PASS  the live edit reached the instrument (Verify matches)
+chip: TEMP VERIFIED
+PASS  Wave Number: 004 -> 007, live, verified  -> Verified: the instrument's temporary copy matches this sound.
+PASS  Coarse Tune: 0 -> +2, live, verified  -> Verified: the instrument's temporary copy matches this sound.
+PASS  Tone Pan: 0 -> L4, live, verified  -> Verified: the instrument's temporary copy matches this sound.
+PASS  Undo x4 with Live edit on is sent too  -> Verified: the instrument's temporary copy matches this sound.
+PASS  Live edit can be turned off
+PASS  with Live edit off the instrument differs from the app (Verify says Mismatch)  -> Mismatch: the instrument's temporary copy differs from this sound.
+PASS  Send to synth is available and pressed
+PASS  after Send to synth the instrument matches the app  -> Verified: the instrument's temporary copy matches this sound.
+PASS  the Write gap changes  -> 20 -> 26 ms; chunk 125
+PASS  a whole sound sent with a longer gap and a smaller chunk arrives intact  -> Verified: the instrument's temporary copy matches this sound.
+gap/chunk restored to 20 128
+PASS  Live edit can be turned back on
+PASS  the original sound is back on the instrument (undid 16 step(s), sent, verified)  -> Verified: the instrument's temporary copy matches this sound.
+PASS  no script errors in the window
+ALL PASSED

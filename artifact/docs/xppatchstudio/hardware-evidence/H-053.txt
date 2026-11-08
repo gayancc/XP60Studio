@@ -1,0 +1,11 @@
+2026-11-07 — H-053 Bank .mid receive (MIDI-tool path)
+
+Source: target/hardware-acceptance/2026-11-07-codex/exports/xppatch-user-bank.mid
+Decoded with xppatch_core::smf::smf_to_syx; first 10 User slots written via mid_bank_receive
+with Client DT1 pacing; each slot read back equal to the MIDI-derived patch.
+Cleanup restored those 10 slots from the session full-backup .syx.
+
+H-053 RECEIVE PASSED / H-053 CLEANUP PASSED
+Log: h053-mid-receive.txt
+
+Not claimed: playback of the .mid from an external sequencer application.

@@ -1,0 +1,2 @@
+H-046 ADDRESS PASS: 64 note blocks at MIDI notes 35..98 (base 02 09 00 00, name 'PopDrumSet 2')
+Panel key-name comparison remains owner observation (ledger H-046 panel half).

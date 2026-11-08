@@ -1,0 +1,2110 @@
+{
+  "passed": [
+    [
+      "tone1:velocity_cross_fade",
+      "Zones"
+    ],
+    [
+      "tone2:velocity_cross_fade",
+      "Zones"
+    ],
+    [
+      "tone3:velocity_cross_fade",
+      "Zones"
+    ],
+    [
+      "tone4:velocity_cross_fade",
+      "Zones"
+    ],
+    [
+      "tone1:wave_group_type",
+      "WavePicker"
+    ],
+    [
+      "tone1:wave_group_id",
+      "WavePicker"
+    ],
+    [
+      "tone1:wave_number",
+      "WavePicker"
+    ],
+    [
+      "tone1:wave_gain",
+      "Wave and pitch"
+    ],
+    [
+      "tone1:fxm_switch",
+      "Wave and pitch"
+    ],
+    [
+      "tone1:fxm_color",
+      "Wave and pitch"
+    ],
+    [
+      "tone1:fxm_depth",
+      "Wave and pitch"
+    ],
+    [
+      "tone1:tone_delay_time",
+      "Wave and pitch"
+    ],
+    [
+      "tone1:coarse_tune",
+      "Wave and pitch"
+    ],
+    [
+      "tone1:fine_tune",
+      "Wave and pitch"
+    ],
+    [
+      "tone1:random_pitch_depth",
+      "Wave and pitch"
+    ],
+    [
+      "tone1:pitch_keyfollow",
+      "Wave and pitch"
+    ],
+    [
+      "tone1:pitch_lfo1_depth",
+      "Wave and pitch"
+    ],
+    [
+      "tone1:pitch_lfo2_depth",
+      "Wave and pitch"
+    ],
+    [
+      "tone1:pitch_envelope_depth",
+      "Wave and pitch"
+    ],
+    [
+      "tone1:pitch_envelope_velocity_sens",
+      "Wave and pitch"
+    ],
+    [
+      "tone1:pitch_envelope_velocity_time1",
+      "Wave and pitch"
+    ],
+    [
+      "tone1:pitch_envelope_velocity_time4",
+      "Wave and pitch"
+    ],
+    [
+      "tone1:pitch_envelope_time_keyfollow",
+      "Wave and pitch"
+    ],
+    [
+      "tone2:wave_group_type",
+      "Wave and pitch"
+    ],
+    [
+      "tone2:wave_group_id",
+      "Wave and pitch"
+    ],
+    [
+      "tone2:wave_number",
+      "Wave and pitch"
+    ],
+    [
+      "tone2:wave_gain",
+      "Wave and pitch"
+    ],
+    [
+      "tone2:fxm_switch",
+      "Wave and pitch"
+    ],
+    [
+      "tone2:fxm_color",
+      "Wave and pitch"
+    ],
+    [
+      "tone2:fxm_depth",
+      "Wave and pitch"
+    ],
+    [
+      "tone2:tone_delay_time",
+      "Wave and pitch"
+    ],
+    [
+      "tone2:coarse_tune",
+      "Wave and pitch"
+    ],
+    [
+      "tone2:fine_tune",
+      "Wave and pitch"
+    ],
+    [
+      "tone2:random_pitch_depth",
+      "Wave and pitch"
+    ],
+    [
+      "tone2:pitch_keyfollow",
+      "Wave and pitch"
+    ],
+    [
+      "tone2:pitch_lfo1_depth",
+      "Wave and pitch"
+    ],
+    [
+      "tone2:pitch_lfo2_depth",
+      "Wave and pitch"
+    ],
+    [
+      "tone2:pitch_envelope_depth",
+      "Wave and pitch"
+    ],
+    [
+      "tone2:pitch_envelope_velocity_sens",
+      "Wave and pitch"
+    ],
+    [
+      "tone2:pitch_envelope_velocity_time1",
+      "Wave and pitch"
+    ],
+    [
+      "tone2:pitch_envelope_velocity_time4",
+      "Wave and pitch"
+    ],
+    [
+      "tone2:pitch_envelope_time_keyfollow",
+      "Wave and pitch"
+    ],
+    [
+      "tone3:wave_group_type",
+      "Wave and pitch"
+    ],
+    [
+      "tone3:wave_group_id",
+      "Wave and pitch"
+    ],
+    [
+      "tone3:wave_number",
+      "Wave and pitch"
+    ],
+    [
+      "tone3:wave_gain",
+      "Wave and pitch"
+    ],
+    [
+      "tone3:fxm_switch",
+      "Wave and pitch"
+    ],
+    [
+      "tone3:fxm_color",
+      "Wave and pitch"
+    ],
+    [
+      "tone3:fxm_depth",
+      "Wave and pitch"
+    ],
+    [
+      "tone3:tone_delay_time",
+      "Wave and pitch"
+    ],
+    [
+      "tone3:coarse_tune",
+      "Wave and pitch"
+    ],
+    [
+      "tone3:fine_tune",
+      "Wave and pitch"
+    ],
+    [
+      "tone3:random_pitch_depth",
+      "Wave and pitch"
+    ],
+    [
+      "tone3:pitch_keyfollow",
+      "Wave and pitch"
+    ],
+    [
+      "tone3:pitch_lfo1_depth",
+      "Wave and pitch"
+    ],
+    [
+      "tone3:pitch_lfo2_depth",
+      "Wave and pitch"
+    ],
+    [
+      "tone3:pitch_envelope_depth",
+      "Wave and pitch"
+    ],
+    [
+      "tone3:pitch_envelope_velocity_sens",
+      "Wave and pitch"
+    ],
+    [
+      "tone3:pitch_envelope_velocity_time1",
+      "Wave and pitch"
+    ],
+    [
+      "tone3:pitch_envelope_velocity_time4",
+      "Wave and pitch"
+    ],
+    [
+      "tone3:pitch_envelope_time_keyfollow",
+      "Wave and pitch"
+    ],
+    [
+      "tone4:wave_group_type",
+      "Wave and pitch"
+    ],
+    [
+      "tone4:wave_group_id",
+      "Wave and pitch"
+    ],
+    [
+      "tone4:wave_number",
+      "Wave and pitch"
+    ],
+    [
+      "tone4:wave_gain",
+      "Wave and pitch"
+    ],
+    [
+      "tone4:fxm_switch",
+      "Wave and pitch"
+    ],
+    [
+      "tone4:fxm_color",
+      "Wave and pitch"
+    ],
+    [
+      "tone4:fxm_depth",
+      "Wave and pitch"
+    ],
+    [
+      "tone4:tone_delay_time",
+      "Wave and pitch"
+    ],
+    [
+      "tone4:coarse_tune",
+      "Wave and pitch"
+    ],
+    [
+      "tone4:fine_tune",
+      "Wave and pitch"
+    ],
+    [
+      "tone4:random_pitch_depth",
+      "Wave and pitch"
+    ],
+    [
+      "tone4:pitch_keyfollow",
+      "Wave and pitch"
+    ],
+    [
+      "tone4:pitch_lfo1_depth",
+      "Wave and pitch"
+    ],
+    [
+      "tone4:pitch_lfo2_depth",
+      "Wave and pitch"
+    ],
+    [
+      "tone4:pitch_envelope_depth",
+      "Wave and pitch"
+    ],
+    [
+      "tone4:pitch_envelope_velocity_sens",
+      "Wave and pitch"
+    ],
+    [
+      "tone4:pitch_envelope_velocity_time1",
+      "Wave and pitch"
+    ],
+    [
+      "tone4:pitch_envelope_velocity_time4",
+      "Wave and pitch"
+    ],
+    [
+      "tone4:pitch_envelope_time_keyfollow",
+      "Wave and pitch"
+    ],
+    [
+      "tone1:filter_type",
+      "Filter and amp"
+    ],
+    [
+      "tone1:cutoff_frequency",
+      "Filter and amp"
+    ],
+    [
+      "tone1:cutoff_keyfollow",
+      "Filter and amp"
+    ],
+    [
+      "tone1:resonance",
+      "Filter and amp"
+    ],
+    [
+      "tone1:resonance_velocity_sens",
+      "Filter and amp"
+    ],
+    [
+      "tone1:filter_lfo1_depth",
+      "Filter and amp"
+    ],
+    [
+      "tone1:filter_lfo2_depth",
+      "Filter and amp"
+    ],
+    [
+      "tone1:filter_envelope_depth",
+      "Filter and amp"
+    ],
+    [
+      "tone1:filter_envelope_velocity_curve",
+      "Filter and amp"
+    ],
+    [
+      "tone1:filter_envelope_velocity_sens",
+      "Filter and amp"
+    ],
+    [
+      "tone1:filter_envelope_velocity_time1",
+      "Filter and amp"
+    ],
+    [
+      "tone1:filter_envelope_velocity_time4",
+      "Filter and amp"
+    ],
+    [
+      "tone1:filter_envelope_time_keyfollow",
+      "Filter and amp"
+    ],
+    [
+      "tone1:bias_direction",
+      "Filter and amp"
+    ],
+    [
+      "tone1:bias_position",
+      "Filter and amp"
+    ],
+    [
+      "tone1:bias_level",
+      "Filter and amp"
+    ],
+    [
+      "tone1:level_lfo1_depth",
+      "Filter and amp"
+    ],
+    [
+      "tone1:level_lfo2_depth",
+      "Filter and amp"
+    ],
+    [
+      "tone1:pan_keyfollow",
+      "Filter and amp"
+    ],
+    [
+      "tone1:random_pan_depth",
+      "Filter and amp"
+    ],
+    [
+      "tone1:alternate_pan_depth",
+      "Filter and amp"
+    ],
+    [
+      "tone1:pan_lfo1_depth",
+      "Filter and amp"
+    ],
+    [
+      "tone1:pan_lfo2_depth",
+      "Filter and amp"
+    ],
+    [
+      "tone1:level_envelope_velocity_curve",
+      "Filter and amp"
+    ],
+    [
+      "tone1:level_envelope_velocity_sens",
+      "Filter and amp"
+    ],
+    [
+      "tone1:level_envelope_velocity_time1",
+      "Filter and amp"
+    ],
+    [
+      "tone1:level_envelope_velocity_time4",
+      "Filter and amp"
+    ],
+    [
+      "tone1:level_envelope_time_keyfollow",
+      "Filter and amp"
+    ],
+    [
+      "tone2:filter_type",
+      "Filter and amp"
+    ],
+    [
+      "tone2:cutoff_frequency",
+      "Filter and amp"
+    ],
+    [
+      "tone2:cutoff_keyfollow",
+      "Filter and amp"
+    ],
+    [
+      "tone2:resonance",
+      "Filter and amp"
+    ],
+    [
+      "tone2:resonance_velocity_sens",
+      "Filter and amp"
+    ],
+    [
+      "tone2:filter_lfo1_depth",
+      "Filter and amp"
+    ],
+    [
+      "tone2:filter_lfo2_depth",
+      "Filter and amp"
+    ],
+    [
+      "tone2:filter_envelope_depth",
+      "Filter and amp"
+    ],
+    [
+      "tone2:filter_envelope_velocity_curve",
+      "Filter and amp"
+    ],
+    [
+      "tone2:filter_envelope_velocity_sens",
+      "Filter and amp"
+    ],
+    [
+      "tone2:filter_envelope_velocity_time1",
+      "Filter and amp"
+    ],
+    [
+      "tone2:filter_envelope_velocity_time4",
+      "Filter and amp"
+    ],
+    [
+      "tone2:filter_envelope_time_keyfollow",
+      "Filter and amp"
+    ],
+    [
+      "tone2:bias_direction",
+      "Filter and amp"
+    ],
+    [
+      "tone2:bias_position",
+      "Filter and amp"
+    ],
+    [
+      "tone2:bias_level",
+      "Filter and amp"
+    ],
+    [
+      "tone2:level_lfo1_depth",
+      "Filter and amp"
+    ],
+    [
+      "tone2:level_lfo2_depth",
+      "Filter and amp"
+    ],
+    [
+      "tone2:pan_keyfollow",
+      "Filter and amp"
+    ],
+    [
+      "tone2:random_pan_depth",
+      "Filter and amp"
+    ],
+    [
+      "tone2:alternate_pan_depth",
+      "Filter and amp"
+    ],
+    [
+      "tone2:pan_lfo1_depth",
+      "Filter and amp"
+    ],
+    [
+      "tone2:pan_lfo2_depth",
+      "Filter and amp"
+    ],
+    [
+      "tone2:level_envelope_velocity_curve",
+      "Filter and amp"
+    ],
+    [
+      "tone2:level_envelope_velocity_sens",
+      "Filter and amp"
+    ],
+    [
+      "tone2:level_envelope_velocity_time1",
+      "Filter and amp"
+    ],
+    [
+      "tone2:level_envelope_velocity_time4",
+      "Filter and amp"
+    ],
+    [
+      "tone3:filter_type",
+      "Filter and amp"
+    ],
+    [
+      "tone3:cutoff_frequency",
+      "Filter and amp"
+    ],
+    [
+      "tone3:cutoff_keyfollow",
+      "Filter and amp"
+    ],
+    [
+      "tone3:resonance",
+      "Filter and amp"
+    ],
+    [
+      "tone3:resonance_velocity_sens",
+      "Filter and amp"
+    ],
+    [
+      "tone3:filter_lfo1_depth",
+      "Filter and amp"
+    ],
+    [
+      "tone3:filter_lfo2_depth",
+      "Filter and amp"
+    ],
+    [
+      "tone3:filter_envelope_depth",
+      "Filter and amp"
+    ],
+    [
+      "tone3:filter_envelope_velocity_curve",
+      "Filter and amp"
+    ],
+    [
+      "tone3:filter_envelope_velocity_sens",
+      "Filter and amp"
+    ],
+    [
+      "tone3:filter_envelope_velocity_time1",
+      "Filter and amp"
+    ],
+    [
+      "tone3:filter_envelope_velocity_time4",
+      "Filter and amp"
+    ],
+    [
+      "tone3:filter_envelope_time_keyfollow",
+      "Filter and amp"
+    ],
+    [
+      "tone3:bias_direction",
+      "Filter and amp"
+    ],
+    [
+      "tone3:bias_position",
+      "Filter and amp"
+    ],
+    [
+      "tone3:bias_level",
+      "Filter and amp"
+    ],
+    [
+      "tone3:level_lfo1_depth",
+      "Filter and amp"
+    ],
+    [
+      "tone3:level_lfo2_depth",
+      "Filter and amp"
+    ],
+    [
+      "tone3:pan_keyfollow",
+      "Filter and amp"
+    ],
+    [
+      "tone3:random_pan_depth",
+      "Filter and amp"
+    ],
+    [
+      "tone3:alternate_pan_depth",
+      "Filter and amp"
+    ],
+    [
+      "tone3:pan_lfo1_depth",
+      "Filter and amp"
+    ],
+    [
+      "tone3:pan_lfo2_depth",
+      "Filter and amp"
+    ],
+    [
+      "tone3:level_envelope_velocity_curve",
+      "Filter and amp"
+    ],
+    [
+      "tone3:level_envelope_velocity_sens",
+      "Filter and amp"
+    ],
+    [
+      "tone3:level_envelope_velocity_time1",
+      "Filter and amp"
+    ],
+    [
+      "tone3:level_envelope_velocity_time4",
+      "Filter and amp"
+    ],
+    [
+      "tone3:level_envelope_time_keyfollow",
+      "Filter and amp"
+    ],
+    [
+      "tone4:filter_type",
+      "Filter and amp"
+    ],
+    [
+      "tone4:cutoff_frequency",
+      "Filter and amp"
+    ],
+    [
+      "tone4:cutoff_keyfollow",
+      "Filter and amp"
+    ],
+    [
+      "tone4:resonance",
+      "Filter and amp"
+    ],
+    [
+      "tone4:resonance_velocity_sens",
+      "Filter and amp"
+    ],
+    [
+      "tone4:filter_lfo1_depth",
+      "Filter and amp"
+    ],
+    [
+      "tone4:filter_lfo2_depth",
+      "Filter and amp"
+    ],
+    [
+      "tone4:filter_envelope_depth",
+      "Filter and amp"
+    ],
+    [
+      "tone4:filter_envelope_velocity_curve",
+      "Filter and amp"
+    ],
+    [
+      "tone4:filter_envelope_velocity_sens",
+      "Filter and amp"
+    ],
+    [
+      "tone4:filter_envelope_velocity_time1",
+      "Filter and amp"
+    ],
+    [
+      "tone4:filter_envelope_velocity_time4",
+      "Filter and amp"
+    ],
+    [
+      "tone4:filter_envelope_time_keyfollow",
+      "Filter and amp"
+    ],
+    [
+      "tone4:bias_direction",
+      "Filter and amp"
+    ],
+    [
+      "tone4:bias_position",
+      "Filter and amp"
+    ],
+    [
+      "tone4:bias_level",
+      "Filter and amp"
+    ],
+    [
+      "tone4:level_lfo1_depth",
+      "Filter and amp"
+    ],
+    [
+      "tone4:level_lfo2_depth",
+      "Filter and amp"
+    ],
+    [
+      "tone4:pan_keyfollow",
+      "Filter and amp"
+    ],
+    [
+      "tone4:random_pan_depth",
+      "Filter and amp"
+    ],
+    [
+      "tone4:alternate_pan_depth",
+      "Filter and amp"
+    ],
+    [
+      "tone4:pan_lfo1_depth",
+      "Filter and amp"
+    ],
+    [
+      "tone4:pan_lfo2_depth",
+      "Filter and amp"
+    ],
+    [
+      "tone4:level_envelope_velocity_curve",
+      "Filter and amp"
+    ],
+    [
+      "tone4:level_envelope_velocity_sens",
+      "Filter and amp"
+    ],
+    [
+      "tone4:level_envelope_velocity_time1",
+      "Filter and amp"
+    ],
+    [
+      "tone4:level_envelope_velocity_time4",
+      "Filter and amp"
+    ],
+    [
+      "tone4:level_envelope_time_keyfollow",
+      "Filter and amp"
+    ],
+    [
+      "tone1:lfo1_key_trigger",
+      "LFO and modulation"
+    ],
+    [
+      "tone1:lfo1_rate",
+      "LFO and modulation"
+    ],
+    [
+      "tone1:lfo1_offset",
+      "LFO and modulation"
+    ],
+    [
+      "tone1:lfo1_external_sync",
+      "LFO and modulation"
+    ],
+    [
+      "tone1:lfo1_fade_mode",
+      "LFO and modulation"
+    ],
+    [
+      "tone1:lfo1_delay_time",
+      "LFO and modulation"
+    ],
+    [
+      "tone1:lfo1_fade_time",
+      "LFO and modulation"
+    ],
+    [
+      "tone1:lfo2_key_trigger",
+      "LFO and modulation"
+    ],
+    [
+      "tone1:lfo2_rate",
+      "LFO and modulation"
+    ],
+    [
+      "tone1:lfo2_offset",
+      "LFO and modulation"
+    ],
+    [
+      "tone1:lfo2_external_sync",
+      "LFO and modulation"
+    ],
+    [
+      "tone1:lfo2_fade_mode",
+      "LFO and modulation"
+    ],
+    [
+      "tone1:lfo2_delay_time",
+      "LFO and modulation"
+    ],
+    [
+      "tone1:lfo2_fade_time",
+      "LFO and modulation"
+    ],
+    [
+      "tone1:redamper_control_switch",
+      "LFO and modulation"
+    ],
+    [
+      "tone1:volume_control_switch",
+      "LFO and modulation"
+    ],
+    [
+      "tone1:hold_1_control_switch",
+      "LFO and modulation"
+    ],
+    [
+      "tone1:bender_control_switch",
+      "LFO and modulation"
+    ],
+    [
+      "tone1:controller_1_depth_1",
+      "LFO and modulation"
+    ],
+    [
+      "tone1:controller_1_depth_2",
+      "LFO and modulation"
+    ],
+    [
+      "tone1:controller_1_depth_3",
+      "LFO and modulation"
+    ],
+    [
+      "tone1:controller_1_depth_4",
+      "LFO and modulation"
+    ],
+    [
+      "tone1:controller_2_depth_1",
+      "LFO and modulation"
+    ],
+    [
+      "tone1:controller_2_depth_2",
+      "LFO and modulation"
+    ],
+    [
+      "tone1:controller_2_depth_3",
+      "LFO and modulation"
+    ],
+    [
+      "tone1:controller_2_depth_4",
+      "LFO and modulation"
+    ],
+    [
+      "tone1:controller_3_depth_1",
+      "LFO and modulation"
+    ],
+    [
+      "tone1:controller_3_depth_2",
+      "LFO and modulation"
+    ],
+    [
+      "tone1:controller_3_depth_3",
+      "LFO and modulation"
+    ],
+    [
+      "tone1:controller_3_depth_4",
+      "LFO and modulation"
+    ],
+    [
+      "tone2:lfo1_key_trigger",
+      "LFO and modulation"
+    ],
+    [
+      "tone2:lfo1_rate",
+      "LFO and modulation"
+    ],
+    [
+      "tone2:lfo1_offset",
+      "LFO and modulation"
+    ],
+    [
+      "tone2:lfo1_external_sync",
+      "LFO and modulation"
+    ],
+    [
+      "tone2:lfo1_fade_mode",
+      "LFO and modulation"
+    ],
+    [
+      "tone2:lfo1_delay_time",
+      "LFO and modulation"
+    ],
+    [
+      "tone2:lfo1_fade_time",
+      "LFO and modulation"
+    ],
+    [
+      "tone2:lfo2_key_trigger",
+      "LFO and modulation"
+    ],
+    [
+      "tone2:lfo2_rate",
+      "LFO and modulation"
+    ],
+    [
+      "tone2:lfo2_offset",
+      "LFO and modulation"
+    ],
+    [
+      "tone2:lfo2_external_sync",
+      "LFO and modulation"
+    ],
+    [
+      "tone2:lfo2_fade_mode",
+      "LFO and modulation"
+    ],
+    [
+      "tone2:lfo2_delay_time",
+      "LFO and modulation"
+    ],
+    [
+      "tone2:lfo2_fade_time",
+      "LFO and modulation"
+    ],
+    [
+      "tone2:redamper_control_switch",
+      "LFO and modulation"
+    ],
+    [
+      "tone2:volume_control_switch",
+      "LFO and modulation"
+    ],
+    [
+      "tone2:hold_1_control_switch",
+      "LFO and modulation"
+    ],
+    [
+      "tone2:bender_control_switch",
+      "LFO and modulation"
+    ],
+    [
+      "tone2:controller_1_depth_1",
+      "LFO and modulation"
+    ],
+    [
+      "tone2:controller_1_depth_2",
+      "LFO and modulation"
+    ],
+    [
+      "tone2:controller_1_depth_3",
+      "LFO and modulation"
+    ],
+    [
+      "tone2:controller_1_depth_4",
+      "LFO and modulation"
+    ],
+    [
+      "tone2:controller_2_depth_1",
+      "LFO and modulation"
+    ],
+    [
+      "tone2:controller_2_depth_2",
+      "LFO and modulation"
+    ],
+    [
+      "tone2:controller_2_depth_3",
+      "LFO and modulation"
+    ],
+    [
+      "tone2:controller_2_depth_4",
+      "LFO and modulation"
+    ],
+    [
+      "tone2:controller_3_depth_1",
+      "LFO and modulation"
+    ],
+    [
+      "tone2:controller_3_depth_2",
+      "LFO and modulation"
+    ],
+    [
+      "tone2:controller_3_depth_3",
+      "LFO and modulation"
+    ],
+    [
+      "tone2:controller_3_depth_4",
+      "LFO and modulation"
+    ],
+    [
+      "tone3:lfo1_key_trigger",
+      "LFO and modulation"
+    ],
+    [
+      "tone3:lfo1_rate",
+      "LFO and modulation"
+    ],
+    [
+      "tone3:lfo1_offset",
+      "LFO and modulation"
+    ],
+    [
+      "tone3:lfo1_external_sync",
+      "LFO and modulation"
+    ],
+    [
+      "tone3:lfo1_fade_mode",
+      "LFO and modulation"
+    ],
+    [
+      "tone3:lfo1_delay_time",
+      "LFO and modulation"
+    ],
+    [
+      "tone3:lfo1_fade_time",
+      "LFO and modulation"
+    ],
+    [
+      "tone3:lfo2_key_trigger",
+      "LFO and modulation"
+    ],
+    [
+      "tone3:lfo2_rate",
+      "LFO and modulation"
+    ],
+    [
+      "tone3:lfo2_offset",
+      "LFO and modulation"
+    ],
+    [
+      "tone3:lfo2_external_sync",
+      "LFO and modulation"
+    ],
+    [
+      "tone3:lfo2_fade_mode",
+      "LFO and modulation"
+    ],
+    [
+      "tone3:lfo2_delay_time",
+      "LFO and modulation"
+    ],
+    [
+      "tone3:lfo2_fade_time",
+      "LFO and modulation"
+    ],
+    [
+      "tone3:redamper_control_switch",
+      "LFO and modulation"
+    ],
+    [
+      "tone3:volume_control_switch",
+      "LFO and modulation"
+    ],
+    [
+      "tone3:hold_1_control_switch",
+      "LFO and modulation"
+    ],
+    [
+      "tone3:bender_control_switch",
+      "LFO and modulation"
+    ],
+    [
+      "tone3:controller_1_depth_1",
+      "LFO and modulation"
+    ],
+    [
+      "tone3:controller_1_depth_2",
+      "LFO and modulation"
+    ],
+    [
+      "tone3:controller_1_depth_3",
+      "LFO and modulation"
+    ],
+    [
+      "tone3:controller_1_depth_4",
+      "LFO and modulation"
+    ],
+    [
+      "tone3:controller_2_depth_1",
+      "LFO and modulation"
+    ],
+    [
+      "tone3:controller_2_depth_2",
+      "LFO and modulation"
+    ],
+    [
+      "tone3:controller_2_depth_3",
+      "LFO and modulation"
+    ],
+    [
+      "tone3:controller_2_depth_4",
+      "LFO and modulation"
+    ],
+    [
+      "tone3:controller_3_depth_1",
+      "LFO and modulation"
+    ],
+    [
+      "tone3:controller_3_depth_2",
+      "LFO and modulation"
+    ],
+    [
+      "tone3:controller_3_depth_3",
+      "LFO and modulation"
+    ],
+    [
+      "tone3:controller_3_depth_4",
+      "LFO and modulation"
+    ],
+    [
+      "tone4:lfo1_key_trigger",
+      "LFO and modulation"
+    ],
+    [
+      "tone4:lfo1_rate",
+      "LFO and modulation"
+    ],
+    [
+      "tone4:lfo1_offset",
+      "LFO and modulation"
+    ],
+    [
+      "tone4:lfo1_external_sync",
+      "LFO and modulation"
+    ],
+    [
+      "tone4:lfo1_fade_mode",
+      "LFO and modulation"
+    ],
+    [
+      "tone4:lfo1_delay_time",
+      "LFO and modulation"
+    ],
+    [
+      "tone4:lfo1_fade_time",
+      "LFO and modulation"
+    ],
+    [
+      "tone4:lfo2_key_trigger",
+      "LFO and modulation"
+    ],
+    [
+      "tone4:lfo2_rate",
+      "LFO and modulation"
+    ],
+    [
+      "tone4:lfo2_offset",
+      "LFO and modulation"
+    ],
+    [
+      "tone4:lfo2_external_sync",
+      "LFO and modulation"
+    ],
+    [
+      "tone4:lfo2_fade_mode",
+      "LFO and modulation"
+    ],
+    [
+      "tone4:lfo2_delay_time",
+      "LFO and modulation"
+    ],
+    [
+      "tone4:lfo2_fade_time",
+      "LFO and modulation"
+    ],
+    [
+      "tone4:redamper_control_switch",
+      "LFO and modulation"
+    ],
+    [
+      "tone4:volume_control_switch",
+      "LFO and modulation"
+    ],
+    [
+      "tone4:hold_1_control_switch",
+      "LFO and modulation"
+    ],
+    [
+      "tone4:bender_control_switch",
+      "LFO and modulation"
+    ],
+    [
+      "tone4:controller_1_depth_1",
+      "LFO and modulation"
+    ],
+    [
+      "tone4:controller_1_depth_2",
+      "LFO and modulation"
+    ],
+    [
+      "tone4:controller_1_depth_3",
+      "LFO and modulation"
+    ],
+    [
+      "tone4:controller_1_depth_4",
+      "LFO and modulation"
+    ],
+    [
+      "tone4:controller_2_depth_1",
+      "LFO and modulation"
+    ],
+    [
+      "tone4:controller_2_depth_2",
+      "LFO and modulation"
+    ],
+    [
+      "tone4:controller_2_depth_3",
+      "LFO and modulation"
+    ],
+    [
+      "tone4:controller_2_depth_4",
+      "LFO and modulation"
+    ],
+    [
+      "tone4:controller_3_depth_1",
+      "LFO and modulation"
+    ],
+    [
+      "tone4:controller_3_depth_2",
+      "LFO and modulation"
+    ],
+    [
+      "tone4:controller_3_depth_3",
+      "LFO and modulation"
+    ],
+    [
+      "tone4:controller_3_depth_4",
+      "LFO and modulation"
+    ],
+    [
+      "common:velocity_range_switch",
+      "Structure"
+    ],
+    [
+      "common:booster_1_2",
+      "Structure"
+    ],
+    [
+      "common:booster_3_4",
+      "Structure"
+    ],
+    [
+      "tone1:output_assign",
+      "Routing"
+    ],
+    [
+      "tone1:mix_efx_send_level",
+      "Routing"
+    ],
+    [
+      "tone1:chorus_send_level",
+      "Routing"
+    ],
+    [
+      "tone1:reverb_send_level",
+      "Routing"
+    ],
+    [
+      "tone2:output_assign",
+      "Routing"
+    ],
+    [
+      "tone2:mix_efx_send_level",
+      "Routing"
+    ],
+    [
+      "tone2:chorus_send_level",
+      "Routing"
+    ],
+    [
+      "tone2:reverb_send_level",
+      "Routing"
+    ],
+    [
+      "tone3:output_assign",
+      "Routing"
+    ],
+    [
+      "tone3:mix_efx_send_level",
+      "Routing"
+    ],
+    [
+      "tone3:chorus_send_level",
+      "Routing"
+    ],
+    [
+      "tone3:reverb_send_level",
+      "Routing"
+    ],
+    [
+      "tone4:output_assign",
+      "Routing"
+    ],
+    [
+      "tone4:mix_efx_send_level",
+      "Routing"
+    ],
+    [
+      "tone4:chorus_send_level",
+      "Routing"
+    ],
+    [
+      "tone4:reverb_send_level",
+      "Routing"
+    ],
+    [
+      "common:efx_output_assign",
+      "Effects"
+    ],
+    [
+      "common:efx_mix_out_send_level",
+      "Effects"
+    ],
+    [
+      "common:efx_chorus_send_level",
+      "Effects"
+    ],
+    [
+      "common:efx_reverb_send_level",
+      "Effects"
+    ],
+    [
+      "common:efx_control_depth_1",
+      "Effects"
+    ],
+    [
+      "common:efx_control_depth_2",
+      "Effects"
+    ],
+    [
+      "common:efx_control_hold_peak",
+      "Effects"
+    ],
+    [
+      "common:chorus_level",
+      "Effects"
+    ],
+    [
+      "common:chorus_rate",
+      "Effects"
+    ],
+    [
+      "common:chorus_depth",
+      "Effects"
+    ],
+    [
+      "common:chorus_pre_delay",
+      "Effects"
+    ],
+    [
+      "common:chorus_feedback",
+      "Effects"
+    ],
+    [
+      "common:chorus_output",
+      "Effects"
+    ],
+    [
+      "common:reverb_level",
+      "Effects"
+    ],
+    [
+      "common:reverb_time",
+      "Effects"
+    ],
+    [
+      "common:delay_feedback",
+      "Effects"
+    ],
+    [
+      "tone1:tone_switch",
+      "ToneCard"
+    ],
+    [
+      "tone2:tone_switch",
+      "ToneCard"
+    ],
+    [
+      "tone3:tone_switch",
+      "ToneCard"
+    ],
+    [
+      "tone4:tone_switch",
+      "ToneCard"
+    ],
+    [
+      "common:structure_type_1_2",
+      "Structure"
+    ],
+    [
+      "common:structure_type_3_4",
+      "Structure"
+    ],
+    [
+      "env:Pitch envelope Time 1 / Level 1",
+      "Wave and pitch"
+    ],
+    [
+      "env:Pitch envelope Time 2 / Level 2",
+      "Wave and pitch"
+    ],
+    [
+      "env:Pitch envelope Time 3 / Level 3",
+      "Wave and pitch"
+    ],
+    [
+      "env:Pitch envelope Time 4 / Level 4",
+      "Wave and pitch"
+    ],
+    [
+      "env:Pitch Envelope Depth",
+      "Wave and pitch"
+    ],
+    [
+      "env:Pitch Envelope Velocity Sens",
+      "Wave and pitch"
+    ],
+    [
+      "env:Filter envelope Time 1 / Level 1",
+      "Filter and amp"
+    ],
+    [
+      "env:Filter envelope Time 2 / Level 2",
+      "Filter and amp"
+    ],
+    [
+      "env:Filter envelope Time 3 / Level 3",
+      "Filter and amp"
+    ],
+    [
+      "env:Filter envelope Time 4 / Level 4",
+      "Filter and amp"
+    ],
+    [
+      "env:Filter Envelope Depth",
+      "Filter and amp"
+    ],
+    [
+      "env:Filter Envelope Velocity Curve",
+      "Filter and amp"
+    ],
+    [
+      "env:Filter Envelope Velocity Sens",
+      "Filter and amp"
+    ],
+    [
+      "env:Level envelope Time 1 / Level 1",
+      "Filter and amp"
+    ],
+    [
+      "env:Level envelope Time 2 / Level 2",
+      "Filter and amp"
+    ],
+    [
+      "env:Level envelope Time 3 / Level 3",
+      "Filter and amp"
+    ],
+    [
+      "env:Level envelope Time 4 (release)",
+      "Filter and amp"
+    ],
+    [
+      "env:Level Envelope Velocity Curve",
+      "Filter and amp"
+    ],
+    [
+      "env:Level Envelope Velocity Sens",
+      "Filter and amp"
+    ]
+  ],
+  "skipped": [
+    [
+      "tone1:tone_delay_mode",
+      "dropdown"
+    ],
+    [
+      "tone2:tone_delay_mode",
+      "dropdown"
+    ],
+    [
+      "tone3:tone_delay_mode",
+      "dropdown"
+    ],
+    [
+      "tone4:tone_delay_mode",
+      "dropdown"
+    ],
+    [
+      "tone2:level_envelope_time_keyfollow",
+      "no-control"
+    ],
+    [
+      "tone1:lfo1_waveform",
+      "dropdown"
+    ],
+    [
+      "tone1:lfo2_waveform",
+      "dropdown"
+    ],
+    [
+      "tone1:pan_control_switch",
+      "dropdown"
+    ],
+    [
+      "tone1:controller_1_destination_1",
+      "dropdown"
+    ],
+    [
+      "tone1:controller_1_destination_2",
+      "dropdown"
+    ],
+    [
+      "tone1:controller_1_destination_3",
+      "dropdown"
+    ],
+    [
+      "tone1:controller_1_destination_4",
+      "dropdown"
+    ],
+    [
+      "tone1:controller_2_destination_1",
+      "dropdown"
+    ],
+    [
+      "tone1:controller_2_destination_2",
+      "dropdown"
+    ],
+    [
+      "tone1:controller_2_destination_3",
+      "dropdown"
+    ],
+    [
+      "tone1:controller_2_destination_4",
+      "dropdown"
+    ],
+    [
+      "tone1:controller_3_destination_1",
+      "dropdown"
+    ],
+    [
+      "tone1:controller_3_destination_2",
+      "dropdown"
+    ],
+    [
+      "tone1:controller_3_destination_3",
+      "dropdown"
+    ],
+    [
+      "tone1:controller_3_destination_4",
+      "dropdown"
+    ],
+    [
+      "tone2:lfo1_waveform",
+      "dropdown"
+    ],
+    [
+      "tone2:lfo2_waveform",
+      "dropdown"
+    ],
+    [
+      "tone2:pan_control_switch",
+      "dropdown"
+    ],
+    [
+      "tone2:controller_1_destination_1",
+      "dropdown"
+    ],
+    [
+      "tone2:controller_1_destination_2",
+      "dropdown"
+    ],
+    [
+      "tone2:controller_1_destination_3",
+      "dropdown"
+    ],
+    [
+      "tone2:controller_1_destination_4",
+      "dropdown"
+    ],
+    [
+      "tone2:controller_2_destination_1",
+      "dropdown"
+    ],
+    [
+      "tone2:controller_2_destination_2",
+      "dropdown"
+    ],
+    [
+      "tone2:controller_2_destination_3",
+      "dropdown"
+    ],
+    [
+      "tone2:controller_2_destination_4",
+      "dropdown"
+    ],
+    [
+      "tone2:controller_3_destination_1",
+      "dropdown"
+    ],
+    [
+      "tone2:controller_3_destination_2",
+      "dropdown"
+    ],
+    [
+      "tone2:controller_3_destination_3",
+      "dropdown"
+    ],
+    [
+      "tone2:controller_3_destination_4",
+      "dropdown"
+    ],
+    [
+      "tone3:lfo1_waveform",
+      "dropdown"
+    ],
+    [
+      "tone3:lfo2_waveform",
+      "dropdown"
+    ],
+    [
+      "tone3:pan_control_switch",
+      "dropdown"
+    ],
+    [
+      "tone3:controller_1_destination_1",
+      "dropdown"
+    ],
+    [
+      "tone3:controller_1_destination_2",
+      "dropdown"
+    ],
+    [
+      "tone3:controller_1_destination_3",
+      "dropdown"
+    ],
+    [
+      "tone3:controller_1_destination_4",
+      "dropdown"
+    ],
+    [
+      "tone3:controller_2_destination_1",
+      "dropdown"
+    ],
+    [
+      "tone3:controller_2_destination_2",
+      "dropdown"
+    ],
+    [
+      "tone3:controller_2_destination_3",
+      "dropdown"
+    ],
+    [
+      "tone3:controller_2_destination_4",
+      "dropdown"
+    ],
+    [
+      "tone3:controller_3_destination_1",
+      "dropdown"
+    ],
+    [
+      "tone3:controller_3_destination_2",
+      "dropdown"
+    ],
+    [
+      "tone3:controller_3_destination_3",
+      "dropdown"
+    ],
+    [
+      "tone3:controller_3_destination_4",
+      "dropdown"
+    ],
+    [
+      "tone4:lfo1_waveform",
+      "dropdown"
+    ],
+    [
+      "tone4:lfo2_waveform",
+      "dropdown"
+    ],
+    [
+      "tone4:pan_control_switch",
+      "dropdown"
+    ],
+    [
+      "tone4:controller_1_destination_1",
+      "dropdown"
+    ],
+    [
+      "tone4:controller_1_destination_2",
+      "dropdown"
+    ],
+    [
+      "tone4:controller_1_destination_3",
+      "dropdown"
+    ],
+    [
+      "tone4:controller_1_destination_4",
+      "dropdown"
+    ],
+    [
+      "tone4:controller_2_destination_1",
+      "dropdown"
+    ],
+    [
+      "tone4:controller_2_destination_2",
+      "dropdown"
+    ],
+    [
+      "tone4:controller_2_destination_3",
+      "dropdown"
+    ],
+    [
+      "tone4:controller_2_destination_4",
+      "dropdown"
+    ],
+    [
+      "tone4:controller_3_destination_1",
+      "dropdown"
+    ],
+    [
+      "tone4:controller_3_destination_2",
+      "dropdown"
+    ],
+    [
+      "tone4:controller_3_destination_3",
+      "dropdown"
+    ],
+    [
+      "tone4:controller_3_destination_4",
+      "dropdown"
+    ],
+    [
+      "tone1:lfo1_waveform",
+      "dropdown"
+    ],
+    [
+      "tone1:lfo2_waveform",
+      "dropdown"
+    ],
+    [
+      "tone1:pan_control_switch",
+      "dropdown"
+    ],
+    [
+      "tone1:controller_1_destination_1",
+      "dropdown"
+    ],
+    [
+      "tone1:controller_1_destination_2",
+      "dropdown"
+    ],
+    [
+      "tone1:controller_1_destination_3",
+      "dropdown"
+    ],
+    [
+      "tone1:controller_1_destination_4",
+      "dropdown"
+    ],
+    [
+      "tone1:controller_2_destination_1",
+      "dropdown"
+    ],
+    [
+      "tone1:controller_2_destination_2",
+      "dropdown"
+    ],
+    [
+      "tone1:controller_2_destination_3",
+      "dropdown"
+    ],
+    [
+      "tone1:controller_2_destination_4",
+      "dropdown"
+    ],
+    [
+      "tone1:controller_3_destination_1",
+      "dropdown"
+    ],
+    [
+      "tone1:controller_3_destination_2",
+      "dropdown"
+    ],
+    [
+      "tone1:controller_3_destination_3",
+      "dropdown"
+    ],
+    [
+      "tone1:controller_3_destination_4",
+      "dropdown"
+    ],
+    [
+      "tone2:lfo1_waveform",
+      "dropdown"
+    ],
+    [
+      "tone2:lfo2_waveform",
+      "dropdown"
+    ],
+    [
+      "tone2:pan_control_switch",
+      "dropdown"
+    ],
+    [
+      "tone2:controller_1_destination_1",
+      "dropdown"
+    ],
+    [
+      "tone2:controller_1_destination_2",
+      "dropdown"
+    ],
+    [
+      "tone2:controller_1_destination_3",
+      "dropdown"
+    ],
+    [
+      "tone2:controller_1_destination_4",
+      "dropdown"
+    ],
+    [
+      "tone2:controller_2_destination_1",
+      "dropdown"
+    ],
+    [
+      "tone2:controller_2_destination_2",
+      "dropdown"
+    ],
+    [
+      "tone2:controller_2_destination_3",
+      "dropdown"
+    ],
+    [
+      "tone2:controller_2_destination_4",
+      "dropdown"
+    ],
+    [
+      "tone2:controller_3_destination_1",
+      "dropdown"
+    ],
+    [
+      "tone2:controller_3_destination_2",
+      "dropdown"
+    ],
+    [
+      "tone2:controller_3_destination_3",
+      "dropdown"
+    ],
+    [
+      "tone2:controller_3_destination_4",
+      "dropdown"
+    ],
+    [
+      "tone3:lfo1_waveform",
+      "dropdown"
+    ],
+    [
+      "tone3:lfo2_waveform",
+      "dropdown"
+    ],
+    [
+      "tone3:pan_control_switch",
+      "dropdown"
+    ],
+    [
+      "tone3:controller_1_destination_1",
+      "dropdown"
+    ],
+    [
+      "tone3:controller_1_destination_2",
+      "dropdown"
+    ],
+    [
+      "tone3:controller_1_destination_3",
+      "dropdown"
+    ],
+    [
+      "tone3:controller_1_destination_4",
+      "dropdown"
+    ],
+    [
+      "tone3:controller_2_destination_1",
+      "dropdown"
+    ],
+    [
+      "tone3:controller_2_destination_2",
+      "dropdown"
+    ],
+    [
+      "tone3:controller_2_destination_3",
+      "dropdown"
+    ],
+    [
+      "tone3:controller_2_destination_4",
+      "dropdown"
+    ],
+    [
+      "tone3:controller_3_destination_1",
+      "dropdown"
+    ],
+    [
+      "tone3:controller_3_destination_2",
+      "dropdown"
+    ],
+    [
+      "tone3:controller_3_destination_3",
+      "dropdown"
+    ],
+    [
+      "tone3:controller_3_destination_4",
+      "dropdown"
+    ],
+    [
+      "tone4:lfo1_waveform",
+      "dropdown"
+    ],
+    [
+      "tone4:lfo2_waveform",
+      "dropdown"
+    ],
+    [
+      "tone4:pan_control_switch",
+      "dropdown"
+    ],
+    [
+      "tone4:controller_1_destination_1",
+      "dropdown"
+    ],
+    [
+      "tone4:controller_1_destination_2",
+      "dropdown"
+    ],
+    [
+      "tone4:controller_1_destination_3",
+      "dropdown"
+    ],
+    [
+      "tone4:controller_1_destination_4",
+      "dropdown"
+    ],
+    [
+      "tone4:controller_2_destination_1",
+      "dropdown"
+    ],
+    [
+      "tone4:controller_2_destination_2",
+      "dropdown"
+    ],
+    [
+      "tone4:controller_2_destination_3",
+      "dropdown"
+    ],
+    [
+      "tone4:controller_2_destination_4",
+      "dropdown"
+    ],
+    [
+      "tone4:controller_3_destination_1",
+      "dropdown"
+    ],
+    [
+      "tone4:controller_3_destination_2",
+      "dropdown"
+    ],
+    [
+      "tone4:controller_3_destination_3",
+      "dropdown"
+    ],
+    [
+      "tone4:controller_3_destination_4",
+      "dropdown"
+    ],
+    [
+      "common:efx_control_source_1",
+      "dropdown"
+    ],
+    [
+      "common:efx_control_source_2",
+      "dropdown"
+    ],
+    [
+      "common:reverb_type",
+      "dropdown"
+    ],
+    [
+      "common:reverb_hf_damp",
+      "dropdown"
+    ],
+    [
+      "common:patch_name_*",
+      "no-input"
+    ]
+  ],
+  "missingCommon": [
+    "common:patch_name_1",
+    "common:patch_name_2",
+    "common:patch_name_3",
+    "common:patch_name_4",
+    "common:patch_name_5",
+    "common:patch_name_6",
+    "common:patch_name_7",
+    "common:patch_name_8",
+    "common:patch_name_9",
+    "common:patch_name_10",
+    "common:patch_name_11",
+    "common:patch_name_12",
+    "common:efx_type",
+    "common:efx_parameter_1",
+    "common:efx_parameter_2",
+    "common:efx_parameter_3",
+    "common:efx_parameter_4",
+    "common:efx_parameter_5",
+    "common:efx_parameter_6",
+    "common:efx_parameter_7",
+    "common:efx_parameter_8",
+    "common:efx_parameter_9",
+    "common:efx_parameter_10",
+    "common:efx_parameter_11",
+    "common:efx_parameter_12",
+    "common:efx_control_source_1",
+    "common:efx_control_source_2",
+    "common:reverb_type",
+    "common:reverb_hf_damp",
+    "common:patch_tempo",
+    "common:patch_level",
+    "common:patch_pan",
+    "common:analog_feel",
+    "common:bend_range_up",
+    "common:bend_range_down",
+    "common:key_assign_mode",
+    "common:solo_legato",
+    "common:portamento_switch",
+    "common:portamento_mode",
+    "common:portamento_type",
+    "common:portamento_start",
+    "common:portamento_time",
+    "common:patch_control_source_2",
+    "common:patch_control_source_3",
+    "common:control_1_hold_peak",
+    "common:control_2_hold_peak",
+    "common:control_3_hold_peak",
+    "common:octave_shift",
+    "common:stretch_tune_depth",
+    "common:voice_priority",
+    "common:clock_source"
+  ],
+  "missingToneIds": [
+    "tone_delay_mode",
+    "velocity_range_lower",
+    "velocity_range_upper",
+    "keyboard_range_lower",
+    "keyboard_range_upper",
+    "pan_control_switch",
+    "controller_1_destination_1",
+    "controller_1_destination_2",
+    "controller_1_destination_3",
+    "controller_1_destination_4",
+    "controller_2_destination_1",
+    "controller_2_destination_2",
+    "controller_2_destination_3",
+    "controller_2_destination_4",
+    "controller_3_destination_1",
+    "controller_3_destination_2",
+    "controller_3_destination_3",
+    "controller_3_destination_4",
+    "lfo1_waveform",
+    "lfo2_waveform",
+    "pitch_envelope_time_1",
+    "pitch_envelope_time_2",
+    "pitch_envelope_time_3",
+    "pitch_envelope_time_4",
+    "pitch_envelope_level_1",
+    "pitch_envelope_level_2",
+    "pitch_envelope_level_3",
+    "pitch_envelope_level_4",
+    "filter_envelope_time_1",
+    "filter_envelope_time_2",
+    "filter_envelope_time_3",
+    "filter_envelope_time_4",
+    "filter_envelope_level_1",
+    "filter_envelope_level_2",
+    "filter_envelope_level_3",
+    "filter_envelope_level_4",
+    "tone_level",
+    "level_envelope_time_1",
+    "level_envelope_time_2",
+    "level_envelope_time_3",
+    "level_envelope_time_4",
+    "level_envelope_level_1",
+    "level_envelope_level_2",
+    "level_envelope_level_3",
+    "tone_pan"
+  ]
+}

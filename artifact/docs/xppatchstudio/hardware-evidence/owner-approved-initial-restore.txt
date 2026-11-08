@@ -1,0 +1,11 @@
+2026-11-07 — owner explicitly authorized resetting the keyboard to its initial backed-up state.
+
+Source: target/hardware-acceptance/2026-11-07-codex/1794068291-hardware-session-full-backup.syx
+Original temporary patch: target/hardware-acceptance/2026-11-07-codex/temp-patch.blocks (589 bytes, Jimmee Dee).
+
+restore_system_file: SYSTEM RESTORE PASS: all settings match backup. Previous live System settings saved to target/hardware-acceptance/2026-11-07-codex/system-before-owner-approved-restore.syx.
+restore_temp: TEMP RESTORE PASSED: C-Z  Flute -> Jimmee Dee. Previous temporary patch saved to target/hardware-acceptance/2026-11-07-codex/temp-before-owner-approved-restore.blocks.
+
+Separate verify_snapshot read: User slots different from snapshot (zero-based): []. Performance: 32 User documents match snapshot. Rhythm: 2 User documents match snapshot. System settings match snapshot. SNAPSHOT VERIFICATION PASSED. The verifier also compared the temporary patch to the saved Jimmee Dee blocks; it would have failed on a mismatch.
+
+This is an interim restoration before remaining owner-assisted tests. A final independent read is required after those tests.

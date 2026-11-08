@@ -1,0 +1,4 @@
+before: temp='Nice Piano' system=(0, 3, 3)
+after XP-A 001 (84/0 PC=0): temp='St.Concert' system=(2, 9, 0)
+H-072 PARTIAL PASS: instrument accepted XP-A selection (temp/system changed). Owner: confirm board in EXP-A and panel name.
+Temporary restored to Nice Piano

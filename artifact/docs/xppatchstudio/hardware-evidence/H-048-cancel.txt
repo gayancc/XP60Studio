@@ -1,0 +1,17 @@
+2026-11-07 — H-048 Cancel half (Bank Read from synth)
+
+Native desktop script ui/e2e/hw-bank-cancel.mjs against FCB1010 IN/OUT, XP-60 ID 17.
+
+First attempt cancelled immediately at 0/128 (too early to prove mid-read stop).
+Second attempt waited until progress showed Reading 8 / 128, then Cancel:
+- cancel@8/128 peak=8/128 (stopped within one slot)
+- no script errors
+- app status showed Error cancelled ... (see client message note below)
+
+Log: target/hardware-acceptance/2026-11-07-codex/bank-cancel-midread.txt
+
+Client note: Cancelled previously displayed
+"cancelled (a partly written temporary patch may remain in the instrument)"
+even for this read-only bank cancel. That write-specific residual text was wrong here;
+ClientError::Cancelled is now the generic "cancelled".
+Rebuild recheck (bank-cancel-after-message-fix.txt): err="Error cancelled ×" at cancel@8/128 peak=8.

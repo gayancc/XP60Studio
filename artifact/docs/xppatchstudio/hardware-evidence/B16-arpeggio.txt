@@ -1,0 +1,8 @@
+PASS arpeggio_style=5
+PASS arpeggio_motif=3
+PASS arpeggio_beat_pattern=10
+PASS arpeggio_accent_rate=40
+PASS arpeggio_octave_range=4
+PASS arpeggio_part_number=9
+System settings restored
+B16 SysEx PASS: Arpeggio System parameters write/read-back equal; audible arpeggio remains owner

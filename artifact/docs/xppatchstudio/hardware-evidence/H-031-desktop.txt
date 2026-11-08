@@ -1,0 +1,10 @@
+2026-11-07 native desktop protected-save retest, connected XP-60, User slot 128.
+Owner confirmed BOTH Utility > Protect settings ON: Write Operation and System Exclusive Message.
+The test fetched and exported the starting temporary Nice Piano, asserted Live edit OFF, and entered the distinct local-only name PROTECT TEST.
+It opened Save to synth, chose USER:128, used the app's step 1 to read/backup the current C-Z  Flute, then explicitly clicked step 2 Replace.
+App notices: "If User Memory Protect is on, turn it off on the instrument and try again." and "read-back differs from what was sent: common, tone1, tone2, tone3, tone4".
+The app did not report Saved to USER:128. The native save panel exposed Undo the last save after the refused attempt.
+Independent Rust hardware read after the app closed: USER SLOT VERIFICATION PASSED: slot 128 'C-Z  Flute', every byte equals backup C:\Users\Gayan\AppData\Roaming\studio.xppatch.app\backups\1794074225-user-128.syx.
+Independent Rust temporary-patch read: Nice Piano. WASM decode of retained controller-original.syx yielded identical 589 block bytes.
+The first two UI attempts used a faulty test selector for Live edit and a too-short/result-specific harness wait. The final attempt's app and hardware result passed, but its Node process exited 1 because the harness omitted the phrase "read-back differs" from its expected-error regex. That assertion has been corrected. The exit code is not represented as a passing test.
+Soft Thru was not configured, so this does not count for H-038.

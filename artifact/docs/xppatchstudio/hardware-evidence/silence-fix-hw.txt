@@ -1,0 +1,12 @@
+PASS connected
+PASS fetched Nice Piano (or current temp)
+fetched name: Nice Piano  
+PASS File menu
+PASS New
+after New name bytes: [32,32,32,32,32,32,32,32,32,32,32,32]
+PASS New with Live on wrote neutral (blank name) to temp before any Tone click
+note burst on New/init temp sent
+in-app restore hook: false
+tone2 toggle: ok aria=false
+PASS after Tone toggle name still blank New (not corrupt)
+SILENCE FIX CHECK PASSED (New syncs immediately; Tone click does not wipe unexpectedly)

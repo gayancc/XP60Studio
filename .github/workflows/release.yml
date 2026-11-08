@@ -73,13 +73,26 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          notes="Windows installer: download the setup file, run it, choose the install location and follow the steps. Nothing is written to a connected XP-60 until you save to it from the app."
+          version="${GITHUB_REF_NAME#v}"
+          # Body of the matching CHANGELOG section (between this version heading and the next ##).
+          changelog=$(awk -v v="$version" '
+            $0 ~ "^## " v "( |$)" {grab=1; next}
+            grab && /^## / {exit}
+            grab {print}
+          ' CHANGELOG.md)
+          installer="Windows installer: download the setup file, run it, choose the install location and follow the steps. Nothing is written to a connected XP-60 until you save to it from the app."
+          if [ -n "$changelog" ]; then
+            notes=$(printf '%s\n\n---\n\n%s' "$changelog" "$installer")
+          else
+            notes="$installer"
+          fi
           flags=""
-          # A tag with a hyphen (v0.1.0-alpha.1) is a pre-release: GitHub marks it so and does not offer it as the latest release.
+          # A tag with a hyphen (v0.1.0-alpha.2) is a pre-release: GitHub marks it so and does not offer it as the latest release.
           case "${GITHUB_REF_NAME}" in
             *-*)
               flags="--prerelease"
-              notes="PRE-RELEASE (alpha). Everything is built and tested against a virtual XP-60 only; features that talk to the instrument are not yet confirmed on real hardware, so expect rough edges and back up your User memory before saving to it. $notes"
               ;;
           esac
-          gh release create "${GITHUB_REF_NAME}" target/release/bundle/nsis/*-setup.exe $flags             --title "XPPatchStudio ${GITHUB_REF_NAME}"             --generate-notes             --notes "$notes"
+          gh release create "${GITHUB_REF_NAME}" target/release/bundle/nsis/*-setup.exe $flags \
+            --title "XPPatchStudio ${GITHUB_REF_NAME}" \
+            --notes "$notes"

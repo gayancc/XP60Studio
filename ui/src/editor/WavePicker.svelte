@@ -102,11 +102,15 @@
 
   function choose(s: Source, n: number): void {
     if (!s.listed) return; // the instrument cannot select a group of a board that is not installed
-    store.begin(`${blockTitle(block)} · Wave`);
-    store.set(block, 'wave_group_type', s.type);
-    store.set(block, 'wave_group_id', s.id);
-    store.set(block, 'wave_number', n - 1);
-    store.end();
+    // One undo step and one whole-patch live send: type/id/number must not leave the instrument on a missing board mid-update.
+    store.applyMany(
+      [
+        { block, id: 'wave_group_type', value: s.type },
+        { block, id: 'wave_group_id', value: s.id },
+        { block, id: 'wave_number', value: n - 1 },
+      ],
+      `${blockTitle(block)} · Wave`,
+    );
     close();
   }
 

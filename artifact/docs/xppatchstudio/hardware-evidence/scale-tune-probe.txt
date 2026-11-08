@@ -1,0 +1,2 @@
+H-042 SCALE TUNE PASS: 17 separate RQ1 reads (12 bytes each at 00 00 10 00..); equal full System Scale Tune blocks
+Panel value comparison remains owner observation.

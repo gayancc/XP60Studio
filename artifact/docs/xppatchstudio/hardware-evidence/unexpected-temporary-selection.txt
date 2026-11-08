@@ -1,0 +1,61 @@
+2026-11-07 — investigation of unexpected PR-A 004 Nice Piano selection
+Owner reports no deliberate patch selection during cable test. Agent hardware writes paused pending diagnostics, except controlled temporary-name probes with full backup and restoration.
+
+== read-side-effect.txt ==
+TX RQ1: F0 41 10 6A 11 03 00 00 00 00 00 00 49 34 F7
+TX RQ1: F0 41 10 6A 11 03 00 10 00 00 00 01 01 6B F7
+TX RQ1: F0 41 10 6A 11 03 00 12 00 00 00 01 01 69 F7
+TX RQ1: F0 41 10 6A 11 03 00 14 00 00 00 01 01 67 F7
+TX RQ1: F0 41 10 6A 11 03 00 16 00 00 00 01 01 65 F7
+Temporary patch before: 'Nice Piano'
+TX RQ1: F0 41 10 6A 11 11 00 00 00 00 00 00 49 26 F7
+TX RQ1: F0 41 10 6A 11 11 00 10 00 00 00 01 01 5D F7
+TX RQ1: F0 41 10 6A 11 11 00 12 00 00 00 01 01 5B F7
+TX RQ1: F0 41 10 6A 11 11 00 14 00 00 00 01 01 59 F7
+TX RQ1: F0 41 10 6A 11 11 00 16 00 00 00 01 01 57 F7
+Read User slot 1: 'Strins'
+TX RQ1: F0 41 10 6A 11 03 00 00 00 00 00 00 49 34 F7
+TX RQ1: F0 41 10 6A 11 03 00 10 00 00 00 01 01 6B F7
+TX RQ1: F0 41 10 6A 11 03 00 12 00 00 00 01 01 69 F7
+TX RQ1: F0 41 10 6A 11 03 00 14 00 00 00 01 01 67 F7
+TX RQ1: F0 41 10 6A 11 03 00 16 00 00 00 01 01 65 F7
+Temporary patch after: 'Nice Piano'; bytes equal: true
+READ SIDE EFFECT CHECK PASSED
+
+== read-trace-desktop-verified.txt ==
+Fetched "Nice Piano" from the instrument.
+Fetched "Nice Piano" from the instrument.
+MIDI command counts: {"midi_ports":2,"midi_connect":1,"midi_poll_stale":90,"midi_fetch_temp_doc":2,"midi_read_bank":1}
+Mutating MIDI commands: []
+Temporary bytes unchanged: true
+READ UI TRACE PASSED
+
+== temp-read-slot.txt ==
+Changed temporary name 'Nice Piano' -> 'READ PROBE'; complete read-back verified
+Read User slot 1: 'Strins'
+Temporary name after slot read: 'READ PROBE'; edited bytes retained: true
+Original temporary patch restored and independently read back equal
+EDITED TEMP READ CHECK PASSED (slot)
+
+== temp-read-bank.txt ==
+Changed temporary name 'Nice Piano' -> 'READ PROBE'; complete read-back verified
+Read bank: 128 patches, 0 failures
+Temporary name after bank read: 'READ PROBE'; edited bytes retained: true
+Original temporary patch restored and independently read back equal
+EDITED TEMP READ CHECK PASSED (bank)
+
+== temp-read-system.txt ==
+Changed temporary name 'Nice Piano' -> 'READ PROBE'; complete read-back verified
+Read System settings
+Temporary name after system read: 'READ PROBE'; edited bytes retained: true
+Original temporary patch restored and independently read back equal
+EDITED TEMP READ CHECK PASSED (system)
+
+== temp-drop.txt ==
+Temporary name changed 'Nice Piano' -> 'CLOSE PROBE', verified before closing MIDI
+Temporary name after reopening MIDI: 'CLOSE PROBE'; edited bytes retained: true
+Original temporary patch restored and independently read back equal
+EDITED TEMP MIDI REOPEN CHECK PASSED
+
+
+Findings: current factory sound remains byte-identical through native bank read with positive-control IPC trace; no mutating MIDI command. Controlled edited temporary names survive User slot read, whole-bank read, System read and transport close/reopen. Each probe restored its original sound and read back equal. The earlier unexplained selection has not been reproduced; physical cable recovery is being repeated with a name marker and command trace. Do not claim its cause is known.

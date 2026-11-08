@@ -1,0 +1,53 @@
+2026-11-07: owner confirmed switching XP-60 to Performance mode. Native UI temporary document tests; no User slots written.
+PASS connected in Performance mode
+PASS performance: fetch available
+PASS performance: fetched from instrument
+Fetched "EasternSplit" from the instrument.
+PASS document export selected
+PASS performance: Mix section opens
+PASS performance: Part Level edited
+PASS performance live edit: Verify available
+PASS performance live edit: complete instrument document matches editor
+PASS document export selected
+PASS performance: only one parameter byte changed
+PASS performance whole send: whole-document send available
+PASS performance whole send: Verify available
+PASS performance whole send: complete instrument document matches editor
+PASS performance: Undo available
+PASS document export selected
+PASS performance: Undo restores every original byte
+PASS performance undo: Verify available
+PASS performance undo: complete instrument document matches editor
+PASS performance original restore: whole-document send available
+PASS performance original restore: Verify available
+PASS performance original restore: complete instrument document matches editor
+PASS rhythm: fetch available
+PASS rhythm: fetched from instrument
+Fetched "PopDrumSet 2" from the instrument.
+PASS document export selected
+PASS rhythm: Amp section opens
+PASS rhythm: Tone Level edited
+PASS rhythm live edit: Verify available
+PASS rhythm live edit: complete instrument document matches editor
+PASS document export selected
+PASS rhythm: only one parameter byte changed
+PASS rhythm whole send: whole-document send available
+PASS rhythm whole send: Verify available
+PASS rhythm whole send: complete instrument document matches editor
+PASS rhythm: Undo available
+PASS document export selected
+PASS rhythm: Undo restores every original byte
+PASS rhythm undo: Verify available
+PASS rhythm undo: complete instrument document matches editor
+PASS rhythm original restore: whole-document send available
+PASS rhythm original restore: Verify available
+PASS rhythm original restore: complete instrument document matches editor
+PASS no script errors during document editing
+TEMP DOCUMENT UI PASSED
+
+Independent Rust client:
+PASS temporary performance: all 17 blocks equal pre-test backup
+PASS temporary rhythm: all 65 blocks equal pre-test backup
+TEMP DOCUMENT RESTORATION PASSED
+
+Performance Part Level and selected Rhythm Tone Level each changed exactly one byte, live verified; whole-document sends read back equal; Undo and full-file restores verified. Audible changes/key-to-panel mapping remain owner observations; exact send throughput not measured.

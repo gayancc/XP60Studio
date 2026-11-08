@@ -1,0 +1,4 @@
+baseline temp 'Nice Piano'
+gap 20 ms: send 815.343ms, read 331.904ms, equal=true (prior gap was 20ms)
+gap 50 ms: send 1.0425208s, read 345.287ms, equal=true (prior gap was 50ms)
+H-050 HARDWARE PASS: 20 ms and 50 ms gaps both verified equal; no reliability gain observed for the larger gap on this instrument

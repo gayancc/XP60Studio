@@ -1,0 +1,11 @@
+patch_receive_channel: MIDI ch 1
+sound_mode: 1
+selecting PR-A 004 Nice PianoΓÇª
+temp 'Nice Piano': tone2 switch=0 level=37 wave_number=9
+NOTE before edit (400ms)ΓÇª
+live edit Tone 2: ON, level 100, wave_number 9 -> 21
+read-back Tone 2: switch=1 level=100 wave_number=21
+LIVE EDIT VERIFIED on device
+NOTE after edit (800ms) ΓÇö should differ from the first noteΓÇª
+RESTORED 'Nice Piano'; tone2 wave=9
+DONE

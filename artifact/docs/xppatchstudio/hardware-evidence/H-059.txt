@@ -1,0 +1,9 @@
+PASS system_control_source_1=7 (hypothesis CC07)
+PASS system_control_source_1=96 (hypothesis PITCH BEND)
+PASS system_control_source_1=97 (hypothesis AFTERTOUCH)
+PASS system_control_source_1=6 (unlisted raw (manual has no name))
+PASS pedal1_assign=98 (hypothesis PROG-UP)
+PASS pedal1_assign=104 (hypothesis OCT-DOWN (top of pedal range))
+PASS c1_assign=40 (unlisted raw in C1 range)
+System settings restored to pre-test bytes
+H-059 PARTIAL PASS: raw control-source/assign values write and read back equal; owner must confirm panel labels before fancy names are shown

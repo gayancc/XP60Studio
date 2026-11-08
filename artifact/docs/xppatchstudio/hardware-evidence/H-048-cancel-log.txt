@@ -1,0 +1,13 @@
+PASS Patch workspace opens
+PASS Connect requested
+PASS connected XP-60 at ID 17 (XP-60 ┬╖ ID 17 ┬╖ ΓÇ£Nice PianoΓÇ¥)
+PASS Bank workspace opens
+PASS Read from synth started
+PASS progress visible before cancel (Reading 8 / 128)
+PASS cancel armed mid-read (done=8)
+PASS Cancel pressed
+PASS read stopped after Cancel (last progress: Reading 8 / 128)
+PASS stopped within one slot (cancel@8, peak=8)
+BANK CANCEL: cancel@8/128 peak=8/128 notice="BANK BUILDER INIT NAME XP-60 ┬╖ ID 17 " err="Error cancelled (a partly written temporary patch may remain in the instrument) ├ù"
+PASS no script errors during bank cancel
+H-048 CANCEL PASSED

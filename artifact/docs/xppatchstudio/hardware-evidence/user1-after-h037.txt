@@ -1,0 +1,1 @@
+USER SLOT VERIFICATION PASSED: slot 1 'Strins', every byte equals backup

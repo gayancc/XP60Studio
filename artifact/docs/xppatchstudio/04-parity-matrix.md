@@ -16,9 +16,9 @@ Evidence codes refer to `02-feature-catalog.md` (CONFIRMED / INFERRED / NOT FOUN
 |---|---|---|---|---|---|
 | A1 | MIDI in/out port selection | CONFIRMED | xppatch-midi (port discovery), UI top toolbar | 2, 4 | IMPLEMENTED, needs hardware (H-001) |
 | A2 | Device ID setup | CONFIRMED | Sysex header builder, Midi settings | 1, 2 | IMPLEMENTED, needs hardware (H-002, H-003) |
-| A3 | Throughput: speed, chunk, buffer | CONFIRMED | Sysex chunking/throttling + queue meter | 1, 2 | IMPLEMENTED (needs hardware: H-023, H-050, H-056): the three settings of the bundle are covered by the write gap (20 to 250 ms, shown as frames per second; the speed), the chunk size (16 to 128 data bytes for whole-sound sends; default and maximum 128, the instrument's limit) and the send queue with its meter (the buffer) |
+| A3 | Throughput: speed, chunk, buffer | CONFIRMED | Sysex chunking/throttling + queue meter | 1, 2 | IMPLEMENTED, hardware: H-050 (DT1 gap), H-056 (chunk 128/32 UI), H-023 (optional 3125 B/s byte-rate + chunk 32). Write gap, chunk size and queue meter remain; byte-rate defaults off per B-05. |
 | A4 | NRPN/RPN option | CONFIRMED | Midi transport options | 2 | IMPLEMENTED (needs hardware: H-054): incoming controller messages are decoded as plain CCs, NRPN or RPN (14-bit values from Data Entry MSB/LSB, RPN null honoured) and can be linked like any controller; there is no switch, because decoding is harmless for senders that use plain CCs |
-| A5 | Notes from keyboard/interface to synth | CONFIRMED | Midi, UI keyboard | 4 | IMPLEMENTED, needs hardware (Audition panel; H-051c) |
+| A5 | Notes from keyboard/interface to synth | CONFIRMED | Midi, UI keyboard | 4 | IMPLEMENTED, needs hardware (Audition panel H-051c; secondary controller pass-through H-076) |
 | A6 | Incoming MIDI controls parameters | CONFIRMED | Midi + UI control binding | 4 | IMPLEMENTED (needs hardware: H-054): linked controllers set parameters over their range; one sweep is one undo step |
 | A7 | MIDI map / learn | CONFIRMED | Core binding model + UI dialog | 4 | IMPLEMENTED (needs hardware: H-054): right-click a knob, Link to MIDI CC, move a controller; map listed and cleared in the Controllers menu; remembered between runs; Bank Select never linked |
 | A8 | Fetch-complete notice | CONFIRMED | Midi request tracker + hint bar | 2 | IMPLEMENTED (needs hardware to see it on a real read): progress, state chip and a six-second notice in the top bar after a fetch ("Fetched ...") or a verify (match or mismatch) |
@@ -28,7 +28,7 @@ Evidence codes refer to `02-feature-catalog.md` (CONFIRMED / INFERRED / NOT FOUN
 | B3 | Fetch from synth | CONFIRMED | Midi request/response, Sysex RQ1 | 2 | IMPLEMENTED, needs hardware (H-010 to H-017) |
 | B4 | Send to synth (temp) | CONFIRMED | Midi + Sysex DT1, queue | 2 | IMPLEMENTED, needs hardware (H-020, H-021) |
 | B5 | Save to synth slot | CONFIRMED | Midi + Library backup-before-write, confirm dialog | 2, 6 | IMPLEMENTED, needs hardware for patches (H-030 to H-039) |
-| B6 | Init | CONFIRMED | Core defaults from parameter map | 7 | IMPLEMENTED, needs hardware with the application's own defaults (H-052) |
+| B6 | Init | CONFIRMED | Neutral Init from parameter map; separate XP-60 Init Patch from twice-captured panel DEFAULT document | 7 | IMPLEMENTED; H-052 PASS: exact panel bytes, native send/read-back and Undo/restore |
 | B7 | Randomize | CONFIRMED | Core randomizer (per-parameter rules in map) | 7 | IMPLEMENTED, needs hardware |
 | B8 | Morph | INFERRED | Core morph (two-patch blend) | 7 | IMPLEMENTED, needs hardware |
 | B9 | Mutate | NOT FOUND, owner-requested | Core mutate | 7 | IMPLEMENTED, needs hardware |

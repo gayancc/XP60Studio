@@ -1,0 +1,138 @@
+PASS connected to XP-60
+PASS fetched temporary sound
+live: missing
+PASS baseline after fetch: Verify available
+PASS baseline after fetch: Verified: the instrument's temporary copy matches this sound.
+PASS Routing tab
+output assign probe: "MIX"
+output click: efx-btn
+tone routed to EFX: true
+PASS Tone Output Assign → EFX: Verify available
+PASS Tone Output Assign → EFX: Verified: the instrument's temporary copy matches this sound.
+PASS Effects tab
+PASS Next EFX type (+) control
+EFX type: 01 STEREO-EQ -> 02 OVERDRIVE
+PASS EFX type changed in UI
+PASS EFX type + defaults live on instrument: Verify available
+PASS EFX type + defaults live on instrument: Verified: the instrument's temporary copy matches this sound.
+PASS audition note after EFX edits (owner hears effect if panel EFX switch is on)
+PASS tab Patch
+SKIP Patch Level (missing)
+SKIP Patch Pan (missing)
+SKIP Analog Feel (missing)
+SKIP Patch Tempo (missing)
+PASS tab Structure
+SKIP Booster 1-2 (missing)
+SKIP Booster (missing)
+SKIP section Wave (tab not found)
+Cutoff Frequency: 60 -> 62
+PASS Cutoff Frequency: Verify available
+PASS Cutoff Frequency: Verified: the instrument's temporary copy matches this sound.
+Resonance: 0 -> 2
+PASS Resonance: Verify available
+PASS Resonance: Verified: the instrument's temporary copy matches this sound.
+SKIP section Pitch (tab not found)
+PASS tab Effects
+Chorus Level: 50 -> 52
+PASS Chorus Level: Verify available
+PASS Chorus Level: Verified: the instrument's temporary copy matches this sound.
+Reverb Level: 70 -> 72
+PASS Reverb Level: Verify available
+PASS Reverb Level: Verified: the instrument's temporary copy matches this sound.
+Chorus Rate: 12 -> 14
+PASS Chorus Rate: Verify available
+PASS Chorus Rate: Verified: the instrument's temporary copy matches this sound.
+Reverb Time: 85 -> 87
+PASS Reverb Time: Verify available
+PASS Reverb Time: Verified: the instrument's temporary copy matches this sound.
+PASS Effects tab for dense pass
+visible sliders on Effects: 26
+PASS dense Tone Level: Verify available
+PASS dense Tone Level: Verified: the instrument's temporary copy matches this sound.
+PASS dense Tone Pan: Verify available
+PASS dense Tone Pan: Verified: the instrument's temporary copy matches this sound.
+PASS dense Tone Level: Verify available
+PASS dense Tone Level: Verified: the instrument's temporary copy matches this sound.
+PASS dense Tone Pan: Verify available
+PASS dense Tone Pan: Verified: the instrument's temporary copy matches this sound.
+PASS dense Tone Level: Verify available
+PASS dense Tone Level: Verified: the instrument's temporary copy matches this sound.
+PASS dense Tone Pan: Verify available
+PASS dense Tone Pan: Verified: the instrument's temporary copy matches this sound.
+PASS dense Tone Level: Verify available
+PASS dense Tone Level: Verified: the instrument's temporary copy matches this sound.
+PASS dense Tone Pan: Verify available
+PASS dense Tone Pan: Verified: the instrument's temporary copy matches this sound.
+PASS dense Output Pan: Verify available
+PASS dense Output Pan: Verified: the instrument's temporary copy matches this sound.
+PASS dense Output Level: Verify available
+PASS dense Output Level: Verified: the instrument's temporary copy matches this sound.
+PASS dense Drive: Verify available
+PASS dense Drive: Verified: the instrument's temporary copy matches this sound.
+PASS dense Low Gain: Verify available
+PASS dense Low Gain: Verified: the instrument's temporary copy matches this sound.
+PASS dense High Gain: Verify available
+PASS dense High Gain: Verified: the instrument's temporary copy matches this sound.
+PASS dense EFX Output Level (address table: EFX Mix Out Send Level): Verify available
+PASS dense EFX Output Level (address table: EFX Mix Out Send Level): Verified: the instrument's temporary copy matches this sound.
+PASS dense EFX Chorus Send Level: Verify available
+PASS dense EFX Chorus Send Level: Verified: the instrument's temporary copy matches this sound.
+PASS dense EFX Reverb Send Level: Verify available
+PASS dense EFX Reverb Send Level: Verified: the instrument's temporary copy matches this sound.
+PASS dense EFX Control Depth 1: Verify available
+PASS dense EFX Control Depth 1: Verified: the instrument's temporary copy matches this sound.
+PASS dense EFX Control Depth 2: Verify available
+PASS dense EFX Control Depth 2: Verified: the instrument's temporary copy matches this sound.
+PASS dense Chorus Level: Verify available
+PASS dense Chorus Level: Verified: the instrument's temporary copy matches this sound.
+PASS dense Chorus Rate: Verify available
+PASS dense Chorus Rate: Verified: the instrument's temporary copy matches this sound.
+PASS dense Chorus Depth: Verify available
+PASS dense Chorus Depth: Verified: the instrument's temporary copy matches this sound.
+PASS dense Chorus Pre-Delay: Verify available
+PASS dense Chorus Pre-Delay: Verified: the instrument's temporary copy matches this sound.
+PASS dense Reverb Level: Verify available
+PASS dense Reverb Level: Verified: the instrument's temporary copy matches this sound.
+PASS dense Reverb Time: Verify available
+PASS dense Reverb Time: Verified: the instrument's temporary copy matches this sound.
+LIVE PARAM UI PASS (batch)
+
+RESULTS
+SKIP	Patch	Patch Level
+SKIP	Patch	Patch Pan
+SKIP	Patch	Analog Feel
+SKIP	Patch	Patch Tempo
+SKIP	Structure	Booster 1-2
+SKIP	Structure	Booster
+PASS	Filter and amp	Cutoff Frequency
+PASS	Filter and amp	Resonance
+PASS	Effects	Chorus Level
+PASS	Effects	Reverb Level
+PASS	Effects	Chorus Rate
+PASS	Effects	Reverb Time
+PASS	Effects-dense	Tone Level
+PASS	Effects-dense	Tone Pan
+PASS	Effects-dense	Tone Level
+PASS	Effects-dense	Tone Pan
+PASS	Effects-dense	Tone Level
+PASS	Effects-dense	Tone Pan
+PASS	Effects-dense	Tone Level
+PASS	Effects-dense	Tone Pan
+PASS	Effects-dense	Output Pan
+PASS	Effects-dense	Output Level
+PASS	Effects-dense	Drive
+PASS	Effects-dense	Low Gain
+PASS	Effects-dense	High Gain
+PASS	Effects-dense	EFX Output Level (address table: EFX Mix Out Send Level)
+PASS	Effects-dense	EFX Chorus Send Level
+PASS	Effects-dense	EFX Reverb Send Level
+PASS	Effects-dense	EFX Control Depth 1
+PASS	Effects-dense	EFX Control Depth 2
+PASS	Effects-dense	Chorus Level
+PASS	Effects-dense	Chorus Rate
+PASS	Effects-dense	Chorus Depth
+PASS	Effects-dense	Chorus Pre-Delay
+SKIP	Effects-dense	Chorus Feedback
+PASS	Effects-dense	Reverb Level
+PASS	Effects-dense	Reverb Time
+SKIP	Effects-dense	Delay Feedback

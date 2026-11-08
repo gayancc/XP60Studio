@@ -1,0 +1,7 @@
+2026-11-07: computer-keyboard audition through native UI
+READY: playing repeated ascending notes for 20 seconds, then a held note cut by Panic.
+PANIC pressed while a note was held; no keyup yet.
+AUDITION UI SENT; owner sound confirmation required
+
+Owner response: "Heard notes; final note stopped".
+Result: computer-key mappings make sound, releases work, and Panic stops a held note before keyup. Pointer clicking, velocity-position response, octave/channel switching and blur release remain to be explicitly exercised.

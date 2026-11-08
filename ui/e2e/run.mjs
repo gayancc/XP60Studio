@@ -65,14 +65,49 @@ await new Promise((r) => (ws.onopen = r));
 let id = 0;
 const pending = new Map();
 const pageErrors = [];
+const contexts = new Map();
+let mainFrame;
+let mainContext;
 ws.onmessage = (e) => {
   const m = JSON.parse(e.data);
   if (m.id && pending.has(m.id)) pending.get(m.id)(m);
+  else if (m.method === 'Runtime.executionContextCreated') {
+    const c = m.params.context;
+    contexts.set(c.id, c);
+    if (c.auxData?.frameId === mainFrame && c.auxData?.isDefault) mainContext = c.id;
+  }
+  else if (m.method === 'Runtime.executionContextDestroyed') contexts.delete(m.params.executionContextId);
+  else if (m.method === 'Runtime.executionContextsCleared') { contexts.clear(); mainContext = undefined; }
   else if (m.method === 'Runtime.exceptionThrown') pageErrors.push(m.params.exceptionDetails.exception?.description ?? m.params.exceptionDetails.text);
   else if (m.method === 'Runtime.consoleAPICalled' && m.params.type === 'error') pageErrors.push(m.params.args.map((a) => a.value ?? a.description).join(' '));
 };
-const send = (method, params = {}) => new Promise((res) => { const i = ++id; pending.set(i, res); ws.send(JSON.stringify({ id: i, method, params })); });
-const js = async (expr) => (await send('Runtime.evaluate', { expression: expr, awaitPromise: true, returnByValue: true })).result?.result?.value;
+const send = (method, params = {}) => new Promise((res, reject) => {
+  const i = ++id;
+  const timeout = setTimeout(() => { pending.delete(i); reject(new Error(`Debugger timed out: ${method}`)); }, 30000);
+  pending.set(i, (response) => {
+    clearTimeout(timeout); pending.delete(i);
+    if (response.error) reject(new Error(JSON.stringify(response.error))); else res(response);
+  });
+  ws.send(JSON.stringify({ id: i, method, params }));
+});
+const js = async (expr) => {
+  const response = await send('Runtime.evaluate', { expression: expr, contextId: mainContext, awaitPromise: true, returnByValue: true });
+  if (response.result?.exceptionDetails) throw new Error(response.result.exceptionDetails.exception?.description ?? response.result.exceptionDetails.text);
+  return response.result?.result?.value;
+};
+// A keyboard-focused control can keep its hint over the status line. Move away as a user would,
+// then let earlier queued messages pass so the result of the action under test becomes visible.
+const waitStatus = async (re) => {
+  await js('document.activeElement?.blur()');
+  await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 2, y: 2 });
+  for (let i = 0; i < 30; i++) {
+    const shown = await js(`document.querySelector('footer .status-msg .msg-text')?.textContent?.trim() ?? ''`);
+    if (re.test(shown)) return shown;
+    if (shown) await js(`document.querySelector('footer .status-msg .x')?.click()`);
+    await wait(100);
+  }
+  return '';
+};
 const tab = (name, scope = '') => js(`(()=>{const t=[...document.querySelectorAll('${scope}[role=tab]')].find(x=>x.textContent.trim()===${JSON.stringify(name)}); if(t) t.click(); return !!t})()`);
 const setFile = async (label, file) => {
   const doc = (await send('DOM.getDocument', { depth: -1 })).result.root.nodeId;
@@ -136,7 +171,10 @@ try {
   await send('Runtime.enable');
   await send('DOM.enable');
   await send('Page.enable');
+  mainFrame = (await send('Page.getFrameTree')).result.frameTree.frame.id;
   await wait(1500);
+  mainContext = [...contexts.values()].find(c => c.auxData?.frameId === mainFrame && c.auxData?.isDefault)?.id;
+  if (!mainContext) throw new Error('Main desktop execution context missing');
 
   // 1. Open a bank as a patch file, list and sweep every slot
   await resizeWindow(1280, 800);
@@ -199,15 +237,10 @@ try {
   await wait(1500);
   const second = await exportOpen('Export patch as .syx');
   check(first === second && !!first, 'the export opens again and exports the same bytes');
-  const stackText = async () => (await js(`[...document.querySelectorAll('.stack .msg .text')].map(e=>e.textContent).join(' | ')`)) ?? '';
-  const inCorner = await js(`(()=>{const m=document.querySelector('.stack'); if(!m||!m.querySelector('.msg')) return false; const r=m.getBoundingClientRect(); return r.left<40 && r.bottom>innerHeight-110 && r.bottom<innerHeight})()`);
-  let notice = await stackText();
-  for (let i = 0; i < 15 && !/Saved /.test(notice); i++) {
-    await wait(200);
-    notice = await stackText();
-  }
+  const notice = await waitStatus(/Saved /);
   check(/Saved .+\.syx/.test(notice) && !/[\/]/.test(notice), 'after saving, the message shows the file name only, never a folder path', notice);
-  check(inCorner === true, 'the message is in the bottom-left corner above the hint bar');
+  const inHintBar = await js(`(()=>{const m=document.querySelector('footer[aria-label="Hint bar"] .status-msg'); if(!m) return false; const bar=document.querySelector('footer[aria-label="Hint bar"]'); const r=bar.getBoundingClientRect(); const fixed=getComputedStyle(m).position==='fixed'; return !fixed && r.bottom>innerHeight-8 && r.top>innerHeight-80})()`);
+  check(inHintBar === true, 'the message is in the bottom hint bar, not a floating overlay');
   check(((await js(`document.querySelector('header .note, header .err, header .learn, header [role=alert]')?.textContent`)) ?? '') === '', 'the top bar shows no message');
   check((await js('window.__downloads')) === 0, 'exports are saved by the app, not by a browser download');
 
@@ -270,7 +303,7 @@ try {
     const bad = [];
     for (let i = 0; i < 70; i++) {
       await pressTab();
-      const r = await js(`(()=>{const e=document.activeElement; if(!e) return null; const role=e.getAttribute('role'); if(!['slider','switch','spinbutton'].includes(role)) return null; const sig=(x)=>{const cs=getComputedStyle(x); return {shadow:cs.boxShadow, outline:cs.outlineStyle==='none'||parseFloat(cs.outlineWidth)===0?'none':cs.outlineStyle+' '+cs.outlineColor, image:cs.backgroundImage, fill:cs.backgroundColor, border:cs.borderTopWidth+' '+cs.borderTopColor}}; const on=sig(e); const svgOn=e.querySelector('svg')?getComputedStyle(e.querySelector('svg')).filter:''; e.blur(); const off=sig(e); e.focus({focusVisible:true}); const parts=Object.keys(on).filter(k=>on[k]!==off[k]).map(k=>k+': '+off[k]+' -> '+on[k]); return {label:e.getAttribute('aria-label'), problems:parts}})()`);
+      const r = await js(`(()=>{const e=document.activeElement; if(!e) return null; const role=e.getAttribute('role'); if(!['slider','switch','spinbutton'].includes(role)) return null; const sig=(x)=>{const cs=getComputedStyle(x); return {shadow:cs.boxShadow, outline:cs.outlineStyle==='none'||parseFloat(cs.outlineWidth)===0?'none':cs.outlineStyle+' '+cs.outlineColor, image:cs.backgroundImage, fill:cs.backgroundColor, border:cs.borderTopStyle==='none'||parseFloat(cs.borderTopWidth)===0?'none':cs.borderTopWidth+' '+cs.borderTopColor}}; const on=sig(e); const svgOn=e.querySelector('svg')?getComputedStyle(e.querySelector('svg')).filter:''; e.blur(); const off=sig(e); e.focus({focusVisible:true}); const parts=Object.keys(on).filter(k=>on[k]!==off[k]).map(k=>k+': '+off[k]+' -> '+on[k]); return {label:e.getAttribute('aria-label'), problems:parts}})()`);
       if (!r) continue;
       checked++;
       if (r.problems.length) bad.push(`${r.label}: ${r.problems.join(', ')}`);
@@ -278,11 +311,11 @@ try {
     check(checked >= 3 && bad.length === 0, `${where}: focusing ${checked} knobs, sliders and switches draws no ring, box or border`, bad.slice(0, 3).join(' | '));
   };
   await tab('Patch', 'header ');
-  await js(`[...document.querySelectorAll('.stage [role=tab]')].find(t=>t.textContent.trim()==='Filter')?.click()`);
+  check(await tab('Filter and amp', '.stage '), 'the Filter and amp tab opens');
   await wait(300);
-  await focusAudit('Patch > Filter');
-  for (const t of ['Zones', 'Amp', 'LFO', 'Output']) {
-    await js(`[...document.querySelectorAll('.stage [role=tab]')].find(x=>x.textContent.trim()===${JSON.stringify(t)})?.click()`);
+  await focusAudit('Patch > Filter and amp');
+  for (const t of ['Zones', 'Wave and pitch', 'LFO and modulation', 'Routing']) {
+    check(await tab(t, '.stage '), `the ${t} tab opens`);
     await wait(250);
     await focusAudit(`Patch > ${t}`);
   }
@@ -307,8 +340,8 @@ try {
     check(visible, `${mode}: the save panel is fully visible`);
     await js(`[...document.querySelectorAll('${panel} button')].find(b=>/^1\\./.test(b.textContent.trim()))?.click()`);
     await wait(500);
-    const msg = await js(`[...document.querySelectorAll('.stack .msg[data-kind=error] .text')].map(e=>e.textContent).join(' | ')`);
-    check(/not connected/.test(msg ?? ''), `${mode}: arming without an instrument is refused, in the corner`, msg);
+    const msg = await waitStatus(/not connected/);
+    check(/not connected/.test(msg ?? ''), `${mode}: arming without an instrument is refused in the hint bar`, msg);
     check(((await js(`document.querySelector('${panel} .err, ${panel} .error')?.textContent`)) ?? '') === '', `${mode}: the panel itself shows no error line`);
     await js(`[...document.querySelectorAll('${panel} button')].find(b=>b.textContent.trim()==='Close')?.click()`);
     await wait(200);
@@ -325,8 +358,8 @@ try {
   await wait(600);
   await setFile('Load a .syx', bank);
   await wait(1800);
-  const slots = await js(`document.querySelectorAll('[aria-label^="Slot "]').length`);
-  check(slots > 0, 'the Bank workspace shows the loaded bank', String(slots));
+  const slots = await js(`document.querySelectorAll('.grid[aria-label="User patches a"] button.slot .nm').length`);
+  check(slots === 64, 'the Bank workspace shows 64 loaded slots in subgroup a', String(slots));
 
   // 8. Layout: every tab of every workspace at two window sizes
   for (const [w, h] of [[1100, 700], [1280, 800]]) {

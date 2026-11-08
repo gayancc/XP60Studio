@@ -38,6 +38,9 @@
 <div class="tools">
     <div class="row">
       <button type="button" onclick={() => runInit(store)} title="Start from a neutral sound (Ctrl+D)">Init</button>
+      {#if store.kind === 'patch'}
+        <button type="button" onclick={() => store.initXp60Patch()} title="Match PATCH → UTILITY → 3 Initialize → DEFAULT on the XP-60">XP-60 Init</button>
+      {/if}
       <ToggleLed
         checked={ui.tools.allBlocks}
         label="Everything"
@@ -54,7 +57,7 @@
       <Knob value={Math.round(ui.tools.amount * 100)} min={0} max={100} step={5} size={30} label="Nudge" name="Mutate amount" context="Sound design" format={(v) => `${v}%`} onchange={(v) => (ui.tools.amount = v / 100)} />
       <button type="button" onclick={() => runMutate(store)} title="Nudge every parameter a little (Ctrl+M)">Mutate</button>
     </div>
-    <p class="dim">Names and routing are never changed. Each tool is one undo step.</p>
+    <p class="dim">Neutral Init, Randomize and Mutate leave the name alone. XP-60 Init loads the panel defaults, including INIT PATCH. Each tool is one undo step.</p>
 
     <div class="row">
       <span class="caps">A/B</span>

@@ -1,0 +1,3 @@
+Run 2026-11-07, read-only (RQ1 data requests and one MIDI Identity Request; nothing was written), ports "FCB1010 IN" / "FCB1010 OUT", device ID 0x10 (17).
+
+the reads above cover what 'Back up all memory' reads: 128 patches, 32 performances, 2 rhythm sets, all without error

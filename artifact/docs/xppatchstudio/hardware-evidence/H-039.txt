@@ -1,0 +1,8 @@
+Armed save of User 128 (occupant 'C-Z  Flute')
+Changed User 128 to 'Strins' after arming
+H-039 COMMIT REFUSE PASS: User patch 128 changed since it was backed up; arm the save again
+Saved baseline 'C-Z  Flute' into User 128 (simulating a completed save)
+Changed User 128 to 'Strins' after the save
+H-039 UNDO REFUSE PASS: slot no longer holds saved patch (holds 'Strins'); app Undo must refuse
+H-039 CLEANUP: User 128 restored to 'C-Z  Flute'
+H-039 HARDWARE PASS (slot-change via SysEx stand-in for panel/other-tool write)

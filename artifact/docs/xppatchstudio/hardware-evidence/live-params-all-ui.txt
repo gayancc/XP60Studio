@@ -1,0 +1,361 @@
+PASS connected
+PASS fetched
+PASS baseline: Verified: the instrument's temporary copy matches this sound.
+PASS Routing
+PASS route Tone to EFX: Verified: the instrument's temporary copy matches this sound.
+PASS open Zones
+Zones: 12 sliders
+Zones / Tone 1 velocity range low: 1 -> 2
+PASS Zones / Tone 1 velocity range low: Verified: the instrument's temporary copy matches this sound.
+Zones / Tone 1 velocity range high: 127 -> 126
+PASS Zones / Tone 1 velocity range high: Verified: the instrument's temporary copy matches this sound.
+Zones / Velocity Cross Fade: 0 -> 1
+PASS Zones / Velocity Cross Fade: Verified: the instrument's temporary copy matches this sound.
+Zones / Tone 2 velocity range low: 1 -> 2
+PASS Zones / Tone 2 velocity range low: Verified: the instrument's temporary copy matches this sound.
+Zones / Tone 2 velocity range high: 127 -> 126
+PASS Zones / Tone 2 velocity range high: Verified: the instrument's temporary copy matches this sound.
+Zones / Tone 3 velocity range low: 34 -> 35
+PASS Zones / Tone 3 velocity range low: Verified: the instrument's temporary copy matches this sound.
+Zones / Tone 3 velocity range high: 127 -> 126
+PASS Zones / Tone 3 velocity range high: Verified: the instrument's temporary copy matches this sound.
+Zones / Tone 4 velocity range low: 38 -> 39
+PASS Zones / Tone 4 velocity range low: Verified: the instrument's temporary copy matches this sound.
+Zones / Tone 4 velocity range high: 127 -> 126
+PASS Zones / Tone 4 velocity range high: Verified: the instrument's temporary copy matches this sound.
+PASS open Wave and pitch
+Wave and pitch: 15 sliders
+Wave and pitch / Wave Group ID: 1 -> 2
+PASS Wave and pitch / Wave Group ID: Verified: the instrument's temporary copy matches this sound.
+Wave and pitch / Wave Number: 004 -> 005
+PASS Wave and pitch / Wave Number: Verified: the instrument's temporary copy matches this sound.
+Wave and pitch / FXM Color: 2 -> 3
+PASS Wave and pitch / FXM Color: Verified: the instrument's temporary copy matches this sound.
+Wave and pitch / FXM Depth: 1 -> 2
+PASS Wave and pitch / FXM Depth: Verified: the instrument's temporary copy matches this sound.
+Wave and pitch / Tone Delay Time: 0 -> 1
+PASS Wave and pitch / Tone Delay Time: Verified: the instrument's temporary copy matches this sound.
+Wave and pitch / Coarse Tune: 0 -> +1
+PASS Wave and pitch / Coarse Tune: Verified: the instrument's temporary copy matches this sound.
+Wave and pitch / Fine Tune: 0 -> +1
+PASS Wave and pitch / Fine Tune: Verified: the instrument's temporary copy matches this sound.
+Wave and pitch / Pitch LFO1 Depth: 0 -> +1
+PASS Wave and pitch / Pitch LFO1 Depth: Verified: the instrument's temporary copy matches this sound.
+Wave and pitch / Pitch LFO2 Depth: 0 -> +1
+PASS Wave and pitch / Pitch LFO2 Depth: Verified: the instrument's temporary copy matches this sound.
+Wave and pitch / Pitch envelope Time 1 / Level 1: time 0, level 63 -> time 0, level 64
+PASS Wave and pitch / Pitch envelope Time 1 / Level 1: Verified: the instrument's temporary copy matches this sound.
+Wave and pitch / Pitch envelope Time 2 / Level 2: time 0, level 63 -> time 0, level 64
+PASS Wave and pitch / Pitch envelope Time 2 / Level 2: Verified: the instrument's temporary copy matches this sound.
+Wave and pitch / Pitch envelope Time 3 / Level 3: time 0, level 63 -> time 0, level 64
+PASS Wave and pitch / Pitch envelope Time 3 / Level 3: Verified: the instrument's temporary copy matches this sound.
+Wave and pitch / Pitch envelope Time 4 / Level 4: time 0, level 63 -> time 0, level 64
+PASS Wave and pitch / Pitch envelope Time 4 / Level 4: Verified: the instrument's temporary copy matches this sound.
+Wave and pitch / Pitch Envelope Depth: 0 -> +1
+PASS Wave and pitch / Pitch Envelope Depth: Verified: the instrument's temporary copy matches this sound.
+Wave and pitch / Pitch Envelope Velocity Sens: 0 -> +2
+PASS Wave and pitch / Pitch Envelope Velocity Sens: Verified: the instrument's temporary copy matches this sound.
+PASS open Filter and amp
+Filter and amp: 25 sliders
+Filter and amp / Cutoff Frequency: 60 -> 61
+PASS Filter and amp / Cutoff Frequency: Verified: the instrument's temporary copy matches this sound.
+Filter and amp / Resonance: 0 -> 1
+PASS Filter and amp / Resonance: Verified: the instrument's temporary copy matches this sound.
+Filter and amp / Resonance Velocity Sens: 0 -> +2
+PASS Filter and amp / Resonance Velocity Sens: Verified: the instrument's temporary copy matches this sound.
+Filter and amp / Filter LFO1 Depth: 0 -> +1
+PASS Filter and amp / Filter LFO1 Depth: Verified: the instrument's temporary copy matches this sound.
+Filter and amp / Filter LFO2 Depth: 0 -> +1
+PASS Filter and amp / Filter LFO2 Depth: Verified: the instrument's temporary copy matches this sound.
+Filter and amp / Filter envelope Time 1 / Level 1: time 0, level 127 -> time 0, level 126
+PASS Filter and amp / Filter envelope Time 1 / Level 1: Verified: the instrument's temporary copy matches this sound.
+Filter and amp / Filter envelope Time 2 / Level 2: time 36, level 127 -> time 36, level 126
+PASS Filter and amp / Filter envelope Time 2 / Level 2: Verified: the instrument's temporary copy matches this sound.
+Filter and amp / Filter envelope Time 3 / Level 3: time 90, level 0 -> time 90, level 1
+PASS Filter and amp / Filter envelope Time 3 / Level 3: Verified: the instrument's temporary copy matches this sound.
+Filter and amp / Filter envelope Time 4 / Level 4: time 90, level 0 -> time 90, level 1
+PASS Filter and amp / Filter envelope Time 4 / Level 4: Verified: the instrument's temporary copy matches this sound.
+Filter and amp / Filter Envelope Depth: +16 -> +17
+PASS Filter and amp / Filter Envelope Depth: Verified: the instrument's temporary copy matches this sound.
+Filter and amp / Filter Envelope Velocity Curve: 1 -> 2
+PASS Filter and amp / Filter Envelope Velocity Curve: Verified: the instrument's temporary copy matches this sound.
+Filter and amp / Filter Envelope Velocity Sens: +80 -> +82
+PASS Filter and amp / Filter Envelope Velocity Sens: Verified: the instrument's temporary copy matches this sound.
+Filter and amp / Bias Position: C4 -> C#4
+PASS Filter and amp / Bias Position: Verified: the instrument's temporary copy matches this sound.
+Filter and amp / Level LFO1 Depth: 0 -> +1
+PASS Filter and amp / Level LFO1 Depth: Verified: the instrument's temporary copy matches this sound.
+Filter and amp / Level LFO2 Depth: 0 -> +1
+PASS Filter and amp / Level LFO2 Depth: Verified: the instrument's temporary copy matches this sound.
+Filter and amp / Random Pan Depth: 0 -> 1
+PASS Filter and amp / Random Pan Depth: Verified: the instrument's temporary copy matches this sound.
+Filter and amp / Alternate Pan Depth: 0 -> R1
+PASS Filter and amp / Alternate Pan Depth: Verified: the instrument's temporary copy matches this sound.
+Filter and amp / Pan LFO1 Depth: 0 -> +1
+PASS Filter and amp / Pan LFO1 Depth: Verified: the instrument's temporary copy matches this sound.
+Filter and amp / Pan LFO2 Depth: 0 -> +1
+PASS Filter and amp / Pan LFO2 Depth: Verified: the instrument's temporary copy matches this sound.
+Filter and amp / Level envelope Time 1 / Level 1: time 0, level 127 -> time 0, level 126
+PASS Filter and amp / Level envelope Time 1 / Level 1: Verified: the instrument's temporary copy matches this sound.
+Filter and amp / Level envelope Time 2 / Level 2: time 37, level 127 -> time 37, level 126
+PASS Filter and amp / Level envelope Time 2 / Level 2: Verified: the instrument's temporary copy matches this sound.
+Filter and amp / Level envelope Time 3 / Level 3: time 96, level 0 -> time 96, level 1
+PASS Filter and amp / Level envelope Time 3 / Level 3: Verified: the instrument's temporary copy matches this sound.
+Filter and amp / Level envelope Time 4 (release): time 43, level 0 -> time 43, level 1
+PASS Filter and amp / Level envelope Time 4 (release): Verified: the instrument's temporary copy matches this sound.
+Filter and amp / Level Envelope Velocity Curve: 1 -> 2
+PASS Filter and amp / Level Envelope Velocity Curve: Verified: the instrument's temporary copy matches this sound.
+Filter and amp / Level Envelope Velocity Sens: +96 -> +98
+PASS Filter and amp / Level Envelope Velocity Sens: Verified: the instrument's temporary copy matches this sound.
+PASS open LFO and modulation
+LFO and modulation: 18 sliders
+LFO and modulation / LFO1 Rate: 65 -> 66
+PASS LFO and modulation / LFO1 Rate: Verified: the instrument's temporary copy matches this sound.
+LFO and modulation / LFO1 Delay Time: 0 -> 1
+PASS LFO and modulation / LFO1 Delay Time: Verified: the instrument's temporary copy matches this sound.
+LFO and modulation / LFO1 Fade Time: 0 -> 1
+PASS LFO and modulation / LFO1 Fade Time: Verified: the instrument's temporary copy matches this sound.
+LFO and modulation / LFO2 Rate: 65 -> 66
+PASS LFO and modulation / LFO2 Rate: Verified: the instrument's temporary copy matches this sound.
+LFO and modulation / LFO2 Delay Time: 0 -> 1
+PASS LFO and modulation / LFO2 Delay Time: Verified: the instrument's temporary copy matches this sound.
+LFO and modulation / LFO2 Fade Time: 0 -> 1
+PASS LFO and modulation / LFO2 Fade Time: Verified: the instrument's temporary copy matches this sound.
+LFO and modulation / Controller 1 Depth 1: +4 -> +5
+PASS LFO and modulation / Controller 1 Depth 1: Verified: the instrument's temporary copy matches this sound.
+LFO and modulation / Controller 1 Depth 2: 0 -> +1
+PASS LFO and modulation / Controller 1 Depth 2: Verified: the instrument's temporary copy matches this sound.
+LFO and modulation / Controller 1 Depth 3: 0 -> +1
+PASS LFO and modulation / Controller 1 Depth 3: Verified: the instrument's temporary copy matches this sound.
+LFO and modulation / Controller 1 Depth 4: 0 -> +1
+PASS LFO and modulation / Controller 1 Depth 4: Verified: the instrument's temporary copy matches this sound.
+LFO and modulation / Controller 2 Depth 1: 0 -> +1
+PASS LFO and modulation / Controller 2 Depth 1: Verified: the instrument's temporary copy matches this sound.
+LFO and modulation / Controller 2 Depth 2: 0 -> +1
+PASS LFO and modulation / Controller 2 Depth 2: Verified: the instrument's temporary copy matches this sound.
+LFO and modulation / Controller 2 Depth 3: 0 -> +1
+PASS LFO and modulation / Controller 2 Depth 3: Verified: the instrument's temporary copy matches this sound.
+LFO and modulation / Controller 2 Depth 4: 0 -> +1
+PASS LFO and modulation / Controller 2 Depth 4: Verified: the instrument's temporary copy matches this sound.
+LFO and modulation / Controller 3 Depth 1: 0 -> +1
+PASS LFO and modulation / Controller 3 Depth 1: Verified: the instrument's temporary copy matches this sound.
+LFO and modulation / Controller 3 Depth 2: 0 -> +1
+PASS LFO and modulation / Controller 3 Depth 2: Verified: the instrument's temporary copy matches this sound.
+LFO and modulation / Controller 3 Depth 3: 0 -> +1
+PASS LFO and modulation / Controller 3 Depth 3: Verified: the instrument's temporary copy matches this sound.
+LFO and modulation / Controller 3 Depth 4: +10 -> +11
+PASS LFO and modulation / Controller 3 Depth 4: Verified: the instrument's temporary copy matches this sound.
+PASS open Patch
+Patch: 18 sliders
+Patch / LFO1 Rate: 66 -> 67
+PASS Patch / LFO1 Rate: Verified: the instrument's temporary copy matches this sound.
+Patch / LFO1 Delay Time: 1 -> 2
+PASS Patch / LFO1 Delay Time: Verified: the instrument's temporary copy matches this sound.
+Patch / LFO1 Fade Time: 1 -> 2
+PASS Patch / LFO1 Fade Time: Verified: the instrument's temporary copy matches this sound.
+Patch / LFO2 Rate: 66 -> 67
+PASS Patch / LFO2 Rate: Verified: the instrument's temporary copy matches this sound.
+Patch / LFO2 Delay Time: 1 -> 2
+PASS Patch / LFO2 Delay Time: Verified: the instrument's temporary copy matches this sound.
+Patch / LFO2 Fade Time: 1 -> 2
+PASS Patch / LFO2 Fade Time: Verified: the instrument's temporary copy matches this sound.
+Patch / Controller 1 Depth 1: +5 -> +6
+PASS Patch / Controller 1 Depth 1: Verified: the instrument's temporary copy matches this sound.
+Patch / Controller 1 Depth 2: +1 -> +2
+PASS Patch / Controller 1 Depth 2: Verified: the instrument's temporary copy matches this sound.
+Patch / Controller 1 Depth 3: +1 -> +2
+PASS Patch / Controller 1 Depth 3: Verified: the instrument's temporary copy matches this sound.
+Patch / Controller 1 Depth 4: +1 -> +2
+PASS Patch / Controller 1 Depth 4: Verified: the instrument's temporary copy matches this sound.
+Patch / Controller 2 Depth 1: +1 -> +2
+PASS Patch / Controller 2 Depth 1: Verified: the instrument's temporary copy matches this sound.
+Patch / Controller 2 Depth 2: +1 -> +2
+PASS Patch / Controller 2 Depth 2: Verified: the instrument's temporary copy matches this sound.
+Patch / Controller 2 Depth 3: +1 -> +2
+PASS Patch / Controller 2 Depth 3: Verified: the instrument's temporary copy matches this sound.
+Patch / Controller 2 Depth 4: +1 -> +2
+PASS Patch / Controller 2 Depth 4: Verified: the instrument's temporary copy matches this sound.
+Patch / Controller 3 Depth 1: +1 -> +2
+PASS Patch / Controller 3 Depth 1: Verified: the instrument's temporary copy matches this sound.
+Patch / Controller 3 Depth 2: +1 -> +2
+PASS Patch / Controller 3 Depth 2: Verified: the instrument's temporary copy matches this sound.
+Patch / Controller 3 Depth 3: +1 -> +2
+PASS Patch / Controller 3 Depth 3: Verified: the instrument's temporary copy matches this sound.
+Patch / Controller 3 Depth 4: +11 -> +12
+PASS Patch / Controller 3 Depth 4: Verified: the instrument's temporary copy matches this sound.
+PASS open Structure
+Structure: 0 sliders
+PASS open Routing
+Routing: 12 sliders
+Routing / Mix/EFX Send Level: 127 -> 126
+PASS Routing / Mix/EFX Send Level: Verified: the instrument's temporary copy matches this sound.
+Routing / Chorus Send Level: 107 -> 108
+PASS Routing / Chorus Send Level: Verified: the instrument's temporary copy matches this sound.
+Routing / Reverb Send Level: 127 -> 126
+PASS Routing / Reverb Send Level: Verified: the instrument's temporary copy matches this sound.
+PASS open Effects
+Effects: 22 sliders
+Effects / Level: 127 -> 126
+PASS Effects / Level: Verified: the instrument's temporary copy matches this sound.
+Effects / Low Gain: 0 dB -> +1 dB
+PASS Effects / Low Gain: Verified: the instrument's temporary copy matches this sound.
+Effects / Peaking1 Frequency: 1000 Hz -> 1250 Hz
+PASS Effects / Peaking1 Frequency: Verified: the instrument's temporary copy matches this sound.
+Effects / Peaking1 Q: 1 -> 2
+PASS Effects / Peaking1 Q: Verified: the instrument's temporary copy matches this sound.
+Effects / Peaking1 Gain: 0 dB -> +1 dB
+PASS Effects / Peaking1 Gain: Verified: the instrument's temporary copy matches this sound.
+Effects / Peaking2 Frequency: 1000 Hz -> 1250 Hz
+PASS Effects / Peaking2 Frequency: Verified: the instrument's temporary copy matches this sound.
+Effects / Peaking2 Q: 1 -> 2
+PASS Effects / Peaking2 Q: Verified: the instrument's temporary copy matches this sound.
+Effects / Peaking2 Gain: 0 dB -> +1 dB
+PASS Effects / Peaking2 Gain: Verified: the instrument's temporary copy matches this sound.
+Effects / High Gain: 0 dB -> +1 dB
+PASS Effects / High Gain: Verified: the instrument's temporary copy matches this sound.
+Effects / EFX Output Level (address table: EFX Mix Out Send Level): 127 -> 126
+PASS Effects / EFX Output Level (address table: EFX Mix Out Send Level): Verified: the instrument's temporary copy matches this sound.
+Effects / EFX Chorus Send Level: 127 -> 126
+PASS Effects / EFX Chorus Send Level: Verified: the instrument's temporary copy matches this sound.
+Effects / EFX Reverb Send Level: 127 -> 126
+PASS Effects / EFX Reverb Send Level: Verified: the instrument's temporary copy matches this sound.
+Effects / EFX Control Depth 1: 0 -> +1
+PASS Effects / EFX Control Depth 1: Verified: the instrument's temporary copy matches this sound.
+Effects / EFX Control Depth 2: 0 -> +1
+PASS Effects / EFX Control Depth 2: Verified: the instrument's temporary copy matches this sound.
+Effects / Chorus Level: 50 -> 51
+PASS Effects / Chorus Level: Verified: the instrument's temporary copy matches this sound.
+Effects / Chorus Rate: 12 -> 13
+PASS Effects / Chorus Rate: Verified: the instrument's temporary copy matches this sound.
+Effects / Chorus Depth: 12 -> 13
+PASS Effects / Chorus Depth: Verified: the instrument's temporary copy matches this sound.
+Effects / Chorus Pre-Delay: 69 -> 70
+PASS Effects / Chorus Pre-Delay: Verified: the instrument's temporary copy matches this sound.
+Effects / Chorus Feedback: 0 -> 1
+PASS Effects / Chorus Feedback: Verified: the instrument's temporary copy matches this sound.
+Effects / Reverb Level: 70 -> 71
+PASS Effects / Reverb Level: Verified: the instrument's temporary copy matches this sound.
+Effects / Reverb Time: 85 -> 86
+PASS Effects / Reverb Time: Verified: the instrument's temporary copy matches this sound.
+Effects / Delay Feedback: 0 -> 1
+PASS Effects / Delay Feedback: Verified: the instrument's temporary copy matches this sound.
+PASS Effects for type
+PASS EFX type +
+EFX type 01 STEREO-EQ -> 02 OVERDRIVE
+PASS EFX type changed
+PASS EFX type whole-send: Verified: the instrument's temporary copy matches this sound.
+PASS audition key after live edits
+ALL TABS LIVE PARAM WALK PASSED
+
+RESULTS
+PASS	Zones	Tone 1 velocity range low
+PASS	Zones	Tone 1 velocity range high
+PASS	Zones	Velocity Cross Fade
+PASS	Zones	Tone 2 velocity range low
+PASS	Zones	Tone 2 velocity range high
+PASS	Zones	Tone 3 velocity range low
+PASS	Zones	Tone 3 velocity range high
+PASS	Zones	Tone 4 velocity range low
+PASS	Zones	Tone 4 velocity range high
+PASS	Wave and pitch	Wave Group ID
+PASS	Wave and pitch	Wave Number
+PASS	Wave and pitch	FXM Color
+PASS	Wave and pitch	FXM Depth
+PASS	Wave and pitch	Tone Delay Time
+PASS	Wave and pitch	Coarse Tune
+PASS	Wave and pitch	Fine Tune
+PASS	Wave and pitch	Pitch LFO1 Depth
+PASS	Wave and pitch	Pitch LFO2 Depth
+PASS	Wave and pitch	Pitch envelope Time 1 / Level 1
+PASS	Wave and pitch	Pitch envelope Time 2 / Level 2
+PASS	Wave and pitch	Pitch envelope Time 3 / Level 3
+PASS	Wave and pitch	Pitch envelope Time 4 / Level 4
+PASS	Wave and pitch	Pitch Envelope Depth
+PASS	Wave and pitch	Pitch Envelope Velocity Sens
+PASS	Filter and amp	Cutoff Frequency
+PASS	Filter and amp	Resonance
+PASS	Filter and amp	Resonance Velocity Sens
+PASS	Filter and amp	Filter LFO1 Depth
+PASS	Filter and amp	Filter LFO2 Depth
+PASS	Filter and amp	Filter envelope Time 1 / Level 1
+PASS	Filter and amp	Filter envelope Time 2 / Level 2
+PASS	Filter and amp	Filter envelope Time 3 / Level 3
+PASS	Filter and amp	Filter envelope Time 4 / Level 4
+PASS	Filter and amp	Filter Envelope Depth
+PASS	Filter and amp	Filter Envelope Velocity Curve
+PASS	Filter and amp	Filter Envelope Velocity Sens
+PASS	Filter and amp	Bias Position
+PASS	Filter and amp	Level LFO1 Depth
+PASS	Filter and amp	Level LFO2 Depth
+PASS	Filter and amp	Random Pan Depth
+PASS	Filter and amp	Alternate Pan Depth
+PASS	Filter and amp	Pan LFO1 Depth
+PASS	Filter and amp	Pan LFO2 Depth
+PASS	Filter and amp	Level envelope Time 1 / Level 1
+PASS	Filter and amp	Level envelope Time 2 / Level 2
+PASS	Filter and amp	Level envelope Time 3 / Level 3
+PASS	Filter and amp	Level envelope Time 4 (release)
+PASS	Filter and amp	Level Envelope Velocity Curve
+PASS	Filter and amp	Level Envelope Velocity Sens
+PASS	LFO and modulation	LFO1 Rate
+PASS	LFO and modulation	LFO1 Delay Time
+PASS	LFO and modulation	LFO1 Fade Time
+PASS	LFO and modulation	LFO2 Rate
+PASS	LFO and modulation	LFO2 Delay Time
+PASS	LFO and modulation	LFO2 Fade Time
+PASS	LFO and modulation	Controller 1 Depth 1
+PASS	LFO and modulation	Controller 1 Depth 2
+PASS	LFO and modulation	Controller 1 Depth 3
+PASS	LFO and modulation	Controller 1 Depth 4
+PASS	LFO and modulation	Controller 2 Depth 1
+PASS	LFO and modulation	Controller 2 Depth 2
+PASS	LFO and modulation	Controller 2 Depth 3
+PASS	LFO and modulation	Controller 2 Depth 4
+PASS	LFO and modulation	Controller 3 Depth 1
+PASS	LFO and modulation	Controller 3 Depth 2
+PASS	LFO and modulation	Controller 3 Depth 3
+PASS	LFO and modulation	Controller 3 Depth 4
+PASS	Patch	LFO1 Rate
+PASS	Patch	LFO1 Delay Time
+PASS	Patch	LFO1 Fade Time
+PASS	Patch	LFO2 Rate
+PASS	Patch	LFO2 Delay Time
+PASS	Patch	LFO2 Fade Time
+PASS	Patch	Controller 1 Depth 1
+PASS	Patch	Controller 1 Depth 2
+PASS	Patch	Controller 1 Depth 3
+PASS	Patch	Controller 1 Depth 4
+PASS	Patch	Controller 2 Depth 1
+PASS	Patch	Controller 2 Depth 2
+PASS	Patch	Controller 2 Depth 3
+PASS	Patch	Controller 2 Depth 4
+PASS	Patch	Controller 3 Depth 1
+PASS	Patch	Controller 3 Depth 2
+PASS	Patch	Controller 3 Depth 3
+PASS	Patch	Controller 3 Depth 4
+PASS	Routing	Mix/EFX Send Level
+PASS	Routing	Chorus Send Level
+PASS	Routing	Reverb Send Level
+PASS	Effects	Level
+PASS	Effects	Low Gain
+PASS	Effects	Peaking1 Frequency
+PASS	Effects	Peaking1 Q
+PASS	Effects	Peaking1 Gain
+PASS	Effects	Peaking2 Frequency
+PASS	Effects	Peaking2 Q
+PASS	Effects	Peaking2 Gain
+PASS	Effects	High Gain
+PASS	Effects	EFX Output Level (address table: EFX Mix Out Send Level)
+PASS	Effects	EFX Chorus Send Level
+PASS	Effects	EFX Reverb Send Level
+PASS	Effects	EFX Control Depth 1
+PASS	Effects	EFX Control Depth 2
+PASS	Effects	Chorus Level
+PASS	Effects	Chorus Rate
+PASS	Effects	Chorus Depth
+PASS	Effects	Chorus Pre-Delay
+PASS	Effects	Chorus Feedback
+PASS	Effects	Reverb Level
+PASS	Effects	Reverb Time
+PASS	Effects	Delay Feedback
+PASS	Effects	EFX type

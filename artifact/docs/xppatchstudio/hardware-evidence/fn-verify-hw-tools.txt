@@ -1,0 +1,66 @@
+PASS original temporary patch fetched
+PASS patch export selected
+PASS Live edit is OFF for local patch tools
+PASS patch Tools panel opens
+PASS Init applied
+PASS patch export selected
+PASS Init changes patch bytes
+PASS Init: send available
+PASS Init: verify available
+PASS Init: instrument matches editor
+PASS Init: Undo available
+PASS patch export selected
+PASS Init: one Undo restores every original byte
+PASS Init undo: send available
+PASS Init undo: verify available
+PASS Init undo: instrument matches editor
+PASS Randomize applied
+PASS patch export selected
+PASS Randomize changes patch bytes
+PASS Randomize: send available
+PASS Randomize: verify available
+PASS Randomize: instrument matches editor
+PASS Randomize: Undo available
+PASS patch export selected
+PASS Randomize: one Undo restores every original byte
+PASS Randomize undo: send available
+PASS Randomize undo: verify available
+PASS Randomize undo: instrument matches editor
+PASS Mutate applied
+PASS patch export selected
+PASS Mutate changes patch bytes
+PASS Mutate: send available
+PASS Mutate: verify available
+PASS Mutate: instrument matches editor
+PASS Mutate: Undo available
+PASS patch export selected
+PASS Mutate: one Undo restores every original byte
+PASS Mutate undo: send available
+PASS Mutate undo: verify available
+PASS Mutate undo: instrument matches editor
+PASS selected Tone copied
+PASS Tone changed before Paste
+PASS Tone pasted
+PASS patch export selected
+PASS Copy/Paste restores selected Tone bytes
+PASS B selected
+PASS B mutated
+PASS patch export selected
+PASS B differs from A
+PASS A selected
+PASS patch export selected
+PASS A remains original
+PASS B selected again
+PASS patch export selected
+PASS B retains its edits
+PASS Morph enabled for distinct A and B
+PASS patch export selected
+PASS midpoint Morph differs from both A and B
+PASS Morph: send available
+PASS Morph: verify available
+PASS Morph: instrument matches editor
+PASS no script errors during patch tools
+PATCH TOOLS PASSED
+PASS cleanup original patch: send available
+PASS cleanup original patch: verify available
+PASS cleanup original patch: instrument matches editor

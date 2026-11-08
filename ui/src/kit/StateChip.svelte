@@ -27,12 +27,13 @@
     align-items: center;
     gap: 5px;
     padding: 1px 8px 1px 6px;
-    border: 1px solid var(--c);
+    border: 1px solid color-mix(in srgb, var(--c) 55%, var(--edge-light));
     border-radius: 10px;
+    background: color-mix(in srgb, var(--c) 14%, var(--chip-bg));
     font-family: var(--font-caps);
     font-size: 10px;
     letter-spacing: 0.06em;
-    color: var(--c);
+    color: var(--chip-text);
     white-space: nowrap;
   }
   i {
@@ -40,5 +41,6 @@
     height: 6px;
     border-radius: 50%;
     background: var(--c);
+    box-shadow: 0 0 3px color-mix(in srgb, var(--c) 70%, transparent);
   }
 </style>

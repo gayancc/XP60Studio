@@ -133,9 +133,8 @@
       });
     } else if (lib) void putLibraryPatch(Number(lib), slot);
     else if (from !== undefined && from !== '') bank?.swap(Number(from), slot);
-    // The slot the patch landed in becomes the selected one, so the panel buttons that were lit as a guide now stay on. Only this screen
-    // changes: nothing is sent to the instrument for a drop.
-    if (bank && payload?.type !== 'bulk') bank.selected = slot;
+    // Same path as a click: the landing slot stays selected, and with "Select on the instrument" on the keyboard follows it too.
+    if (payload?.type !== 'bulk') choose(slot);
     dragFrom = null;
     dropTarget = null;
   }
@@ -373,8 +372,8 @@
           <button type="button" onclick={() => bank.assign(bank.selected, store.snapshot(), 'editor')} disabled={bank.locked}>Put the editor's patch here</button>
         </div>
         <div class="row">
-          <button type="button" onclick={() => { bank.swap(bank.selected, bank.selected - 1); bank.selected = Math.max(0, bank.selected - 1); }} disabled={bank.locked || bank.selected === 0}>Move up</button>
-          <button type="button" onclick={() => { bank.swap(bank.selected, bank.selected + 1); bank.selected = Math.min(SLOTS - 1, bank.selected + 1); }} disabled={bank.locked || bank.selected === SLOTS - 1}>Move down</button>
+          <button type="button" onclick={() => { const next = Math.max(0, bank.selected - 1); bank.swap(bank.selected, next); choose(next); }} disabled={bank.locked || bank.selected === 0}>Move up</button>
+          <button type="button" onclick={() => { const next = Math.min(SLOTS - 1, bank.selected + 1); bank.swap(bank.selected, next); choose(next); }} disabled={bank.locked || bank.selected === SLOTS - 1}>Move down</button>
         </div>
       {:else}
         <BulkLibraryPanel {bank} {lib} deviceId={store.deviceId} />

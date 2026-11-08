@@ -1,0 +1,7 @@
+Sound Mode set to PERFORMANCE (was 1)
+Temporary Performance 'EasternSplit', 17 blocks
+H-044 MIDI Channel PASS: part1 0 -> 1
+H-044 Key Range PASS: part1 keyboard_range_lower 0 -> 1
+Temporary Performance restored
+System settings restored (Sound Mode back to 1)
+H-044 HARDWARE PASS (MIDI Channel + Key Range live edits; audible still owner)

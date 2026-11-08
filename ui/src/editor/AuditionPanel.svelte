@@ -63,7 +63,11 @@
     if (e.button !== 0) return;
     const el = e.currentTarget as SVGElement;
     const r = el.getBoundingClientRect();
-    el.setPointerCapture(e.pointerId);
+    try {
+      el.setPointerCapture(e.pointerId);
+    } catch {
+      // Synthetic pointer events (and some lost-capture races) reject capture; the note must still sound.
+    }
     press(`p${e.pointerId}`, note, velocityAt((e.clientY - r.top) / (r.height || 1)));
   }
 

@@ -1,0 +1,17 @@
+H-031, 2026-11-07, User slot 128, example protect_probe, ports "FCB1010 IN" / "FCB1010 OUT", device ID 0x10.
+
+Attempt 1 (the owner said User Memory Protect was ON): the write was ACCEPTED (9 messages, verified true); the original was put back and read back equal.
+Attempt 2 (the owner then set UTILITY / Protect / System Exclusive Message ON): the write was ACCEPTED again; the original was put back and read back equal.
+   Why it was accepted is not known. The owner's confirmation that BOTH settings were ON came after this attempt.
+Attempt 3 (after the owner confirmed "Both are ON"):
+   slot 128 holds 'Jimmee Dee' before
+   RESULT: refused as a MISMATCH after the write, blocks ["common", "tone1", "tone2", "tone3", "tone4"]
+   slot 128 after: 'Jimmee Dee', equal to before: true
+
+Further evidence in the same state: rewriting slot 126 with a changed name, a changed EFX parameter, a changed chorus level and an initial Common block were all refused
+(the instrument kept 0 of the changed bytes), and the first changed slot of a three-slot bank write stopped the run (see H-050b).
+CONCLUSION: with both protect settings ON (Write Operation and System Exclusive Message) the XP-60 refuses SysEx writes to User memory, and the app sees it as a read-back
+mismatch on every block, as the manual says (p.164, p.189). Which of the two settings does the blocking was not separated.
+
+CORRECTION: an earlier version of this file and of the ledger said "accepted 3 of 3 with both settings confirmed ON". That was wrong: no third write was made at that point;
+the third attempt above is the first one made after the owner's confirmation.

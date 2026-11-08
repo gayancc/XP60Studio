@@ -1,0 +1,18 @@
+2026-11-07 G8 final cleanup stamp (objective: evidence or explicit remaining procedure)
+
+compare_bank vs 1794068291-hardware-session-full-backup.syx:
+  file has 128 patches, the instrument gave 128; slots that differ: []
+
+memory_names_probe vs same backup:
+  Performances: 32 compared; mismatches []
+  RHYTHM 1: 'HouseDrumSet' equal
+  RHYTHM 2: 'JazzDrumSet1' equal
+  H-057 PASS: all 32 User Performances and 2 User Rhythm Sets equal the backup file byte-for-byte
+
+dump_temp:
+  temp patch 'Nice Piano' (temp-goal-audit.blocks) SHA-256 equal to temp-after-h037.blocks
+
+System:
+  Left at owner panel state (patch_group_id / patch_number / chorus_switch family; see system-diff-vs-session.txt).
+  Explicit remaining procedure: owner says whether to keep live Chorus/selection or restore System to session backup bytes.
+  Not restored automatically (would overwrite owner panel preference).

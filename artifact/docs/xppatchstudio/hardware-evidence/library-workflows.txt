@@ -1,0 +1,62 @@
+PASS Settings menu opens
+PASS original library folder observed
+PASS input [aria-label="Folder for the library and backups"]
+PASS storage copy selected through native Settings
+PASS library and backup copy confirmed
+PASS copied database exists
+PASS copied database contains exactly the original logical data
+PASS Settings menu opens
+PASS restarted desktop app uses the copied library
+PASS file picker available
+PASS 128-patch staged import confirmed
+PASS imported bank appears as a named bulk
+PASS imported bulk retains every slot position
+PASS Library shows each distinct patch once, sharing repeated slots
+PASS stored patch selected
+PASS input input[aria-label="Rename patch"]
+PASS patch rename is reflected in the library
+PASS favourite toggled
+PASS favourite state changed
+PASS input input[aria-label="Add a tag"]
+PASS nested folder tag assigned
+PASS input input[aria-label="Search names"]
+PASS name search returns the renamed patch
+PASS filtered SysEx export selected
+PASS filtered MIDI export selected
+PASS filtered SysEx contains the renamed patch
+PASS library MIDI export decodes byte-identical to SysEx
+PASS library patch opened in Patch editor
+PASS File menu opens
+PASS opened library patch exports under its new name
+PASS opened editor patch equals library export
+PASS Bank Library tab opens
+PASS bulk Rename opens
+PASS input input[aria-label="Bulk name"]
+PASS bulk rename persisted
+PASS bulk Copy selected
+PASS bulk copy creates one separately named bulk
+PASS bulk SysEx export selected
+PASS bulk export saved
+PASS bulk copy/export retains the renamed patch
+PASS bulk load asks for replacement
+PASS bulk load explicitly confirmed
+PASS loaded bank preserves slot order
+PASS bank slot drag/drop uses the actual drag payload
+PASS bank drag/drop swaps exactly the two slots
+PASS changed bank can be saved to its bulk
+PASS save-over confirmation accepted
+PASS earlier bulk versions opens
+PASS earlier bulk contents can be restored
+PASS bulk load asks for replacement
+PASS bulk load explicitly confirmed
+PASS restored version reloads the original slot order
+PASS whole-bulk drag creates the app drag payload
+PASS dragged bulk asks before replacing the bank
+PASS whole-bulk drop retains all shown slots
+PASS copied test bulk delete asks first
+PASS copied test bulk delete confirmed
+PASS only the copied test bulk disappears
+PASS no script errors in library workflows
+PASS original user library logical data unchanged
+Copied test library retained at D:\Codes\XP60Studio\target\library-acceptance-7uXePs
+NATIVE LIBRARY WORKFLOWS PASSED

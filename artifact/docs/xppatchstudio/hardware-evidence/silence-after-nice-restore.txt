@@ -1,0 +1,15 @@
+sound_mode: 1 (PATCH)
+patch_receive_channel: 0 (audition notes use this as MIDI channel index 0..15)
+patch_group_type: 0
+patch_group_id: 3
+patch_number: 3
+receive_program_change: 1
+receive_bank_select: 1
+temp patch: 'Nice Piano'
+tone1: switch=1 level=127 wave=INT-A#3 output_assign=0
+tone2: switch=0 level=37 wave=INT-A#9 output_assign=0
+tone3: switch=1 level=57 wave=INT-A#7 output_assign=0
+tone4: switch=1 level=51 wave=INT-A#10 output_assign=0
+common: patch_level=127 structure_1_2=0 structure_3_4=0
+sending Note On ch=1 note=60 vel=100 for 400ms
+NOTE BURST SENT ΓÇö owner should hear a short middle-C if Patch mode + temp can sound

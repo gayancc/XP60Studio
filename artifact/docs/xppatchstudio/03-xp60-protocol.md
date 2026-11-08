@@ -118,7 +118,10 @@ byte-rate throttle.
   patch, performance or rhythm set both discard it. (manual)
 - A DT1 to `03 00 00 00` reaches temporary memory and cannot damage a stored sound. A DT1 to `11 nn 00 00` writes
   permanent User memory. The destructive boundary is one address byte. (manual)
-- User Memory Protect on the instrument refuses writes; a refused write shows as a read-back mismatch.
+- User Memory Protect on the instrument refuses writes (manual p.164: "Write Operation" for the panel, "System Exclusive Message" for incoming SysEx; a refused SysEx
+  shows "User Memory Write Protected", p.189). **Hardware result 2026-11-07 (H-031):** with both settings ON the XP-60 refuses a DT1 write to User memory and the app sees
+  a read-back mismatch on every block; the slot is unchanged. Two earlier attempts, made before both settings were confirmed ON, were accepted, so a mismatch is the sign of
+  Protect (or a dropped write): the message should name the System Exclusive Message and Write Operation settings. Which of the two does the blocking was not separated.
 - Every write to permanent memory in XPPatchStudio: explicit, addressed by the user, backed up (read first), verified
   (read back and compared), and worded differently from temporary sends.
 - A selection on the panel is announced as Bank Select + Program Change on MIDI OUT unless the Tx switches are off, which

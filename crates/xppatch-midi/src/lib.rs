@@ -8,6 +8,7 @@
 pub mod assembler;
 pub mod client;
 pub mod controls;
+pub mod passthrough;
 pub mod testing;
 pub mod transport;
 
@@ -18,6 +19,10 @@ pub use client::{
     SendReport, SystemWritePlan, WritePlan,
 };
 pub use controls::{ControlChange, ControlDecoder, ControlSource};
+pub use passthrough::{
+    expected_message_len, is_channel_voice, is_system_realtime, prepare_forward, remap_channel,
+    should_forward, PassThroughConfig,
+};
 pub use transport::{MidiTransport, TransportError};
 
 #[cfg(feature = "hardware")]

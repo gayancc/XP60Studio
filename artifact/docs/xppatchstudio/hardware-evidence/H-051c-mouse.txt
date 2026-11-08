@@ -1,0 +1,16 @@
+2026-11-07: H-051c mouse / velocity / octave / channel-while-holding / focus-blur via native desktop (CDP mouse)
+
+Command: node ui/e2e/hw-audition-mouse.mjs
+Log: target/hardware-acceptance/2026-11-07-codex/h051c-mouse.txt
+
+Connected: XP-60 · ID 17 · "Nice Piano" (FCB1010 IN/OUT)
+
+MIDI invoke trace:
+- Loud lower-key click: note 53 on velocity 112, then note off
+- Panic while held: midi_all_notes_off
+- Soft upper-key click (same key X, y≈0.12): note 53 on velocity 42
+- Octave up: label C3 -> C4
+- Hold note then step Audition channel 0→1: channel change released the held note (note-off count increased); no stuck note
+- Computer KeyZ then focusout on .kb: held note released (note-off count increased)
+
+Result: all automated H-051c behaviours traced. Owner audible confirmation for mouse remains optional (computer-key audible already owner-confirmed in H-051c.txt).

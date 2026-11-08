@@ -1,0 +1,32 @@
+H-032, 2026-11-07 (example bank_real), both Protect settings OFF, ports "FCB1010 IN" / "FCB1010 OUT", device ID 0x10.
+Every User slot was renamed "RT nnn" and written (each with a fresh read, 9 messages, a settle and a read-back); the bank was then read again and compared; a restore of the
+whole bank was started and cancelled after about 6 s and then finished; the bank was compared with the backup taken at the start.
+
+== backup ==
+read and backed up 128 patches in 44.9382938s; saved C:\Users\Gayan\AppData\Roaming\studio.xppatch.app\backups\1794066120-user-bank.syx
+== H-032 ==
+  writing user patches 16/128 after 18.4407004s
+  writing user patches 32/128 after 36.8765255s
+  writing user patches 48/128 after 55.2297841s
+  writing user patches 64/128 after 73.5945182s
+  writing user patches 80/128 after 91.9888962s
+  writing user patches 96/128 after 110.3420805s
+  writing user patches 112/128 after 128.8250471s
+  writing user patches 128/128 after 147.3937669s
+wrote 128 of 128 slots, stopped_at None, cancelled false, in 147.3938045s
+the bank read again differs from what was written in: [] (none expected)
+== H-032 cancel ==
+a restore of the whole bank, cancelled after 6.3902549s: 8 slot(s) put back, then it stopped
+slots still different from the backup after the cancel: 120 (expected 120)
+finished the restore: 120 more slot(s)
+slots that differ from the backup now: [] (none expected)
+== H-050b ==
+wrote the 3 changed slots: written [125, 126, 127], stopped_at None
+the three slots hold what was written: true; other slots that differ from the backup: []
+restored 3 slot(s)
+== final check ==
+slots that differ from the backup: []
+
+Reading: 128 of 128 slots written and read back equal in 147.4 s (1.15 s per slot); the cancel stopped within one slot (8 slots put back in 6.4 s, the other 120 left as expected);
+after the finished restore every slot equals the backup.
+An earlier run the same day (Protect ON, identical content) proved nothing and was recorded separately in the first version of this file.

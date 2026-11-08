@@ -1,0 +1,9 @@
+Patch receive channel 0; starting temp 'Nice Piano'
+select USER 1: CC0=80 CC32=0 PC=0 -> temp 'Strins', system type=0 id=1 number=0
+select PR-A 1: CC0=81 CC32=0 PC=0 -> temp '64voicePiano', system type=0 id=3 number=0
+select PR-B 10: CC0=81 CC32=1 PC=9 -> temp 'Hip Bass', system type=0 id=4 number=9
+select PR-C 128: CC0=81 CC32=2 PC=127 -> temp 'Terminate', system type=0 id=5 number=127
+select GM 1: CC0=81 CC32=3 PC=0 -> temp 'Piano 1', system type=0 id=6 number=0
+select PR-A 004 Nice Piano: CC0=81 CC32=0 PC=3 -> temp 'Nice Piano', system type=0 id=3 number=3
+H-070 MIDI-TOOL PASS: USER1='Strins' PR-A1='64voicePiano' PR-B10='Hip Bass' PR-C128='Terminate' GM1='Piano 1'; temp restored to Nice Piano
+Panel LCD confirmation of each name remains owner.

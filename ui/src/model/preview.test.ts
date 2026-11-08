@@ -14,6 +14,7 @@ function setup(over: Partial<PreviewDeps> = {}) {
     sendTemp: vi.fn(async (b: Uint8Array) => {
       sent.push(b);
     }),
+    audition: vi.fn(async () => {}),
     markStale: vi.fn(),
     ...over,
   };
@@ -28,13 +29,14 @@ afterEach(() => vi.useRealTimers());
 
 describe('hover audition', () => {
   it('sends nothing until the pointer has rested on a row', async () => {
-    const { p, sent } = setup();
+    const { p, sent, deps } = setup();
     p.hover(5);
     await vi.advanceTimersByTimeAsync(DWELL_MS - 50);
     expect(sent).toHaveLength(0);
     await vi.advanceTimersByTimeAsync(100);
     expect(sent).toEqual([stored(5)]);
     expect(p.playing).toBe(5);
+    expect(deps.audition).toHaveBeenCalledTimes(1);
   });
 
   it('sweeping across rows sends nothing for the rows passed over', async () => {
@@ -129,5 +131,19 @@ describe('hover audition', () => {
     await p.stop();
     // The original was read but never replaced, so putting it back is at worst a harmless repeat.
     expect(sent.length).toBeLessThanOrEqual(1);
+  });
+
+  it('does not send a hover that finishes loading after the pointer leaves', async () => {
+    let finish!: (patch: Uint8Array) => void;
+    const pending = new Promise<Uint8Array>((resolve) => { finish = resolve; });
+    const { p, sent, deps } = setup({ readStored: vi.fn(async () => pending) });
+    p.hover(7);
+    await vi.advanceTimersByTimeAsync(DWELL_MS + 10);
+    p.unhover();
+    await vi.advanceTimersByTimeAsync(LEAVE_MS + 10);
+    finish(stored(7));
+    await p.stop();
+    expect(sent).toEqual([own]);
+    expect(deps.audition).not.toHaveBeenCalled();
   });
 });

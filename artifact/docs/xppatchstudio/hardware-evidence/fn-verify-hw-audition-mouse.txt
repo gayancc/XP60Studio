@@ -1,0 +1,31 @@
+PASS Patch workspace
+PASS Connect
+PASS connected (got "XP-60 ┬╖ ID 17 ΓÇ£Nice PianoΓÇ¥")
+PASS Play tab
+PASS Audition panel visible
+PASS loud piano click ({"x":71.16953125,"y":495.99375,"w":347.796875,"h":84})
+note commands after loud click: [{"command":"midi_note","args":{"channel":0,"note":53,"velocity":112,"on":true}},{"command":"midi_note","args":{"channel":0,"note":53,"velocity":0,"on":false}}]
+PASS at least note on and off (2 midi_note)
+PASS note on present
+PASS note off present
+PASS lower-key click is loud (112)
+PASS Panic available
+PASS Panic issued midi_all_notes_off
+PASS soft piano click ({"x":71.16953125,"y":434.67375,"w":347.796875,"h":84})
+PASS upper-key click added one note-on (2 -> 3)
+soft click: {"command":"midi_note","args":{"channel":0,"note":53,"velocity":42,"on":true}}
+PASS upper click soft (42)
+PASS upper quieter than lower (42 < 112)
+PASS Audition channel control present
+PASS Octave up present
+PASS Octave down present
+PASS Octave up clicked
+PASS octave label changed (C3 -> C4)
+PASS held note-on before channel step
+PASS Audition channel stepped while holding
+PASS channel 0 -> 1
+PASS channel change released held note (offs 3 -> 4)
+PASS computer key sounded before blur
+PASS focus blur released held note (offs 4 -> 5)
+PASS no script errors
+H-051c MOUSE/TRACE PASS (owner audible for mouse still optional; computer-key audible already recorded)

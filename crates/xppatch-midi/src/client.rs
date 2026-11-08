@@ -64,6 +64,10 @@ pub struct ClientConfig {
     pub probe_timeout: Duration,
     /// Pause after the last write before reading back for verification.
     pub verify_settle: Duration,
+    /// Max data bytes per DT1 to the device (Patch Base "chunk"; 16..=128, instrument limit 128).
+    pub max_dt1_data: usize,
+    /// Optional byte-rate throttle (Patch Base default 3125 B/s = MIDI wire rate). `None` means off.
+    pub byte_rate: Option<u16>,
 }
 
 impl Default for ClientConfig {
@@ -76,6 +80,8 @@ impl Default for ClientConfig {
             max_retries: 2,
             probe_timeout: Duration::from_millis(600),
             verify_settle: Duration::from_millis(50),
+            max_dt1_data: MAX_DT1_DATA_TO_DEVICE,
+            byte_rate: None,
         }
     }
 }
@@ -121,7 +127,9 @@ pub enum ClientError {
         attempts: u32,
         missing: Vec<Address>,
     },
-    #[error("cancelled (a partly written temporary patch may remain in the instrument)")]
+    // Keep this generic: Cancelled covers bank reads, document fetches and writes. A write-specific
+    // residual warning misled the Bank Cancel hardware check (H-048) when only a read was stopped.
+    #[error("cancelled")]
     Cancelled,
     #[error("the instrument's patch changed from the panel while it was being read")]
     Stale,
@@ -229,6 +237,8 @@ pub struct Client<T: MidiTransport> {
     cfg: ClientConfig,
     assembler: SysExAssembler,
     last_dt1: Option<Duration>,
+    /// Data bytes in the last DT1, for the optional byte-rate throttle.
+    last_dt1_data: Option<usize>,
     events: Vec<MidiEvent>,
     /// Controller changes since the last `take_controls`, one entry per (channel, source) holding its latest value.
     controls: Vec<ControlChange>,
@@ -245,6 +255,7 @@ impl<T: MidiTransport> Client<T> {
             cfg,
             assembler: SysExAssembler::new(),
             last_dt1: None,
+            last_dt1_data: None,
             events: Vec::new(),
             controls: Vec::new(),
             decoder: ControlDecoder::new(),
@@ -263,6 +274,18 @@ impl<T: MidiTransport> Client<T> {
         let gap = gap.clamp(MIN_DT1_GAP, MAX_DT1_GAP);
         self.cfg.min_dt1_gap = gap;
         gap
+    }
+
+    /// Cap DT1 data bytes (Patch Base chunk). Clamped to 16..=128; the value used is returned.
+    pub fn set_max_dt1_data(&mut self, bytes: usize) -> usize {
+        let bytes = bytes.clamp(16, MAX_DT1_DATA_TO_DEVICE);
+        self.cfg.max_dt1_data = bytes;
+        bytes
+    }
+
+    /// Optional byte-rate throttle (Patch Base: 3125 B/s when on). `None` turns it off.
+    pub fn set_byte_rate(&mut self, rate: Option<u16>) {
+        self.cfg.byte_rate = rate.filter(|r| *r > 0);
     }
 
     pub fn set_device(&mut self, device: DeviceId) {
@@ -718,14 +741,25 @@ impl<T: MidiTransport> Client<T> {
         Ok(None)
     }
 
-    /// Wait until `min_dt1_gap` has passed since the previous DT1.
+    /// Wait until `min_dt1_gap` (and, when set, the byte-rate interval) has passed since the previous DT1.
     fn pace(&mut self) {
         if let Some(last) = self.last_dt1 {
             let since = self.port.now().saturating_sub(last);
-            if since < self.cfg.min_dt1_gap {
-                self.port.sleep(self.cfg.min_dt1_gap - since);
+            let mut need = self.cfg.min_dt1_gap;
+            if let (Some(rate), Some(bytes)) = (self.cfg.byte_rate, self.last_dt1_data) {
+                // Patch Base: interval ≈ chunkSize / bytesPerSecond (B-05).
+                let nanos = (u128::from(bytes as u64) * 1_000_000_000u128) / u128::from(rate);
+                need = need.max(Duration::from_nanos(nanos as u64));
+            }
+            if since < need {
+                self.port.sleep(need - since);
             }
         }
+    }
+
+    fn mark_dt1_sent(&mut self, data_bytes: usize) {
+        self.last_dt1 = Some(self.port.now());
+        self.last_dt1_data = Some(data_bytes);
     }
 
     /// Write `patch` into the instrument's **temporary** patch area (audible now, lost on the next sound change),
@@ -738,9 +772,10 @@ impl<T: MidiTransport> Client<T> {
         verify: bool,
         cancel: &CancelToken,
     ) -> Result<SendReport, ClientError> {
+        let chunk = self.cfg.max_dt1_data.clamp(16, MAX_DT1_DATA_TO_DEVICE);
         let mut messages = Vec::new();
         for (address, data) in patch.to_dt1(TEMP_PATCH)? {
-            messages.extend(split_dt1(address, &data, MAX_DT1_DATA_TO_DEVICE)?);
+            messages.extend(split_dt1(address, &data, chunk)?);
         }
         for m in &messages {
             match m {
@@ -771,10 +806,14 @@ impl<T: MidiTransport> Client<T> {
             if cancel.is_cancelled() {
                 return Err(ClientError::Cancelled);
             }
+            let data_len = match m {
+                Message::Dt1 { data, .. } => data.len(),
+                Message::Rq1 { .. } => 0,
+            };
             let frame = m.encode(self.cfg.device)?;
             self.pace();
             self.port.send(&frame)?;
-            self.last_dt1 = Some(self.port.now());
+            self.mark_dt1_sent(data_len);
         }
         let verified = if verify {
             // Soft Thru or a loopback can echo our own writes back slowly (about 0.3 ms per byte on a DIN cable);
@@ -1023,10 +1062,14 @@ impl<T: MidiTransport> Client<T> {
             return Err(ClientError::Cancelled);
         }
         for m in &messages {
+            let data_len = match m {
+                Message::Dt1 { data, .. } => data.len(),
+                Message::Rq1 { .. } => 0,
+            };
             let frame = m.encode(self.cfg.device)?;
             self.pace();
             self.port.send(&frame)?;
-            self.last_dt1 = Some(self.port.now());
+            self.mark_dt1_sent(data_len);
         }
         let echo_window = self.cfg.verify_settle + Duration::from_micros(400 * bytes as u64);
         self.poll(echo_window)?;
@@ -1046,6 +1089,110 @@ impl<T: MidiTransport> Client<T> {
     /// Read User patch `slot` (used by callers that need to compare it with something they wrote).
     pub fn read_user_slot(&mut self, slot: u8, cancel: &CancelToken) -> Result<Patch, ClientError> {
         self.fetch_user_patch(slot, cancel, &mut |_| {})
+    }
+
+    /// Write a User Performance or User Rhythm Set to `slot`, then read it back and compare. Permanent write.
+    /// `doc.kind()` must be Performance or Rhythm and match `kind`. Used to prove exported `.syx` files round-trip
+    /// (hardware ledger H-066).
+    pub fn write_user_document(
+        &mut self,
+        kind: DocKind,
+        slot: u8,
+        doc: &Document,
+        cancel: &CancelToken,
+    ) -> Result<SendReport, ClientError> {
+        if doc.kind() != kind {
+            return Err(ClientError::Refused(
+                "document kind does not match the User memory region".into(),
+            ));
+        }
+        if kind != DocKind::Performance && kind != DocKind::Rhythm {
+            return Err(ClientError::Refused(
+                "only User Performances and User Rhythm Sets can be written here".into(),
+            ));
+        }
+        if slot >= kind.user_slots() {
+            return Err(ClientError::Refused(format!(
+                "User {} slot must be 0 to {}",
+                match kind {
+                    DocKind::Performance => "Performance",
+                    DocKind::Rhythm => "Rhythm Set",
+                    DocKind::System => "System",
+                },
+                kind.user_slots().saturating_sub(1)
+            )));
+        }
+        if let Some((block, issue)) = doc.validate().into_iter().next() {
+            return Err(ClientError::Refused(format!(
+                "a value is out of range ({block}: {issue:?})"
+            )));
+        }
+        let base = match kind {
+            DocKind::Performance => user_performance(slot)?,
+            DocKind::Rhythm => user_rhythm(slot)?,
+            DocKind::System => {
+                return Err(ClientError::Refused(
+                    "System settings use the System write path".into(),
+                ));
+            }
+        };
+        let mut messages = Vec::new();
+        for (address, data) in doc.to_dt1(base)? {
+            messages.extend(split_dt1(address, &data, MAX_DT1_DATA_TO_DEVICE)?);
+        }
+        for m in &messages {
+            match m {
+                Message::Dt1 { address, data } => {
+                    if classify_range(*address, data.len()) != WriteKind::Permanent
+                        || !inside_document_blocks(kind, base, *address, data.len())
+                    {
+                        return Err(ClientError::Refused(format!(
+                            "{} byte(s) at {address} are not inside User {:?} slot {}",
+                            data.len(),
+                            kind,
+                            u16::from(slot) + 1
+                        )));
+                    }
+                }
+                Message::Rq1 { .. } => {
+                    return Err(ClientError::Refused(
+                        "a read request in a write batch".into(),
+                    ));
+                }
+            }
+        }
+        let bytes: usize = messages
+            .iter()
+            .map(|m| match m {
+                Message::Dt1 { data, .. } => data.len(),
+                Message::Rq1 { .. } => 0,
+            })
+            .sum();
+        if cancel.is_cancelled() {
+            return Err(ClientError::Cancelled);
+        }
+        for m in &messages {
+            let data_len = match m {
+                Message::Dt1 { data, .. } => data.len(),
+                Message::Rq1 { .. } => 0,
+            };
+            let frame = m.encode(self.cfg.device)?;
+            self.pace();
+            self.port.send(&frame)?;
+            self.mark_dt1_sent(data_len);
+        }
+        let echo_window = self.cfg.verify_settle + Duration::from_micros(400 * bytes as u64);
+        self.poll(echo_window)?;
+        let back = self.fetch_document(kind, base, &CancelToken::new(), &mut |_| {})?;
+        let blocks = differing_document_blocks(doc, &back);
+        if !blocks.is_empty() {
+            return Err(ClientError::Mismatch { blocks });
+        }
+        Ok(SendReport {
+            messages: messages.len(),
+            bytes,
+            verified: true,
+        })
     }
 
     fn write_user_slot(
@@ -1092,10 +1239,14 @@ impl<T: MidiTransport> Client<T> {
             return Err(ClientError::Cancelled);
         }
         for m in &messages {
+            let data_len = match m {
+                Message::Dt1 { data, .. } => data.len(),
+                Message::Rq1 { .. } => 0,
+            };
             let frame = m.encode(self.cfg.device)?;
             self.pace();
             self.port.send(&frame)?;
-            self.last_dt1 = Some(self.port.now());
+            self.mark_dt1_sent(data_len);
         }
         // Soft Thru or a loopback can echo our own writes back slowly; listen long enough that an echo cannot be
         // mistaken for the instrument's read-back (an ignored write would otherwise look verified).
@@ -1179,7 +1330,7 @@ impl<T: MidiTransport> Client<T> {
                 "the frame is for a different device ID".into(),
             ));
         }
-        match parsed.message {
+        let data_len = match &parsed.message {
             Message::Dt1 { address, data } => {
                 if data.len() > MAX_DT1_DATA_TO_DEVICE {
                     return Err(ClientError::Refused(format!(
@@ -1187,26 +1338,27 @@ impl<T: MidiTransport> Client<T> {
                         data.len()
                     )));
                 }
-                if classify_range(address, data.len()) != WriteKind::Temporary {
+                if classify_range(*address, data.len()) != WriteKind::Temporary {
                     return Err(ClientError::Refused(format!(
                         "{} byte(s) at {address} are not in temporary memory",
                         data.len()
                     )));
                 }
-                if !inside_temp_patch_block(address, data.len()) {
+                if !inside_temp_patch_block(*address, data.len()) {
                     return Err(ClientError::Refused(format!(
                         "{} byte(s) at {address} are not inside one block of the temporary patch",
                         data.len()
                     )));
                 }
+                data.len()
             }
             Message::Rq1 { .. } => {
                 return Err(ClientError::Refused("a read request is not a write".into()));
             }
-        }
+        };
         self.pace();
         self.port.send(frame)?;
-        self.last_dt1 = Some(self.port.now());
+        self.mark_dt1_sent(data_len);
         Ok(())
     }
 }
@@ -1250,6 +1402,17 @@ fn inside_patch_blocks(base: Address, address: Address, len: usize) -> bool {
     spans
         .into_iter()
         .any(|(start, size)| rel >= start && rel + len <= start + size)
+}
+
+/// True when `len` bytes at `address` lie wholly inside one known block of a User Performance or Rhythm at `base`.
+fn inside_document_blocks(kind: DocKind, base: Address, address: Address, len: usize) -> bool {
+    let Ok(rel) = address.checked_sub(base) else {
+        return false;
+    };
+    let (rel, len) = (u64::from(rel.compact()), len as u64);
+    kind.block_spans()
+        .into_iter()
+        .any(|(start, size)| rel >= u64::from(start) && rel + len <= u64::from(start) + size as u64)
 }
 
 fn differing_document_blocks(a: &Document, b: &Document) -> Vec<String> {

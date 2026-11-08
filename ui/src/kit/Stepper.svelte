@@ -19,6 +19,8 @@
     disabled?: boolean;
     /** Width of the value readout in pixels. */
     width?: number;
+    /** High-contrast face for dark instrument strips (light ink on deep wells). */
+    contrast?: boolean;
     format?: (value: number) => string;
     onchange?: (value: number) => void;
     onbegin?: () => void;
@@ -35,6 +37,7 @@
     context = '',
     disabled = false,
     width = 44,
+    contrast = false,
     format,
     onchange,
     onbegin,
@@ -108,7 +111,7 @@
   });
 </script>
 
-<div class="stepper" class:disabled style:--w="{width}px">
+<div class="stepper" class:disabled class:contrast style:--w="{width}px">
   {#if label}<span class="caps">{label}</span>{/if}
   <div class="row">
     <button
@@ -204,9 +207,11 @@
     padding: 3px 6px;
     text-align: center;
     background: var(--track);
+    color: var(--text);
     font-family: var(--font-mono);
     font-size: 12px;
     line-height: 16px;
+    white-space: nowrap;
     cursor: ns-resize;
     user-select: none;
     touch-action: none;
@@ -217,5 +222,31 @@
   }
   .disabled {
     opacity: 0.4;
+  }
+  /* Locked light-on-dark so parent theme cannot wash out the readout. */
+  .contrast .caps {
+    color: #a8b6be;
+  }
+  .contrast .row {
+    background: #0c1114;
+  }
+  .contrast .tile {
+    background: #334047;
+    color: #d5dee4;
+  }
+  .contrast .tile:hover:not(:disabled) {
+    color: #ffe0b8;
+    background: #3f4d56;
+  }
+  .contrast .tile:active:not(:disabled) {
+    color: #1c1208;
+    background: var(--accent);
+  }
+  .contrast .val {
+    background: #12181c;
+    color: #eef3f6;
+  }
+  .contrast .val:focus-visible {
+    color: #ffb56a;
   }
 </style>

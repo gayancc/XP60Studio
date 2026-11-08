@@ -1,0 +1,29 @@
+2026-11-07 — native MIDI Learn with XP-60 modulation lever
+Owner initially moved pitch bend rather than the upward modulation axis; later clarified this. Upward modulation arrived as CC 1.
+PASS original temporary sound fetched
+PASS original sound saved before linking
+PASS Filter and amp opens
+PASS Cutoff readout available
+PASS starting cutoff: Verify available
+PASS starting cutoff: instrument matches editor
+PASS MIDI Learn selected from the knob menu
+READY MODULATION: push the modulation lever forward and back immediately in one smooth sweep, then leave it alone.
+PASS hardware controller learned
+Cutoff Frequency is linked to CC 1.
+Cutoff before sweep 60, final 0, sampled range 0..127
+PASS hardware controller changes Cutoff in the editor
+PASS link appears in Controllers map
+PASS hardware controller live edit: Verify available
+PASS hardware controller live edit: instrument matches editor
+PASS Undo of hardware sweep offered
+PASS one Undo restores the value before the continuous sweep
+PASS controller sweep undo: Verify available
+PASS controller sweep undo: instrument matches editor
+PASS no script errors during MIDI Learn
+PASS original temporary sound sent back
+PASS original sound restoration: Verify available
+PASS original sound restoration: instrument matches editor
+HARDWARE MIDI LEARN PASSED
+
+Learned binding: [{"kind":"patch","block":"tone1","id":"cutoff_frequency","channel":null,"source":"cc","controller":1}]
+Original controller map bytes and original temporary patch were restored. H-017 separately confirms Bank Select/Program Change and stale-state marking. Hardware NRPN/RPN sources were not exercised.

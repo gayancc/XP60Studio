@@ -1,0 +1,113 @@
+PASS connected
+PASS fetched
+PASS baseline: Verify
+PASS baseline: Verified: the instrument's temporary copy matches this sound.
+PASS Patch tab
+Patch steppers: Random Pitch Depth, Pitch Keyfollow, Pitch Envelope Velocity Time1, Pitch Envelope Velocity Time4, Pitch Envelope Time Keyfollow
+PASS Patch stepper Random Pitch Depth: Verify
+PASS Patch stepper Random Pitch Depth: Verified: the instrument's temporary copy matches this sound.
+PASS Patch stepper Pitch Keyfollow: Verify
+PASS Patch stepper Pitch Keyfollow: Verified: the instrument's temporary copy matches this sound.
+PASS Patch stepper Pitch Envelope Velocity Time1: Verify
+PASS Patch stepper Pitch Envelope Velocity Time1: Verified: the instrument's temporary copy matches this sound.
+PASS Patch stepper Pitch Envelope Velocity Time4: Verify
+PASS Patch stepper Pitch Envelope Velocity Time4: Verified: the instrument's temporary copy matches this sound.
+PASS Patch stepper Pitch Envelope Time Keyfollow: Verify
+PASS Patch stepper Pitch Envelope Time Keyfollow: Verified: the instrument's temporary copy matches this sound.
+SKIP Patch name field
+PASS Wave and pitch
+Wave and pitch envelope sliders: 6
+PASS Wave and pitch Pitch envelope Time 1 / Level 1: Verify
+PASS Wave and pitch Pitch envelope Time 1 / Level 1: Verified: the instrument's temporary copy matches this sound.
+PASS Wave and pitch Pitch envelope Time 2 / Level 2: Verify
+PASS Wave and pitch Pitch envelope Time 2 / Level 2: Verified: the instrument's temporary copy matches this sound.
+PASS Wave and pitch Pitch envelope Time 3 / Level 3: Verify
+PASS Wave and pitch Pitch envelope Time 3 / Level 3: Verified: the instrument's temporary copy matches this sound.
+PASS Wave and pitch Pitch envelope Time 4 / Level 4: Verify
+PASS Wave and pitch Pitch envelope Time 4 / Level 4: Verified: the instrument's temporary copy matches this sound.
+PASS Wave and pitch Pitch Envelope Depth: Verify
+PASS Wave and pitch Pitch Envelope Depth: Verified: the instrument's temporary copy matches this sound.
+PASS Wave and pitch Pitch Envelope Velocity Sens: Verify
+PASS Wave and pitch Pitch Envelope Velocity Sens: Verified: the instrument's temporary copy matches this sound.
+PASS Wave and pitch stepper Random Pitch Depth: Verify
+PASS Wave and pitch stepper Random Pitch Depth: Verified: the instrument's temporary copy matches this sound.
+PASS Wave and pitch stepper Pitch Keyfollow: Verify
+PASS Wave and pitch stepper Pitch Keyfollow: Verified: the instrument's temporary copy matches this sound.
+PASS Wave and pitch stepper Pitch Envelope Velocity Time1: Verify
+PASS Wave and pitch stepper Pitch Envelope Velocity Time1: Verified: the instrument's temporary copy matches this sound.
+PASS Wave and pitch stepper Pitch Envelope Velocity Time4: Verify
+PASS Wave and pitch stepper Pitch Envelope Velocity Time4: Verified: the instrument's temporary copy matches this sound.
+PASS Wave and pitch stepper Pitch Envelope Time Keyfollow: Verify
+PASS Wave and pitch stepper Pitch Envelope Time Keyfollow: Verified: the instrument's temporary copy matches this sound.
+PASS Filter and amp
+Filter and amp envelope sliders: 13
+PASS Filter and amp Filter envelope Time 1 / Level 1: Verify
+PASS Filter and amp Filter envelope Time 1 / Level 1: Verified: the instrument's temporary copy matches this sound.
+PASS Filter and amp Filter envelope Time 2 / Level 2: Verify
+PASS Filter and amp Filter envelope Time 2 / Level 2: Verified: the instrument's temporary copy matches this sound.
+PASS Filter and amp Filter envelope Time 3 / Level 3: Verify
+PASS Filter and amp Filter envelope Time 3 / Level 3: Verified: the instrument's temporary copy matches this sound.
+PASS Filter and amp Filter envelope Time 4 / Level 4: Verify
+PASS Filter and amp Filter envelope Time 4 / Level 4: Verified: the instrument's temporary copy matches this sound.
+PASS Filter and amp Filter Envelope Depth: Verify
+PASS Filter and amp Filter Envelope Depth: Verified: the instrument's temporary copy matches this sound.
+PASS Filter and amp Filter Envelope Velocity Curve: Verify
+PASS Filter and amp Filter Envelope Velocity Curve: Verified: the instrument's temporary copy matches this sound.
+PASS Filter and amp Filter Envelope Velocity Sens: Verify
+PASS Filter and amp Filter Envelope Velocity Sens: Verified: the instrument's temporary copy matches this sound.
+PASS Filter and amp Level envelope Time 1 / Level 1: Verify
+PASS Filter and amp Level envelope Time 1 / Level 1: Verified: the instrument's temporary copy matches this sound.
+PASS Filter and amp Level envelope Time 2 / Level 2: Verify
+PASS Filter and amp Level envelope Time 2 / Level 2: Verified: the instrument's temporary copy matches this sound.
+PASS Filter and amp Level envelope Time 3 / Level 3: Verify
+PASS Filter and amp Level envelope Time 3 / Level 3: Verified: the instrument's temporary copy matches this sound.
+PASS Filter and amp Level envelope Time 4 (release): Verify
+PASS Filter and amp Level envelope Time 4 (release): Verified: the instrument's temporary copy matches this sound.
+PASS Filter and amp Level Envelope Velocity Curve: Verify
+PASS Filter and amp Level Envelope Velocity Curve: Verified: the instrument's temporary copy matches this sound.
+PASS Filter and amp Level Envelope Velocity Sens: Verify
+PASS Filter and amp Level Envelope Velocity Sens: Verified: the instrument's temporary copy matches this sound.
+PASS Filter and amp stepper Cutoff Keyfollow: Verify
+PASS Filter and amp stepper Cutoff Keyfollow: Verified: the instrument's temporary copy matches this sound.
+PASS Filter and amp stepper Filter Envelope Velocity Time1: Verify
+PASS Filter and amp stepper Filter Envelope Velocity Time1: Verified: the instrument's temporary copy matches this sound.
+PASS Filter and amp stepper Filter Envelope Velocity Time4: Verify
+PASS Filter and amp stepper Filter Envelope Velocity Time4: Verified: the instrument's temporary copy matches this sound.
+PASS Filter and amp stepper Filter Envelope Time Keyfollow: Verify
+PASS Filter and amp stepper Filter Envelope Time Keyfollow: Verified: the instrument's temporary copy matches this sound.
+PASS Filter and amp stepper Bias Level: Verify
+PASS Filter and amp stepper Bias Level: Verified: the instrument's temporary copy matches this sound.
+PASS Filter and amp stepper Pan Keyfollow: Verify
+PASS Filter and amp stepper Pan Keyfollow: Verified: the instrument's temporary copy matches this sound.
+PASS Filter and amp stepper Level Envelope Velocity Time1: Verify
+PASS Filter and amp stepper Level Envelope Velocity Time1: Verified: the instrument's temporary copy matches this sound.
+PASS Filter and amp stepper Level Envelope Velocity Time4: Verify
+PASS Filter and amp stepper Level Envelope Velocity Time4: Verified: the instrument's temporary copy matches this sound.
+PASS Filter and amp stepper Level Envelope Time Keyfollow: Verify
+PASS Filter and amp stepper Level Envelope Time Keyfollow: Verified: the instrument's temporary copy matches this sound.
+PASS LFO tab
+PASS Zones
+key map drag: dragged
+PASS Zones keyboard range drag: Verify
+PASS Zones keyboard range drag: Verified: the instrument's temporary copy matches this sound.
+PASS Structure
+structure 3-4 type: 2
+PASS Structure 3-4 type 2: Verify
+PASS Structure 3-4 type 2: Verified: the instrument's temporary copy matches this sound.
+PASS Wave and pitch for tones
+PASS Tone 1 Coarse Tune: Verify
+PASS Tone 1 Coarse Tune: Verified: the instrument's temporary copy matches this sound.
+PASS Tone 2 Coarse Tune: Verify
+PASS Tone 2 Coarse Tune: Verified: the instrument's temporary copy matches this sound.
+PASS Tone 3 Coarse Tune: Verify
+PASS Tone 3 Coarse Tune: Verified: the instrument's temporary copy matches this sound.
+PASS Tone 4 Coarse Tune: Verify
+PASS Tone 4 Coarse Tune: Verified: the instrument's temporary copy matches this sound.
+PASS Effects
+PASS EFX type 02 OVERDRIVE: Verify
+PASS EFX type 02 OVERDRIVE: Verified: the instrument's temporary copy matches this sound.
+PASS EFX type 03 DISTORTION: Verify
+PASS EFX type 03 DISTORTION: Verified: the instrument's temporary copy matches this sound.
+PASS EFX type 04 PHASER: Verify
+PASS EFX type 04 PHASER: Verified: the instrument's temporary copy matches this sound.
+GAP FILL DONE PASS=48 SKIP=0

@@ -1,0 +1,13 @@
+PASS Patch workspace
+PASS Connect
+PASS connected ("XP-60 ┬╖ ID 17 ΓÇ£Nice PianoΓÇ¥")
+PASS Bank workspace
+PASS Bank grid visible
+PASS Select on the instrument on (got "true")
+select commands: [{"command":"midi_select_sound","args":{"channel":0,"msb":80,"lsb":0,"program":0}},{"command":"midi_select_sound","args":{"channel":0,"msb":80,"lsb":0,"program":9}},{"command":"midi_select_sound","args":{"channel":0,"msb":80,"lsb":0,"program":73}},{"command":"midi_select_sound","args":{"channel":0,"msb":80,"lsb":0,"program":127}}]
+PASS at least 3 midi_select_sound (4)
+PASS USER 1 -> CC0=80 CC32=0 PC=0
+PASS USER 10 -> CC0=80 CC32=0 PC=9
+PASS USER 128 -> CC0=80 CC32=0 PC=127
+PASS no script errors
+H-070 NATIVE BANK USER SELECT PASS (preset groups via select_probe; owner LCD remains)

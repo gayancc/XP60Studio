@@ -1,0 +1,405 @@
+PASS connected
+PASS fetched
+PASS baseline
+PASS Wave and pitch
+PASS tab Zones
+Zones: 4 data-param hosts
+PASS tone1:velocity_cross_fade
+PASS tone2:velocity_cross_fade
+PASS tone3:velocity_cross_fade
+PASS tone4:velocity_cross_fade
+PASS tab Wave and pitch
+Wave and pitch: 80 data-param hosts
+PASS tone1:wave_group_type
+PASS tone1:wave_group_id
+PASS tone1:wave_number
+PASS tone1:wave_gain
+PASS tone1:fxm_switch
+PASS tone1:fxm_color
+PASS tone1:fxm_depth
+PASS tone1:tone_delay_time
+PASS tone1:coarse_tune
+PASS tone1:fine_tune
+PASS tone1:random_pitch_depth
+PASS tone1:pitch_keyfollow
+PASS tone1:pitch_lfo1_depth
+PASS tone1:pitch_lfo2_depth
+PASS tone1:pitch_envelope_depth
+PASS tone1:pitch_envelope_velocity_sens
+PASS tone1:pitch_envelope_velocity_time1
+PASS tone1:pitch_envelope_velocity_time4
+PASS tone1:pitch_envelope_time_keyfollow
+PASS tone2:wave_group_type
+PASS tone2:wave_group_id
+PASS tone2:wave_number
+PASS tone2:wave_gain
+PASS tone2:fxm_switch
+PASS tone2:fxm_color
+PASS tone2:fxm_depth
+PASS tone2:tone_delay_time
+PASS tone2:coarse_tune
+PASS tone2:fine_tune
+PASS tone2:random_pitch_depth
+PASS tone2:pitch_keyfollow
+PASS tone2:pitch_lfo1_depth
+PASS tone2:pitch_lfo2_depth
+PASS tone2:pitch_envelope_depth
+PASS tone2:pitch_envelope_velocity_sens
+PASS tone2:pitch_envelope_velocity_time1
+PASS tone2:pitch_envelope_velocity_time4
+PASS tone2:pitch_envelope_time_keyfollow
+PASS tone3:wave_group_type
+PASS tone3:wave_group_id
+PASS tone3:wave_number
+PASS tone3:wave_gain
+PASS tone3:fxm_switch
+PASS tone3:fxm_color
+PASS tone3:fxm_depth
+PASS tone3:tone_delay_time
+PASS tone3:coarse_tune
+PASS tone3:fine_tune
+PASS tone3:random_pitch_depth
+PASS tone3:pitch_keyfollow
+PASS tone3:pitch_lfo1_depth
+PASS tone3:pitch_lfo2_depth
+PASS tone3:pitch_envelope_depth
+PASS tone3:pitch_envelope_velocity_sens
+PASS tone3:pitch_envelope_velocity_time1
+PASS tone3:pitch_envelope_velocity_time4
+PASS tone3:pitch_envelope_time_keyfollow
+PASS tone4:wave_group_type
+PASS tone4:wave_group_id
+PASS tone4:wave_number
+PASS tone4:wave_gain
+PASS tone4:fxm_switch
+PASS tone4:fxm_color
+PASS tone4:fxm_depth
+PASS tone4:tone_delay_time
+PASS tone4:coarse_tune
+PASS tone4:fine_tune
+PASS tone4:random_pitch_depth
+PASS tone4:pitch_keyfollow
+PASS tone4:pitch_lfo1_depth
+PASS tone4:pitch_lfo2_depth
+PASS tone4:pitch_envelope_depth
+PASS tone4:pitch_envelope_velocity_sens
+PASS tone4:pitch_envelope_velocity_time1
+PASS tone4:pitch_envelope_velocity_time4
+PASS tone4:pitch_envelope_time_keyfollow
+PASS tab Filter and amp
+Filter and amp: 112 data-param hosts
+PASS tone1:filter_type
+PASS tone1:cutoff_frequency
+PASS tone1:cutoff_keyfollow
+PASS tone1:resonance
+PASS tone1:resonance_velocity_sens
+PASS tone1:filter_lfo1_depth
+PASS tone1:filter_lfo2_depth
+PASS tone1:filter_envelope_depth
+PASS tone1:filter_envelope_velocity_curve
+PASS tone1:filter_envelope_velocity_sens
+PASS tone1:filter_envelope_velocity_time1
+PASS tone1:filter_envelope_velocity_time4
+PASS tone1:filter_envelope_time_keyfollow
+PASS tone1:bias_direction
+PASS tone1:bias_position
+PASS tone1:bias_level
+PASS tone1:level_lfo1_depth
+PASS tone1:level_lfo2_depth
+PASS tone1:pan_keyfollow
+PASS tone1:random_pan_depth
+PASS tone1:alternate_pan_depth
+PASS tone1:pan_lfo1_depth
+PASS tone1:pan_lfo2_depth
+PASS tone1:level_envelope_velocity_curve
+PASS tone1:level_envelope_velocity_sens
+PASS tone1:level_envelope_velocity_time1
+PASS tone1:level_envelope_velocity_time4
+PASS tone1:level_envelope_time_keyfollow
+PASS tone2:filter_type
+PASS tone2:cutoff_frequency
+PASS tone2:cutoff_keyfollow
+PASS tone2:resonance
+PASS tone2:resonance_velocity_sens
+PASS tone2:filter_lfo1_depth
+PASS tone2:filter_lfo2_depth
+PASS tone2:filter_envelope_depth
+PASS tone2:filter_envelope_velocity_curve
+PASS tone2:filter_envelope_velocity_sens
+PASS tone2:filter_envelope_velocity_time1
+PASS tone2:filter_envelope_velocity_time4
+PASS tone2:filter_envelope_time_keyfollow
+PASS tone2:bias_direction
+PASS tone2:bias_position
+PASS tone2:bias_level
+PASS tone2:level_lfo1_depth
+PASS tone2:level_lfo2_depth
+PASS tone2:pan_keyfollow
+PASS tone2:random_pan_depth
+PASS tone2:alternate_pan_depth
+PASS tone2:pan_lfo1_depth
+PASS tone2:pan_lfo2_depth
+PASS tone2:level_envelope_velocity_curve
+PASS tone2:level_envelope_velocity_sens
+PASS tone2:level_envelope_velocity_time1
+PASS tone2:level_envelope_velocity_time4
+SKIP tone2:level_envelope_time_keyfollow (no-control)
+PASS tone3:filter_type
+PASS tone3:cutoff_frequency
+PASS tone3:cutoff_keyfollow
+PASS tone3:resonance
+PASS tone3:resonance_velocity_sens
+PASS tone3:filter_lfo1_depth
+PASS tone3:filter_lfo2_depth
+PASS tone3:filter_envelope_depth
+PASS tone3:filter_envelope_velocity_curve
+PASS tone3:filter_envelope_velocity_sens
+PASS tone3:filter_envelope_velocity_time1
+PASS tone3:filter_envelope_velocity_time4
+PASS tone3:filter_envelope_time_keyfollow
+PASS tone3:bias_direction
+PASS tone3:bias_position
+PASS tone3:bias_level
+PASS tone3:level_lfo1_depth
+PASS tone3:level_lfo2_depth
+PASS tone3:pan_keyfollow
+PASS tone3:random_pan_depth
+PASS tone3:alternate_pan_depth
+PASS tone3:pan_lfo1_depth
+PASS tone3:pan_lfo2_depth
+PASS tone3:level_envelope_velocity_curve
+PASS tone3:level_envelope_velocity_sens
+PASS tone3:level_envelope_velocity_time1
+PASS tone3:level_envelope_velocity_time4
+PASS tone3:level_envelope_time_keyfollow
+PASS tone4:filter_type
+PASS tone4:cutoff_frequency
+PASS tone4:cutoff_keyfollow
+PASS tone4:resonance
+PASS tone4:resonance_velocity_sens
+PASS tone4:filter_lfo1_depth
+PASS tone4:filter_lfo2_depth
+PASS tone4:filter_envelope_depth
+PASS tone4:filter_envelope_velocity_curve
+PASS tone4:filter_envelope_velocity_sens
+PASS tone4:filter_envelope_velocity_time1
+PASS tone4:filter_envelope_velocity_time4
+PASS tone4:filter_envelope_time_keyfollow
+PASS tone4:bias_direction
+PASS tone4:bias_position
+PASS tone4:bias_level
+PASS tone4:level_lfo1_depth
+PASS tone4:level_lfo2_depth
+PASS tone4:pan_keyfollow
+PASS tone4:random_pan_depth
+PASS tone4:alternate_pan_depth
+PASS tone4:pan_lfo1_depth
+PASS tone4:pan_lfo2_depth
+PASS tone4:level_envelope_velocity_curve
+PASS tone4:level_envelope_velocity_sens
+PASS tone4:level_envelope_velocity_time1
+PASS tone4:level_envelope_velocity_time4
+PASS tone4:level_envelope_time_keyfollow
+PASS tab LFO and modulation
+LFO and modulation: 180 data-param hosts
+PASS tone1:lfo1_key_trigger
+PASS tone1:lfo1_rate
+PASS tone1:lfo1_offset
+PASS tone1:lfo1_external_sync
+PASS tone1:lfo1_fade_mode
+PASS tone1:lfo1_delay_time
+PASS tone1:lfo1_fade_time
+PASS tone1:lfo2_key_trigger
+PASS tone1:lfo2_rate
+PASS tone1:lfo2_offset
+PASS tone1:lfo2_external_sync
+PASS tone1:lfo2_fade_mode
+PASS tone1:lfo2_delay_time
+PASS tone1:lfo2_fade_time
+PASS tone1:redamper_control_switch
+PASS tone1:volume_control_switch
+PASS tone1:hold_1_control_switch
+PASS tone1:bender_control_switch
+PASS tone1:controller_1_depth_1
+PASS tone1:controller_1_depth_2
+PASS tone1:controller_1_depth_3
+PASS tone1:controller_1_depth_4
+PASS tone1:controller_2_depth_1
+PASS tone1:controller_2_depth_2
+PASS tone1:controller_2_depth_3
+PASS tone1:controller_2_depth_4
+PASS tone1:controller_3_depth_1
+PASS tone1:controller_3_depth_2
+PASS tone1:controller_3_depth_3
+PASS tone1:controller_3_depth_4
+PASS tone2:lfo1_key_trigger
+PASS tone2:lfo1_rate
+PASS tone2:lfo1_offset
+PASS tone2:lfo1_external_sync
+PASS tone2:lfo1_fade_mode
+PASS tone2:lfo1_delay_time
+PASS tone2:lfo1_fade_time
+PASS tone2:lfo2_key_trigger
+PASS tone2:lfo2_rate
+PASS tone2:lfo2_offset
+PASS tone2:lfo2_external_sync
+PASS tone2:lfo2_fade_mode
+PASS tone2:lfo2_delay_time
+PASS tone2:lfo2_fade_time
+PASS tone2:redamper_control_switch
+PASS tone2:volume_control_switch
+PASS tone2:hold_1_control_switch
+PASS tone2:bender_control_switch
+PASS tone2:controller_1_depth_1
+PASS tone2:controller_1_depth_2
+PASS tone2:controller_1_depth_3
+PASS tone2:controller_1_depth_4
+PASS tone2:controller_2_depth_1
+PASS tone2:controller_2_depth_2
+PASS tone2:controller_2_depth_3
+PASS tone2:controller_2_depth_4
+PASS tone2:controller_3_depth_1
+PASS tone2:controller_3_depth_2
+PASS tone2:controller_3_depth_3
+PASS tone2:controller_3_depth_4
+PASS tone3:lfo1_key_trigger
+PASS tone3:lfo1_rate
+PASS tone3:lfo1_offset
+PASS tone3:lfo1_external_sync
+PASS tone3:lfo1_fade_mode
+PASS tone3:lfo1_delay_time
+PASS tone3:lfo1_fade_time
+PASS tone3:lfo2_key_trigger
+PASS tone3:lfo2_rate
+PASS tone3:lfo2_offset
+PASS tone3:lfo2_external_sync
+PASS tone3:lfo2_fade_mode
+PASS tone3:lfo2_delay_time
+PASS tone3:lfo2_fade_time
+PASS tone3:redamper_control_switch
+PASS tone3:volume_control_switch
+PASS tone3:hold_1_control_switch
+PASS tone3:bender_control_switch
+PASS tone3:controller_1_depth_1
+PASS tone3:controller_1_depth_2
+PASS tone3:controller_1_depth_3
+PASS tone3:controller_1_depth_4
+PASS tone3:controller_2_depth_1
+PASS tone3:controller_2_depth_2
+PASS tone3:controller_2_depth_3
+PASS tone3:controller_2_depth_4
+PASS tone3:controller_3_depth_1
+PASS tone3:controller_3_depth_2
+PASS tone3:controller_3_depth_3
+PASS tone3:controller_3_depth_4
+PASS tone4:lfo1_key_trigger
+PASS tone4:lfo1_rate
+PASS tone4:lfo1_offset
+PASS tone4:lfo1_external_sync
+PASS tone4:lfo1_fade_mode
+PASS tone4:lfo1_delay_time
+PASS tone4:lfo1_fade_time
+PASS tone4:lfo2_key_trigger
+PASS tone4:lfo2_rate
+PASS tone4:lfo2_offset
+PASS tone4:lfo2_external_sync
+PASS tone4:lfo2_fade_mode
+PASS tone4:lfo2_delay_time
+PASS tone4:lfo2_fade_time
+PASS tone4:redamper_control_switch
+PASS tone4:volume_control_switch
+PASS tone4:hold_1_control_switch
+PASS tone4:bender_control_switch
+PASS tone4:controller_1_depth_1
+PASS tone4:controller_1_depth_2
+PASS tone4:controller_1_depth_3
+PASS tone4:controller_1_depth_4
+PASS tone4:controller_2_depth_1
+PASS tone4:controller_2_depth_2
+PASS tone4:controller_2_depth_3
+PASS tone4:controller_2_depth_4
+PASS tone4:controller_3_depth_1
+PASS tone4:controller_3_depth_2
+PASS tone4:controller_3_depth_3
+PASS tone4:controller_3_depth_4
+PASS tab Patch
+Patch: 180 data-param hosts
+PASS tab Structure
+Structure: 3 data-param hosts
+PASS common:velocity_range_switch
+PASS common:booster_1_2
+PASS common:booster_3_4
+PASS tab Routing
+Routing: 16 data-param hosts
+PASS tone1:output_assign
+PASS tone1:mix_efx_send_level
+PASS tone1:chorus_send_level
+PASS tone1:reverb_send_level
+PASS tone2:output_assign
+PASS tone2:mix_efx_send_level
+PASS tone2:chorus_send_level
+PASS tone2:reverb_send_level
+PASS tone3:output_assign
+PASS tone3:mix_efx_send_level
+PASS tone3:chorus_send_level
+PASS tone3:reverb_send_level
+PASS tone4:output_assign
+PASS tone4:mix_efx_send_level
+PASS tone4:chorus_send_level
+PASS tone4:reverb_send_level
+PASS tab Effects
+Effects: 20 data-param hosts
+PASS common:efx_output_assign
+PASS common:efx_mix_out_send_level
+PASS common:efx_chorus_send_level
+PASS common:efx_reverb_send_level
+PASS common:efx_control_depth_1
+PASS common:efx_control_depth_2
+PASS common:efx_control_hold_peak
+PASS common:chorus_level
+PASS common:chorus_rate
+PASS common:chorus_depth
+PASS common:chorus_pre_delay
+PASS common:chorus_feedback
+PASS common:chorus_output
+PASS common:reverb_level
+PASS common:reverb_time
+PASS common:delay_feedback
+PASS Patch for name
+patch name set: false
+PASS tone1:tone_switch
+PASS tone2:tone_switch
+PASS tone3:tone_switch
+PASS tone4:tone_switch
+PASS wave tab
+PASS tone1:wave_identity
+PASS Structure
+PASS structure:Tones 1 and 2
+PASS structure:Tones 3 and 4
+PASS Wave and pitch
+PASS env:Pitch envelope Time 1 / Level 1
+PASS env:Pitch envelope Time 2 / Level 2
+PASS env:Pitch envelope Time 3 / Level 3
+PASS env:Pitch envelope Time 4 / Level 4
+PASS env:Pitch Envelope Depth
+PASS env:Pitch Envelope Velocity Sens
+PASS Filter and amp
+PASS env:Filter envelope Time 1 / Level 1
+PASS env:Filter envelope Time 2 / Level 2
+PASS env:Filter envelope Time 3 / Level 3
+PASS env:Filter envelope Time 4 / Level 4
+PASS env:Filter Envelope Depth
+PASS env:Filter Envelope Velocity Curve
+PASS env:Filter Envelope Velocity Sens
+PASS env:Level envelope Time 1 / Level 1
+PASS env:Level envelope Time 2 / Level 2
+PASS env:Level envelope Time 3 / Level 3
+PASS env:Level envelope Time 4 (release)
+PASS env:Level Envelope Velocity Curve
+PASS env:Level Envelope Velocity Sens
+EXHAUSTIVE PASS keys=371
+CATALOG GAPS common=51 toneIds=45
+SKIPPED hosts=130
+MISSING COMMON: common:patch_name_1, common:patch_name_2, common:patch_name_3, common:patch_name_4, common:patch_name_5, common:patch_name_6, common:patch_name_7, common:patch_name_8, common:patch_name_9, common:patch_name_10, common:patch_name_11, common:patch_name_12, common:efx_type, common:efx_parameter_1, common:efx_parameter_2, common:efx_parameter_3, common:efx_parameter_4, common:efx_parameter_5, common:efx_parameter_6, common:efx_parameter_7, common:efx_parameter_8, common:efx_parameter_9, common:efx_parameter_10, common:efx_parameter_11, common:efx_parameter_12, common:efx_control_source_1, common:efx_control_source_2, common:reverb_type, common:reverb_hf_damp, common:patch_tempo, common:patch_level, common:patch_pan, common:analog_feel, common:bend_range_up, common:bend_range_down, common:key_assign_mode, common:solo_legato, common:portamento_switch, common:portamento_mode, common:portamento_type, common:portamento_start, common:portamento_time, common:patch_control_source_2, common:patch_control_source_3, common:control_1_hold_peak, common:control_2_hold_peak, common:control_3_hold_peak, common:octave_shift, common:stretch_tune_depth, common:voice_priority, common:clock_source
+MISSING TONE IDS: tone_delay_mode, velocity_range_lower, velocity_range_upper, keyboard_range_lower, keyboard_range_upper, pan_control_switch, controller_1_destination_1, controller_1_destination_2, controller_1_destination_3, controller_1_destination_4, controller_2_destination_1, controller_2_destination_2, controller_2_destination_3, controller_2_destination_4, controller_3_destination_1, controller_3_destination_2, controller_3_destination_3, controller_3_destination_4, lfo1_waveform, lfo2_waveform, pitch_envelope_time_1, pitch_envelope_time_2, pitch_envelope_time_3, pitch_envelope_time_4, pitch_envelope_level_1, pitch_envelope_level_2, pitch_envelope_level_3, pitch_envelope_level_4, filter_envelope_time_1, filter_envelope_time_2, filter_envelope_time_3, filter_envelope_time_4, filter_envelope_level_1, filter_envelope_level_2, filter_envelope_level_3, filter_envelope_level_4, tone_level, level_envelope_time_1, level_envelope_time_2, level_envelope_time_3, level_envelope_time_4, level_envelope_level_1, level_envelope_level_2, level_envelope_level_3, tone_pan
+EXHAUSTIVE INCOMPLETE ΓÇö gaps remain

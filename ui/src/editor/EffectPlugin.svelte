@@ -54,11 +54,14 @@
 
   function pick(n: number): void {
     if (n === stored) return;
-    // A new type starts from its own settings: the parameter slots mean something else now, so the old values must not carry over.
-    store.begin('Effects · Type');
-    store.set('common', 'efx_type', n);
-    efxDefaults(n).forEach((v, i) => store.set('common', `efx_parameter_${i + 1}`, v));
-    store.end();
+    // Type + its twelve defaults in one undo step and one whole-patch live send (type alone leaves the old slot meanings on the XP-60).
+    store.applyMany(
+      [
+        { block: 'common', id: 'efx_type', value: n },
+        ...efxDefaults(n).map((value, i) => ({ block: 'common' as const, id: `efx_parameter_${i + 1}`, value })),
+      ],
+      'Effects · Type',
+    );
   }
 
   const put = (p: EfxParam, v: number): void => store.set('common', `efx_parameter_${p.index}`, v);

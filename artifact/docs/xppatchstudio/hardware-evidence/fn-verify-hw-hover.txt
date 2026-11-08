@@ -1,0 +1,14 @@
+PASS starting temporary patch fetched
+Starting temp name: Nice Piano
+PASS Library workspace opens
+PASS distinct stored patch available (visible 119)
+PASS preview target differs from starting temporary patch
+PASS Hear on hover switched on
+PASS Hear on hover visibly ON
+PASS target row 'Brass' is visible
+PASS hovered stored patch reached temporary memory exactly
+PASS safe pointer-leave location found
+PASS leaving row restores every original temporary-patch byte
+PASS Hear on hover switched back off
+PASS no script errors during hover preview
+HOVER PREVIEW PASSED; independent User-memory comparison still required

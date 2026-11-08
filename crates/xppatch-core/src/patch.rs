@@ -104,13 +104,20 @@ fn offsets() -> [u32; 5] {
 }
 
 impl Patch {
-    /// A patch with every parameter at its minimum.
+    /// A codec template with every parameter at its minimum. This is not the XP-60's panel Initialize result.
     pub fn init() -> Patch {
         let (c, t) = defs();
         Patch {
             common: BlockBuf::init(c),
             tones: std::array::from_fn(|_| BlockBuf::init(t)),
         }
+    }
+
+    /// The XP-60 Patch Initialize / DEFAULT result, captured twice from a physical XP-60.
+    /// Use this for a hardware-matching starting sound; keep [`Patch::init`] for codec fill-ins.
+    pub fn xp60_default() -> Patch {
+        Patch::from_blocks(include_bytes!("../data/xp60-init-patch.blocks"))
+            .expect("embedded XP-60 Initialize patch has five complete blocks")
     }
 
     /// Bytes in the flat form: Common (73) then Tone 1 to 4 (129 each).
@@ -463,5 +470,13 @@ mod tests {
         let mut long = bytes;
         long.push(0);
         assert!(Patch::from_blocks(&long).is_err());
+    }
+
+    #[test]
+    fn xp60_default_is_the_captured_panel_initialize_patch() {
+        let patch = Patch::xp60_default();
+        assert_eq!(patch.name().trim_end(), "INIT PATCH");
+        assert_eq!(patch.to_blocks(), include_bytes!("../data/xp60-init-patch.blocks"));
+        assert!(patch.validate().is_empty());
     }
 }

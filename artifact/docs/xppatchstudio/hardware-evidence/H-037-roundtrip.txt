@@ -1,0 +1,17 @@
+PREWRITE FULL BANK BACKUP: D:\Codes\XP60Studio\target\hardware-acceptance\2026-11-07-codex\library-bank-roundtrip-retry\1794077452-library-roundtrip-prewrite-user-bank.syx (88064 bytes)
+Library export send report: BankWriteReport { written: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], stopped_at: None, cancelled: false }
+LIBRARY EXPORT VERIFIED: ten exported positions match; all other User slots unchanged
+User slot 87 first read failed (no complete reply after 3 attempt(s); missing blocks at 11 56 00 00); retrying independently
+Slots different from backup before restoration (one-based): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+Restored User slot 1 from the full-bank .syx backup
+Restored User slot 2 from the full-bank .syx backup
+Restored User slot 3 from the full-bank .syx backup
+Restored User slot 4 from the full-bank .syx backup
+Restored User slot 5 from the full-bank .syx backup
+Restored User slot 6 from the full-bank .syx backup
+Restored User slot 7 from the full-bank .syx backup
+Restored User slot 8 from the full-bank .syx backup
+Restored User slot 9 from the full-bank .syx backup
+Restored User slot 10 from the full-bank .syx backup
+FULL USER BANK RESTORE VERIFIED: all 128 slots equal backup
+LIBRARY EXPORT AND FULL-BANK BACKUP ROUNDTRIP PASSED

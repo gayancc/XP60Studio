@@ -1,0 +1,12 @@
+2026-11-07 — after the H-018/H-038 Through-ON checks, owner turned Through and both Protect options OFF and restarted the XP-60. WIDI/FCB1010 probe answered at device ID 17. Keyboard restart loaded User 128 'C-Z  Flute' into temporary memory.
+
+restore_temp sent saved original session temporary patch 'Jimmee Dee' from target/hardware-acceptance/2026-11-07-codex/temp-patch.blocks and independently read back every byte equal. Previous temporary bytes saved to target/hardware-acceptance/2026-11-07-codex/temp-before-h038-final-restore.blocks.
+
+Separate verify_snapshot read:
+  User slots different from snapshot (zero-based): []
+  Performance: 32 User documents match snapshot
+  Rhythm: 2 User documents match snapshot
+  System settings match snapshot
+  SNAPSHOT VERIFICATION PASSED
+
+Source full backup: target/hardware-acceptance/2026-11-07-codex/1794068291-hardware-session-full-backup.syx. The verifier compared the full temporary patch to saved Jimmee Dee as its last check. No User memory write was sent in H-018 or H-038 after the owner-approved pretest reset.

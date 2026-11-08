@@ -1,0 +1,4 @@
+Run 2026-11-07, PERMANENT part, step 1 (example perm_session): User slot 128 only, with User Memory Protect off. A full backup of User patches, performances, rhythm sets and System settings was read and saved first (in the app's backups folder); slot 128 was read, a test patch "HW TEST 128" was written and read back, then the original was written back and read back. Ports "FCB1010 IN" / "FCB1010 OUT", device ID 0x10.
+
+restored the backup into slot 128: 9 messages, verified true
+slot 128 now: 'Jimmee Dee', equal to the original: true

@@ -24,6 +24,13 @@
 
   let { block, color, part }: Props = $props();
   const store = useStore();
+  /**
+   * Path identity for this mount (Patch Base SynthPath prefix). Captured once so children keep writing the Tone this
+   * panel was opened for even if a parent briefly rebinds `block` without remounting. Selected-Tone view remounts via
+   * `{#key block}` so a new mount always gets the correct path.
+   */
+  // svelte-ignore state_referenced_locally -- intentional SynthPath freeze for this mount
+  const path = block;
 
   const specOf = (key: EnvelopeSpec['key']): EnvelopeSpec => ENVELOPES.find((e) => e.key === key) as EnvelopeSpec;
 
@@ -43,34 +50,34 @@
 {#snippet section(p: TonePart)}
   {#if p === 'wave'}
     <GroupFrame title="Wave" {color}>
-      {#each waveIds as id (id)}<ParamControl {block} {id} {color} />{/each}
+      {#each waveIds as id (`${path}:${id}`)}<ParamControl block={path} {id} {color} />{/each}
     </GroupFrame>
   {:else if p === 'pitch'}
     <GroupFrame title="Pitch" {color}>
-      {#each pitch as id (id)}<ParamControl {block} {id} {color} />{/each}
-      <EnvelopeSection spec={specOf('pitch')} {block} {color} />
+      {#each pitch as id (`${path}:${id}`)}<ParamControl block={path} {id} {color} />{/each}
+      <EnvelopeSection spec={specOf('pitch')} block={path} {color} />
     </GroupFrame>
   {:else if p === 'tvf'}
     <GroupFrame title="TVF (filter)" {color}>
-      {#each tvf as id (id)}<ParamControl {block} {id} {color} />{/each}
-      <EnvelopeSection spec={specOf('tvf')} {block} {color} />
+      {#each tvf as id (`${path}:${id}`)}<ParamControl block={path} {id} {color} />{/each}
+      <EnvelopeSection spec={specOf('tvf')} block={path} {color} />
     </GroupFrame>
   {:else if p === 'tva'}
     <GroupFrame title="TVA (level and pan)" {color}>
-      {#each tva as id (id)}<ParamControl {block} {id} {color} />{/each}
-      <EnvelopeSection spec={specOf('tva')} {block} {color} />
+      {#each tva as id (`${path}:${id}`)}<ParamControl block={path} {id} {color} />{/each}
+      <EnvelopeSection spec={specOf('tva')} block={path} {color} />
     </GroupFrame>
   {:else if p === 'lfo'}
-    <LfoSection {block} lfo={1} {color} />
-    <LfoSection {block} lfo={2} {color} />
+    <LfoSection block={path} lfo={1} {color} />
+    <LfoSection block={path} lfo={2} {color} />
   {:else}
     <GroupFrame title="Output" {color}>
-      {#each outputIds as id (id)}<ParamControl {block} {id} {color} />{/each}
+      {#each outputIds as id (`${path}:${id}`)}<ParamControl block={path} {id} {color} />{/each}
     </GroupFrame>
   {/if}
 {/snippet}
 
-<div class="tone" class:stack={part === 'wavepitch' || part === 'lfomod'} style:--tone={color}>
+<div class="tone" class:stack={part === 'wavepitch' || part === 'lfomod'} style:--tone={color} data-tone-path={path}>
   {#if part === 'wavepitch'}
     {@render section('wave')}
     {@render section('pitch')}
@@ -79,7 +86,7 @@
     {@render section('tva')}
   {:else if part === 'lfomod'}
     <div class="pair">{@render section('lfo')}</div>
-    <ControllerMatrix {block} {color} />
+    <ControllerMatrix block={path} {color} />
   {:else}
     {@render section(part)}
   {/if}

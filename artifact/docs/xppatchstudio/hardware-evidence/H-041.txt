@@ -1,0 +1,5 @@
+Run 2026-11-07, read-only (RQ1 data requests and one MIDI Identity Request; nothing was written), ports "FCB1010 IN" / "FCB1010 OUT", device ID 0x10 (17).
+
+user rhythm sets: 2 read, 0 range issues, 6.4981656s
+  rhythm 1: HouseDrumSet
+  rhythm 2: JazzDrumSet1

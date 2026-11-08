@@ -1,0 +1,24 @@
+2026-11-07 — H-037 Library export received by the instrument
+
+Native Library export (hw-library-export-ten.mjs):
+- Search "Brass" showed ten patches; Export shown saved
+  target/hardware-acceptance/2026-11-07-codex/library-ten-export/xppatch-library-bank.syx
+- File decodes as ten User patches in slots 1-10
+
+Instrument roundtrip (library_export_roundtrip, Protect OFF assumed from prior owner setting):
+1. First attempt (Codex): ten slots written and verified; restore aborted when plan_user_bank
+   could not read User patch 66 (missing block 11 41 12 00). recover_library_ten then restored
+   slots 1-10 and independently verified them equal to the prewrite full-bank backup.
+2. Retry with per-slot restore and one independent retry on flaky reads:
+   PREWRITE FULL BANK BACKUP
+   1794077452-library-roundtrip-prewrite-user-bank.syx (88064 bytes)
+   Library export send wrote slots 0..9; verified ten positions; other User slots unchanged.
+   User slot 87 first read failed once (missing 11 56 00 00) and succeeded on retry.
+   Restored slots 1-10; full User bank read equalled the prewrite backup.
+   LIBRARY EXPORT AND FULL-BANK BACKUP ROUNDTRIP PASSED
+   Evidence log: target/hardware-acceptance/2026-11-07-codex/library-bank-roundtrip-retry.txt
+
+Independent snapshot check after earlier interrupted attempt: User 128 patches, 32 performances
+and 2 rhythm sets equalled the session full backup. System differed only in panel-state fields
+(see system-diff-vs-session.txt): patch_group_id, patch_number, chorus_switch. Master Tune and
+Scale Tune matched the H-065 System backup except chorus_switch (live 0, backup 1).

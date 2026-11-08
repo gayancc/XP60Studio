@@ -19,6 +19,17 @@ export interface Connected {
   patch_name: string;
 }
 
+/** Secondary controller → XP-60 voice pass-through. */
+export interface ThruStatus {
+  active: boolean;
+  input: string | null;
+  enabled: boolean;
+  held: boolean;
+  filter_realtime: boolean;
+  /** `null` keeps the controller channel; `0..15` remaps to that audition channel. */
+  target_channel: number | null;
+}
+
 /** Sends live-edit frames through Rust. Frames are only accepted while connected. */
 export class TauriTransport implements LiveTransport {
   readonly label = 'XP-60';
@@ -48,8 +59,24 @@ function message(e: unknown): string {
 
 export class SynthService {
   ports = $state<Ports>({ inputs: [], outputs: [] });
+  /** Connection choices belong to the shared service, so reopening a menu or workspace cannot reset them. */
+  input = $state('');
+  output = $state('');
+  device = $state(16);
   info = $state<Connected | null>(null);
   busy = $state(false);
+  /** Secondary MIDI controller input for live audition pass-through. */
+  thruInput = $state('');
+  /** `null` = forward on the controller's channel; `0..15` = remap. */
+  thruChannel = $state<number | null>(null);
+  thru = $state<ThruStatus>({
+    active: false,
+    input: null,
+    enabled: false,
+    held: false,
+    filter_realtime: true,
+    target_channel: null,
+  });
   #error = $state('');
   get error(): string {
     return this.#error;
@@ -104,6 +131,10 @@ export class SynthService {
   async refreshPorts(): Promise<void> {
     try {
       this.ports = await invoke<Ports>('midi_ports');
+      // Remember names rather than positions: discovery can reorder ports or temporarily lose one.
+      if (!this.input) this.input = this.ports.inputs[0] ?? '';
+      if (!this.output) this.output = this.ports.outputs[0] ?? '';
+      if (!this.thruInput) this.thruInput = this.controllerInputs()[0] ?? '';
       this.error = '';
     } catch (e) {
       this.error = message(e);
@@ -111,10 +142,21 @@ export class SynthService {
   }
 
   async connect(input: string, output: string, device: number): Promise<void> {
+    this.input = input;
+    this.output = output;
+    this.device = device;
     this.busy = true;
     try {
       this.info = await invoke<Connected>('midi_connect', { input, output, device });
       this.transport.setConnected(true);
+      this.thru = {
+        active: false,
+        input: null,
+        enabled: false,
+        held: false,
+        filter_realtime: true,
+        target_channel: null,
+      };
       this.error = '';
     } catch (e) {
       this.info = null;
@@ -133,8 +175,74 @@ export class SynthService {
       this.error = message(e);
     } finally {
       this.info = null;
+      this.thru = {
+        active: false,
+        input: null,
+        enabled: false,
+        held: false,
+        filter_realtime: true,
+        target_channel: null,
+      };
       this.transport.setConnected(false);
       this.notify();
+    }
+  }
+
+  /** Inputs that are not the connected XP-60 input (Windows cannot open the same port twice). */
+  controllerInputs(): string[] {
+    const primary = this.input.toLowerCase();
+    return this.ports.inputs.filter((p) => {
+      const n = p.toLowerCase();
+      return !primary || (!n.includes(primary) && !primary.includes(n));
+    });
+  }
+
+  async startThru(): Promise<void> {
+    if (!this.connected || !this.thruInput) return;
+    try {
+      this.thru = await invoke<ThruStatus>('midi_thru_start', {
+        input: this.thruInput,
+        targetChannel: this.thruChannel,
+        filterRealtime: true,
+      });
+      this.error = '';
+      this.say(`Controller thru: ${this.thru.input ?? this.thruInput}`);
+    } catch (e) {
+      this.error = message(e);
+    }
+  }
+
+  async stopThru(): Promise<void> {
+    try {
+      this.thru = await invoke<ThruStatus>('midi_thru_stop');
+      this.error = '';
+    } catch (e) {
+      this.error = message(e);
+    }
+  }
+
+  async setThruEnabled(on: boolean): Promise<void> {
+    if (!this.thru.active) {
+      if (on) await this.startThru();
+      return;
+    }
+    try {
+      this.thru = await invoke<ThruStatus>('midi_thru_configure', { enabled: on });
+    } catch (e) {
+      this.error = message(e);
+    }
+  }
+
+  async setThruChannel(channel: number | null): Promise<void> {
+    this.thruChannel = channel;
+    if (!this.thru.active) return;
+    try {
+      this.thru = await invoke<ThruStatus>('midi_thru_configure', {
+        setTarget: true,
+        targetChannel: channel,
+      });
+    } catch (e) {
+      this.error = message(e);
     }
   }
 

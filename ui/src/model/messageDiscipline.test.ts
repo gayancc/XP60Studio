@@ -2,12 +2,12 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-// Every error, warning, piece of information and confirmation appears in the bottom-left message stack and nowhere else. This guards the views: a message line
-// (role "alert" or "status") may only appear in the places listed here, each a different kind of thing from a message.
+// Every app message appears in the bottom hint bar. This guards the views: a message line (role "alert" or
+// "status") may only appear in the places listed here, each a different kind of thing from a queued status message.
 
 const ALLOWED: Record<string, number> = {
-  // the stack itself
-  'kit/MessageStack.svelte': 2,
+  // the status line in the hint bar (alert for errors, status for the rest)
+  'kit/HintBar.svelte': 2,
   // live readouts, not messages
   'kit/StateChip.svelte': 1,
   'kit/XpReadout.svelte': 1,
@@ -43,8 +43,14 @@ describe('where messages may appear', () => {
     for (const [file, n] of Object.entries(found)) expect(ALLOWED[file] ?? 0, `${file} draws ${n} message line(s)`).toBeGreaterThanOrEqual(n);
   });
 
-  it('keeps the stack in the bottom-left corner above the hint bar', () => {
-    const css = readFileSync('src/kit/MessageStack.svelte', 'utf8');
-    expect(css).toMatch(/position: fixed;\s*left: \d+px;\s*bottom: \d+px;/);
+  it('keeps every app message in the hint bar with no floating stack', () => {
+    expect(() => readFileSync('src/kit/MessageStack.svelte', 'utf8')).toThrow();
+    const bar = readFileSync('src/kit/HintBar.svelte', 'utf8');
+    expect(bar).toMatch(/status-msg/);
+    expect(bar).toMatch(/messages\.current/);
+    const workspace = readFileSync('src/editor/Workspace.svelte', 'utf8');
+    expect(workspace).not.toMatch(/MessageStack/);
+    const index = readFileSync('src/kit/index.ts', 'utf8');
+    expect(index).not.toMatch(/MessageStack/);
   });
 });

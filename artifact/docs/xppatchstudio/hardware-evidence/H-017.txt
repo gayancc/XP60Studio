@@ -1,0 +1,23 @@
+H-017 — 2026-11-07, Codex continuation
+Instrument XP-60, FCB1010 IN/OUT, device ID 17.
+
+Owner confirmed selecting patches during a repeated listen-only capture.
+listening for 120 s: choose patches on the keyboard's panel now
+  +38807 ms  BankSelect { channel: 0, controller: 0, value: 80 }
+  +38808 ms  BankSelect { channel: 0, controller: 32, value: 0 }
+  +38808 ms  ProgramChange { channel: 0, program: 79 }
+  +39310 ms  BankSelect { channel: 0, controller: 0, value: 80 }
+  +39310 ms  BankSelect { channel: 0, controller: 32, value: 0 }
+  +39310 ms  ProgramChange { channel: 0, program: 78 }
+  +41216 ms  BankSelect { channel: 0, controller: 0, value: 80 }
+  +41216 ms  BankSelect { channel: 0, controller: 32, value: 0 }
+  +41216 ms  ProgramChange { channel: 0, program: 72 }
+9 event(s) in 120 s; frames ignored (not ours): 0
+
+Native desktop check (ui/e2e/hw-panel.mjs): owner confirmed another panel selection during READY.
+READY: choose another patch on the instrument panel now (two-minute window).
+PASS panel change marks the app stale: STALE
+PASS refetch after panel change: Fetched "Strings" from the instrument.
+PANEL UI PASSED
+
+Result: PASS for panel Bank Select/Program Change announcement, app STALE marking, and successful refetch. The first 60-second capture saw zero events; its timing relative to the owner selection was not established and it is not treated as a failure of MIDI transmission.

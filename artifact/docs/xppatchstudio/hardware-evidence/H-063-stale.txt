@@ -1,0 +1,4 @@
+Wrote Master Tune 63 -> 64 (simulating a completed System save)
+H-063 STALE UNDO REFUSE PASS: System no longer holds the saved settings; app Undo must refuse (SynthError::SystemChanged)
+H-063 CLEANUP: System settings restored to pre-test bytes
+H-063 HARDWARE PASS (stale-undo half; SysEx stand-in for panel change after save)

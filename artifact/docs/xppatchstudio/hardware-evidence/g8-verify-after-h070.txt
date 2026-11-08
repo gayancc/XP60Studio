@@ -1,0 +1,20 @@
+2026-11-07 G8 cleanup check after H-070 work
+
+verify_snapshot vs 1794068291-hardware-session-full-backup.syx + temp-patch.blocks:
+  User slots different from snapshot (zero-based): []
+  Performance: 32 User documents match snapshot
+  Rhythm: 2 User documents match snapshot
+  System settings differ (expected panel-state; see system-diff-vs-session.txt)
+  (verify_snapshot exits before temp compare when System differs)
+
+system-diff-vs-session.txt:
+  common.patch_group_id: backup=1 live=3
+  common.patch_number: backup=127 live=3
+  common.chorus_switch: backup=1 live=0
+  (matching raw offsets 3/4/5/9)
+
+Temporary: after H-070 MIDI/UI selects, factory Nice Piano bytes matched temp-after-h037.blocks;
+session-start temp-patch.blocks is Jimmee Dee (earlier baseline). Restored Nice Piano from
+temp-after-h037.blocks; independent dump equal.
+
+Final G8 stamp still waits on owner Chorus Switch / selection preference before claiming System equal.

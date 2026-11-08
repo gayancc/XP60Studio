@@ -1,0 +1,4 @@
+Run 2026-11-07, read-only (RQ1 data requests and one MIDI Identity Request; nothing was written), ports "FCB1010 IN" / "FCB1010 OUT", device ID 0x10 (17).
+
+partial block: patch name, 12 bytes:
+  +  35 ms  23 bytes, data 12  F0 41 10 6A 12 03 00 00 00 20 20 20 20 20 ...

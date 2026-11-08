@@ -1,0 +1,22 @@
+2026-11-07 G8 cleanup check after H-059
+
+verify_snapshot vs 1794068291-hardware-session-full-backup.syx + temp-after-h037.blocks:
+  User slots different from snapshot (zero-based): []
+  Performance: 32 User documents match snapshot
+  Rhythm: 2 User documents match snapshot
+  System settings differ (expected panel-state; same family as system-diff-vs-session.txt)
+  (verify_snapshot exits before temp compare when System differs)
+
+dump_temp after H-059:
+  temp patch 'Nice Piano' → temp-now-h059.blocks
+  SHA-256 equal to temp-after-h037.blocks
+
+inspect_system_mode after H-059:
+  sound_mode: 1
+  patch_group_type: 0
+  patch_group_id: 3
+  patch_number: 3
+  receive_program_change: 1
+  receive_bank_select: 1
+
+Final G8 stamp still waits on owner Chorus Switch / selection preference before claiming System equal.

@@ -1,0 +1,13 @@
+2026-11-07 — XP-60/80 Owner's Manual p.117: [SEQUENCER] → [F1] Setup → [F6] SEQ Sys → Through. Owner set Through ON, later OFF and returned to Patch mode.
+
+With Through ON, echo_probe read baseline temporary 'Jimmee Dee', then sent a 12-byte DT1 changing Tone 1 level by one. In 94.77 ms it received one SysEx frame, exactly equal to that outbound DT1:
+  F0 41 10 6A 12 03 00 10 ...
+No other SysEx frame arrived in that capture window. The helper then attempted to resend and verify the saved temporary patch but timed out after three RQ1 attempts, missing block 03 00 12 00; helper exit code 1. No User or System write was attempted.
+
+After owner reported Through OFF and Patch mode, dump_temp still timed out after three attempts (missing 03 00 00 00); probe found no answering XP-60 device ID. Hardware path/recovery investigation pending. Do not claim H-018 verification passed or temporary patch restored after this probe.
+
+The owner clarified that the XP-60 uses a WIDI adapter rather than a direct MIDI cable. Its connection light looked normal after these timeouts. The earlier cable-seating diagnostic was inapplicable; the WIDI link is being reset and read-only probes repeated.
+
+After owner power-cycled the WIDI adapter, Windows still listed FCB1010 IN/OUT but `midir` could no longer open the Windows MM MIDI input port (`could not create Windows MM MIDI input port`) on three read-only probes. The owner then toggled Windows Bluetooth OFF/ON and the WIDI light returned to connected; the same port-open failure remained. Windows `MidiSrv` and `bthserv` service restarts were attempted without elevation and refused. No additional instrument write occurred. A PC restart is the next recovery step; final temp and snapshot verification remain pending.
+
+Windows was subsequently rebooted (system boot time 18:21:50 local), yet WinMM input opening still failed. A direct WinMM `midiInOpen` diagnostic identified device 0 `FCB1010 IN` and returned code 3, “The driver was not enabled.” Device Manager reports FCB1010 Bluetooth MIDI IN/OUT, FCB1010 Bluetooth, and KORG BLE-MIDI Device as present/OK. The Drivers32 registry has Microsoft-documented required mappings `midi=wdmaud.drv`, `midi1=wdmaud2.drv`, `midi2=korgbm64.drv`. Restart of `ROOT\MEDIA\0000` (KORG BLE-MIDI Device) via pnputil was denied without administrator rights. This is a Windows/KORG BLE MIDI port-open failure, not evidence of an XP-60 SysEx data mismatch.

@@ -1,0 +1,8 @@
+2026-11-07 — H-042 Scale Tune separate read
+
+scale_tune_probe: 17 separate RQ1 reads of 12 bytes each (parameter map size),
+addresses 00 00 10 00 onward; each block equalled the matching Scale Tune block
+from a full System fetch. Panel comparison not done.
+
+Log: scale-tune-probe.txt
+Note: an earlier attempt with size 17 timed out; 12 is the mapped block size.

@@ -1,0 +1,5 @@
+baseline temp 'Nice Piano' efx_type=0 params=[0, 15, 0, 15, 7, 1, 15, 7, 1, 15, 127, 0]
+wrote efx_type=8; read-back type=8; params=[0, 15, 0, 15, 7, 1, 15, 7, 1, 15, 127, 0]
+twelve EFX parameters unchanged after SysEx type-only write: true
+H-073 NOTE: SysEx efx_type write does not load type defaults; panel type walk remains required
+temporary patch restored

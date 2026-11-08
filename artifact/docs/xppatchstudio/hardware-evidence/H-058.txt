@@ -1,0 +1,8 @@
+temp 'Nice Piano'
+tone1: type=0 id=1 wave=3 -> INT-A wave 3
+tone2: type=0 id=1 wave=9 -> INT-A wave 9
+tone3: type=0 id=1 wave=7 -> INT-A wave 7
+tone4: type=0 id=1 wave=10 -> INT-A wave 10
+H-058 PARTIAL: live SysEx wave IDs classified with factory.ts rules (INT-A id=1, INT-B id=2, EXP type=2). Owner panel name check remains.
+
+Correction 2026-11-07: the printed `wave=3/9/7/10` values above are zero-based SysEx indices. The XP-60 LCD and app show INT-A 004/010/008/011. `wave_resolve_probe` now prints raw and one-based display numbers separately. The owner confirmed Tone 1 LCD INT-A 004 (Ac Piano2 pA); see `H-058-internal-wave-check.txt`.

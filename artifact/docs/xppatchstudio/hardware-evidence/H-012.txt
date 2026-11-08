@@ -1,0 +1,8 @@
+Run 2026-11-07, read-only (RQ1 data requests and one MIDI Identity Request; nothing was written), ports "FCB1010 IN" / "FCB1010 OUT", device ID 0x10 (17).
+
+five fetches of the temp patch, first-reply latency and the longest gap between replies:
+  run 1: 5 replies, first reply 50 ms, slowest block reply 79 ms, whole fetch 1679 ms
+  run 2: 5 replies, first reply 52 ms, slowest block reply 82 ms, whole fetch 1686 ms
+  run 3: 5 replies, first reply 68 ms, slowest block reply 76 ms, whole fetch 1711 ms
+  run 4: 5 replies, first reply 58 ms, slowest block reply 80 ms, whole fetch 1692 ms
+  run 5: 5 replies, first reply 52 ms, slowest block reply 83 ms, whole fetch 1713 ms

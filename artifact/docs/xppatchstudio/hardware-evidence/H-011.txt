@@ -1,0 +1,11 @@
+Run 2026-11-07, read-only (RQ1 data requests and one MIDI Identity Request; nothing was written), ports "FCB1010 IN" / "FCB1010 OUT", device ID 0x10 (17).
+
+two requests back to back (tone 1, then the name) without waiting for the first reply:
+  +  79 ms  140 bytes, data 129  F0 41 10 6A 12 03 00 10 00 01 00 01 00 00 ...
+  + 108 ms  23 bytes, data 12  F0 41 10 6A 12 03 00 00 00 20 20 20 20 20 ...
+
+Overlap test while the replies to a large request are still streaming (example overlap_probe):
+second request 0 ms after the first: 18 frames in all, 1 reply to the second request
+second request 100 ms after the first: 18 frames in all, 1 reply to the second request
+second request 300 ms after the first: 18 frames in all, 1 reply to the second request
+(the first request, temp performance 01 00 00 00 size 3,993, streams 17 frames; the second asks the patch name; 17 + 1 = 18)

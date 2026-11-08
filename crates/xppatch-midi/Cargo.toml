@@ -27,3 +27,91 @@ workspace = true
 [[example]]
 name = "probe"
 required-features = ["hardware"]
+
+[[example]]
+name = "read_session"
+required-features = ["hardware"]
+
+[[example]]
+name = "overlap_probe"
+required-features = ["hardware"]
+
+[[example]]
+name = "temp_session"
+required-features = ["hardware"]
+
+[[example]]
+name = "read_slots"
+required-features = ["hardware"]
+
+[[example]]
+name = "perm_session"
+required-features = ["hardware"]
+
+[[example]]
+name = "protect_probe"
+required-features = ["hardware"]
+
+[[example]]
+name = "bank_session"
+required-features = ["hardware"]
+
+[[example]]
+name = "name_probe"
+required-features = ["hardware"]
+
+[[example]]
+name = "common_probe"
+required-features = ["hardware"]
+
+[[example]]
+name = "bank_real"
+required-features = ["hardware"]
+
+[[example]]
+name = "port_probe"
+required-features = ["hardware"]
+
+[[example]]
+name = "listen"
+required-features = ["hardware"]
+
+[[example]]
+name = "dump_temp"
+required-features = ["hardware"]
+
+[[example]]
+name = "compare_bank"
+required-features = ["hardware"]
+
+[[example]]
+name = "snapshot"
+required-features = ["hardware"]
+
+[[example]]
+name = "verify_snapshot"
+required-features = ["hardware"]
+
+[[example]]
+name = "read_side_effect"
+required-features = ["hardware"]
+
+[[example]]
+name = "temp_read_probe"
+required-features = ["hardware"]
+
+[[example]]
+name = "temp_drop_probe"
+required-features = ["hardware"]
+
+[[example]]
+name = "restore_temp"
+required-features = ["hardware"]
+
+[[example]]
+name = "verify_temp_documents"
+required-features = ["hardware"]
+
+[[example]]
+name = "verify_user_patch"
+required-features = ["hardware"]

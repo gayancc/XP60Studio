@@ -1,0 +1,6 @@
+Run 2026-11-07, read-only (RQ1 data requests and one MIDI Identity Request; nothing was written), ports "FCB1010 IN" / "FCB1010 OUT", device ID 0x10 (17).
+
+RQ1 at device ID 0x11 (a wrong ID):
+  (no reply)
+RQ1 at device ID 0x10 (the right ID):
+  +  29 ms  23 bytes, data 12  F0 41 10 6A 12 03 00 00 00 20 20 20 20 20 ...

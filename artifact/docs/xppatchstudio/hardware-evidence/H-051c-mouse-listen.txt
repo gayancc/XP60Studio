@@ -1,0 +1,3 @@
+2026-11-07 — Native desktop Audition mouse listening, XP-60 via FCB1010 WIDI, Patch mode. Harness: `node ui/e2e/hw-audition-mouse-listen.mjs`, exit 0.
+
+The app connected to the XP-60 and repeatedly used trusted CDP mouse presses/releases on one key of its visible Audition piano. The owner heard XP-60 notes and confirmed that each stopped between clicks. The script sent All Notes Off at the end and reported no desktop script errors. The earlier `H-051c-mouse.txt` trace separately verified MIDI Note On/Off, velocity by click position, octave, channel change while held, and focus-blur release. Computer-key playing and Panic were owner-confirmed earlier in `H-051c.txt`. This listening test sent notes and wrote no patch or permanent memory.

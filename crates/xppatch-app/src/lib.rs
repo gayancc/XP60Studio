@@ -12,15 +12,22 @@ use synth::{
 };
 use tauri::{Emitter, Manager};
 use xppatch_library::{Filter, Library, SaveTarget};
-use xppatch_midi::hardware::{list_ports, MidirTransport};
-use xppatch_midi::CancelToken;
-use xppatch_midi::TransportError;
+use xppatch_midi::hardware::{
+    list_ports, MidiControllerPassThrough, MidirTransport, PassThroughStatus, SharedMidiOut,
+};
+use xppatch_midi::{CancelToken, PassThroughConfig, TransportError};
 
 type LiveSynth = Synth<MidirTransport>;
 
 /// The connection and the library. Commands lock them for the short time one operation takes.
 struct AppState {
     synth: Mutex<Option<LiveSynth>>,
+    /// Shared XP-60 MIDI out, kept so a secondary controller can forward without a second port open.
+    midi_out: Mutex<Option<SharedMidiOut>>,
+    /// Primary instrument input name from the last successful connect (for thru port conflict checks).
+    synth_input: Mutex<Option<String>>,
+    /// Optional secondary keyboard → instrument voice pass-through.
+    thru: Mutex<Option<MidiControllerPassThrough>>,
     /// Cancels the long operation in progress (bank read or write). A fresh one is made for each operation.
     cancel: Mutex<CancelToken>,
     /// A long operation (bank read or write) is running; other instrument commands are refused meanwhile instead of
@@ -33,6 +40,9 @@ impl Default for AppState {
     fn default() -> Self {
         AppState {
             synth: Mutex::new(None),
+            midi_out: Mutex::new(None),
+            synth_input: Mutex::new(None),
+            thru: Mutex::new(None),
             cancel: Mutex::new(CancelToken::new()),
             busy: AtomicBool::new(false),
             library: Mutex::new(Err("the library is not open yet".to_owned())),
@@ -63,13 +73,23 @@ fn with_synth<R>(
 }
 
 /// Marks a long operation as running and gives it a fresh cancel token; clears the mark when dropped.
+/// While held, controller pass-through is paused so voice messages cannot contend with bank SysEx.
 struct LongOp<'a> {
     busy: &'a AtomicBool,
+    thru: &'a Mutex<Option<MidiControllerPassThrough>>,
     pub cancel: CancelToken,
 }
 
 impl Drop for LongOp<'_> {
     fn drop(&mut self) {
+        if let Some(thru) = self
+            .thru
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .as_ref()
+        {
+            thru.set_hold(false);
+        }
         self.busy.store(false, Ordering::SeqCst);
     }
 }
@@ -86,10 +106,30 @@ fn begin_long<'a>(state: &'a tauri::State<'_, AppState>) -> Result<LongOp<'a>, S
         .cancel
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner) = cancel.clone();
+    if let Some(thru) = state
+        .thru
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .as_ref()
+    {
+        thru.set_hold(true);
+    }
     Ok(LongOp {
         busy: &state.busy,
+        thru: &state.thru,
         cancel,
     })
+}
+
+fn clear_thru(state: &AppState) {
+    if let Some(mut thru) = state
+        .thru
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .take()
+    {
+        thru.shutdown();
+    }
 }
 
 #[derive(Serialize)]
@@ -115,7 +155,23 @@ fn midi_connect(
     output: String,
     device: u8,
 ) -> Result<Connected, String> {
+    if state.busy.load(Ordering::SeqCst) {
+        return Err(SynthError::Busy.to_string());
+    }
     // Windows MIDI ports are exclusive: let go of any previous connection before opening the ports again.
+    clear_thru(&state);
+    if let Some(out) = state
+        .midi_out
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .take()
+    {
+        out.close();
+    }
+    *state
+        .synth_input
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner) = None;
     drop(
         state
             .synth
@@ -124,7 +180,17 @@ fn midi_connect(
             .take(),
     );
     let port = MidirTransport::connect(&input, &output).map_err(|e| e.to_string())?;
+    let resolved_in = port.input_name.clone();
+    let shared = port.shared_output();
     let (synth, info) = Synth::connect(port, device).map_err(|e| e.to_string())?;
+    *state
+        .midi_out
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(shared);
+    *state
+        .synth_input
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(resolved_in);
     *state
         .synth
         .lock()
@@ -137,11 +203,173 @@ fn midi_disconnect(state: tauri::State<'_, AppState>) -> Result<(), String> {
     if state.busy.load(Ordering::SeqCst) {
         return Err(SynthError::Busy.to_string());
     }
+    clear_thru(&state);
+    if let Some(out) = state
+        .midi_out
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .take()
+    {
+        out.close();
+    }
+    *state
+        .synth_input
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner) = None;
     *state
         .synth
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner) = None;
     Ok(())
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+struct ThruStatus {
+    active: bool,
+    input: Option<String>,
+    enabled: bool,
+    held: bool,
+    filter_realtime: bool,
+    /// `None` = original controller channel; `Some(0..=15)` = remapped.
+    target_channel: Option<u8>,
+}
+
+impl ThruStatus {
+    fn inactive() -> Self {
+        Self {
+            active: false,
+            input: None,
+            enabled: false,
+            held: false,
+            filter_realtime: true,
+            target_channel: None,
+        }
+    }
+
+    fn from_live(s: PassThroughStatus) -> Self {
+        Self {
+            active: true,
+            input: Some(s.input),
+            enabled: s.enabled,
+            held: s.held,
+            filter_realtime: s.filter_realtime,
+            target_channel: s.target_channel,
+        }
+    }
+}
+
+/// Open a secondary controller input and forward channel-voice messages to the connected XP-60 output.
+#[tauri::command(async)]
+fn midi_thru_start(
+    state: tauri::State<'_, AppState>,
+    input: String,
+    target_channel: Option<u8>,
+    filter_realtime: Option<bool>,
+) -> Result<ThruStatus, String> {
+    if state.busy.load(Ordering::SeqCst) {
+        return Err(SynthError::Busy.to_string());
+    }
+    let out = state
+        .midi_out
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .clone()
+        .ok_or_else(|| SynthError::NotConnected.to_string())?;
+    if let Some(primary) = state
+        .synth_input
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .as_ref()
+    {
+        let a = primary.to_lowercase();
+        let b = input.to_lowercase();
+        // Exact match on the resolved primary name, or a substring that would pick the same port.
+        if a == b || a.contains(&b) || b.contains(&a) {
+            return Err(
+                "controller pass-through needs a different MIDI input from the XP-60 connection"
+                    .into(),
+            );
+        }
+    }
+    let config = PassThroughConfig {
+        target_channel,
+        filter_realtime: filter_realtime.unwrap_or(true),
+    };
+    if let Some(ch) = config.target_channel {
+        if ch > 15 {
+            return Err("pass-through target channel must be 0 to 15".into());
+        }
+    }
+    clear_thru(&state);
+    // Re-check busy after releasing locks during open setup: a bank op may have started.
+    if state.busy.load(Ordering::SeqCst) {
+        return Err(SynthError::Busy.to_string());
+    }
+    let thru = MidiControllerPassThrough::open(&input, out, config).map_err(|e| e.to_string())?;
+    if state.busy.load(Ordering::SeqCst) {
+        // Lost the race with begin_long: hold immediately so voice cannot enter the dump.
+        thru.set_hold(true);
+    }
+    let status = ThruStatus::from_live(thru.status());
+    *state
+        .thru
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(thru);
+    Ok(status)
+}
+
+#[tauri::command(async)]
+fn midi_thru_stop(state: tauri::State<'_, AppState>) -> Result<ThruStatus, String> {
+    if state.busy.load(Ordering::SeqCst) {
+        return Err(SynthError::Busy.to_string());
+    }
+    clear_thru(&state);
+    Ok(ThruStatus::inactive())
+}
+
+/// Update channel remap / real-time filter / enable without reopening the controller port.
+/// When `set_target` is true, `target_channel` is applied (`None` = original channel).
+#[tauri::command(async)]
+fn midi_thru_configure(
+    state: tauri::State<'_, AppState>,
+    set_target: Option<bool>,
+    target_channel: Option<u8>,
+    filter_realtime: Option<bool>,
+    enabled: Option<bool>,
+) -> Result<ThruStatus, String> {
+    let mut guard = state
+        .thru
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let Some(thru) = guard.as_mut() else {
+        return Err("controller pass-through is not active".into());
+    };
+    if set_target == Some(true) {
+        thru.set_target_channel(target_channel)
+            .map_err(|e| e.to_string())?;
+    }
+    if let Some(on) = filter_realtime {
+        thru.set_filter_realtime(on);
+    }
+    if let Some(on) = enabled {
+        thru.set_enabled(on);
+    }
+    Ok(ThruStatus::from_live(thru.status()))
+}
+
+#[tauri::command(async)]
+fn midi_thru_status(state: tauri::State<'_, AppState>) -> Result<ThruStatus, String> {
+    Ok(
+        match state
+            .thru
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .as_ref()
+        {
+            Some(thru) => ThruStatus::from_live(thru.status()),
+            None => ThruStatus::inactive(),
+        },
+    )
 }
 
 /// One live-edit DT1 frame for the temporary patch.
@@ -934,6 +1162,10 @@ pub fn run() {
             midi_ports,
             midi_connect,
             midi_disconnect,
+            midi_thru_start,
+            midi_thru_stop,
+            midi_thru_configure,
+            midi_thru_status,
             midi_send_frame,
             midi_fetch_temp_patch,
             midi_fetch_temp_doc,

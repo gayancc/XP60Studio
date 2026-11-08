@@ -13,9 +13,19 @@ import { cutFrames } from './sendOptions.svelte';
 import type { LiveTransport } from './transport';
 import type { SyncState } from '../kit/syncState';
 import { reportError, reportInfo, reportSuccess, reportWarning } from './messages.svelte';
+import { ToneMutationLog, isToneBlock, otherTonesUnchanged } from './toneIsolation';
 
 /** More changed parameters than this in one step go out as a whole send instead of single frames. */
 export const BULK_LIVE_LIMIT = 24;
+
+/** Wave group type/id must not be live-sent alone: an intermediate pair can select a missing expansion board and silence the Tone. */
+const WAVE_IDENTITY = new Set(['wave_group_type', 'wave_group_id']);
+
+/**
+ * EFX type must not be live-sent alone: the twelve parameter slots change meaning with the type, and a type-only DT1
+ * leaves the instrument on the previous type's numbers (ledger H-073). App defaults go with the type as one whole send.
+ */
+const EFX_TYPE = 'efx_type';
 
 export interface HistoryItem {
   label: string;
@@ -57,6 +67,16 @@ export class PatchStore {
   private baseSent = false;
   /** A whole-patch send is in the queue; when it drains the base is on the instrument. */
   private fullPending = false;
+  /**
+   * A whole-patch live send was requested while an undo group is open. Flush it from `end()` so type/id (and the first
+   * sync after opening a file) never leave the instrument on a half-updated, often silent, intermediate state.
+   */
+  private deferredFullSend = false;
+  /**
+   * Diagnostic checkpoints for Tone 1–4 writes (before/after value + SysEx coalesce address). Used by the verification
+   * loop; also guards against cross-tone byte bleed on every Tone parameter set.
+   */
+  readonly toneLog = new ToneMutationLog();
 
   constructor(
     readonly catalog: Catalog,
@@ -87,7 +107,8 @@ export class PatchStore {
             this.baseSent = true;
           }
           // Only claim SENT when the instrument has the whole patch and the user has not changed sound behind us.
-          if (this.baseSent && this.sync === 'edited') this.sync = 'sent';
+          // `local` is included so opening a file/New with Live on (immediate whole-send) can reach SENT without a fake edit.
+          if (this.baseSent && (this.sync === 'edited' || this.sync === 'local')) this.sync = 'sent';
         }
       },
     });
@@ -155,9 +176,16 @@ export class PatchStore {
     this.group = null;
     if (!g) return;
     const after = this.doc.toBlocks();
-    if (sameBytes(g.before, after)) return;
+    if (sameBytes(g.before, after)) {
+      this.deferredFullSend = false;
+      return;
+    }
     this.history.record(g.label, g.before, after, Date.now());
     this.syncHistory();
+    if (this.deferredFullSend) {
+      this.deferredFullSend = false;
+      if (this.live && this.transport.connected && this.kind !== 'system') this.sendPatch();
+    }
   }
 
   label(block: BlockName, id: string): string {
@@ -169,6 +197,8 @@ export class PatchStore {
   set(block: BlockName, id: string, value: number): void {
     const info = paramInfo(this.catalog, this.kind, block, id);
     if (!info || value === this.doc.get(block, id)) return;
+    const beforeValue = this.doc.get(block, id);
+    const beforeBlocks = isToneBlock(block, this.kind) ? this.doc.toBlocks() : null;
     const ownGroup = this.group === null;
     if (ownGroup) this.begin(this.label(block, id));
     try {
@@ -178,6 +208,33 @@ export class PatchStore {
       this.error = e instanceof Error ? e.message : String(e);
       if (ownGroup) this.end();
       return;
+    }
+    if (beforeBlocks) {
+      const afterBlocks = this.doc.toBlocks();
+      if (!otherTonesUnchanged(this.catalog, beforeBlocks, afterBlocks, block)) {
+        try {
+          this.doc.set(block, id, beforeValue);
+        } catch {
+          /* keep reporting the bleed */
+        }
+        this.error = `Tone isolation failed: writing ${block}.${id} changed another Tone's bytes.`;
+        if (ownGroup) this.end();
+        return;
+      }
+      try {
+        this.toneLog.record({
+          at: Date.now(),
+          block,
+          id,
+          before: beforeValue,
+          after: this.doc.get(block, id),
+          address: paramAddressOf(this.kind, block, id),
+        });
+      } catch (e) {
+        this.error = e instanceof Error ? e.message : String(e);
+        if (ownGroup) this.end();
+        return;
+      }
     }
     this.afterEdit([{ block, id }]);
     if (ownGroup) this.end();
@@ -209,14 +266,21 @@ export class PatchStore {
     }
     if (!this.baseSent) {
       // The instrument does not yet hold this patch, so a lone parameter would leave it half-updated: send it all.
-      this.sendPatch();
+      this.requestFullSend();
       return;
     }
     // The Rhythm Setup's name is not sent live until its temporary address is confirmed (ledger H-045).
     const sendable = changed.filter((c) => !(this.kind === 'rhythm' && c.block === 'common'));
     if (sendable.length > BULK_LIVE_LIMIT) {
       // A tool touched a lot of parameters: one whole send is faster and safer than hundreds of single frames.
-      this.sendPatch();
+      this.requestFullSend();
+      return;
+    }
+    // Wave group type/id change the board the Tone points at. Sending them one-by-one (Wave picker sets type, then id,
+    // then number) can briefly select an uninstalled board and the Tone goes silent until a full consistent set arrives.
+    // EFX type likewise: the twelve slots are meaningless until the matching defaults arrive (H-073).
+    if (sendable.some((c) => WAVE_IDENTITY.has(c.id) || c.id === EFX_TYPE)) {
+      this.requestFullSend();
       return;
     }
     for (const { block, id } of sendable) {
@@ -227,6 +291,15 @@ export class PatchStore {
         this.error = e instanceof Error ? e.message : String(e);
       }
     }
+  }
+
+  /** Whole-patch live send, or defer it to `end()` when an undo group is open so intermediate values never go out. */
+  private requestFullSend(): void {
+    if (this.group) {
+      this.deferredFullSend = true;
+      return;
+    }
+    this.sendPatch();
   }
 
   /** Apply many changes as one undo step. A large batch goes out as one whole-document send. */
@@ -253,9 +326,9 @@ export class PatchStore {
       }
     }
     if (done.length > 0) this.afterEdit(done);
-    // Reported after the live step, which clears the message when it succeeds.
-    if (failure) this.error = failure;
     if (ownGroup) this.end();
+    // After end(): a deferred whole-patch send clears error on success; keep a skipped invalid value visible.
+    if (failure) this.error = failure;
   }
 
   // ---- A/B and morph ----
@@ -400,7 +473,8 @@ export class PatchStore {
   openFromInstrument(bytes: Uint8Array): void {
     try {
       const system = this.kind === 'system';
-      this.open(docFromBlocks(this.kind, bytes), system ? 'Instrument, system settings (read)' : 'Instrument, temporary copy');
+      // Already on the instrument — do not whole-send it back (that would race the just-fetched bytes).
+      this.open(docFromBlocks(this.kind, bytes), system ? 'Instrument, system settings (read)' : 'Instrument, temporary copy', false);
       // System settings are permanent memory: reading them is not an XP TEMP state.
       this.sync = system ? 'local' : 'tempVerified';
       this.baseSent = !system;
@@ -420,12 +494,17 @@ export class PatchStore {
 
   // ---- whole patches ----
 
-  /** Replace the open patch (new, imported). History starts fresh. */
-  private open(doc: DocApi, origin: string): void {
+  /**
+   * Replace the open patch (new, imported). History starts fresh.
+   * When Live edit is on and an instrument is connected, send immediately so the first Tone switch or wave pick cannot
+   * surprise-replace a sounding patch (e.g. Nice Piano) with a silent or different temp only after that click.
+   */
+  private open(doc: DocApi, origin: string, syncInstrument = true): void {
     this.liveQueue.clear();
     this.replaceDoc(doc);
     this.baseSent = false;
     this.fullPending = false;
+    this.deferredFullSend = false;
     this.group = null;
     this.history.clear();
     this.syncHistory();
@@ -436,6 +515,14 @@ export class PatchStore {
     this.sync = 'local';
     this.liveDirty = false;
     this.rev += 1;
+    if (syncInstrument) this.syncOpenToInstrument();
+  }
+
+  /** Push the just-opened document to temporary memory when Live edit would otherwise wait for the first parameter click. */
+  private syncOpenToInstrument(): void {
+    if (!this.live || !this.transport.connected || this.kind === 'system') return;
+    this.sendPatch();
+    reportInfo('Sent the open sound to the instrument (Live edit is on).');
   }
 
   /** Open a patch from stored blocks (the library). It exists only in the app until saved, so it starts LOCAL. */
@@ -477,6 +564,26 @@ export class PatchStore {
       }
     }
     this.open(doc, `New ${KIND_TITLES[this.kind].toLowerCase()}`);
+  }
+
+  /** Apply the XP-60 panel's Patch Initialize / DEFAULT bytes as one undoable edit. */
+  initXp60Patch(): void {
+    if (this.kind !== 'patch') return;
+    const next = PatchDoc.xp60Default();
+    const before = this.doc.toBlocks();
+    const after = next.toBlocks();
+    if (sameBytes(before, after)) {
+      next.free();
+      return;
+    }
+    const ownGroup = this.group === null;
+    if (ownGroup) this.begin('XP-60 Init Patch');
+    this.liveQueue.clear();
+    this.replaceDoc(next);
+    // The panel defaults contain bytes outside named controls too; send the whole patch when live.
+    this.baseSent = false;
+    this.afterEdit(changedParams(this.catalog, this.kind, before, after));
+    if (ownGroup) this.end();
   }
 
   loadSyx(bytes: Uint8Array, slot: number, fileName: string): void {

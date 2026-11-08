@@ -1,0 +1,4 @@
+Run 2026-11-07, PERMANENT part, step 1 (example perm_session): User slot 128 only, with User Memory Protect off. A full backup of User patches, performances, rhythm sets and System settings was read and saved first (in the app's backups folder); slot 128 was read, a test patch "HW TEST 128" was written and read back, then the original was written back and read back. Ports "FCB1010 IN" / "FCB1010 OUT", device ID 0x10.
+
+The slot's own backup file was written (688 bytes, one patch as User bank messages) and the whole-memory backup file (118,336 bytes, 1,844 messages) parses again with 128 patches.
+What was NOT checked: sending either file to the instrument with another tool; the restore in H-033 used the in-memory copy of the same read.

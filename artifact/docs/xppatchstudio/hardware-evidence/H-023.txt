@@ -1,0 +1,4 @@
+baseline temp 'Nice Piano'
+chunk 128, throttle off: 824.8025ms, 9 messages, 589 bytes, verified=true
+chunk 32, 3125 B/s: 1.0800632s, 23 messages, 589 bytes, verified=true
+H-023 HARDWARE PASS: chunk 32 + 3125 B/s and chunk 128 unthrottled both verified equal; pacing defaults restored

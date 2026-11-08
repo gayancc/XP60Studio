@@ -84,6 +84,15 @@ impl PatchDoc {
         }
     }
 
+    /// The XP-60's own Patch Initialize / DEFAULT result (separate from the codec minimum template).
+    #[wasm_bindgen(js_name = xp60Default)]
+    pub fn xp60_default() -> PatchDoc {
+        PatchDoc {
+            inner: Session::from_blocks(&xppatch_core::Patch::xp60_default().to_blocks())
+                .expect("embedded XP-60 Initialize patch is valid"),
+        }
+    }
+
     #[wasm_bindgen(js_name = fromBlocks)]
     pub fn from_blocks(bytes: &[u8]) -> Result<PatchDoc, JsError> {
         Ok(PatchDoc {

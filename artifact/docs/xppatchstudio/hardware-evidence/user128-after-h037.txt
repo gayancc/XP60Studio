@@ -1,0 +1,1 @@
+USER SLOT VERIFICATION PASSED: slot 128 'C-Z  Flute', every byte equals backup

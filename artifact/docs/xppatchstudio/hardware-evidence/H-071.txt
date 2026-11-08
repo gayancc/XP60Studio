@@ -1,0 +1,8 @@
+Receive Bank Select set OFF (SysEx stand-in)
+after PR-A 1 (BS ignored if off): id=3 number=0 temp='64voicePiano'
+after PR-B 10 messages with BS OFF: id=3 number=9 temp='Piano Blend'
+H-071 BS-OFF PASS: group stayed 3, number became 9, temp '64voicePiano' -> 'Piano Blend'
+H-071 WRONG-CHANNEL PASS: channel 1 left id=3 number=9 temp='Piano Blend'
+System settings restored (Receive Bank Select back ON)
+Temporary restored to Nice Piano
+H-071 HARDWARE PASS (SysEx stand-in for panel Receive Bank Select OFF)

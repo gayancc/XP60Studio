@@ -12,7 +12,6 @@ export { default as Knob } from './Knob.svelte';
 export { default as LfoGlyph } from './LfoGlyph.svelte';
 export { default as Led } from './Led.svelte';
 export { default as MenuBar } from './MenuBar.svelte';
-export { default as MessageStack } from './MessageStack.svelte';
 export type { Menu, MenuItem } from './MenuBar.svelte';
 export { default as Meter } from './Meter.svelte';
 export { default as PianoRoll } from './PianoRoll.svelte';

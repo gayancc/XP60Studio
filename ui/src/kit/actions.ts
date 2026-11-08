@@ -36,29 +36,44 @@ const WHEEL_PIXELS_PER_NOTCH = 100;
 const WHEEL_LINES_PER_NOTCH = 3;
 
 export function valueGestures(node: HTMLElement, initial: GestureOptions) {
+  /** Latest options from the component (may retarget if the parent rebinds the control). */
   let o = initial;
+  /**
+   * Options frozen for the open gesture. Patch Base keeps SynthPath identity fixed for a controller while an edit is
+   * in flight; without this, a Selected-Tone panel that receives a new `block` mid-drag would write into another Tone.
+   */
+  let gesture: GestureOptions | null = null;
   let drag: DragState | null = null;
   let wheelCarry = 0;
 
-  const coord = (e: PointerEvent): number => (o.axis === 'x' ? -e.clientX : e.clientY);
+  const live = (): GestureOptions => gesture ?? o;
+  const coord = (e: PointerEvent): number => (live().axis === 'x' ? -e.clientX : e.clientY);
   const isFine = (e: { ctrlKey: boolean; shiftKey: boolean }): boolean => e.ctrlKey || e.shiftKey;
 
   /** Apply a change as one begin/set/end group, and only if the value really changes. */
   const commitOnce = (next: number): void => {
-    if (next === o.get()) return;
-    o.begin?.();
-    o.set(next);
-    o.end?.();
+    const g = live();
+    if (next === g.get()) return;
+    gesture = g;
+    try {
+      g.begin?.();
+      g.set(next);
+      g.end?.();
+    } finally {
+      gesture = null;
+    }
   };
 
   const finishDrag = (): void => {
-    if (drag?.begun) o.end?.();
+    const g = gesture ?? o;
+    if (drag?.begun) g.end?.();
     drag = null;
+    gesture = null;
   };
 
   const reset = (): void => {
-    if (o.disabled || o.defaultValue === undefined) return;
-    commitOnce(o.defaultValue);
+    if (live().disabled || live().defaultValue === undefined) return;
+    commitOnce(live().defaultValue as number);
   };
 
   const down = (e: PointerEvent): void => {
@@ -68,26 +83,28 @@ export function valueGestures(node: HTMLElement, initial: GestureOptions) {
       reset();
       return;
     }
+    gesture = o;
     node.setPointerCapture(e.pointerId);
     node.focus();
-    drag = { id: e.pointerId, origin: coord(e), start: o.get(), fine: isFine(e), begun: false };
+    drag = { id: e.pointerId, origin: coord(e), start: gesture.get(), fine: isFine(e), begun: false };
   };
 
   const move = (e: PointerEvent): void => {
     if (!drag || e.pointerId !== drag.id) return;
-    if (o.disabled) {
+    const g = live();
+    if (g.disabled) {
       finishDrag();
       return;
     }
     // Changing the modifier mid-drag re-bases the drag so the value does not jump.
-    if (isFine(e) !== drag.fine) drag = { ...drag, origin: coord(e), start: o.get(), fine: isFine(e) };
-    const next = dragValue(drag.start, coord(e) - drag.origin, o.range, drag.fine, o.pxFull);
-    if (next === o.get()) return;
+    if (isFine(e) !== drag.fine) drag = { ...drag, origin: coord(e), start: g.get(), fine: isFine(e) };
+    const next = dragValue(drag.start, coord(e) - drag.origin, g.range, drag.fine, g.pxFull);
+    if (next === g.get()) return;
     if (!drag.begun) {
       drag.begun = true;
-      o.begin?.();
+      g.begin?.();
     }
-    o.set(next);
+    g.set(next);
   };
 
   const up = (e: PointerEvent): void => {
@@ -106,7 +123,7 @@ export function valueGestures(node: HTMLElement, initial: GestureOptions) {
     const notches = Math.trunc(wheelCarry);
     if (notches === 0) return;
     wheelCarry -= notches;
-    commitOnce(wheelValue(o.get(), notches, o.range, isFine(e)));
+    commitOnce(wheelValue(live().get(), notches, live().range, isFine(e)));
   };
 
   const key = (e: KeyboardEvent): void => {
@@ -114,7 +131,7 @@ export function valueGestures(node: HTMLElement, initial: GestureOptions) {
     const intent = intentFromKey(e.key);
     if (!intent) return;
     e.preventDefault();
-    commitOnce(keyValue(o.get(), intent, o.range));
+    commitOnce(keyValue(live().get(), intent, live().range));
   };
 
   const menu = (e: MouseEvent): void => {
@@ -134,7 +151,9 @@ export function valueGestures(node: HTMLElement, initial: GestureOptions) {
   return {
     update(next: GestureOptions): void {
       o = next;
-      if (o.disabled) finishDrag();
+      // Never swap the in-flight path; only honour a disable that ends the gesture.
+      if (gesture === null && o.disabled) finishDrag();
+      else if (gesture !== null && next.disabled) finishDrag();
     },
     destroy(): void {
       // A control removed mid-drag must still close its undo group, and must not leave its hint on screen.

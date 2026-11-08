@@ -1,0 +1,4 @@
+User slots different from snapshot (zero-based): []
+Performance: 32 User documents match snapshot
+Rhythm: 2 User documents match snapshot
+Error: "System settings differ"

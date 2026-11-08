@@ -1,4 +1,5 @@
 import { mount } from 'svelte';
+import { invoke } from '@tauri-apps/api/core';
 import './theme/tokens.css';
 import Editor from './editor/Editor.svelte';
 import { applyTheme, storedTheme } from './theme/theme';
@@ -11,6 +12,7 @@ import { controls, tauriControlDeps } from './model/controls.svelte';
 import { installDesktopChrome } from './model/desktopChrome';
 import { LibraryService } from './model/library.svelte';
 import { preview } from './model/preview.svelte';
+import { playPreviewNote } from './model/previewNote';
 import { cutFrames } from './model/sendOptions.svelte';
 import { splitFrames } from './model/frames';
 import { SaveFlow } from './model/save.svelte';
@@ -77,6 +79,10 @@ async function start(host: HTMLElement): Promise<void> {
       sendTemp: async (blocks) => {
         for (const frame of splitFrames(cutFrames(PatchDoc.fromBlocks(blocks).patchFrames(stores.patch.deviceId)))) await transport.send(frame);
       },
+      audition: () => playPreviewNote(
+        (on) => invoke('midi_note', { channel: 0, note: 60, velocity: on ? 100 : 0, on }),
+        () => invoke('midi_all_notes_off', { channel: 0 }),
+      ),
       markStale: () => stores.patch.markStale(),
     });
   }

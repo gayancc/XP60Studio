@@ -1,0 +1,4 @@
+Run 2026-11-07, TEMP part: writes only to the keyboard's temporary patch (the library refuses anything else); the temporary patch was read first and written back and verified at the end. Ports "FCB1010 IN" / "FCB1010 OUT", device ID 0x10.
+
+Single-parameter live edits were sent and read back equal (see H-025 and H-029: 480 tone-level edits in 10 s, the last one on the keyboard).
+What was NOT checked: that the change is audible. That needs a person at the keyboard.

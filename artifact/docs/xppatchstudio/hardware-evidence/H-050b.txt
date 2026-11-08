@@ -1,0 +1,12 @@
+H-050b, protected case, 2026-11-07 (example bank_session, step 3), Protect settings both ON.
+Three slots (126 to 128) were given other names and written alone:
+  wrote the 3 changed slots: written [], stopped_at Some((125, "read-back differs from what was sent: common"))
+  the three slots hold what was written: false; other slots that differ from the backup: []
+  (index 125 is User patch 126.) The run stopped at the first slot and nothing else changed; the slots were then put back (restore verified true) and a full comparison
+  with the backup found no difference.
+Not yet run: the unprotected case (3 slots equal after the write), which needs both Protect settings OFF.
+
+Unprotected case, 2026-11-07 (example bank_real, Protect OFF):
+  wrote the 3 changed slots: written [125, 126, 127], stopped_at None
+  the three slots hold what was written: true; other slots that differ from the backup: []
+  restored 3 slot(s); the final comparison with the backup found no difference.

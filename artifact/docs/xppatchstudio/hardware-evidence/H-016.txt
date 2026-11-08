@@ -1,0 +1,26 @@
+2026-11-07: owner unplugged the cable at XP-60 MIDI IN during native Bank read and then confirmed reconnecting.
+PASS instrument connected before dropped-read test
+PASS bank read started
+READY UNPLUG: disconnect the cable at XP-60 MIDI IN now. Keep it disconnected until RECONNECT.
+PASS dropped read reports a useful failure: refused: User patch 62 could not be read (no complete reply after 3 attempt(s); missing blocks at 11 3D 12 00); the bank is incomplete
+RECONNECT: plug the same cable back into XP-60 MIDI IN now. Retrying connection for two minutes.
+
+Initial recovery failed because recreating SynthBar after switching workspaces reset the chosen output to the PC software synth. Regression tests reproduced lost selection and output-list reordering. The connection choices were moved into SynthService and keyed by port name. Rebuilt hardware re-verification pending.
+
+Latest gated run:
+PASS instrument connected before dropped-read test
+PASS starting temporary patch fetched
+PASS starting temporary patch saved to disk
+PASS temporary name marker entered
+PASS temporary name edit verified before cable interruption
+READY UNPLUG: confirm the cable is disconnected before the read starts.
+WAITING FOR unplugged: D:\Codes\XP60Studio\target\hardware-acceptance\2026-11-07-codex\drop-gated\unplugged.signal
+PASS bank read started
+READY UNPLUG: disconnect the cable at XP-60 MIDI IN now. Keep it disconnected until RECONNECT.
+PASS dropped read reports a useful failure: refused: User patch 1 could not be read (no complete reply after 3 attempt(s); missing blocks at 11 00 00 00); the bank is incomplete
+RECONNECT: plug the same cable back into XP-60 MIDI IN now. Retrying connection for two minutes.
+WAITING FOR reconnected: D:\Codes\XP60Studio\target\hardware-acceptance\2026-11-07-codex\drop-gated\reconnected.signal
+PASS restoring original temporary sound
+PASS original temporary sound restored and verified
+
+The gate timer expired just as the owner confirmed reconnection; the finally block then restored the original and Verify fetched it equal, still in the same native process. This is observed read recovery after reconnection despite the harness process exiting nonzero for its timer. The previously failed marker run was independently restored with restore_temp; drop-temp-recovery.txt records DROP PROBE -> Nice Piano, complete equal read-back.

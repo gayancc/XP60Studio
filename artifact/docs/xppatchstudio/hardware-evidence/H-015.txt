@@ -1,0 +1,12 @@
+Run 2026-11-07, read-only (RQ1 data requests and one MIDI Identity Request; nothing was written), ports "FCB1010 IN" / "FCB1010 OUT", device ID 0x10 (17).
+
+read the User bank: 128 patches, 0 failures, aborted false, in 47.2540169s
+range issues in total: 0
+  slot   1: Strins
+  slot   2: C-Z  Flute
+  slot   3: Alto SaxaPHO
+  slot   4: ALL RIGHT TA
+  slot   5: Brass Sect 1
+  slot   6: Sarpina Kast
+  slot   7: Harmonica
+  slot   8: Fantasia JV
