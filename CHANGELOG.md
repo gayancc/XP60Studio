@@ -3,6 +3,22 @@
 Process note (owner decision): hardware testing is one dedicated phase at the end. Items that need the instrument
 are tracked in `docs/07-hardware-acceptance.md` and updated every phase; nothing here is run on hardware before then.
 
+## 0.1.0-alpha.4 (2026-11-08)
+
+Fourth alpha pre-release. Windows installer is built by the Release workflow on tag `v0.1.0-alpha.4`.
+
+### Highlights
+
+- **Bank loudness normalize (SALE / ELS).** Preview scores every filled User slot from parameters only (wave energy × filter × envelope × levels), then proposes identity-safe Patch Level and active Tone Level edits toward a hybrid bank target. Apply / Undo stay in app memory; Write still sends to the instrument. Design note: `artifact/docs/xppatchstudio/voice-leveling-sale.md`.
+- **Normalize tab as an FL Browser pane.** Dedicated Bank tool tab with All / Changed / Cut / Boost / Out filters, sticky column head, and a dense scroll list that keeps all 128 rows reachable without clipping the window.
+- **Safer Bank pad follow and Write scopes.** Pads only drive the instrument after a synth read (or known bytes); Write offers Changed / This slot / All filled with optional full-bank backup; Save from a Bank-opened editor locks to that User slot.
+- **FL live chrome evidence.** Nov 8 capture session screenshots and panel/kit polish (tone focus / solo helpers) under `artifact/docs/xppatchstudio/fl-live/session-2026-11-08/`.
+- **Live checks.** Synced 128 User patches → Normalize Preview (128 rows, constrained scroll) → Apply + Undo in memory with no User write (`hw-normalize-bank.mjs`). Pad follow after Read and Write-scope UI also exercised live. Audible level match after Write remains owner/hardware (H-077).
+
+### Alpha reminder
+
+Back up User memory before saving to the instrument. Features that talk to hardware are evidenced in the ledger but instrument-dependent parity is not fully closed.
+
 ## 0.1.0-alpha.3 (2026-11-08)
 
 Third alpha pre-release. Windows installer is built by the Release workflow on tag `v0.1.0-alpha.3`.
