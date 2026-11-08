@@ -94,7 +94,7 @@
     gap: 8px;
   }
   .k {
-    font: 600 10px var(--font-caps);
+    font: 600 11px var(--font-caps);
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--text-dim);
@@ -105,10 +105,10 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-weight: 600;
+    font: 600 13px var(--font);
   }
   .chg {
-    font: 600 9px var(--font-caps);
+    font: 600 11px var(--font-caps);
     letter-spacing: 0.06em;
     text-transform: uppercase;
     color: var(--warn);
@@ -123,7 +123,7 @@
     padding: 4px 6px;
     background: color-mix(in srgb, var(--warn) 14%, var(--track));
     border-radius: var(--radius);
-    font-size: 11px;
+    font-size: 13px;
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
@@ -149,10 +149,10 @@
     background: var(--body-deep);
     border: 1px solid var(--edge);
     border-radius: var(--radius);
-    padding: 2px 10px;
+    padding: 3px 10px;
     cursor: pointer;
     color: inherit;
-    font: inherit;
+    font: 400 12px var(--font);
   }
   button:hover:not(:disabled) {
     background: var(--well);

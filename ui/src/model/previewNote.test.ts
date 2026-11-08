@@ -21,4 +21,14 @@ describe('Library preview note release', () => {
     )).rejects.toThrow('no reply');
     expect(events).toEqual(['on', 'off', 'all off']);
   });
+
+  it('still clears the channel when Note On reports an error', async () => {
+    const events: string[] = [];
+    await expect(playPreviewNote(
+      async (on) => { events.push(on ? 'on' : 'off'); if (on) throw new Error('no reply'); },
+      async () => { events.push('all off'); },
+      async () => { events.push('wait'); },
+    )).rejects.toThrow('no reply');
+    expect(events).toEqual(['on', 'off', 'all off']);
+  });
 });

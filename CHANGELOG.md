@@ -3,6 +3,23 @@
 Process note (owner decision): hardware testing is one dedicated phase at the end. Items that need the instrument
 are tracked in `docs/07-hardware-acceptance.md` and updated every phase; nothing here is run on hardware before then.
 
+## 0.1.0-alpha.3 (2026-11-08)
+
+Third alpha pre-release. Windows installer is built by the Release workflow on tag `v0.1.0-alpha.3`.
+
+### Highlights
+
+- **Bank loaded-bulk audition (H-070).** Loading a library bulk into the Bank fills the working pads only. Selecting a non-synth pad now sends that slot to temporary memory (not Program Change into old User memory), waits for the send queue, then plays one short middle-C with clean Note Off / All Notes Off. Live XP-60: golden bulk pad Flute Porta matched all 589 expected bytes and was heard with clean stops; temp/System/checked User restored (`H-070-loaded-bulk-audition.txt`).
+- **Human-readable MIDI and file errors.** OS codes such as `MMSYSERR_ALLOCATED` no longer appear in the status bar; transport, send, library and SysEx paths explain what failed in plain language.
+- **Library Browser look and type.** Bulk/patch lists follow measured FL Browser colours and row language; names and chrome are larger for readability. Dragging across SUB a↔b previews the other 64-pad half before drop.
+- **FL QuickBtn pad faces.** SUB/BANK/NUMBER ON state uses the measured radial lamp (`#be5507` rim, brown ink) with a short latch fade measured live in FL Studio 2025 (~50–110 ms); sizes stay ours.
+- **Wave picker and missing boards.** An expansion used by the open patch but not ticked in Settings stays in the left list with a **!** only; wave names still show and can be chosen. The keyboard simply will not play those waves until the board is installed — no “unavailable” banner or greyed-out rows.
+- **Desktop regression.** Offline UI typecheck, Vitest (641 tests), Rust workspace tests, native e2e (including 128-patch bulk import and layout sweeps) and release rebuild recorded for this build (`2026-11-08-current-build-offline-regression.txt`). MIDI input held by another process noted separately.
+
+### Alpha reminder
+
+Back up User memory before saving to the instrument. Features that talk to hardware are evidenced in the ledger but instrument-dependent parity is not fully closed.
+
 ## 0.1.0-alpha.2 (2026-11-07)
 
 Second alpha pre-release. Windows installer is built by the Release workflow on tag `v0.1.0-alpha.2`.

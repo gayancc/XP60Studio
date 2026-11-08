@@ -9,7 +9,7 @@ import { LibraryService } from '../model/library.svelte';
 import { fakeBulks } from '../test/bulkBackend';
 import { parseCatalog } from '../model/catalog';
 import { PatchStore } from '../model/store.svelte';
-import { MemoryTransport } from '../model/transport';
+import { MemoryTransport, type LiveTransport } from '../model/transport';
 import type { Services } from './services';
 import BankViewHarness from './BankViewHarness.svelte';
 
@@ -128,7 +128,9 @@ describe('dragging a patch over the slot grid', () => {
 
   it('sends a loaded bulk pad to temporary memory instead of selecting the old User slot', async () => {
     const selectSound = vi.fn(async () => true);
-    const synth = { connected: true, selectSound } as unknown as import('../model/synth.svelte').SynthService;
+    const note = vi.fn(async () => {});
+    const allNotesOff = vi.fn(async () => {});
+    const synth = { connected: true, selectSound, note, allNotesOff } as unknown as import('../model/synth.svelte').SynthService;
     const transport = new MemoryTransport();
     const store = new PatchStore(parseCatalog(catalogJson()), transport);
     const fake = fakeBulks();
@@ -145,6 +147,44 @@ describe('dragging a patch over the slot grid', () => {
     expect(bank.selected).toBe(0);
     expect(selectSound).not.toHaveBeenCalled();
     await waitFor(() => expect(transport.frames.length).toBeGreaterThan(0));
+    await waitFor(() => expect(note).toHaveBeenCalledWith(0, 60, 100, true));
+    await waitFor(() => expect(note).toHaveBeenCalledWith(0, 60, 0, false), { timeout: 1500 });
+    expect(allNotesOff).toHaveBeenCalledWith(0);
+  });
+
+  it('waits for an in-flight temporary send before selecting a newer synth User pad', async () => {
+    let releaseFirst: () => void = () => {};
+    let started = false;
+    const transport: LiveTransport = {
+      label: 'delayed MIDI',
+      connected: true,
+      send: () => {
+        if (started) return;
+        started = true;
+        return new Promise<void>((resolve) => { releaseFirst = resolve; });
+      },
+    };
+    const store = new PatchStore(parseCatalog(catalogJson()), transport);
+    const fake = fakeBulks();
+    const backend = new Proxy(fake.api, { get: (t, k) => (k in t ? t[k as keyof typeof t] : vi.fn(async () => [])) }) as unknown as Backend;
+    const bank = new BankService(backend);
+    const doc = new PatchDoc();
+    doc.setName('Bulk Pad');
+    const bytes = doc.toBlocks();
+    doc.free();
+    bank.assign(0, bytes, 'library');
+    bank.assign(1, bytes, 'synth');
+    const selectSound = vi.fn(async () => true);
+    const synth = { connected: true, selectSound } as unknown as import('../model/synth.svelte').SynthService;
+    const services = { bank, library: new LibraryService(backend), save: {}, systemSave: {} } as unknown as Services;
+    const { container } = render(BankViewHarness, { props: { store, services, synth } });
+
+    await fireEvent.click(slotButton(container, 1));
+    await waitFor(() => expect(started).toBe(true));
+    await fireEvent.click(slotButton(container, 2));
+    expect(selectSound).not.toHaveBeenCalled();
+    releaseFirst();
+    await waitFor(() => expect(selectSound).toHaveBeenCalledWith(0, 80, 0, 1), { timeout: 2000 });
   });
 
   it('puts several dragged patches into the slots that follow the one dropped on', async () => {

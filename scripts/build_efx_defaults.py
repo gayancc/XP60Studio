@@ -40,7 +40,7 @@ RULES: list[tuple[str, str, tuple[int, int] | None, object, str]] = [
     ("peak-q", r"Peaking\d Q$", (0, 4), 1, "as the factory patches leave it"),
     ("eq-low-freq", r"^Low Frequency$", (0, 1), 0, "200 Hz, as the factory patches leave it"),
     ("eq-high-freq", r"^High Frequency$", (0, 1), 0, "4000 Hz, as the factory patches leave it"),
-    ("band-q", r"^Q$", (0, 4), 1, "second step of the band-width list"),
+    ("band-q", r"^(Q|Band Width)$", (0, 4), 1, "second step of the band-width list"),
     ("cutoff", r"Cutoff Frequency$", (0, 16), 8, "middle of the 200 Hz to 8 kHz list"),
     ("filter-off", r"^Filter Type$", (0, 2), 0, "filter OFF"),
     ("filter-first", r"^Filter Type$", (0, 1), 0, "first entry (LPF)"),

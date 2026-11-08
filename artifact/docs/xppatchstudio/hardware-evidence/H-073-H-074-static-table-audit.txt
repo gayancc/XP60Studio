@@ -1,0 +1,7 @@
+2026-11-08 — Read-only Patch EFX data audit. No panel searching or instrument write.
+
+The Roland XP-30 Owner's Manual (official PDF, https://cdn.roland.com/assets/media/pdf/XP-30_OM.pdf) was used to regenerate the EFX slot/name/range table. `python scripts/build_efx_data.py --check` passed: the checked-in JSON exactly matches all 40 extracted types and 358 parameter entries. The generator now accepts `--manual`, uses an ignored local reference PDF when the original artifact path is absent, and checks without writing. It normalizes a PDF extraction space after the serial-effect arrow so the generated names match the existing JSON.
+
+`python scripts/build_efx_defaults.py --check` passed after its Band Width rule was updated to accept the XP-60-corrected name; generated defaults did not change. `npm --prefix ui test -- src/editor/EfxDefaults.test.ts` passed 11 tests, including range checks for all 40 types and 12 slots per type.
+
+These checks prove the shipped table is reproducible from the published XP-30 source and internally consistent. They do not establish XP-60 panel-loaded defaults or the XP-60's parameter slot order/raw ranges. H-073 and H-074 remain open for those hardware observations; SysEx type-only changes leave the old twelve values in place.

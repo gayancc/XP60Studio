@@ -171,14 +171,14 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    height: 22px;
-    padding: 0 6px;
+    height: 26px;
+    padding: 0 8px;
     background: var(--br-cap);
     border-bottom: 1px solid var(--br-edge);
     flex: none;
   }
   .title {
-    font: 600 11px var(--font);
+    font: 600 13px var(--font);
     color: #a8b2b8;
     letter-spacing: 0.02em;
   }
@@ -188,13 +188,13 @@
     margin-left: 4px;
   }
   .tab {
-    height: 16px;
-    padding: 0 7px;
+    height: 20px;
+    padding: 0 8px;
     border: 1px solid transparent;
     border-radius: 1px;
     background: transparent;
     color: #7a868e;
-    font: 400 10px var(--font);
+    font: 400 12px var(--font);
     cursor: pointer;
   }
   .tab:hover {
@@ -208,13 +208,13 @@
   }
   .import {
     margin-left: auto;
-    height: 16px;
-    padding: 0 7px;
+    height: 20px;
+    padding: 0 8px;
     border: 1px solid #1e282e;
     border-radius: 1px;
     background: #1a2328;
     color: #9aa4aa;
-    font: 400 10px var(--font);
+    font: 400 12px var(--font);
     cursor: pointer;
   }
   .import:hover:not(:disabled) {
@@ -230,13 +230,13 @@
     cursor: default;
   }
   .actions button {
-    height: 18px;
-    padding: 0 8px;
+    height: 22px;
+    padding: 0 9px;
     border: 1px solid #1e282e;
     border-radius: 1px;
     background: #1a2328;
     color: #9aa4aa;
-    font: 400 10px var(--font);
+    font: 400 12px var(--font);
     cursor: pointer;
   }
   .actions button:hover:not(:disabled) {
@@ -263,7 +263,7 @@
   }
   .staged p {
     margin: 0 0 6px;
-    font-size: 11px;
+    font-size: 13px;
     color: #8b969c;
   }
   .staged b {
@@ -277,24 +277,24 @@
     margin: 0;
     padding: 4px 8px;
     color: var(--bad);
-    font-size: 11px;
+    font-size: 13px;
   }
   .ok {
     margin: 0;
     padding: 4px 8px;
     color: var(--ok);
-    font-size: 11px;
+    font-size: 13px;
   }
   input[type='search'] {
     width: 100%;
-    height: 20px;
+    height: 26px;
     background: #0f161a;
     color: var(--br-file);
     border: 0;
     border-bottom: 1px solid var(--br-edge);
     border-radius: 0;
     padding: 0 8px;
-    font: 11px var(--font);
+    font: 13px var(--font);
     flex: none;
     position: sticky;
     top: 0;
@@ -316,12 +316,12 @@
     align-items: center;
     gap: 5px;
     width: 100%;
-    height: 18px;
+    height: 22px;
     background: transparent;
     border: 0;
     text-align: left;
     color: var(--br-file);
-    font: 400 11px/18px var(--font);
+    font: 400 13px/22px var(--font);
     cursor: pointer;
     padding: 0 6px 0 8px;
   }
@@ -350,11 +350,11 @@
   .dim {
     flex: none;
     color: #5a666e;
-    font: 9px var(--font-mono);
+    font: 11px var(--font-mono);
   }
   .empty {
     color: #66727a;
-    font-size: 10px;
-    padding: 4px 8px;
+    font-size: 12px;
+    padding: 5px 8px;
   }
 </style>

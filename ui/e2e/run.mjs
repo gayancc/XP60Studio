@@ -110,9 +110,18 @@ const waitStatus = async (re) => {
 };
 const tab = (name, scope = '') => js(`(()=>{const t=[...document.querySelectorAll('${scope}[role=tab]')].find(x=>x.textContent.trim()===${JSON.stringify(name)}); if(t) t.click(); return !!t})()`);
 const setFile = async (label, file) => {
-  const doc = (await send('DOM.getDocument', { depth: -1 })).result.root.nodeId;
-  const node = (await send('DOM.querySelector', { nodeId: doc, selector: `input[type=file][aria-label^="${label}"]` })).result.nodeId;
-  await send('DOM.setFileInputFiles', { nodeId: node, files: [file] });
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const doc = (await send('DOM.getDocument', { depth: -1 })).result.root.nodeId;
+      const node = (await send('DOM.querySelector', { nodeId: doc, selector: `input[type=file][aria-label^="${label}"]` })).result.nodeId;
+      if (!node) throw new Error(`File input ${label} is absent`);
+      await send('DOM.setFileInputFiles', { nodeId: node, files: [file] });
+      return;
+    } catch (e) {
+      if (attempt === 2) throw e;
+      await wait(150);
+    }
+  }
 };
 
 // Resize the real application window with the operating system (SetWindowPos on its top-level window), so the page is laid out exactly as a user sees it.
@@ -340,8 +349,8 @@ try {
     check(visible, `${mode}: the save panel is fully visible`);
     await js(`[...document.querySelectorAll('${panel} button')].find(b=>/^1\\./.test(b.textContent.trim()))?.click()`);
     await wait(500);
-    const msg = await waitStatus(/not connected/);
-    check(/not connected/.test(msg ?? ''), `${mode}: arming without an instrument is refused in the hint bar`, msg);
+    const msg = await waitStatus(/not connected/i);
+    check(/not connected/i.test(msg ?? ''), `${mode}: arming without an instrument is refused in the hint bar`, msg);
     check(((await js(`document.querySelector('${panel} .err, ${panel} .error')?.textContent`)) ?? '') === '', `${mode}: the panel itself shows no error line`);
     await js(`[...document.querySelectorAll('${panel} button')].find(b=>b.textContent.trim()==='Close')?.click()`);
     await wait(200);
@@ -356,8 +365,22 @@ try {
   check(staged === 'Import 128', 'the Library previews 128 patches for import', staged);
   await tab('Bank', 'header ');
   await wait(600);
-  await setFile('Load a .syx', bank);
-  await wait(1800);
+  check(await tab('Library', '.right '), 'the Bank library panel opens');
+  await wait(250);
+  await setFile('Import a .syx or .mid bulk file', bank);
+  await wait(400);
+  const importBulk = await js(`(()=>{const b=[...document.querySelectorAll('.right button')].find(b=>/^Import 128 as bulk$/.test(b.textContent.trim())); b?.click(); return !!b})()`);
+  check(importBulk, 'the Bank library imports the 128-patch bulk');
+  await wait(700);
+  const openedBulk = await js(`(()=>{const b=document.querySelector('.right li.bulk .head button.name'); b?.click(); return !!b})()`);
+  check(openedBulk, 'the imported bulk opens in the Bank library');
+  await wait(250);
+  const loadBulk = await js(`(()=>{const b=[...document.querySelectorAll('.right li.bulk .tools button')].find(b=>b.textContent.trim()==='Load into bank'); b?.click(); return !!b})()`);
+  check(loadBulk, 'the bulk offers Load into bank');
+  await wait(150);
+  const replaced = await js(`(()=>{const b=document.querySelector('.right li.bulk .ask button.go'); b?.click(); return !!b})()`);
+  check(replaced, 'the bulk replaces the local bank after confirmation');
+  await wait(900);
   const slots = await js(`document.querySelectorAll('.grid[aria-label="User patches a"] button.slot .nm').length`);
   check(slots === 64, 'the Bank workspace shows 64 loaded slots in subgroup a', String(slots));
 

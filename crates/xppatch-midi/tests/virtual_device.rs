@@ -790,7 +790,7 @@ fn a_bank_write_stops_at_the_first_failure_and_names_the_slot() {
     assert!(report.written.is_empty());
     let (slot, why) = report.stopped_at.unwrap();
     assert_eq!(slot, 0);
-    assert!(why.contains("read-back differs"), "{why}");
+    assert!(why.contains("did not match what was sent"), "{why}");
 }
 
 #[test]

@@ -1,0 +1,63 @@
+2026-11-08 H-070 live XP-60 Bank loaded-bulk audition
+
+Owner closed the normal XPPatchStudio window. FCB1010 IN/OUT reopened. Read-only
+temporary-patch snapshot before the test: Shakuhachi, SHA-256
+A8B0F323BDD0B4298AD9DB7204DB996953564E9DF20A4D3D45450D8316F55969.
+Read-only System snapshot saved too. User 001 Strins was byte-equal to the
+original full-session backup before the test.
+
+First run of `node ui/e2e/hw-bank-bulk-audition.mjs` against the release app
+imported `tests/golden/xp60-user-bank.syx`, but the script selected the first
+pre-existing bulk, not the newly imported fixture. It loaded pad 002 C-Z Flute
+from that bulk. An independent temporary-patch fetch showed a change from
+Shakuhachi; the MIDI trace showed Note On, Note Off, and channel-1 All Notes
+Off. The owner heard repeated C-Z Flute notes stop cleanly. This run verifies
+the loaded-bulk audition but does not prove fixture-byte identity.
+
+Corrected the script to identify the newly imported bulk by comparing the
+Library list before/after import, and to compare temporary memory with the
+selected patch's exact bytes decoded from the golden `.syx`. Second run loaded
+pad 005 Flute Porta from `xp60-user-bank (5)`. The independent temporary read
+matched all 589 expected fixture bytes; SHA-256
+31D65A7314D9DD6B985CBFD1A2307D45017457AC1A1439CB54ED91E36209D87B.
+Note On, Note Off, and channel-1 All Notes Off were traced in order. The
+owner answered YES to hearing the repeated Flute Porta notes and each
+stopping cleanly. No WebView script errors.
+
+After each run, `restore_temp` independently read back all blocks: C-Z Flute
+and then Flute Porta -> exact Shakuhachi snapshot. System before/after SHA-256
+identical after both runs:
+CEDBB0E9E6F40803C23BCFAABE56E83F3BA525EA24F426C7187C7B882D9B5ECA.
+`verify_user_patch` found User 001 Strins byte-equal to the original backup.
+The two fixture imports created during these runs (Library bulk IDs 11 and 12)
+were then removed after confirming their source, names, timestamps, and 128-slot
+counts; neither removal deleted any patch shared with the existing Library.
+
+Follow-up `--stress` run: four rapid pairs of pad 005 Flute Porta and pad 006
+##DILE#Piano were dispatched in one UI turn per pair. After each pair, an
+independent temporary-patch fetch matched all 589 bytes of the newer choice.
+The note trace contained five Note On, five Note Off, and five channel All
+Notes Off calls (the initial single choice plus four final choices). The app
+reported no script errors, and the test deleted its imported fixture bulk
+(ID 11) automatically. `restore_temp` independently confirmed all Shakuhachi
+blocks again. System was byte-equal to the pre-test snapshot; User 001 Strins
+remained byte-equal to the original full backup. No owner listening claim is
+made for the rapid-switch run.
+
+Raw artifacts: target/hardware-acceptance/2026-11-07-codex/
+  temp-before-h070-bulk.blocks
+  temp-h070-bulk-preview.blocks
+  temp-before-h070-restore.blocks
+  temp-h070-golden-bulk-preview.blocks
+  temp-before-h070-golden-restore.blocks
+  system-before-h070-bulk.syx
+  system-after-h070-bulk.syx
+  system-after-h070-golden-bulk.syx
+  h070-bulk-note-trace.json
+  h070-golden-bulk-note-trace.json
+  h070-bulk-stress-note-trace.json
+  temp-before-h070-stress-restore.blocks
+  system-after-h070-stress.syx
+
+This confirms the loaded-bulk audition path and restoration. It does not
+establish LCD names for preset selection or the post-Write panel observation.

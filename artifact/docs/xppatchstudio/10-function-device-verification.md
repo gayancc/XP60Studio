@@ -18,13 +18,13 @@ Status legend: **DEVICE** = instrument read-back or native-app MIDI evidence on 
 | A8 | Fetch-complete notice | DEVICE | fetch notices on connect/edit/tools runs |
 | A9 | On-screen keyboard | DEVICE PASS | H-051c native mouse clicks sounded and stopped between clicks by owner report |
 | A10 | Secondary controller MIDI pass-through | DEVICE PARTIAL | H-076 native KL Essential 49 mk3 → XP-60: Direct notes, pitch bend and modulation CC audible; Ch 2 remap silent; 128-patch read held/silenced/resumed thru; no hangs and final snapshot equal. A physical real-time clock/Active Sense flood remains. |
-| B1 | Patch editor live edit | DEVICE PASS | H-022: owner heard Patch Level 120→0 change; one-byte temporary read-back and Undo/restore passed |
+| B1 | Patch editor live edit | DEVICE PASS | H-022 owner-heard Patch Level change; latest build repeated Live ON/OFF, Verify/Mismatch, Send, Undo and independent restore (`patch-current-build-stability.txt`) |
 | B2 | System editor write | DEVICE | H-061..H-065; fn-verify-hw-system.txt |
 | B3 | Fetch from synth | DEVICE | H-010/H-048; connect/fetch runs |
 | B4 | Send temp | DEVICE | H-020/H-021; hw-edit/hw-chunk |
 | B5 | Save to User slot | DEVICE | H-030..H-039, H-031 Protect |
 | B6 | Init (neutral sound) | DEVICE | fn-verify-hw-tools.txt; retains the existing neutral-sound behavior |
-| B6b | XP-60 Init Patch (panel DEFAULT) | DEVICE PASS | H-052: two identical panel captures; native export, Send/read-back, Undo/restore all matched |
+| B6b | XP-60 Init Patch (panel DEFAULT) | DEVICE PASS | H-052: two identical panel captures; latest native build repeated exact export, Send/read-back, Undo/restore (`patch-current-build-stability.txt`) |
 | B7 | Randomize | DEVICE | fn-verify-hw-tools.txt |
 | B8 | Morph | DEVICE | fn-verify-hw-tools.txt |
 | B9 | Mutate | DEVICE | fn-verify-hw-tools.txt |
@@ -54,7 +54,7 @@ Status legend: **DEVICE** = instrument read-back or native-app MIDI evidence on 
 | G1 | Structure type chooser | DEVICE | G1-structure-sysex.txt; audible wiring OWNER H-075 |
 | G2 | EFX type + named params | OWNER | H-073/H-074 panel; SysEx type-only does not load defaults |
 | G3 | Tone page layout | DESKTOP | |
-| G4 | Prev/next / bank select | DEVICE | fn-verify-hw-select.txt USER; H-070 MIDI-tool presets |
+| G4 | Prev/next / bank select | DEVICE | fn-verify-hw-select.txt USER; H-070 MIDI-tool presets; H-070-loaded-bulk-audition.txt live pad preview and restoration |
 | G5 | Export open doc | DEVICE | H-066/H-053/H-061 |
 | G6 | Open Perf/Rhythm from `.syx` | DEVICE | H-057 |
 | G7 | Installer | DESKTOP/product | no MIDI |
@@ -97,3 +97,4 @@ These remain open by design. Agent SysEx/desktop halves are recorded; product Sy
 - Synth strip high-contrast redesign; hw-edit / hover / documents PASSED.
 - hw-select USER select PASS; hw-system Master Tune write/undo PASS; hw-chunk 128/32 PASS; hw-audition-mouse PASS.
 - Owner/path blockers listed; no GAP left; goal audit closed.
+- 2026-11-08 current build offline regression: live FCB1010 IN could not be opened by either the read-only MIDI probe or the built app. The app was closed without a device write. UI type check passed; 74 files / 639 tests passed; rebuilt native end-to-end passed after updating its Bank bulk workflow and fixing a 1100×700 Bank row-height clip (`2026-11-08-midi-port-unavailable.txt`, `2026-11-08-current-build-offline-regression.txt`). Live XP-60 work remains pending port recovery.

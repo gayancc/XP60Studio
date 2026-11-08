@@ -75,14 +75,16 @@ describe('the wave picker', () => {
     const names = (): string[] => getAllByRole('button').filter((b) => b.classList.contains('src')).map((b) => b.textContent ?? '');
     expect(names().join('|')).toContain('Internal A');
     expect(names().join('|')).toContain('Internal B');
-    // the Tone already uses board 1, so it stays visible, flagged as not installed
-    expect(names().join('|')).toContain('not installed');
+    // the Tone already uses board 1, so it stays visible with a "!" (keyboard will not play it until ticked)
+    expect(document.querySelector('.src.miss .bang')?.textContent).toBe('!');
+    expect(queryByText(/cannot select its waves/i)).toBeNull();
+    expect(queryByText(/not installed/i)).toBeNull();
     await fireEvent.keyDown(getByRole('dialog'), { key: 'Escape' });
     expansions.set(1, true);
     await rerender({ store: make() });
     await fireEvent.click(getByRole('button', { name: /^Wave of Tone 1/ }));
     expect(names().join('|')).toContain('Pop');
-    expect(names().join('|')).not.toContain('not installed');
+    expect(document.querySelector('.src.miss')).toBeNull();
     expect(queryByText('Search Pop…')).toBeNull();
   });
 

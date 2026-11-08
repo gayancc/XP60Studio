@@ -330,8 +330,8 @@
     display: flex;
     align-items: center;
     gap: 4px;
-    min-height: 18px;
-    height: 18px;
+    min-height: 22px;
+    height: 22px;
     padding: 0 6px 0 2px;
     background: transparent;
   }
@@ -349,14 +349,14 @@
   }
   .chev {
     flex: none;
-    width: 12px;
-    height: 18px;
+    width: 14px;
+    height: 22px;
     padding: 0;
     border: 0;
     background: transparent;
     color: #5a666e;
-    font-size: 8px;
-    line-height: 18px;
+    font-size: 10px;
+    line-height: 22px;
     text-align: center;
     cursor: pointer;
   }
@@ -376,12 +376,12 @@
   .name {
     flex: 1;
     min-width: 0;
-    height: 18px;
+    height: 22px;
     padding: 0;
     border: 0;
     background: transparent;
     text-align: left;
-    font: 400 11px/18px var(--font);
+    font: 400 13px/22px var(--font);
     color: var(--br-folder);
     overflow: hidden;
     text-overflow: ellipsis;
@@ -391,23 +391,23 @@
   .rename {
     flex: 1;
     min-width: 0;
-    height: 16px;
+    height: 20px;
     background: #0f161a;
     color: var(--br-file-sel);
     border: 1px solid #2a353b;
     border-radius: 0;
-    padding: 0 3px;
-    font: 11px var(--font);
+    padding: 0 4px;
+    font: 13px var(--font);
   }
   .count {
     flex: none;
-    font: 10px var(--font-mono);
+    font: 11px var(--font-mono);
     color: #5a666e;
     padding-right: 2px;
   }
   .tag {
     flex: none;
-    font: 600 8px var(--font-caps);
+    font: 600 10px var(--font-caps);
     letter-spacing: 0.05em;
     text-transform: uppercase;
     color: var(--br-folder-live);
@@ -415,17 +415,17 @@
   .tools {
     display: flex;
     flex-wrap: wrap;
-    gap: 2px;
-    padding: 1px 4px 3px 28px;
+    gap: 3px;
+    padding: 2px 4px 4px 28px;
   }
   .tool {
-    height: 16px;
-    padding: 0 5px;
+    height: 20px;
+    padding: 0 7px;
     border: 1px solid #1e282e;
     border-radius: 1px;
     background: #1a2328;
     color: #9aa4aa;
-    font: 400 10px var(--font);
+    font: 400 12px var(--font);
     cursor: pointer;
   }
   .tool:hover:not(:disabled) {
@@ -442,21 +442,21 @@
   }
   .ask {
     margin: 2px 4px 4px 28px;
-    padding: 4px 6px;
+    padding: 5px 7px;
     background: color-mix(in srgb, var(--warn) 12%, var(--br-bg));
     border: 1px solid var(--br-edge);
-    font-size: 11px;
+    font-size: 12px;
     color: var(--br-file);
   }
   .ask button {
-    height: 16px;
+    height: 20px;
     margin-left: 4px;
-    padding: 0 5px;
+    padding: 0 7px;
     border: 1px solid #1e282e;
     border-radius: 1px;
     background: #1a2328;
     color: #9aa4aa;
-    font: 400 10px var(--font);
+    font: 400 12px var(--font);
     cursor: pointer;
   }
   .slots,
@@ -482,14 +482,14 @@
     align-items: center;
     gap: 5px;
     width: 100%;
-    height: 18px;
-    min-height: 18px;
+    height: 22px;
+    min-height: 22px;
     padding: 0 6px 0 4px;
     border: 0;
     background: transparent;
     text-align: left;
     color: inherit;
-    font: 400 11px/18px var(--font);
+    font: 400 13px/22px var(--font);
     cursor: pointer;
   }
   .prow:hover {
@@ -510,7 +510,7 @@
   }
   .pos {
     flex: none;
-    font: 9px var(--font-mono);
+    font: 11px var(--font-mono);
     color: #5a666e;
   }
   .nm {
@@ -523,10 +523,10 @@
   }
   .newzone {
     margin: 4px 6px;
-    padding: 6px;
+    padding: 8px;
     text-align: center;
     color: #5a666e;
-    font-size: 10px;
+    font-size: 12px;
     border: 1px dashed #243038;
     background: transparent;
   }
@@ -538,8 +538,8 @@
   .empty,
   .hint {
     color: #66727a;
-    font-size: 10px;
-    padding: 4px 6px;
+    font-size: 12px;
+    padding: 5px 7px;
     margin: 0;
   }
   .hit .pos:first-child {

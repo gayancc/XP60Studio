@@ -46,11 +46,11 @@
       const where = slot >= 0 ? `${SLOT_NAMES[slot]} · ` : '';
       list.push({ key: `E${n}`, label: b?.name ?? `Board ${n}`, sub: `${where}SR-JV80-${String(n).padStart(2, '0')}`, type: 2, id: n, names: b?.waves ?? null, listed: true });
     }
-    // A Tone can point at a board that is not in the keyboard. The instrument cannot select such a group and does not play its waves, so it is shown as unavailable
-    // (nothing here can be chosen from it). Any other pointer the instrument has no name for is not offered as a group at all.
+    // A Tone can point at a board that is not ticked in Settings. Keep it in the left list with a "!" so the wave
+    // names still show; only the physical keyboard will not play those waves until the board is installed.
     if (type === 2 && !list.some((s) => s.type === type && s.id === gid)) {
       const b = board(gid);
-      list.push({ key: `X${type}-${gid}`, label: b?.name ?? `Board ${gid}`, sub: `SR-JV80-${String(gid).padStart(2, '0')} · not installed`, type, id: gid, names: b?.waves ?? null, listed: false });
+      list.push({ key: `X${type}-${gid}`, label: b?.name ?? `Board ${gid}`, sub: `SR-JV80-${String(gid).padStart(2, '0')}`, type, id: gid, names: b?.waves ?? null, listed: false });
     }
     return list;
   });
@@ -101,8 +101,8 @@
   }
 
   function choose(s: Source, n: number): void {
-    if (!s.listed) return; // the instrument cannot select a group of a board that is not installed
-    // One undo step and one whole-patch live send: type/id/number must not leave the instrument on a missing board mid-update.
+    // One undo step and one whole-patch live send. An uninstalled board still edits in the app;
+    // the keyboard simply will not play those waves until the board is ticked in Settings.
     store.applyMany(
       [
         { block, id: 'wave_group_type', value: s.type },
@@ -179,22 +179,29 @@
     <div class="cols">
       <nav aria-label="Wave sources">
         {#each sources as s (s.key)}
-          <button type="button" class="src" class:on={s.key === activeKey} class:cur={isCurrent(s)} onclick={() => { activeKey = s.key; query = ''; hi = 0; search?.focus(); }}>
-            <span class="l">{s.label}</span>
+          <button
+            type="button"
+            class="src"
+            class:on={s.key === activeKey}
+            class:cur={isCurrent(s)}
+            class:miss={!s.listed}
+            title={s.listed ? undefined : 'Not ticked in Settings › Installed expansion boards — the keyboard will not play these waves'}
+            onclick={() => { activeKey = s.key; query = ''; hi = 0; search?.focus(); }}
+          >
+            <span class="l">{s.label}{#if !s.listed}<span class="bang" aria-label="not installed">!</span>{/if}</span>
             <span class="s">{s.sub}{s.names ? ` · ${s.names.length}` : ''}</span>
           </button>
         {/each}
-        <p class="hint">Boards appear here when ticked in Settings › Installed expansion boards.</p>
+        <p class="hint">Boards appear here when ticked in Settings › Installed expansion boards. A ! means the board is not ticked — names still show; the keyboard will not play them.</p>
       </nav>
       <div class="list">
         {#if active?.names}
-          {#if !active.listed}<p class="gone">This board is not installed, so the keyboard cannot select its waves and will not play them. Tick it in Settings › Installed expansion boards.</p>{/if}
           <input bind:this={search} type="text" placeholder="Search {active.label}…" aria-label="Search waves" bind:value={query} oninput={() => (hi = 0)} />
           <ul role="listbox" aria-label="{active.label} waves">
             {#each rows as r, i (r.number)}
               {@const here = isCurrent(active) && r.number === num}
               <li role="option" aria-selected={here} class:hi={i === hi} class:cur={here}>
-                <button type="button" tabindex="-1" disabled={!active.listed} onpointerenter={() => (hi = i)} onclick={() => choose(active, r.number)}>
+                <button type="button" tabindex="-1" onpointerenter={() => (hi = i)} onclick={() => choose(active, r.number)}>
                   <span class="num">{String(r.number).padStart(3, '0')}</span>
                   <span class="wn" class:blank={r.name === ''}>{r.name || 'Not printed in Roland’s list'}</span>
                 </button>
@@ -203,8 +210,6 @@
               <li class="none">No wave matches.</li>
             {/each}
           </ul>
-        {:else if active && !active.listed}
-          <div class="byno"><p>This board is not installed, so the keyboard cannot select its waves and will not play them. Tick it in Settings › Installed expansion boards.</p></div>
         {:else if active}
           <div class="byno">
             <p>Roland publishes no waveform list for <b>{active.label}</b>, so its waves are chosen by number and shown as “{active.label} · number”.</p>
@@ -235,11 +240,6 @@
 {/if}
 
 <style>
-  .gone {
-    margin: 0 0 6px;
-    color: var(--text-faint);
-    font-size: 11px;
-  }
   /* No box: the name of the wave is the title of the card, and it is the control. The chevron appears when the pointer is on it. */
   .trig {
     display: flex;
@@ -376,12 +376,24 @@
     background-image: var(--focus-fill);
   }
   .l {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 4px;
     font: 600 11.5px var(--font-caps);
     letter-spacing: 0.03em;
     max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  .bang {
+    flex: none;
+    color: var(--warn);
+    font: 700 12px var(--font);
+    letter-spacing: 0;
+  }
+  .src.miss .s {
+    color: color-mix(in srgb, var(--warn) 45%, var(--text-faint));
   }
   .s {
     font: 9.5px var(--font-mono);

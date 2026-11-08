@@ -1,5 +1,5 @@
 import { messages } from '../model/messages.svelte';
-import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, waitFor } from '@testing-library/svelte';
 import { readFileSync } from 'node:fs';
 import { catalogJson, initSync } from '../wasm/pkg/xppatch.js';
@@ -16,7 +16,11 @@ beforeAll(() => {
   initSync({ module: readFileSync('src/wasm/pkg/xppatch_bg.wasm') });
   catalog = parseCatalog(catalogJson());
 });
-afterEach(cleanup);
+beforeEach(() => messages.clear());
+afterEach(() => {
+  cleanup();
+  messages.clear();
+});
 
 const report = { messages: 3, bytes: 120, verified: true };
 function systemBackend() {
@@ -79,7 +83,7 @@ describe('writing the System settings from the top bar', () => {
     const { container, findByText } = render(SaveHarness, { props: { store: systemStore(), services: services(b), which: 'system' } });
     await fireEvent.click(button('Write to synth…')(container));
     await fireEvent.click(button(/^1\./)(container));
-    await waitFor(() => expect(messages.list.map((m) => m.text).join(' | ')).toContain('not connected to an instrument'));
+    await waitFor(() => expect(messages.list.map((m) => m.text).join(' | ')).toMatch(/not connected to an instrument/i));
     expect(messages.list.at(-1)?.kind).toBe('error');
   });
 });

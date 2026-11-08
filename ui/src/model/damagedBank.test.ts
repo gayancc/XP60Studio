@@ -42,6 +42,6 @@ describe('a bank file with damaged messages', () => {
 
   it('names a file for another instrument instead of blaming a device ID', () => {
     const other = new Uint8Array([0xf0, 0x41, 0x09, 0x00, 0x0d, 0x01, 0x02, 0x03, 0x04, 0x76, 0xf7]);
-    expect(() => previewFile(other, 'kasun.syx')).toThrow(/not the XP-60/);
+    expect(() => previewFile(other, 'kasun.syx')).toThrow(/None of the messages.*XP-60 patch data/i);
   });
 });

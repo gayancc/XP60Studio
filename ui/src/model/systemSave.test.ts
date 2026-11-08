@@ -95,7 +95,7 @@ describe('writing the System settings', () => {
     const f = new SystemSaveFlow(backend({ commitSystemSave: vi.fn(async () => Promise.reject('timed out')) }));
     await f.arm(new Uint8Array([1]));
     expect(await f.commit()).toBe(false);
-    expect(f.error).toBe('timed out');
+    expect(f.error).toMatch(/timed out/i);
     expect(f.canUndo).toBe(true);
   });
 
@@ -124,6 +124,6 @@ describe('writing the System settings', () => {
     await f.arm(new Uint8Array([1]));
     await f.commit();
     expect(await f.undo()).toBe(false);
-    expect(f.error).toMatch(/Undo failed: the System settings no longer hold/);
+    expect(f.error).toMatch(/Undo failed: the System settings no longer hold/i);
   });
 });

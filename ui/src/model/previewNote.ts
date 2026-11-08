@@ -4,8 +4,8 @@ export async function playPreviewNote(
   allNotesOff: () => Promise<void>,
   sleep: (ms: number) => Promise<void> = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
 ): Promise<void> {
-  await note(true);
   try {
+    await note(true);
     await sleep(650);
   } finally {
     try {

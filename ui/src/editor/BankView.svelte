@@ -8,6 +8,7 @@
   import { arrangement, tabIn } from '../model/layouts.svelte';
   import { asSyx, toMidiFile } from '../model/midiFile';
   import { errorText, reportError } from '../model/messages.svelte';
+  import { playPreviewNote } from '../model/previewNote';
   import { saveFile } from '../model/saveFile';
   import { say } from '../model/ui.svelte';
   import type { SynthService } from '../model/synth.svelte';
@@ -45,6 +46,7 @@
 
   // Leaving this workspace with an armed write must not leave it armed.
   onDestroy(() => {
+    selectionTicket += 1;
     void bank?.cancelArming();
   });
 
@@ -173,21 +175,37 @@
   // Pressing a patch also sounds it on the instrument when connected. No channel picker on this page —
   // the receive channel lives in System > MIDI.
   const canFollow = $derived(!!synth?.connected);
+  let selectionTicket = 0;
+  let selectionTail: Promise<void> = Promise.resolve();
 
   function choose(slot: number): void {
     const next = Math.min(PATCH_COUNT - 1, Math.max(0, slot));
     if (bank) bank.selected = next;
     if (!canFollow) return;
+    const ticket = ++selectionTicket;
     const held = bank?.slots[next];
-    // A bulk / file / editor copy lives only in the app until Write. Program Change would still play the
-    // old User memory on the keyboard — send this pad's bytes to temporary memory so the keys match the name.
-    if (held?.bytes && held.origin !== 'synth') {
-      store.auditionBlocks(held.bytes);
-      return;
-    }
-    // Slot was read from the instrument (or is still empty): select that User number on the panel.
-    const sel = soundSelect('USER', next);
-    if (sel) void synth?.selectSound(0, sel.msb, sel.lsb, sel.program);
+    // A temporary send and a Program Change use different paths. Finish the earlier selection first,
+    // then skip any superseded choice so an old temporary patch cannot arrive after a newer User selection.
+    selectionTail = selectionTail.then(async () => {
+      if (ticket !== selectionTicket || !synth?.connected) return;
+      await store.whenQueueIdle();
+      if (ticket !== selectionTicket || !synth?.connected) return;
+      if (held?.bytes && held.origin !== 'synth') {
+        store.auditionBlocks(held.bytes);
+        await store.whenQueueIdle();
+        if (ticket === selectionTicket && synth.connected && store.queue.state === 'ok') {
+          await playPreviewNote(
+            (on) => synth.note(0, 60, on ? 100 : 0, on),
+            () => synth.allNotesOff(0),
+          );
+        }
+      } else {
+        const sel = soundSelect('USER', next);
+        if (sel) await synth.selectSound(0, sel.msb, sel.lsb, sel.program);
+      }
+    }).catch((e: unknown) => {
+      reportError(errorText(e));
+    });
   }
 
   const chooseBank = (b: number): void => choose(slotOf({ sub, bank: b, num: pos.num }));
@@ -276,7 +294,7 @@
               <span class="lcdkey">PATCH {patchNumber(current)}</span>
               <span class="lcdname">{cellName(current)}</span>
               {#if changed.has(current)}<span class="chg">CHANGED</span>{/if}
-              {#if canFollow}<span class="follow-pill" title="Connected: selecting a pad sends that sound to the instrument so you can play it. A loaded bulk is sent to temporary memory until you Write the bank.">LIVE</span>{/if}
+              {#if canFollow}<span class="follow-pill" title="Connected: a synth-read pad selects its User patch. A loaded bulk pad goes to temporary memory and plays one short MIDI note; the XP-60's own keys may still play the panel-selected patch until you Write the bank.">LIVE</span>{/if}
             </div>
           </div>
 
@@ -729,7 +747,7 @@
   .grid {
     display: grid;
     grid-template-columns: repeat(8, minmax(0, 1fr));
-    grid-template-rows: repeat(8, minmax(40px, 1fr));
+    grid-template-rows: repeat(8, minmax(39px, 1fr));
     gap: 4px;
     flex: 1;
     min-height: 0;

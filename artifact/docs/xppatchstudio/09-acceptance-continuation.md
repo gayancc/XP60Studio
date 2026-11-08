@@ -35,12 +35,12 @@ This inventory does not imply acceptance. Each feature keeps its original parity
 | A7 | MIDI map / learn | H-054 PASS. |
 | A8 | Fetch-complete notice | Fresh desktop fetch and verification notices observed. |
 | A9 | On-screen keyboard | H-051c mouse CDP + computer keys on connected XP-60 (H-051c / H-051c-mouse). |
-| B1 | Single-patch editor, rename | Native Patch tools + live edit hardware paths recorded (H-022 audible/read-back PASS; H-025/H-029; tools Init/Randomize/Mutate/Morph desktop). |
+| B1 | Single-patch editor, rename | H-022 audible/read-back PASS; latest custom-protocol build repeated Live ON edits, Undo, Live OFF/Mismatch, Send/Verify and complete temporary restore (`patch-current-build-stability.txt`). H-025/H-029 and Patch tools remain recorded. |
 | B2 | Non-bank single-instance editor (system) | H-061..H-065 System editor hardware evidence recorded. |
 | B3 | Fetch from synth | Desktop temp fetch/verify PASS; bank H-048 PASS. |
 | B4 | Send to synth (temp) | H-020/H-021/H-025/H-029 and chunk H-056 PASS. |
 | B5 | Save to synth slot | H-030/H-033/H-035/H-036/H-039 PASS (Protect OFF path); H-031 Protect PASS. |
-| B6 | Init | Neutral Init changed bytes, sent/verified, Undo restored. H-052: separate XP-60 Init Patch action matches two panel DEFAULT captures exactly; native Send/read-back and Undo/restore PASS (`H-052-panel-init.txt`). |
+| B6 | Init | Neutral Init changed bytes, sent/verified, Undo restored. H-052: separate XP-60 Init Patch action matches two panel DEFAULT captures exactly; Send/read-back and Undo/restore PASS on both the earlier and latest custom-protocol build (`H-052-panel-init.txt`, `patch-current-build-stability.txt`). |
 | B7 | Randomize | Native Randomize sent/verified + Undo (09 narrative). |
 | B8 | Morph | Native midpoint Morph sent/verified + cleanup (09 narrative). |
 | B9 | Mutate | Native Mutate sent/verified + Undo (09 narrative). |
@@ -194,7 +194,7 @@ Every open ledger row has evidence or an explicit remaining procedure. The unres
 | H-060 / H-067 | Owner LCD tables (tempo-synced note lengths; Peaking Q / Cutoff Hz / Rate / Delay). |
 | H-068 routing | SysEx ACCEPTED raw 3 / raw 2 (H-068.txt); owner which output (if any) carries `<OUTPUT-2>`. |
 | H-069 | Owner audible routing listen (08-effects-routing-verification.md). |
-| H-070 LCD | Optional owner panel names (MIDI-tool + Bank UI already PASS). |
+| H-070 LCD | Loaded-bulk Bank audition now passed by ear, with temp/System/User restoration verified (`H-070-loaded-bulk-audition.txt`). Preset LCD names and post-Write panel observation remain. |
 | H-039 / H-063 / H-071 panel wording | Optional owner confirmation of SysEx stand-in refuse paths. |
 | H-073 / H-074 / H-075 | Owner EFX-type walk / slot-order probe / structure listen. SysEx type-only write does not load defaults (H-073-sysex-note.txt). |
 | G8 final stamp | Owner authorized restoring initial session System and Jimmee Dee temporary patch. Latest full independent snapshot after H-076 equal; final temporary read after pitch-bend/modulation repeat equal. |
@@ -218,8 +218,8 @@ Agent-runnable SysEx halves are done where possible. Items below still need owne
 | G1 | met | Bank interrupt / restore already evidenced. |
 | G2 | met | Every ledger item has PASS/PARTIAL/BLOCKED evidence or an explicit remaining procedure (07 + this file). H-052 is PASS. Owner Soft Thru / LCD / audible / H-059 panel / H-060 / H-067 / H-068 routing / H-069 / H-073–075 remain as recorded remaining procedures; SysEx rows stay not-DONE in 04 until owner confirms. |
 | G3 | met | A1–G9 inventory reconciled in this file. |
-| G4–G7 | met | Rust workspace tests, UI type check, 75 UI test files / 626 tests, and final custom-protocol desktop end-to-end run pass. The latest desktop run includes the repaired save confirmation checks. |
-| G8 | met | Latest post-H-058 full independent snapshot: all 128 User patches, 32 Performances, two Rhythm Sets, System settings and Jimmee Dee temporary patch equal the original backup. The first read found only panel-selection System bytes; these were backed up and restored under the owner's earlier reset authorization before the passing second read (`H-058-internal-wave-check.txt`). |
+| G4–G7 | met | Rust workspace tests previously passed. After the bottom status-line update and rapid-dismiss fix, UI type check passed with 0 errors/warnings, 74 UI files / 632 tests passed, and the final custom-protocol desktop end-to-end run exited 0 with All checks passed (`patch-current-build-stability.txt`). |
+| G8 | met | Latest post-H-058 full independent snapshot: all 128 User patches, 32 Performances, two Rhythm Sets, System settings and Jimmee Dee temporary patch equal the original backup. Later Patch Init and live-edit tests wrote temporary memory only; separate post-app reads both matched the original Jimmee Dee bytes (`H-058-internal-wave-check.txt`, `patch-current-build-stability.txt`). |
 
 ### Owner-approved reset to the session snapshot
 
