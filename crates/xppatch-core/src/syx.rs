@@ -19,27 +19,27 @@ pub const MAX_FILE_BYTES: usize = 16 * 1024 * 1024;
 #[derive(Debug, Error, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum SyxError {
-    #[error("message {index}: {source}")]
+    #[error("Message {index} in the file could not be read.")]
     Parse { index: usize, source: ParseError },
-    #[error("message {index} is a data request; a file of stored data should contain only DT1")]
+    #[error("Message {index} is a data request; a bank file should contain only stored data.")]
     UnexpectedRequest { index: usize },
-    #[error("the file contains no SysEx messages")]
+    #[error("That file contains no SysEx messages.")]
     Empty,
-    #[error("none of the {skipped} messages in this file is XP-60 data ({reason})")]
+    #[error("None of the messages in that file is XP-60 patch data.")]
     NoXp60Data { skipped: usize, reason: String },
-    #[error("file is {size} bytes, above the {limit} byte limit")]
+    #[error("That file is too large to open ({size} bytes; limit {limit}).")]
     TooLarge { size: usize, limit: usize },
-    #[error("user patch slot {0} is out of range")]
+    #[error("User patch slot {0} is out of range.")]
     SlotOutOfRange(u8),
-    #[error("split size {0} exceeds the instrument's {MAX_DT1_DATA_TO_DEVICE}-byte limit")]
+    #[error("That split is larger than the XP-60 can accept in one message.")]
     SplitTooLarge(usize),
-    #[error(transparent)]
+    #[error("That patch data is not valid.")]
     Patch(#[from] PatchError),
-    #[error(transparent)]
+    #[error("That memory location is out of range.")]
     Memory(#[from] MemoryError),
-    #[error(transparent)]
+    #[error("Could not split that MIDI message.")]
     Chunk(#[from] ChunkError),
-    #[error(transparent)]
+    #[error("Could not build that MIDI message.")]
     Encode(#[from] EncodeError),
 }
 

@@ -7,13 +7,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let [input, output, file] = args.as_slice() else {
         return Err("pass input, output and System backup.syx".into());
     };
-    let old=SyxImage::parse(&std::fs::read(file)?)?.system_document()?.ok_or("no System data")?;
-    let mut client=Client::new(MidirTransport::connect(input,output)?,ClientConfig::default());
-    let now=client.read_system(&CancelToken::new())?;
-    let mut count=0;
-    for (block,(a,b)) in old.blocks().iter().zip(now.blocks()).enumerate(){
-        for (byte,(x,y)) in a.bytes().iter().zip(b.bytes()).enumerate(){
-            if x!=y{println!("block {block} byte {byte}: {x} -> {y}");count+=1}
+    let old = SyxImage::parse(&std::fs::read(file)?)?
+        .system_document()?
+        .ok_or("no System data")?;
+    let mut client = Client::new(
+        MidirTransport::connect(input, output)?,
+        ClientConfig::default(),
+    );
+    let now = client.read_system(&CancelToken::new())?;
+    let mut count = 0;
+    for (block, (a, b)) in old.blocks().iter().zip(now.blocks()).enumerate() {
+        for (byte, (x, y)) in a.bytes().iter().zip(b.bytes()).enumerate() {
+            if x != y {
+                println!("block {block} byte {byte}: {x} -> {y}");
+                count += 1
+            }
         }
     }
     println!("SYSTEM DIFFERENCES: {count}");

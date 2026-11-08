@@ -75,7 +75,7 @@ class MessageCentre {
 
   /** Show a message. The same text again renews the matching queued entry instead of stacking a copy. */
   report(kind: MessageKind, text: string, lifetime?: number): number {
-    const clean = text.trim();
+    const clean = kind === 'error' || kind === 'warning' ? humanizeErrorText(text) : text.trim();
     if (!clean) return 0;
     // Reading the list here must not make a caller's $effect depend on it: reporting from an effect would otherwise re-run that effect forever.
     return untrack(() => {
@@ -231,7 +231,78 @@ export const reportWarning = (text: string): number => messages.report('warning'
 export const reportInfo = (text: string): number => messages.report('info', text);
 export const reportSuccess = (text: string): number => messages.report('success', text);
 
+/**
+ * Rewrite OS / MIDI / protocol jargon into plain language a musician can act on.
+ * Applied at every status-bar report and every thrown-error conversion so technical
+ * codes like `MMSYSERR_ALLOCATED` never appear in the UI.
+ */
+export function humanizeErrorText(raw: string): string {
+  let text = raw.trim();
+  if (!text) return text;
+
+  text = text
+    .replace(/^refused:\s*/i, '')
+    .replace(/^midi port error:\s*/i, '')
+    .replace(/^error:\s*/i, '')
+    .trim();
+
+  const lower = text.toLowerCase();
+
+  if (
+    lower.includes('mmsyserr_allocated') ||
+    lower.includes('already allocated') ||
+    (lower.includes('device') && lower.includes('in use')) ||
+    lower.includes('resource busy')
+  ) {
+    return 'That MIDI port is already open in another program (for example FL Studio). Close the other program, or pick a different port, then try Connect again.';
+  }
+  if (
+    lower.includes('mmsyserr_baddeviceid') ||
+    lower.includes('unknown port') ||
+    (lower.includes('invalid device') && lower.includes('midi'))
+  ) {
+    return 'That MIDI port is no longer available. Press Rescan and choose it again.';
+  }
+  if (lower.includes('mmsyserr_nodriver') || (lower.includes('no driver') && lower.includes('midi'))) {
+    return 'Windows has no driver for that MIDI port. Unplug the interface, plug it back in, then press Rescan.';
+  }
+  if (lower.includes('mmsyserr_notenabled') || (lower.includes('not enabled') && lower.includes('midi'))) {
+    return 'That MIDI port is turned off in Windows. Enable it in Sound settings, then press Rescan.';
+  }
+  if (
+    (lower.includes('access denied') || lower.includes('permission') || lower.includes('os error')) &&
+    (lower.includes('midi') || lower.includes('port') || lower.includes('os error'))
+  ) {
+    return 'This app was not allowed to open that MIDI port. Quit other MIDI software and try again.';
+  }
+  if (/\(os error\s*\d+\)/i.test(text) || /os error\s*\d+/i.test(text)) {
+    return 'Something went wrong talking to the MIDI port. Close other programs using it, press Rescan, and try Connect again.';
+  }
+  if (lower.includes('could not create') && (lower.includes('input') || lower.includes('output'))) {
+    return 'Could not open the MIDI port. Close other MIDI software using that port, then try Connect again.';
+  }
+  if (
+    /mmsyserr_|osstatus|coremidi/i.test(text) ||
+    (/\(0x[0-9a-f]+\)/i.test(text) && /midi|port/i.test(text))
+  ) {
+    return 'Could not open the MIDI port. Close other programs using it, press Rescan, and try Connect again.';
+  }
+
+  // Drop trailing OS codes that sometimes ride along with an otherwise readable sentence.
+  text = text.replace(/\s*\((?:MMSYSERR_\w+|OSStatus[^)]*|0x[0-9a-fA-F]+)\)\s*$/g, '').trim();
+
+  if (/^[a-z]/.test(text)) {
+    text = text.charAt(0).toUpperCase() + text.slice(1);
+  }
+  if (text.length > 1 && !/[.!?]$/.test(text) && !text.includes('\n')) {
+    // Keep short labels like "Cancelled" readable; only punctuate sentence-like lines.
+    if (text.includes(' ') && text.length > 24) text = `${text}.`;
+  }
+  return text;
+}
+
 /** The text of a thrown value, for an error message. */
 export function errorText(e: unknown): string {
-  return typeof e === 'string' ? e : e instanceof Error ? e.message : String(e);
+  const raw = typeof e === 'string' ? e : e instanceof Error ? e.message : String(e);
+  return humanizeErrorText(raw);
 }

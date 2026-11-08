@@ -17,17 +17,17 @@ const SYSEX_END: u8 = 0xF7;
 #[derive(Debug, Error, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum SmfError {
-    #[error("no SysEx messages to write")]
+    #[error("There are no SysEx messages to write.")]
     NothingToWrite,
-    #[error("not a Standard MIDI File (missing MThd header)")]
+    #[error("That is not a Standard MIDI File.")]
     NotMidi,
-    #[error("the MIDI file ends in the middle of {0}")]
+    #[error("That MIDI file ends in the middle of {0}.")]
     Truncated(&'static str),
-    #[error("the MIDI file contains no SysEx messages")]
+    #[error("That MIDI file contains no SysEx messages.")]
     NoSysex,
-    #[error("a SysEx event in the MIDI file never ends with F7")]
+    #[error("A SysEx event in that MIDI file never finishes.")]
     UnterminatedSysex,
-    #[error("file is {size} bytes, above the {limit} byte limit")]
+    #[error("That file is too large to open ({size} bytes; limit {limit}).")]
     TooLarge { size: usize, limit: usize },
 }
 

@@ -7,7 +7,8 @@
   import type { PatchStore } from '../model/store.svelte';
   import type { SynthService } from '../model/synth.svelte';
   import { controls } from '../model/controls.svelte';
-  import { carriesFiles, dropMeaning, openPatchFile, previewFile } from '../model/openFile';
+  import { carriesFiles, dropMeaning, openPatchFile } from '../model/openFile';
+  import { arrangement } from '../model/layouts.svelte';
   import { ui } from '../model/ui.svelte';
   import CommandPalette, { type CommandInfo, type PaletteItem } from './CommandPalette.svelte';
   import { provideStore } from './context';
@@ -64,12 +65,9 @@
     if (mode === 'library') {
       services?.library.stage(first.name, raw);
     } else if (mode === 'bank') {
-      try {
-        const { bytes, names } = previewFile(raw, first.name);
-        services?.bank.loadFile(bytes, first.name, names);
-      } catch (err) {
-        if (services) services.bank.error = err instanceof Error ? err.message : String(err);
-      }
+      // Bank files go into the library as bulks (Bank → Library → Import), not straight onto the grid.
+      services?.library.stage(first.name, raw);
+      arrangement.bankTab = 1;
     } else {
       openPatchFile(store, raw, first.name);
     }

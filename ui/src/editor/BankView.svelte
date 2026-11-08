@@ -1,13 +1,12 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
-  import { Meter, Stepper, TabPanel, ToggleLed } from '../kit';
+  import { Meter, TabPanel } from '../kit';
   import { SLOTS } from '../model/bank.svelte';
   import { PATCH_COUNT, PER_BANK, panelLabel, patchNumber, posOf, slotOf, soundSelect, SUBGROUPS } from '../model/bankPanel';
   import { PatchStore } from '../model/store.svelte';
   import { tauriBackend, type BackupFile } from '../model/backend';
   import { arrangement, tabIn } from '../model/layouts.svelte';
   import { asSyx, toMidiFile } from '../model/midiFile';
-  import { previewFile } from '../model/openFile';
   import { errorText, reportError } from '../model/messages.svelte';
   import { saveFile } from '../model/saveFile';
   import { say } from '../model/ui.svelte';
@@ -30,10 +29,14 @@
   const bank = $derived(services?.bank);
   const lib = $derived(services?.library);
 
-  let fileInput: HTMLInputElement | undefined = $state();
   let dragFrom = $state<number | null>(null);
   /** The slot a patch being dragged is over right now. While it is set, the front-panel buttons that pick that slot are lit as a guide. */
   let dropTarget = $state<number | null>(null);
+  /**
+   * While a drag is held over a SUB a/b pad, show that sub-group's 64 pads so a patch from b can be dropped on a (and the other way).
+   * Cleared when the drag ends. Does not change the selected patch by itself.
+   */
+  let dragPreviewSub = $state<0 | 1 | null>(null);
   const dropPos = $derived(dropTarget === null ? null : posOf(dropTarget));
 
   onMount(() => {
@@ -50,18 +53,6 @@
   const selectedSlot = $derived(bank ? bank.slots[bank.selected] : undefined);
   const slotLabel = (i: number): string => String(i + 1).padStart(3, '0');
   const percent = $derived(bank?.progress && bank.progress.total > 0 ? bank.progress.done / bank.progress.total : 0);
-
-  async function pickFile(e: Event & { currentTarget: HTMLInputElement }): Promise<void> {
-    const file = e.currentTarget.files?.[0];
-    e.currentTarget.value = '';
-    if (!file || !bank) return;
-    try {
-      const { bytes, names } = previewFile(new Uint8Array(await file.arrayBuffer()), file.name);
-      bank.loadFile(bytes, file.name, names);
-    } catch (err) {
-      bank.error = err instanceof Error ? err.message : String(err);
-    }
-  }
 
   async function exportBank(): Promise<void> {
     const bytes = await bank?.toSyx(store.deviceId);
@@ -95,9 +86,9 @@
     if (bytes) say(await saveFile('xppatch-user-memory.syx', bytes));
   }
 
-  async function putLibraryPatch(id: number, slot: number): Promise<void> {
+  async function putLibraryPatch(id: number, slot: number, follow = true): Promise<void> {
     const bytes = await lib?.fetchBlocks(id);
-    if (bytes) bank?.assign(slot, bytes, 'library');
+    if (bytes && bank?.assign(slot, bytes, 'library') && follow) choose(slot);
   }
 
   /** A slot or a library patch is being dragged and this bank can take it. */
@@ -116,27 +107,33 @@
     if (dropTarget === slot && !(e.currentTarget as Node).contains(e.relatedTarget as Node | null)) dropTarget = null;
   }
 
-  function drop(e: DragEvent, slot: number): void {
+  async function drop(e: DragEvent, slot: number): Promise<void> {
     e.preventDefault();
     if (bank?.locked) return;
     const payload = parsePayload(e.dataTransfer?.getData(DRAG_TYPE));
-    const lib = e.dataTransfer?.getData('text/xp-library');
+    const libData = e.dataTransfer?.getData('text/xp-library');
     const from = e.dataTransfer?.getData('text/xp-slot');
     if (payload?.type === 'bulk') {
       // A whole bulk is asked about first: it replaces every slot. The question is on the Library tab.
       if (services?.library) services.library.bulks.pendingLoad = payload.bulk;
       arrangement.bankTab = 1;
     } else if (payload) {
-      // One patch goes in the slot; several go into the slots that follow it.
-      payload.items.forEach((item, i) => {
-        if (item.kind !== 'bank-slot' && slot + i < PATCH_COUNT) void putLibraryPatch(item.patchId, slot + i);
-      });
-    } else if (lib) void putLibraryPatch(Number(lib), slot);
-    else if (from !== undefined && from !== '') bank?.swap(Number(from), slot);
-    // Same path as a click: the landing slot stays selected, and with "Select on the instrument" on the keyboard follows it too.
-    if (payload?.type !== 'bulk') choose(slot);
-    dragFrom = null;
-    dropTarget = null;
+      // One patch goes in the slot; several go into the slots that follow it. Await so choose hears the new bytes.
+      const jobs = payload.items.flatMap((item, i) =>
+        item.kind !== 'bank-slot' && slot + i < PATCH_COUNT
+          ? [putLibraryPatch(item.patchId, slot + i, false)]
+          : [],
+      );
+      if (jobs.length > 0) {
+        await Promise.all(jobs);
+        choose(slot);
+      } else choose(slot);
+    } else if (libData) await putLibraryPatch(Number(libData), slot);
+    else if (from !== undefined && from !== '') {
+      bank?.swap(Number(from), slot);
+      choose(slot);
+    } else choose(slot);
+    endDrag();
   }
 
   async function openSlot(slot: number): Promise<void> {
@@ -151,23 +148,46 @@
   let sub = $state<0 | 1>(0);
   const current = $derived(bank ? bank.selected : 0);
   const pos = $derived(posOf(current));
+  /** Which sub-group's pads are on screen: drag preview over SUB a/b, else the selected patch's sub. */
+  const viewSub = $derived(dragPreviewSub ?? sub);
 
   // Choosing a patch from anywhere (a click, an arrow key, the slot list) brings its sub-group up.
   $effect(() => {
     sub = posOf(current).sub;
   });
 
-  // Pressing a patch can select it on the instrument as well, the way an external keyboard does (Bank Select and Program Change,
-  // Owner's Manual p.181). Nothing is written to memory; the instrument's temporary sound is replaced.
-  let followSynth = $state(true);
-  let midiChannel = $state(0);
+  function previewSub(e: DragEvent, t: 0 | 1): void {
+    if (!acceptsDrag(e)) return;
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+    dragPreviewSub = t;
+    dropTarget = null;
+  }
+
+  function endDrag(): void {
+    dragFrom = null;
+    dropTarget = null;
+    dragPreviewSub = null;
+  }
+
+  // Pressing a patch also sounds it on the instrument when connected. No channel picker on this page —
+  // the receive channel lives in System > MIDI.
   const canFollow = $derived(!!synth?.connected);
 
   function choose(slot: number): void {
     const next = Math.min(PATCH_COUNT - 1, Math.max(0, slot));
     if (bank) bank.selected = next;
+    if (!canFollow) return;
+    const held = bank?.slots[next];
+    // A bulk / file / editor copy lives only in the app until Write. Program Change would still play the
+    // old User memory on the keyboard — send this pad's bytes to temporary memory so the keys match the name.
+    if (held?.bytes && held.origin !== 'synth') {
+      store.auditionBlocks(held.bytes);
+      return;
+    }
+    // Slot was read from the instrument (or is still empty): select that User number on the panel.
     const sel = soundSelect('USER', next);
-    if (followSynth && canFollow && sel) void synth?.selectSound(midiChannel, sel.msb, sel.lsb, sel.program);
+    if (sel) void synth?.selectSound(0, sel.msb, sel.lsb, sel.program);
   }
 
   const chooseBank = (b: number): void => choose(slotOf({ sub, bank: b, num: pos.num }));
@@ -229,8 +249,6 @@
     <section class="left">
       <div class="bar">
           <button type="button" onclick={() => bank.readFromSynth()} disabled={bank.working}>Read from synth</button>
-          <button type="button" onclick={() => fileInput?.click()} disabled={bank.locked}>Load .syx / .mid…</button>
-          <input bind:this={fileInput} type="file" accept=".syx,.mid,.midi" hidden onchange={pickFile} aria-label="Load a .syx or .mid bank file" />
           <button type="button" onclick={exportBank} disabled={bank.working}>Export .syx</button>
           <button type="button" onclick={exportBankMid} disabled={bank.working}>Export .mid</button>
           <button type="button" onclick={addToLibrary} disabled={bank.working || bank.slots.every((s) => s.bytes === null)} title="File every patch in the grid into the Library: as a bulk named Synth and today's date, and in a folder of the same name">Add all to library</button>
@@ -247,85 +265,124 @@
       </div>
       <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
       <div class="panel" role="group" aria-label="Patch selection" tabindex="-1" onkeydown={panelKey}>
-        <div class="lcd" aria-live="polite">
-          <span class="lcdkey">USER:{patchNumber(current)}</span>
-          <span class="lcdname">{cellName(current)}</span>
-          <span class="lcdloc">[{panelLabel(current)}]</span>
-          {#if changed.has(current)}<span class="chg">changed</span>{/if}
-        </div>
+        <div class="console">
+          <div class="lcd" aria-live="polite">
+            <div class="lcd-meta">
+              <span class="lcd-group">USER</span>
+              <span class="lcd-coord">{panelLabel(current)}</span>
+              <span class="lcd-path">SUB {SUBGROUPS[pos.sub].toUpperCase()} · BANK {pos.bank} · NUMBER {pos.num}</span>
+            </div>
+            <div class="lcd-main">
+              <span class="lcdkey">PATCH {patchNumber(current)}</span>
+              <span class="lcdname">{cellName(current)}</span>
+              {#if changed.has(current)}<span class="chg">CHANGED</span>{/if}
+              {#if canFollow}<span class="follow-pill" title="Connected: selecting a pad sends that sound to the instrument so you can play it. A loaded bulk is sent to temporary memory until you Write the bank.">LIVE</span>{/if}
+            </div>
+          </div>
 
-        <div class="follow">
-          <ToggleLed
-            checked={followSynth}
-            label="Select on the instrument"
-            name="Select the patch on the instrument too"
-            context="Bank"
-            disabled={!canFollow}
-            onchange={(on) => (followSynth = on)}
-          />
-          <Stepper bind:value={midiChannel} min={0} max={15} label="Channel" name="Patch receive channel" context="Bank" format={(v) => String(v + 1)} disabled={!canFollow || !followSynth} />
-          <span class="dim">{canFollow ? (followSynth ? 'Sends Bank Select and Program Change; the instrument must receive them (System, MIDI).' : 'Off: only this screen changes.') : 'Connect the instrument to select patches on it.'}</span>
-        </div>
+          <!-- Owner's Manual p.26 Bank/Number method: SUBGROUP → BANK 1–8 → NUMBER 1–8, columns aligned to the grid. -->
+          <div class="rails">
+            <div class="rail">
+              <span class="rail-lab">Sub</span>
+              <div class="oct sub">
+                {#each SUBGROUPS as sg, t (sg)}
+                  <button
+                    type="button"
+                    class="pad sub"
+                    class:on={viewSub === t}
+                    class:guide={dragPreviewSub === t || dropPos?.sub === t}
+                    onclick={() => chooseSub(t as 0 | 1)}
+                    ondragenter={(e) => previewSub(e, t as 0 | 1)}
+                    ondragover={(e) => previewSub(e, t as 0 | 1)}
+                    aria-pressed={viewSub === t}
+                    title="Drag a patch onto a or b to show that half of the bank, then drop it on a pad"
+                  >{sg}</button>
+                {/each}
+              </div>
+            </div>
+            <div class="rail">
+              <span class="rail-lab">Bank</span>
+              <div class="oct">
+                {#each ONE_TO_EIGHT as b (b)}
+                  <button
+                    type="button"
+                    class="pad"
+                    class:on={pos.bank === b && pos.sub === viewSub && dragPreviewSub === null}
+                    class:guide={dropPos?.bank === b}
+                    onclick={() => chooseBank(b)}
+                    aria-pressed={pos.bank === b && pos.sub === viewSub}
+                  >{b}</button>
+                {/each}
+              </div>
+            </div>
+            <div class="rail">
+              <span class="rail-lab">Num</span>
+              <div class="oct">
+                {#each ONE_TO_EIGHT as n (n)}
+                  <button
+                    type="button"
+                    class="pad"
+                    class:on={pos.num === n}
+                    class:guide={dropPos?.num === n}
+                    onclick={() => chooseNumber(n)}
+                    aria-pressed={pos.num === n}
+                  >{n}</button>
+                {/each}
+              </div>
+            </div>
+            <div class="stems" aria-hidden="true">
+              <span class="rail-lab"></span>
+              <div class="oct">
+                {#each ONE_TO_EIGHT as n (n)}
+                  <span class="stem" class:lit={pos.num === n || dropPos?.num === n}></span>
+                {/each}
+              </div>
+            </div>
+          </div>
 
-        <div class="keys">
-          <div class="krow">
-            <span class="klabel">Sub-group</span>
-            {#each SUBGROUPS as sg, t (sg)}
-              <button type="button" class="pad" class:on={sub === t} class:guide={dropPos?.sub === t} onclick={() => chooseSub(t as 0 | 1)}>{sg}</button>
-            {/each}
-            <span class="klabel gap">Bank</span>
-            {#each ONE_TO_EIGHT as b (b)}
-              <button type="button" class="pad num" class:on={pos.bank === b && pos.sub === sub} class:guide={dropPos?.bank === b} onclick={() => chooseBank(b)}>{b}</button>
-            {/each}
-            <span class="klabel gap">Number</span>
-            {#each ONE_TO_EIGHT as n (n)}
-              <button type="button" class="pad num" class:on={pos.num === n} class:guide={dropPos?.num === n} onclick={() => chooseNumber(n)}>{n}</button>
+          <div class="grid" role="group" aria-label="User patches {SUBGROUPS[viewSub]}">
+            {#each Array.from({ length: 64 }, (_, k) => viewSub * 64 + k) as i (i)}
+              {@const s = bank.slots[i]}
+              {@const p = posOf(i)}
+              <button
+                type="button"
+                class="slot"
+                class:sel={current === i}
+                class:rowsel={current !== i && pos.sub === viewSub && p.bank === pos.bank}
+                class:colsel={current !== i && p.num === pos.num}
+                class:changed={changed.has(i) || confirmed.has(i)}
+                class:empty={cellName(i) === '—'}
+                class:dragging={dragFrom === i}
+                class:target={dropTarget === i}
+                draggable={!bank.locked && !!s?.bytes}
+                ondragstart={(e) => {
+                  dragFrom = i;
+                  dragPreviewSub = null;
+                  e.dataTransfer?.setData('text/xp-slot', String(i));
+                }}
+                ondragend={() => endDrag()}
+                ondragenter={(e) => guide(e, i)}
+                ondragover={(e) => guide(e, i)}
+                ondragleave={(e) => leaveSlot(e, i)}
+                ondrop={(e) => drop(e, i)}
+                onclick={() => choose(i)}
+                ondblclick={() => openSlot(i)}
+                aria-label="{patchNumber(i)} {panelLabel(i)}: {cellName(i)}{changed.has(i) ? ', changed' : ''}"
+                aria-pressed={current === i}
+              >
+                <span class="n">{panelLabel(i)} · {patchNumber(i)}</span>
+                <span class="nm">{cellName(i)}</span>
+              </button>
             {/each}
           </div>
         </div>
-
-        <div class="grid" role="group" aria-label="User patches {SUBGROUPS[sub]}">
-          {#each Array.from({ length: 64 }, (_, k) => sub * 64 + k) as i (i)}
-            {@const s = bank.slots[i]}
-            {@const p = posOf(i)}
-            <button
-              type="button"
-              class="slot"
-              class:sel={current === i}
-              class:rowsel={current !== i && pos.sub === sub && p.bank === pos.bank}
-              class:colsel={current !== i && p.num === pos.num}
-              class:changed={changed.has(i) || confirmed.has(i)}
-              class:empty={cellName(i) === '—'}
-              class:dragging={dragFrom === i}
-              class:target={dropTarget === i}
-              draggable={!bank.locked && !!s?.bytes}
-              ondragstart={(e) => {
-                dragFrom = i;
-                e.dataTransfer?.setData('text/xp-slot', String(i));
-              }}
-              ondragend={() => {
-                dragFrom = null;
-                dropTarget = null;
-              }}
-              ondragenter={(e) => guide(e, i)}
-              ondragover={(e) => guide(e, i)}
-              ondragleave={(e) => leaveSlot(e, i)}
-              ondrop={(e) => drop(e, i)}
-              onclick={() => choose(i)}
-              ondblclick={() => openSlot(i)}
-              aria-label="{patchNumber(i)} {panelLabel(i)}: {cellName(i)}{changed.has(i) ? ', changed' : ''}"
-              aria-pressed={current === i}
-            >
-              <span class="n">{panelLabel(i)} · {patchNumber(i)}</span>
-              <span class="nm">{cellName(i)}</span>
-            </button>
-          {/each}
-        </div>
         <p class="hint">
           {#if dropTarget !== null}
-            Drop to put the patch in <b>{panelLabel(dropTarget)} · {patchNumber(dropTarget)}</b>: sub-group {SUBGROUPS[dropPos?.sub ?? 0]}, BANK {dropPos?.bank}, NUMBER {dropPos?.num}. The lit buttons are the ones that pick it on the front panel.
+            Drop to put the patch in <b>{panelLabel(dropTarget)} · {patchNumber(dropTarget)}</b>: sub-group {SUBGROUPS[dropPos?.sub ?? 0]}, BANK {dropPos?.bank}, NUMBER {dropPos?.num}. The lit pads are the ones that pick it on the front panel.
+          {:else if dragPreviewSub !== null}
+            Showing sub-group <b>{SUBGROUPS[dragPreviewSub]}</b> — drop onto a pad to place the patch there.
           {:else}
-            Pick a patch with BANK and NUMBER as on the front panel, or click it (arrow keys move too). Drag a slot onto another to swap them, or drag a library patch onto a slot. Double-click opens it in the editor. Nothing reaches the synth until you write the bank.
+            Pick a patch as on the XP-60 front panel: SUB → BANK → NUMBER (arrow keys move too). Drag a slot onto another to swap, or drop a library patch onto a slot. Drag onto <b>a</b> or <b>b</b> to show that half of the bank. Double-click opens it in the editor. Nothing reaches User memory until you write the bank.
           {/if}
         </p>
       </div>
@@ -376,7 +433,7 @@
           <button type="button" onclick={() => { const next = Math.min(SLOTS - 1, bank.selected + 1); bank.swap(bank.selected, next); choose(next); }} disabled={bank.locked || bank.selected === SLOTS - 1}>Move down</button>
         </div>
       {:else}
-        <BulkLibraryPanel {bank} {lib} deviceId={store.deviceId} />
+        <BulkLibraryPanel {bank} {lib} deviceId={store.deviceId} onput={(slot) => choose(slot)} />
       {/if}
       {/snippet}
      </TabPanel>
@@ -456,101 +513,218 @@
     min-height: 0;
     outline: none;
   }
+  /* Instrument console: recessed plate holding LCD + panel pads + the 8×8 map (XP Bank/Number + FL graphite depth). */
+  .console {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+    min-height: 0;
+    padding: 8px;
+    border: 1px solid var(--edge);
+    border-radius: var(--radius-lg);
+    background:
+      linear-gradient(180deg, color-mix(in srgb, var(--caption) 70%, #1a1f22), color-mix(in srgb, var(--body-deep) 88%, #000));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.05),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.35);
+  }
   .lcd {
     display: flex;
-    align-items: baseline;
-    gap: 14px;
-    padding: 8px 12px;
-    background: var(--track);
-    border: 1px solid var(--edge);
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px 12px 9px;
+    border: 1px solid #0d1215;
     border-radius: var(--radius);
+    background: linear-gradient(180deg, #1a2226, #12181b 70%, #0e1316);
+    box-shadow:
+      inset 0 1px 3px rgba(0, 0, 0, 0.55),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.03);
     font-family: var(--font-mono);
+  }
+  .lcd-meta {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    min-width: 0;
+  }
+  .lcd-group {
+    font: 700 10px var(--font-caps);
+    letter-spacing: 0.1em;
+    color: var(--ok);
+  }
+  .lcd-coord {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 0.04em;
+  }
+  .lcd-path {
+    font: 600 9px var(--font-caps);
+    letter-spacing: 0.08em;
+    color: var(--text-faint);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .lcd-main {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    min-width: 0;
   }
   .lcdkey {
     color: var(--text-dim);
-    font-size: 13px;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    flex: none;
   }
   .lcdname {
-    font-size: 20px;
+    font-size: 18px;
     font-weight: 600;
-    color: var(--accent);
+    color: #e8edf0;
     flex: 1;
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  .lcdloc {
-    color: var(--text-dim);
-  }
   .chg {
+    flex: none;
     color: var(--warn);
-    font-size: 11px;
+    font: 700 9px var(--font-caps);
+    letter-spacing: 0.08em;
   }
-  .follow {
-    display: flex;
-    align-items: flex-end;
-    gap: 12px;
-    flex-wrap: wrap;
+  .follow-pill {
+    flex: none;
+    padding: 1px 6px;
+    border-radius: 2px;
+    font: 700 9px var(--font-caps);
+    letter-spacing: 0.08em;
+    color: var(--accent-ink);
+    background: color-mix(in srgb, var(--ok) 78%, #fff);
+    box-shadow: 0 0 6px color-mix(in srgb, var(--ok) 35%, transparent);
   }
-  .keys {
+  .rails {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-  }
-  .krow {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
     gap: 5px;
   }
-  .klabel {
-    font: 600 10px var(--font-caps);
+  .rail,
+  .stems {
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr);
+    align-items: center;
+    gap: 8px;
+  }
+  .rail-lab {
+    font: 700 9px var(--font-caps);
+    letter-spacing: 0.1em;
     text-transform: uppercase;
-    color: var(--text-dim);
-    min-width: 74px;
+    color: var(--text-faint);
+    text-align: right;
   }
-  .klabel.gap {
-    min-width: 0;
-    margin-left: 14px;
+  .oct {
+    display: grid;
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+    gap: 3px;
   }
+  /*
+   * FL QuickBtn face language only (fl-quickbtn-evidence.md) — not FL pixel sizes.
+   * OFF: charcoal gradient. ON: radial lamp + #be5507 rim + brown ink.
+   * Latch fade ~60 ms measured live in FL 2025 (~240 fps) — no bounce/outer glow.
+   * Width/height stay ours (SUB a/b share the Bank/Num 8-col grid).
+   */
   .pad {
-    min-width: 40px;
-    padding: 6px 8px;
-    font-family: var(--font-mono);
-    font-weight: 600;
+    position: relative;
+    min-width: 0;
+    height: 29px;
+    padding: 0;
+    border-radius: 2px;
+    border: 1px solid #2a3236;
+    border-top-color: #6a757b;
+    border-left-color: #556166;
+    border-right-color: #1e262a;
+    border-bottom-color: #141a1d;
+    background: linear-gradient(180deg, #596267 0%, #4a5259 55%, #3f484d 100%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    color: #a8b2b8;
+    font: 700 11px var(--font-caps);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 60ms linear, border-color 60ms linear, color 60ms linear;
   }
-  .pad.num {
-    min-width: 34px;
+  .pad.sub {
+    font-size: 12px;
+    letter-spacing: 0.04em;
   }
+  .pad:hover:not(:disabled):not(.on):not(.guide) {
+    color: #d9e1e5;
+    background: linear-gradient(180deg, #657077 0%, #545c63 55%, #485055 100%);
+  }
+  .pad:active:not(:disabled):not(.on) {
+    background: linear-gradient(180deg, #3a4248 0%, #4a5259 100%);
+    border-top-color: #1e262a;
+    border-bottom-color: #5a656a;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.45);
+  }
+  /* ON = backlit lamp (radial), rim #be5507, ink #b14000 — not a linear orange wash. */
   .pad.on {
-    background: var(--accent);
-    color: var(--accent-ink);
-    border-color: var(--accent-soft);
+    color: #b14000;
+    border-color: #be5507;
+    background: radial-gradient(
+      ellipse 92% 88% at 50% 48%,
+      #ffffb4 0%,
+      #ffda8d 38%,
+      #ffb76a 68%,
+      #fba65a 100%
+    );
+    box-shadow: none;
+  }
+  .pad.on:hover:not(:disabled) {
+    background: radial-gradient(
+      ellipse 92% 88% at 50% 48%,
+      #ffffc0 0%,
+      #ffe094 38%,
+      #ffc078 68%,
+      #ffb060 100%
+    );
+  }
+  .pad:focus-visible {
+    outline: none;
+    background-image: linear-gradient(var(--focus-tint), var(--focus-tint)),
+      linear-gradient(180deg, #596267 0%, #4a5259 55%, #3f484d 100%);
+  }
+  .pad.on:focus-visible {
+    background-image: linear-gradient(var(--focus-tint), var(--focus-tint)),
+      radial-gradient(ellipse 92% 88% at 50% 48%, #ffffb4 0%, #ffda8d 38%, #ffb76a 68%, #fba65a 100%);
   }
   .pad:disabled {
     opacity: 0.35;
     cursor: default;
   }
-  /* While a patch is dragged over a slot, the panel buttons that pick that slot are tinted as a guide (a tint, never a ring, and it pulses softly). */
-  .pad.guide:not(.on),
-  .pad.guide.on {
-    background: color-mix(in srgb, var(--accent) 62%, var(--well-deep));
-    color: var(--text);
-    animation: guide-pulse 0.9s ease-in-out infinite alternate;
+  /* Drag guide: warm wash on the OFF face — never the full ON lamp. */
+  .pad.guide:not(.on) {
+    color: #d9e1e5;
+    border-top-color: #c09058;
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--accent) 22%, #657077) 0%,
+      color-mix(in srgb, var(--accent) 14%, #4a5259) 100%
+    );
   }
-  @keyframes guide-pulse {
-    from {
-      background: color-mix(in srgb, var(--accent) 38%, var(--well-deep));
-    }
-    to {
-      background: color-mix(in srgb, var(--accent) 72%, var(--well-deep));
-    }
+  .stem {
+    display: block;
+    height: 7px;
+    margin: 0 10%;
+    border-radius: 1px;
+    background: linear-gradient(180deg, #1a2023, #2a3337);
+    box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.5);
   }
-  @media (prefers-reduced-motion: reduce) {
-    .pad.guide {
-      animation: none;
-    }
+  .stem.lit {
+    background: linear-gradient(180deg, #e09040, #a85818);
+    box-shadow: none;
   }
   .grid {
     display: grid;
@@ -562,17 +736,34 @@
   }
   .slot.rowsel,
   .slot.colsel {
-    background: color-mix(in srgb, var(--accent) 12%, var(--well-deep));
+    background: color-mix(in srgb, var(--accent) 10%, #333c40);
   }
+  /*
+   * Patch cells follow FL channel-rack name buttons: 1 px raised edge, flat face,
+   * hover = slight brighten only (measured channel-rack / menu hover language).
+   */
   .slot {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
     gap: 1px;
-    padding: 6px 6px;
+    padding: 5px 6px;
     min-width: 0;
     text-align: left;
-    background: var(--well-deep);
+    border-radius: 2px;
+    background: linear-gradient(180deg, #3e484c, #333c40);
+    border: 1px solid #1a2125;
+    border-top-color: #556166;
+    border-left-color: #455055;
+    border-right-color: #141a1d;
+    border-bottom-color: #101418;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    color: var(--text);
+    cursor: pointer;
+  }
+  .slot:hover:not(.sel):not(.target) {
+    background: linear-gradient(180deg, #4a5559, #3c464a);
+    border-top-color: #677277;
   }
   .slot .n {
     font-family: var(--font-mono);
@@ -590,24 +781,29 @@
     opacity: 0.5;
   }
   .slot.changed {
-    border-color: var(--warn);
-    box-shadow: inset 0 0 0 1px var(--warn);
+    border-bottom-color: color-mix(in srgb, var(--warn) 65%, #101418);
   }
   .slot.sel {
-    background: var(--accent);
+    background: linear-gradient(180deg, #ffb45a, #ff8a1f 52%, #c8681a);
     color: var(--accent-ink);
-    border-color: var(--accent-soft);
+    border-color: #8a4a12;
+    border-top-color: #ffd29a;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  }
+  .slot.sel:hover {
+    background: linear-gradient(180deg, #ffc070, #ff952e 52%, #d07020);
   }
   .slot.sel .n {
     color: var(--accent-ink);
   }
   .slot.dragging {
-    opacity: 0.4;
+    opacity: 0.45;
   }
   .slot.target,
   .slot.sel.target {
-    background: color-mix(in srgb, var(--accent) 52%, var(--well-deep));
+    background: color-mix(in srgb, var(--accent) 38%, #3e484c);
     color: var(--text);
+    border-top-color: #c09058;
   }
   .slot.target .n {
     color: var(--text);

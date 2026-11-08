@@ -29,7 +29,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .collect();
     println!("XP-60 panel Init name: '{}'", actual.name().trim_end());
     println!("XP-60 Init action name: '{}'", expected.name().trim_end());
-    println!("Compared {} bytes; differing bytes: {}", actual_bytes.len(), diffs.len());
+    println!(
+        "Compared {} bytes; differing bytes: {}",
+        actual_bytes.len(),
+        diffs.len()
+    );
     for (offset, app, panel) in diffs.iter().take(40) {
         println!("  byte {offset}: XP-60 Init action {app} vs panel {panel}");
     }

@@ -100,14 +100,14 @@ try {
   await wait(1500);
   await app.js(`[...document.querySelectorAll('.grid .slot')][11]?.click()`);
   await wait(1500);
-  console.log('selected slot 5 then slot 12 with "Select on the instrument" on: the owner should have seen the display change to Brass Sect 1, then to Marimba');
+  console.log('selected slot 5 then slot 12 while connected: the owner should have seen the display change to Brass Sect 1, then to Marimba');
 
   // 3. Put the editor's patch in slot 128 and write it
   await app.js(`[...document.querySelectorAll('.pad')].find(b=>b.textContent.trim()==='b')?.click()`);
   await wait(300);
   await app.js(`[...document.querySelectorAll('.grid .slot')][63]?.click()`);
   await wait(500);
-  check(await app.js(`document.querySelector('.lcdkey')?.textContent === 'USER:128'`), 'the permanent write target is User slot 128');
+  check(await app.js(`document.querySelector('.lcdkey')?.textContent?.trim() === 'PATCH 128'`), 'the permanent write target is User slot 128');
   await rightTab('Slot');
   check(await press('Put the editor'), 'the editor\'s patch can be put in the selected slot (128)');
   await wait(500);

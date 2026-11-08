@@ -12,7 +12,7 @@ import { LiveQueue, type QueueStats } from './liveQueue';
 import { cutFrames } from './sendOptions.svelte';
 import type { LiveTransport } from './transport';
 import type { SyncState } from '../kit/syncState';
-import { reportError, reportInfo, reportSuccess, reportWarning } from './messages.svelte';
+import { humanizeErrorText, reportError, reportInfo, reportSuccess, reportWarning } from './messages.svelte';
 import { ToneMutationLog, isToneBlock, otherTonesUnchanged } from './toneIsolation';
 
 /** More changed parameters than this in one step go out as a whole send instead of single frames. */
@@ -49,8 +49,9 @@ export class PatchStore {
   }
   /** Setting text here also shows it in the bottom-left corner with every other message. */
   set error(text: string) {
-    this.#error = text;
-    if (text) reportError(text);
+    const clean = text ? humanizeErrorText(text) : '';
+    this.#error = clean;
+    if (clean) reportError(clean);
   }
 
   /** The two A/B slots (snapshots), and which one the editor is showing. */
@@ -623,6 +624,32 @@ export class PatchStore {
       this.liveDirty = true;
       this.fullPending = true;
       this.error = '';
+    } catch (e) {
+      this.error = e instanceof Error ? e.message : String(e);
+    }
+  }
+
+  /**
+   * Send these patch blocks to the instrument's temporary area without opening them in the editor.
+   * Used when the Bank screen needs the keys to play a slot that lives only in the app (a loaded bulk or file)
+   * and has not been written to User memory yet. Program Change would still play the old User slot.
+   */
+  auditionBlocks(bytes: Uint8Array): void {
+    if (this.kind !== 'patch' || !this.transport.connected) return;
+    try {
+      const doc = PatchDoc.fromBlocks(bytes);
+      try {
+        this.liveQueue.replaceAll(splitFrames(cutFrames(doc.patchFrames(this.device))));
+        // Not this.doc: leave fullPending/baseSent false (as markStale) so the next edit of the
+        // open patch is a whole send, not a single-parameter write on top of the auditioned slot.
+        this.liveDirty = true;
+        this.fullPending = false;
+        this.baseSent = false;
+        if (this.sync === 'sent' || this.sync === 'tempVerified' || this.sync === 'edited') this.sync = 'stale';
+        this.error = '';
+      } finally {
+        doc.free();
+      }
     } catch (e) {
       this.error = e instanceof Error ? e.message : String(e);
     }

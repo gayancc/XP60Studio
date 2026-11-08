@@ -172,7 +172,7 @@ describe('BankService', () => {
     const b = new BankService(fake({ readBank: vi.fn(async () => Promise.reject('no reply')) }));
     expect(await b.readFromSynth()).toBe(false);
     expect(b.phase).toBe('failed');
-    expect(b.error).toBe('no reply');
+    expect(b.error.toLowerCase()).toBe('no reply');
     expect(b.slots.every((s) => s.bytes === null)).toBe(true);
   });
 
@@ -371,7 +371,7 @@ describe('BankService', () => {
     b.assign(2, blocks('Two', 2), 'file');
     await b.arm();
     expect(await b.commit()).toBe(false);
-    expect(b.error).toContain('cable unplugged');
+    expect(b.error.toLowerCase()).toContain('cable unplugged');
     expect(b.error).toContain('Read the bank');
   });
 });

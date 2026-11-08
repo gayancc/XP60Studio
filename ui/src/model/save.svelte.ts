@@ -7,7 +7,7 @@
 // exactly one write, and the patch that is written is the one frozen when the save was armed.
 
 import type { ArmedSave, Backend, SaveReport } from './backend';
-import { reportError, reportSuccess, reportWarning } from './messages.svelte';
+import { errorText, humanizeErrorText, reportError, reportSuccess, reportWarning } from './messages.svelte';
 
 export type SavePhase = 'idle' | 'arming' | 'armed' | 'writing' | 'done' | 'failed';
 
@@ -15,7 +15,7 @@ export type SavePhase = 'idle' | 'arming' | 'armed' | 'writing' | 'done' | 'fail
 export const ARMING_LIFETIME_MS = 60_000;
 
 function message(e: unknown): string {
-  return typeof e === 'string' ? e : e instanceof Error ? e.message : String(e);
+  return errorText(e);
 }
 
 /** What the last save did, kept so it can be undone even after another slot has been looked at. */
@@ -36,8 +36,9 @@ export class SaveFlow {
   }
   /** Setting text here also shows it in the bottom-left corner with every other message. */
   set error(text: string) {
-    this.#error = text;
-    if (text) reportError(text);
+    const clean = text ? humanizeErrorText(text) : '';
+    this.#error = clean;
+    if (clean) reportError(clean);
   }
   /** The last save, if it can still be undone. */
   last = $state<LastSave | null>(null);

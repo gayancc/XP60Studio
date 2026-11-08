@@ -163,6 +163,7 @@
   <div class="cols" data-tauri-drag-region>
   <div class="rows" data-tauri-drag-region>
   <div class="row" data-tauri-drag-region>
+    <img class="brand" src="/xp60patch-mark.png" width="18" height="18" alt="" data-tauri-drag-region />
     <h1 data-tauri-drag-region>XPPatchStudio</h1>
     <MenuBar {menus} name="Main menu" />
     <span class="state" data-tauri-drag-region class:ok={synth?.connected}>
@@ -251,6 +252,14 @@
     align-items: center;
     gap: 10px;
     min-height: 24px;
+  }
+  .brand {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    object-fit: contain;
+    margin-right: 2px;
+    pointer-events: none;
   }
   h1 {
     margin: 0 6px 0 0;

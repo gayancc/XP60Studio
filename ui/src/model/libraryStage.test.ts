@@ -59,7 +59,7 @@ describe('previewing a file before it is imported', () => {
     lib.stage('bank.syx', BANK);
     expect(await lib.importStaged()).toBeNull();
     expect(lib.staged).not.toBeNull();
-    expect(lib.error).toContain('disk full');
+    expect(lib.error.toLowerCase()).toContain('disk full');
     lib.cancelStaged();
     expect(lib.staged).toBeNull();
   });

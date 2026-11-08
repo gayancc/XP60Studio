@@ -122,39 +122,33 @@ pub struct Progress {
 pub enum ClientError {
     #[error(transparent)]
     Transport(#[from] TransportError),
-    #[error("no complete reply after {attempts} attempt(s); missing blocks at {}", fmt_addrs(.missing))]
+    #[error(
+        "The XP-60 did not answer in time (tried {attempts} times). Check the cable, power, and Device ID."
+    )]
     Timeout {
         attempts: u32,
         missing: Vec<Address>,
     },
     // Keep this generic: Cancelled covers bank reads, document fetches and writes. A write-specific
     // residual warning misled the Bank Cancel hardware check (H-048) when only a read was stopped.
-    #[error("cancelled")]
+    #[error("Cancelled.")]
     Cancelled,
-    #[error("the instrument's patch changed from the panel while it was being read")]
+    #[error("The patch on the XP-60 changed from the panel while it was being read.")]
     Stale,
-    #[error(transparent)]
+    #[error("That patch data is not valid.")]
     Patch(#[from] PatchError),
-    #[error("refused: {0}")]
+    #[error("{0}")]
     Refused(String),
-    #[error("read-back differs from what was sent: {}", .blocks.join(", "))]
+    #[error("What came back from the XP-60 did not match what was sent.")]
     Mismatch { blocks: Vec<String> },
-    #[error(transparent)]
+    #[error("Could not build that MIDI message.")]
     Encode(#[from] EncodeError),
-    #[error(transparent)]
+    #[error("Could not split that MIDI message.")]
     Chunk(#[from] ChunkError),
-    #[error(transparent)]
+    #[error("That MIDI address is not valid.")]
     Address(#[from] AddressError),
-    #[error(transparent)]
+    #[error("That memory location is out of range.")]
     Memory(#[from] MemoryError),
-}
-
-fn fmt_addrs(addrs: &[Address]) -> String {
-    addrs
-        .iter()
-        .map(Address::to_string)
-        .collect::<Vec<_>>()
-        .join(", ")
 }
 
 /// What a successful probe learned.
@@ -847,9 +841,9 @@ impl<T: MidiTransport> Client<T> {
         if bank.cancelled {
             return Err(ClientError::Cancelled);
         }
-        if let Some((slot, e)) = bank.failures.into_iter().next() {
+        if let Some((slot, _)) = bank.failures.into_iter().next() {
             return Err(ClientError::Refused(format!(
-                "User patch {} could not be read ({e}); the bank was not backed up",
+                "User patch {} could not be read; the bank was not backed up. Check the cable and try again.",
                 u16::from(slot) + 1
             )));
         }
@@ -989,9 +983,9 @@ impl<T: MidiTransport> Client<T> {
                 "only System settings can be written here".into(),
             ));
         }
-        if let Some((block, issue)) = doc.validate().into_iter().next() {
+        if let Some((block, _)) = doc.validate().into_iter().next() {
             return Err(ClientError::Refused(format!(
-                "a System setting is out of range ({block}: {issue:?})"
+                "A System setting in {block} is out of range."
             )));
         }
         let now = self.fetch_document(DocKind::System, SYSTEM, cancel, &mut |_| {})?;
@@ -1122,9 +1116,9 @@ impl<T: MidiTransport> Client<T> {
                 kind.user_slots().saturating_sub(1)
             )));
         }
-        if let Some((block, issue)) = doc.validate().into_iter().next() {
+        if let Some((block, _)) = doc.validate().into_iter().next() {
             return Err(ClientError::Refused(format!(
-                "a value is out of range ({block}: {issue:?})"
+                "A value in {block} is out of range."
             )));
         }
         let base = match kind {
@@ -1323,37 +1317,37 @@ impl<T: MidiTransport> Client<T> {
         if cancel.is_cancelled() {
             return Err(ClientError::Cancelled);
         }
-        let parsed = Message::parse(frame)
-            .map_err(|e| ClientError::Refused(format!("not a valid SysEx message: {e}")))?;
+        let parsed = Message::parse(frame).map_err(|_| {
+            ClientError::Refused("That MIDI message is not valid SysEx for the XP-60.".into())
+        })?;
         if parsed.device != self.cfg.device {
             return Err(ClientError::Refused(
-                "the frame is for a different device ID".into(),
+                "That message is for a different Device ID.".into(),
             ));
         }
         let data_len = match &parsed.message {
             Message::Dt1 { address, data } => {
                 if data.len() > MAX_DT1_DATA_TO_DEVICE {
-                    return Err(ClientError::Refused(format!(
-                        "{} data bytes exceed the {MAX_DT1_DATA_TO_DEVICE}-byte limit",
-                        data.len()
-                    )));
+                    return Err(ClientError::Refused(
+                        "That message is larger than the XP-60 can accept in one write.".into(),
+                    ));
                 }
                 if classify_range(*address, data.len()) != WriteKind::Temporary {
-                    return Err(ClientError::Refused(format!(
-                        "{} byte(s) at {address} are not in temporary memory",
-                        data.len()
-                    )));
+                    return Err(ClientError::Refused(
+                        "That write is not aimed at temporary memory.".into(),
+                    ));
                 }
                 if !inside_temp_patch_block(*address, data.len()) {
-                    return Err(ClientError::Refused(format!(
-                        "{} byte(s) at {address} are not inside one block of the temporary patch",
-                        data.len()
-                    )));
+                    return Err(ClientError::Refused(
+                        "That write is not inside one block of the temporary patch.".into(),
+                    ));
                 }
                 data.len()
             }
             Message::Rq1 { .. } => {
-                return Err(ClientError::Refused("a read request is not a write".into()));
+                return Err(ClientError::Refused(
+                    "A read request is not a write.".into(),
+                ));
             }
         };
         self.pace();

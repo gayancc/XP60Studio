@@ -7,8 +7,9 @@
   interface Props {
     bank: BankService;
     lib: LibraryService;
+    onput?: (slot: number) => void;
   }
-  let { bank, lib }: Props = $props();
+  let { bank, lib, onput }: Props = $props();
 </script>
 
-<BulkLibraryPanel {bank} {lib} deviceId={16} />
+<BulkLibraryPanel {bank} {lib} deviceId={16} {onput} />

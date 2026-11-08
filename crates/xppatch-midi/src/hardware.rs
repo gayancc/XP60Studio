@@ -5,7 +5,9 @@
 //! controller input and forward channel-voice messages onto the same shared output.
 
 use crate::passthrough::{prepare_forward, PassThroughConfig};
-use crate::transport::{MidiTransport, TransportError};
+use crate::transport::{
+    explain_midi_os_error, explain_midi_send_error, MidiTransport, TransportError,
+};
 use midir::{Ignore, MidiInput, MidiInputConnection, MidiOutput, MidiOutputConnection};
 use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError, SyncSender, TrySendError};
@@ -45,7 +47,7 @@ pub struct PortList {
 }
 
 fn port_err(e: impl std::fmt::Display) -> TransportError {
-    TransportError::Port(e.to_string())
+    TransportError::Port(explain_midi_os_error(&e.to_string()))
 }
 
 pub fn list_ports() -> Result<PortList, TransportError> {
@@ -90,7 +92,7 @@ impl SharedMidiOut {
             return Err(TransportError::Closed);
         };
         out.send(bytes)
-            .map_err(|e| TransportError::Send(e.to_string()))
+            .map_err(|e| TransportError::Send(explain_midi_send_error(&e.to_string())))
     }
 
     /// Release the Windows/macOS output port. Further [`send`] calls fail with [`TransportError::Closed`].
@@ -240,7 +242,7 @@ impl MidiControllerPassThrough {
         if let Some(ch) = config.target_channel {
             if ch > 15 {
                 return Err(TransportError::Port(
-                    "pass-through target channel must be 0 to 15".into(),
+                    "Controller pass-through channel must be 1 to 16.".into(),
                 ));
             }
         }
@@ -309,7 +311,11 @@ impl MidiControllerPassThrough {
         let forwarder = thread::Builder::new()
             .name("xppatch-midi-thru".into())
             .spawn(move || thru_forwarder(rx, fwd_out, fwd_stop, fwd_enabled, fwd_hold))
-            .map_err(|e| TransportError::Port(format!("pass-through forwarder: {e}")))?;
+            .map_err(|_| {
+                TransportError::Port(
+                    "Could not start controller pass-through. Try Connect again.".into(),
+                )
+            })?;
 
         Ok(Self {
             input_name: resolved,
@@ -368,7 +374,7 @@ impl MidiControllerPassThrough {
             Some(ch) if ch <= 15 => ch,
             Some(_) => {
                 return Err(TransportError::Port(
-                    "pass-through target channel must be 0 to 15".into(),
+                    "Controller pass-through channel must be 1 to 16.".into(),
                 ));
             }
         };
@@ -448,7 +454,7 @@ fn pick<P>(
 ) -> Result<P, TransportError> {
     let wanted_lc = wanted.trim().to_lowercase();
     if wanted_lc.is_empty() {
-        return Err(TransportError::Port(format!("no MIDI {kind} name given")));
+        return Err(TransportError::Port(format!("Choose a MIDI {kind} first.")));
     }
     let mut matches: Vec<(P, String)> = ports
         .into_iter()
@@ -457,11 +463,11 @@ fn pick<P>(
         .collect();
     match matches.len() {
         0 => Err(TransportError::Port(format!(
-            "no MIDI {kind} matching '{wanted}'"
+            "No MIDI {kind} named \"{wanted}\" was found. Press Rescan — the name may have changed."
         ))),
         1 => Ok(matches.remove(0).0),
         _ => Err(TransportError::Port(format!(
-            "'{wanted}' matches several MIDI {kind}s: {}",
+            "\"{wanted}\" matches more than one MIDI {kind}. Pick the exact name from the list: {}",
             matches
                 .iter()
                 .map(|(_, n)| n.as_str())

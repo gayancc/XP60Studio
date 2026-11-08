@@ -15,9 +15,11 @@
     lib: LibraryService;
     /** The device ID exported bank files are addressed to. */
     deviceId: number;
+    /** After a library patch is put in a bank slot, re-select that slot so the pad and instrument follow it. */
+    onput?: (slot: number) => void;
   }
 
-  let { bank, lib, deviceId }: Props = $props();
+  let { bank, lib, deviceId, onput }: Props = $props();
   const bulks = $derived(lib.bulks);
 
   /** What a drop would do right now, as a key for the tint and a sentence for the hint line. */
@@ -88,8 +90,9 @@
 
   async function putInBank(patchId: number): Promise<void> {
     if (bank.locked) return;
+    const slot = bank.selected;
     const bytes = await lib.fetchBlocks(patchId);
-    if (bytes) bank.assign(bank.selected, bytes, 'library');
+    if (bytes && bank.assign(slot, bytes, 'library')) onput?.(slot);
   }
 
   function rowClick(e: MouseEvent, bulk: number, position: number, patchId: number): void {
@@ -131,6 +134,25 @@
   }
 </script>
 
+{#snippet fileIco()}
+  <svg class="file-ico" viewBox="0 0 10 12" width="10" height="12" aria-hidden="true">
+    <path d="M1.5 1h4.2L8.5 4.3V11H1.5z" fill="none" stroke="currentColor" stroke-width="1" />
+    <path d="M5.7 1v3.3H8.5" fill="none" stroke="currentColor" stroke-width="1" />
+  </svg>
+{/snippet}
+
+{#snippet folderIco(open: boolean, live: boolean)}
+  <svg class="folder-ico" class:live class:open aria-hidden="true" viewBox="0 0 13 11" width="13" height="11">
+    {#if open}
+      <path d="M1 3.2h3.2l1.1 1.4H12v5.2H1z" fill="currentColor" fill-opacity="0.18" stroke="currentColor" stroke-width="1" />
+      <path d="M1 3.2V2.2h2.6l.7 1" fill="none" stroke="currentColor" stroke-width="1" />
+    {:else}
+      <path d="M1 3.2h3.2l1.1 1.4H12v5.2H1z" fill="none" stroke="currentColor" stroke-width="1" />
+      <path d="M1 3.2V2.2h2.6l.7 1" fill="none" stroke="currentColor" stroke-width="1" />
+    {/if}
+  </svg>
+{/snippet}
+
 {#snippet patchRow(bulk: number, position: number, patchId: number, name: string)}
   <li>
     <button
@@ -148,8 +170,9 @@
       onclick={(e) => rowClick(e, bulk, position, patchId)}
       title="Click puts it in bank slot {patchNumber(bank.selected)}. Ctrl-click picks several to drag together."
     >
-      <span class="pos">{positionLabel(position)}</span>
+      {@render fileIco()}
       <span class="nm">{name.trimEnd() || '(unnamed)'}</span>
+      <span class="pos">{positionLabel(position)}</span>
     </button>
   </li>
 {/snippet}
@@ -187,6 +210,7 @@
             ondrop={(e) => drop(e, { kind: 'bulk', bulk: b.id })}
           >
             <button type="button" class="chev" aria-expanded={!!bulks.open[b.id]} aria-label="{bulks.open[b.id] ? 'Close' : 'Open'} {b.name}" onclick={() => bulks.toggle(b.id)}>{bulks.open[b.id] ? '▾' : '▸'}</button>
+            {@render folderIco(!!bulks.open[b.id], bank.origin?.id === b.id)}
             {#if bulks.renaming === b.id}
               <!-- svelte-ignore a11y_autofocus -->
               <input
@@ -209,12 +233,12 @@
 
           {#if bulks.open[b.id]}
             <div class="tools">
-              <button type="button" onclick={() => (bulks.pendingLoad = b.id)} disabled={bank.locked}>Load into bank</button>
-              <button type="button" onclick={() => startRename(b.id, b.name)}>Rename</button>
-              <button type="button" onclick={() => bulks.duplicate(b.id)}>Copy</button>
-              <button type="button" onclick={() => exportBulk(b.id, b.name)}>Export .syx</button>
-              <button type="button" onclick={() => toggleVersions(b.id)} aria-pressed={versionsOf === b.id}>Versions</button>
-              <button type="button" class="danger" onclick={() => (confirmDelete = b.id)}>Delete</button>
+              <button type="button" class="tool" onclick={() => (bulks.pendingLoad = b.id)} disabled={bank.locked}>Load into bank</button>
+              <button type="button" class="tool" onclick={() => startRename(b.id, b.name)}>Rename</button>
+              <button type="button" class="tool" onclick={() => bulks.duplicate(b.id)}>Copy</button>
+              <button type="button" class="tool" onclick={() => exportBulk(b.id, b.name)}>Export .syx</button>
+              <button type="button" class="tool" onclick={() => toggleVersions(b.id)} aria-pressed={versionsOf === b.id}>Versions</button>
+              <button type="button" class="tool danger" onclick={() => (confirmDelete = b.id)}>Delete</button>
             </div>
             {#if bulks.pendingLoad === b.id}
               <p class="ask" role="alert">
@@ -243,7 +267,7 @@
           {/if}
         </li>
       {:else}
-        <li class="empty">No bulks yet. Import a .syx bank in the Library workspace, or save the bank here.</li>
+        <li class="empty">No bulks yet. Import a .syx / .mid file above, or save the bank here.</li>
       {/each}
       <li
         class="newzone"
@@ -253,7 +277,7 @@
         ondragleave={(e) => leave(e, 'new')}
         ondrop={(e) => drop(e, { kind: 'new' })}
       >
-        Drop patches here to make a new bulk
+        Drop here to make a new bulk
       </li>
     </ul>
   {/if}
@@ -261,17 +285,38 @@
     {#if guide}
       {guide.text}
     {:else}
-      Drag a patch onto a bank slot, another bulk or the new-bulk area. Alt copies instead of moving. Ctrl-click picks several patches.
+      Drag a patch onto a bank slot, another bulk or the new-bulk area. Alt copies · Ctrl-click multi-select.
     {/if}
   </p>
 </div>
 
 <style>
+  /*
+   * FL Studio Browser tree — measured from live capture 2026-11-07
+   * (artifact/docs/xppatchstudio/fl-live + owner screenshot):
+   *   well #131c21 · hover #1a2328 · selection wash #242d32
+   *   category blue #7a9bb0 · live/current tan #c4a882 · file text #b8c2c8
+   *   ~18 px rows, wireframe folder / page glyphs, flat hover (no bevel, glow, pulse).
+   */
   .tree {
+    --br-bg: #131c21;
+    --br-hover: #1a2328;
+    --br-sel: #242d32;
+    --br-edge: #0d1418;
+    --br-folder: #7a9bb0;
+    --br-folder-live: #c4a882;
+    --br-file: #b8c2c8;
+    --br-file-sel: #e8eef2;
+    --br-guide: #1e2a30;
+
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 0;
     min-width: 0;
+    flex: 1;
+    padding: 2px 0 4px;
+    background: var(--br-bg);
+    color: var(--br-file);
   }
   ul {
     list-style: none;
@@ -279,123 +324,194 @@
     padding: 0;
   }
   .bulk {
-    margin-bottom: 4px;
+    margin: 0;
   }
   .head {
     display: flex;
     align-items: center;
     gap: 4px;
-    padding: 2px 4px;
-    background: var(--well-deep);
-    border-radius: var(--radius);
+    min-height: 18px;
+    height: 18px;
+    padding: 0 6px 0 2px;
+    background: transparent;
   }
-  .head.loaded {
-    background: color-mix(in srgb, var(--accent) 16%, var(--well-deep));
+  .head:hover {
+    background: var(--br-hover);
+  }
+  .head.loaded .name,
+  .head.loaded .folder-ico {
+    color: var(--br-folder-live);
   }
   .head.target,
   .newzone.target,
   .prow.target {
-    background: color-mix(in srgb, var(--accent) 50%, var(--well-deep));
-    color: var(--text);
+    background: color-mix(in srgb, var(--accent) 22%, var(--br-sel));
   }
   .chev {
-    width: 20px;
-    padding: 2px 0;
+    flex: none;
+    width: 12px;
+    height: 18px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #5a666e;
+    font-size: 8px;
+    line-height: 18px;
     text-align: center;
+    cursor: pointer;
+  }
+  .folder-ico,
+  .file-ico {
+    flex: none;
+    display: block;
+    margin-right: 1px;
+    color: var(--br-folder);
+  }
+  .folder-ico.live {
+    color: var(--br-folder-live);
+  }
+  .file-ico {
+    color: #8a949a;
   }
   .name {
     flex: 1;
     min-width: 0;
+    height: 18px;
+    padding: 0;
+    border: 0;
+    background: transparent;
     text-align: left;
-    font-weight: 600;
+    font: 400 11px/18px var(--font);
+    color: var(--br-folder);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    cursor: pointer;
   }
   .rename {
     flex: 1;
     min-width: 0;
-    background: var(--track);
-    color: var(--text);
-    border: 1px solid var(--edge);
-    border-radius: var(--radius);
-    padding: 2px 6px;
-    font: inherit;
+    height: 16px;
+    background: #0f161a;
+    color: var(--br-file-sel);
+    border: 1px solid #2a353b;
+    border-radius: 0;
+    padding: 0 3px;
+    font: 11px var(--font);
   }
   .count {
+    flex: none;
     font: 10px var(--font-mono);
-    color: var(--text-dim);
+    color: #5a666e;
+    padding-right: 2px;
   }
   .tag {
-    font: 600 9px var(--font-caps);
-    letter-spacing: 0.06em;
+    flex: none;
+    font: 600 8px var(--font-caps);
+    letter-spacing: 0.05em;
     text-transform: uppercase;
-    color: var(--accent);
+    color: var(--br-folder-live);
   }
   .tools {
     display: flex;
     flex-wrap: wrap;
-    gap: 4px;
-    padding: 4px 0 4px 24px;
+    gap: 2px;
+    padding: 1px 4px 3px 28px;
   }
-  .ask {
-    margin: 2px 0 4px 24px;
-    padding: 4px 6px;
-    background: color-mix(in srgb, var(--warn) 14%, var(--well-deep));
-    border-radius: var(--radius);
-    font-size: 11px;
-  }
-  .slots {
-    margin-left: 16px;
-  }
-  button {
-    background: var(--well-deep);
-    border: 1px solid var(--edge);
-    border-radius: var(--radius);
-    padding: 2px 8px;
+  .tool {
+    height: 16px;
+    padding: 0 5px;
+    border: 1px solid #1e282e;
+    border-radius: 1px;
+    background: #1a2328;
+    color: #9aa4aa;
+    font: 400 10px var(--font);
     cursor: pointer;
-    color: inherit;
-    font: inherit;
   }
-  .head button,
-  .prow {
-    background: transparent;
-    border-color: transparent;
+  .tool:hover:not(:disabled) {
+    background: #242d32;
+    color: var(--br-file-sel);
   }
-  button:hover:not(:disabled) {
-    background-color: var(--well);
-  }
-  button:focus-visible {
+  .tool:focus-visible {
     outline: none;
     background-image: var(--focus-fill);
   }
-  button:disabled {
+  .tool:disabled {
     opacity: 0.4;
     cursor: default;
   }
+  .ask {
+    margin: 2px 4px 4px 28px;
+    padding: 4px 6px;
+    background: color-mix(in srgb, var(--warn) 12%, var(--br-bg));
+    border: 1px solid var(--br-edge);
+    font-size: 11px;
+    color: var(--br-file);
+  }
+  .ask button {
+    height: 16px;
+    margin-left: 4px;
+    padding: 0 5px;
+    border: 1px solid #1e282e;
+    border-radius: 1px;
+    background: #1a2328;
+    color: #9aa4aa;
+    font: 400 10px var(--font);
+    cursor: pointer;
+  }
+  .slots,
+  .hits {
+    margin: 0;
+    padding: 0 0 2px;
+  }
+  .slots {
+    padding-left: 12px;
+    border-left: 1px solid var(--br-guide);
+    margin-left: 7px;
+  }
   .danger {
-    color: var(--bad);
+    color: #c88884;
   }
   .go {
-    background: var(--accent);
-    color: var(--accent-ink);
-    border-color: var(--accent-soft);
+    background: color-mix(in srgb, var(--accent) 35%, #1a2328) !important;
+    color: var(--br-file-sel) !important;
+    border-color: var(--accent-soft) !important;
   }
   .prow {
     display: flex;
-    gap: 8px;
-    align-items: baseline;
+    align-items: center;
+    gap: 5px;
     width: 100%;
-    padding: 2px 6px;
+    height: 18px;
+    min-height: 18px;
+    padding: 0 6px 0 4px;
+    border: 0;
+    background: transparent;
     text-align: left;
+    color: inherit;
+    font: 400 11px/18px var(--font);
+    cursor: pointer;
+  }
+  .prow:hover {
+    background: var(--br-hover);
+  }
+  .prow:focus-visible {
+    outline: none;
+    background-image: var(--focus-fill);
   }
   .prow.sel {
-    background: color-mix(in srgb, var(--accent) 26%, transparent);
+    background: var(--br-sel);
+  }
+  .prow.sel .nm {
+    color: var(--br-file-sel);
+  }
+  .prow.sel .file-ico {
+    color: #c5ced3;
   }
   .pos {
     flex: none;
-    font: 10px var(--font-mono);
-    color: var(--text-faint);
+    font: 9px var(--font-mono);
+    color: #5a666e;
   }
   .nm {
     flex: 1;
@@ -403,21 +519,30 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    color: var(--br-file);
   }
   .newzone {
-    margin-top: 6px;
-    padding: 10px 6px;
+    margin: 4px 6px;
+    padding: 6px;
     text-align: center;
-    color: var(--text-dim);
-    font-size: 11px;
-    background: var(--hint);
-    border-radius: var(--radius);
+    color: #5a666e;
+    font-size: 10px;
+    border: 1px dashed #243038;
+    background: transparent;
+  }
+  .newzone:hover,
+  .newzone.target {
+    color: var(--br-file);
+    border-color: #3a4a52;
   }
   .empty,
   .hint {
-    color: var(--text-dim);
-    font-size: 11px;
+    color: #66727a;
+    font-size: 10px;
     padding: 4px 6px;
     margin: 0;
+  }
+  .hit .pos:first-child {
+    color: var(--br-folder);
   }
 </style>

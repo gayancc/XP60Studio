@@ -2,7 +2,7 @@
 // shared by the menu, the buttons and drag and drop, so every route treats a file the same way.
 
 import { asSyx } from './midiFile';
-import { reportWarning } from './messages.svelte';
+import { errorText, reportWarning } from './messages.svelte';
 import { PatchStore } from './store.svelte';
 import { ui } from './ui.svelte';
 
@@ -44,7 +44,7 @@ export function openPatchFile(store: PatchStore, raw: Uint8Array, fileName: stri
     store.loadSyx(bytes, names[0]?.[0] ?? 0, fileName);
   } catch (err) {
     ui.bank = null;
-    store.error = err instanceof Error ? err.message : String(err);
+    store.error = errorText(err);
   }
 }
 

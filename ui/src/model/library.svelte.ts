@@ -4,14 +4,14 @@ import { previewFile } from './openFile';
 
 import type { Backend, ImportResult, LibraryFilter, LibraryRow } from './backend';
 import { BulkService } from './bulks.svelte';
-import { reportError, reportInfo, reportSuccess, reportWarning } from './messages.svelte';
+import { errorText, humanizeErrorText, reportError, reportInfo, reportSuccess, reportWarning } from './messages.svelte';
 
 export const PAGE_SIZE = 200;
 /** Largest .syx file accepted (the backend enforces the same limit). */
 export const MAX_IMPORT_BYTES = 16 * 1_048_576;
 
 function message(e: unknown): string {
-  return typeof e === 'string' ? e : e instanceof Error ? e.message : String(e);
+  return errorText(e);
 }
 
 export class LibraryService {
@@ -34,8 +34,9 @@ export class LibraryService {
   }
   /** Setting text here also shows it in the bottom-left corner with every other message. */
   set error(text: string) {
-    this.#error = text;
-    if (text) reportError(text);
+    const clean = text ? humanizeErrorText(text) : '';
+    this.#error = clean;
+    if (clean) reportError(clean);
   }
   #notice = $state('');
   get notice(): string {

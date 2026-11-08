@@ -35,6 +35,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if !report.verified || client.read_system(&cancel)? != target {
         return Err("System restore did not read back equal to backup".into());
     }
-    println!("SYSTEM RESTORE PASS: all settings match backup; prior settings saved to {before_file}");
+    println!(
+        "SYSTEM RESTORE PASS: all settings match backup; prior settings saved to {before_file}"
+    );
     Ok(())
 }

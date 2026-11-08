@@ -47,7 +47,7 @@ export function fakeBulks(): FakeBulks {
     [...patches].find(([, p]) => p.bytes.length === bytes.length && p.bytes.every((v, i) => v === bytes[i]))?.[0];
   const need = (id: number) => {
     const b = bulks.get(id);
-    if (!b) throw new Error(`no bulk with id ${id}`);
+    if (!b) throw new Error('That bulk is no longer in the library.');
     return b;
   };
   const nameTaken = (name: string, except?: number): boolean => [...bulks].some(([id, b]) => id !== except && b.name.toLowerCase() === name.toLowerCase());
@@ -97,24 +97,24 @@ export function fakeBulks(): FakeBulks {
         slots.set(slot, id);
       }
       if (overwrite === null) {
-        if (nameTaken(name)) throw new Error(`a bulk called "${name}" already exists`);
+        if (nameTaken(name)) throw new Error(`A bulk called "${name}" already exists.`);
         const id = nextBulk++;
         bulks.set(id, { name, slots, revisions: [] });
         return { bulk_id: id, name, added, reused, kept_version: false };
       }
       const b = need(overwrite);
-      if (nameTaken(name, overwrite)) throw new Error(`a bulk called "${name}" already exists`);
+      if (nameTaken(name, overwrite)) throw new Error(`A bulk called "${name}" already exists.`);
       const kept = keep(overwrite);
       b.slots = slots;
       b.name = name;
       return { bulk_id: overwrite, name, added, reused, kept_version: kept };
     }),
     bulkRename: vi.fn(async (id: number, name: string) => {
-      if (nameTaken(name, id)) throw new Error(`a bulk called "${name}" already exists`);
+      if (nameTaken(name, id)) throw new Error(`A bulk called "${name}" already exists.`);
       need(id).name = name;
     }),
     bulkDuplicate: vi.fn(async (id: number, name: string) => {
-      if (nameTaken(name)) throw new Error(`a bulk called "${name}" already exists`);
+      if (nameTaken(name)) throw new Error(`A bulk called "${name}" already exists.`);
       const n = nextBulk++;
       bulks.set(n, { name, slots: new Map(need(id).slots), revisions: [] });
       return n;
@@ -163,14 +163,14 @@ export function fakeBulks(): FakeBulks {
     bulkRestore: vi.fn(async (bulk: number, revision: number) => {
       const b = need(bulk);
       const r = b.revisions.find((x) => x.id === revision);
-      if (!r) throw new Error(`no patch with id ${revision}`);
+      if (!r) throw new Error('That patch is no longer in the library.');
       keep(bulk);
       b.slots = new Map(r.slots);
     }),
     bulkExport: vi.fn(async () => new Uint8Array([0xf0, 0xf7])),
     libraryGet: vi.fn(async (id: number) => {
       const p = patches.get(id);
-      if (!p) throw new Error(`no patch with id ${id}`);
+      if (!p) throw new Error('That patch is no longer in the library.');
       return p.bytes;
     }),
     libraryAdd: vi.fn(async (bytes: Uint8Array): Promise<[number, boolean]> => {

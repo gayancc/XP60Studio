@@ -4,7 +4,7 @@
 import { invoke, isTauri } from '@tauri-apps/api/core';
 import type { DocKindName } from './catalog';
 import type { LiveTransport } from './transport';
-import { reportError, reportInfo, reportSuccess, reportWarning } from './messages.svelte';
+import { errorText, humanizeErrorText, reportError, reportInfo, reportSuccess, reportWarning } from './messages.svelte';
 
 export interface Ports {
   inputs: string[];
@@ -54,7 +54,7 @@ export const runningInDesktopApp = (): boolean => isTauri();
 export const NOTICE_MS = 6000;
 
 function message(e: unknown): string {
-  return typeof e === 'string' ? e : e instanceof Error ? e.message : String(e);
+  return errorText(e);
 }
 
 export class SynthService {
@@ -83,8 +83,9 @@ export class SynthService {
   }
   /** Setting text here also shows it in the bottom-left corner with every other message. */
   set error(text: string) {
-    this.#error = text;
-    if (text) reportError(text);
+    const clean = text ? humanizeErrorText(text) : '';
+    this.#error = clean;
+    if (clean) reportError(clean);
   }
   /** What the last completed read or check found ("Fetched ..."), shown for a few seconds. */
   #notice = $state('');

@@ -1,26 +1,28 @@
 /* XPPatchStudio theme tokens. Dark graphite with one warm accent. Every colour used by the kit comes from here.
-   Neutrals follow measured FL native-plugin values (design language only; nothing copied). */
+   Neutrals follow measured FL Studio 2025 pixels (live capture 2026-11-07 + plugin evidence); design language only, nothing copied. */
 :root {
-  --body: #363c40;
-  --body-deep: #2c3135;
-  --caption: #434c51;
-  --well: #46565a;
-  --well-deep: #3a474b;
+  /* Workspace / panels — FL main #313a3f, MIDI settings #353e44, caption bar #596267 */
+  --body: #353e44;
+  --body-deep: #313a3f;
+  --caption: #596267;
+  --well: #4c545a;
+  --well-deep: #3c454b;
   --hint: #3e464b;
-  --edge: #22272a;
+  --edge: #252c30;
   --edge-light: #5a666b;
-  --text: #d3d7de;
-  --text-dim: #8b959b;
+  --text: #d5dce0;
+  --text-dim: #8b969c;
   --text-faint: #66727a;
 
+  /* Transport / active accent — measured FL toolbar orange cluster ~#be5507 / highlight #ff9975 */
   --accent: #ff8a1f;
-  --accent-soft: #c8681a;
+  --accent-soft: #be5507;
   --accent-ink: #1c1208;
 
   --ok: #97db3a;
   --warn: #f0b429;
   --bad: #ef5350;
-  --info: #4fb3e8;
+  --info: #5990b9;
 
   /* Tone identity colours (four Tones) */
   --tone-1: #e0883a;

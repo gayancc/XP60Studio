@@ -23,35 +23,37 @@ pub const PATCH_BYTES: usize = Patch::BLOCK_BYTES;
 #[derive(Debug, Error)]
 #[non_exhaustive]
 pub enum LibraryError {
-    #[error("database error: {0}")]
+    #[error(
+        "The library could not be opened or saved. Close other copies of this app and try again."
+    )]
     Database(#[from] rusqlite::Error),
     #[error(transparent)]
     Syx(#[from] SyxError),
-    #[error(transparent)]
+    #[error("That patch data is not valid.")]
     Patch(#[from] PatchError),
-    #[error(transparent)]
+    #[error("That device ID is not valid. Use 17 to 32 on the panel.")]
     Device(#[from] ParseError),
-    #[error("the file holds no patches")]
+    #[error("That file holds no patches.")]
     NoPatches,
-    #[error("no patch with id {0}")]
+    #[error("That patch is no longer in the library.")]
     NotFound(i64),
-    #[error("a bank holds at most 128 patches, got {0}")]
+    #[error("A bank holds at most 128 patches (this one has {0}).")]
     TooMany(usize),
-    #[error("stored patch {0} is damaged: {1}")]
+    #[error("Stored patch {0} is damaged and cannot be opened.")]
     Damaged(i64, String),
-    #[error("tag must be 1 to 40 characters with no control characters")]
+    #[error("A tag must be 1 to 40 characters with no control characters.")]
     BadTag,
-    #[error("that name would duplicate patch {0}")]
+    #[error("That name is already used by another patch.")]
     WouldDuplicate(i64),
-    #[error("a bulk name must be 1 to 60 characters with no control characters")]
+    #[error("A bulk name must be 1 to 60 characters with no control characters.")]
     BadBulkName,
-    #[error("a bulk called \"{0}\" already exists")]
+    #[error("A bulk called \"{0}\" already exists.")]
     BulkNameTaken(String),
-    #[error("no bulk with id {0}")]
+    #[error("That bulk is no longer in the library.")]
     BulkNotFound(i64),
-    #[error("position {0} is not a place in a bulk (1 to 128, one patch each)")]
+    #[error("That is not a valid place in a bulk (use positions 1 to 128).")]
     BadPosition(usize),
-    #[error("the bulk already holds 128 patches")]
+    #[error("That bulk already holds 128 patches.")]
     BulkFull,
 }
 

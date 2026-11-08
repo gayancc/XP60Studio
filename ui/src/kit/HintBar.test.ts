@@ -25,7 +25,7 @@ describe('the hint bar', () => {
     expect(row?.getAttribute('data-kind')).toBe('error');
     expect(row?.getAttribute('role')).toBe('alert');
     expect(row?.textContent).toContain('Error');
-    expect(row?.textContent).toContain('not connected to an instrument');
+    expect(row?.textContent).toContain('Not connected to an instrument.');
     expect(row?.textContent).toContain('+2');
     expect(container.querySelectorAll('.status-msg')).toHaveLength(1);
   });

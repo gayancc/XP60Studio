@@ -1,6 +1,5 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { Segmented } from '../kit';
   import { DRAG_TYPE, type DragPayload } from '../model/bulks.svelte';
   import type { BankService } from '../model/bank.svelte';
   import { patchNumber } from '../model/bankPanel';
@@ -14,13 +13,16 @@
     bank: BankService;
     lib: LibraryService;
     deviceId: number;
+    /** After a library patch is put in a bank slot, re-select that slot so the pad and instrument follow it. */
+    onput?: (slot: number) => void;
   }
 
-  let { bank, lib, deviceId }: Props = $props();
+  let { bank, lib, deviceId, onput }: Props = $props();
 
   let view = $state(0);
   let query = $state('');
   let first = true;
+  let fileInput: HTMLInputElement | undefined = $state();
 
   onMount(() => {
     void lib.refresh();
@@ -45,10 +47,22 @@
     return () => clearTimeout(timer);
   });
 
+  async function pickFile(e: Event & { currentTarget: HTMLInputElement }): Promise<void> {
+    const file = e.currentTarget.files?.[0];
+    e.currentTarget.value = '';
+    if (!file) return;
+    try {
+      lib.stage(file.name, new Uint8Array(await file.arrayBuffer()));
+    } catch (err) {
+      lib.error = err instanceof Error ? err.message : String(err);
+    }
+  }
+
   async function putInBank(id: number): Promise<void> {
     if (bank.locked) return;
+    const slot = bank.selected;
     const bytes = await lib.fetchBlocks(id);
-    if (bytes) bank.assign(bank.selected, bytes, 'library');
+    if (bytes && bank.assign(slot, bytes, 'library')) onput?.(slot);
   }
 
   function dragFlat(e: DragEvent, id: number): void {
@@ -60,32 +74,71 @@
 
 <div class="panel">
   <BulkSaveBar {bank} {lib} />
-  <Segmented options={['Bulks', 'All patches']} bind:selected={view} name="Library view" context="Library" />
-  <input type="search" placeholder={view === 0 ? 'Search patches in all bulks' : 'Search names'} aria-label="Search the library" bind:value={query} />
-  {#if view === 0}
-    <BulkTree {bank} {lib} {deviceId} />
-  {:else}
-    <ul class="rows" aria-label="Library patches">
-      {#each lib.rows as r (r.id)}
-        <li>
-          <button
-            type="button"
-            class="lrow"
-            draggable="true"
-            ondragstart={(e) => dragFlat(e, r.id)}
-            onclick={() => putInBank(r.id)}
-            disabled={bank.locked}
-            title="Put in slot {patchNumber(bank.selected)}"
-          >
-            <span>{r.name.trimEnd() || '(unnamed)'}</span>
-            <span class="dim">→ {patchNumber(bank.selected)}</span>
+  <!-- FL Browser shell: caption #2c353a, deep well #131c21, flat tree (measured 2026-11-07). -->
+  <div class="browser">
+    <div class="chrome">
+      <span class="title">Browser</span>
+      <div class="tabs" role="tablist" aria-label="Library view">
+        <button type="button" class="tab" class:on={view === 0} role="tab" aria-selected={view === 0} onclick={() => (view = 0)}>Bulks</button>
+        <button type="button" class="tab" class:on={view === 1} role="tab" aria-selected={view === 1} onclick={() => (view = 1)}>All</button>
+      </div>
+      <button type="button" class="import" onclick={() => fileInput?.click()} disabled={lib.busy} title="Import a .syx or .mid bank file into the library as a bulk">
+        Import…
+      </button>
+      <input bind:this={fileInput} type="file" accept=".syx,.mid,.midi" hidden onchange={pickFile} aria-label="Import a .syx or .mid bulk file" />
+    </div>
+    {#if lib.staged}
+      <div class="staged" role="group" aria-label="File to import">
+        <p>
+          <b>{lib.staged.name}</b> holds {lib.staged.names.length} patch{lib.staged.names.length === 1 ? '' : 'es'}:
+          {lib.staged.names
+            .slice(0, 8)
+            .map(([, n]) => n.trimEnd() || '(unnamed)')
+            .join(', ')}{lib.staged.names.length > 8 ? ', …' : ''}
+        </p>
+        <div class="actions">
+          <button type="button" class="primary" disabled={lib.busy} onclick={() => lib.importStaged()}>
+            Import {lib.staged.names.length} as bulk
           </button>
-        </li>
-      {:else}
-        <li class="dim">No library patches match.</li>
-      {/each}
-    </ul>
-  {/if}
+          <button type="button" onclick={() => lib.cancelStaged()}>Cancel</button>
+        </div>
+      </div>
+    {/if}
+    {#if lib.error}
+      <p class="err" role="alert">{lib.error}</p>
+    {:else if lib.notice}
+      <p class="ok" role="status">{lib.notice}</p>
+    {/if}
+    <input type="search" placeholder={view === 0 ? 'Search patches in all bulks' : 'Search names'} aria-label="Search the library" bind:value={query} />
+    {#if view === 0}
+      <BulkTree {bank} {lib} {deviceId} {onput} />
+    {:else}
+      <ul class="rows" aria-label="Library patches">
+        {#each lib.rows as r (r.id)}
+          <li>
+            <button
+              type="button"
+              class="lrow"
+              draggable="true"
+              ondragstart={(e) => dragFlat(e, r.id)}
+              onclick={() => putInBank(r.id)}
+              disabled={bank.locked}
+              title="Put in slot {patchNumber(bank.selected)}"
+            >
+              <svg class="file-ico" viewBox="0 0 10 12" width="10" height="12" aria-hidden="true">
+                <path d="M1.5 1h4.2L8.5 4.3V11H1.5z" fill="none" stroke="currentColor" stroke-width="1" />
+                <path d="M5.7 1v3.3H8.5" fill="none" stroke="currentColor" stroke-width="1" />
+              </svg>
+              <span class="nm">{r.name.trimEnd() || '(unnamed)'}</span>
+              <span class="dim">→ {patchNumber(bank.selected)}</span>
+            </button>
+          </li>
+        {:else}
+          <li class="empty">No library patches match.</li>
+        {/each}
+      </ul>
+    {/if}
+  </div>
 </div>
 
 <style>
@@ -94,45 +147,214 @@
     flex-direction: column;
     gap: 6px;
     min-width: 0;
+    min-height: 0;
+    flex: 1;
+  }
+  .browser {
+    --br-bg: #131c21;
+    --br-cap: #2c353a;
+    --br-hover: #1a2328;
+    --br-sel: #242d32;
+    --br-edge: #0d1418;
+    --br-file: #b8c2c8;
+
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    flex: 1;
+    background: var(--br-bg);
+    border: 1px solid var(--br-edge);
+    overflow: hidden;
+  }
+  .chrome {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 22px;
+    padding: 0 6px;
+    background: var(--br-cap);
+    border-bottom: 1px solid var(--br-edge);
+    flex: none;
+  }
+  .title {
+    font: 600 11px var(--font);
+    color: #a8b2b8;
+    letter-spacing: 0.02em;
+  }
+  .tabs {
+    display: flex;
+    gap: 1px;
+    margin-left: 4px;
+  }
+  .tab {
+    height: 16px;
+    padding: 0 7px;
+    border: 1px solid transparent;
+    border-radius: 1px;
+    background: transparent;
+    color: #7a868e;
+    font: 400 10px var(--font);
+    cursor: pointer;
+  }
+  .tab:hover {
+    color: var(--br-file);
+    background: #243038;
+  }
+  .tab.on {
+    color: var(--accent);
+    border-color: color-mix(in srgb, var(--accent) 55%, #2c353a);
+    background: color-mix(in srgb, var(--accent) 12%, #2c353a);
+  }
+  .import {
+    margin-left: auto;
+    height: 16px;
+    padding: 0 7px;
+    border: 1px solid #1e282e;
+    border-radius: 1px;
+    background: #1a2328;
+    color: #9aa4aa;
+    font: 400 10px var(--font);
+    cursor: pointer;
+  }
+  .import:hover:not(:disabled) {
+    background: #242d32;
+    color: #e8eef2;
+  }
+  .import:focus-visible {
+    outline: none;
+    background-image: var(--focus-fill);
+  }
+  .import:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+  .actions button {
+    height: 18px;
+    padding: 0 8px;
+    border: 1px solid #1e282e;
+    border-radius: 1px;
+    background: #1a2328;
+    color: #9aa4aa;
+    font: 400 10px var(--font);
+    cursor: pointer;
+  }
+  .actions button:hover:not(:disabled) {
+    background: #242d32;
+    color: #e8eef2;
+  }
+  .actions button:focus-visible {
+    outline: none;
+    background-image: var(--focus-fill);
+  }
+  .actions button:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+  .primary {
+    background: color-mix(in srgb, var(--accent) 35%, #1a2328) !important;
+    color: #e8eef2 !important;
+    border-color: var(--accent-soft) !important;
+  }
+  .staged {
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--br-edge);
+    background: #151e23;
+  }
+  .staged p {
+    margin: 0 0 6px;
+    font-size: 11px;
+    color: #8b969c;
+  }
+  .staged b {
+    color: var(--br-file);
+  }
+  .actions {
+    display: flex;
+    gap: 4px;
+  }
+  .err {
+    margin: 0;
+    padding: 4px 8px;
+    color: var(--bad);
+    font-size: 11px;
+  }
+  .ok {
+    margin: 0;
+    padding: 4px 8px;
+    color: var(--ok);
+    font-size: 11px;
   }
   input[type='search'] {
     width: 100%;
-    background: var(--track);
-    color: var(--text);
-    border: 1px solid var(--edge);
-    border-radius: var(--radius);
-    padding: 4px 6px;
-    /* the tab body scrolls; the search stays in view above the list */
+    height: 20px;
+    background: #0f161a;
+    color: var(--br-file);
+    border: 0;
+    border-bottom: 1px solid var(--br-edge);
+    border-radius: 0;
+    padding: 0 8px;
+    font: 11px var(--font);
+    flex: none;
     position: sticky;
     top: 0;
     z-index: 1;
   }
+  input[type='search']::placeholder {
+    color: #5a666e;
+  }
   .rows {
     list-style: none;
     margin: 0;
-    padding: 0;
+    padding: 2px 0;
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
   }
   .lrow {
     display: flex;
-    justify-content: space-between;
+    align-items: center;
+    gap: 5px;
     width: 100%;
+    height: 18px;
     background: transparent;
     border: 0;
     text-align: left;
-    color: inherit;
-    font: inherit;
+    color: var(--br-file);
+    font: 400 11px/18px var(--font);
     cursor: pointer;
-    padding: 2px 6px;
+    padding: 0 6px 0 8px;
   }
   .lrow:hover:not(:disabled) {
-    background: var(--well);
+    background: var(--br-hover);
   }
   .lrow:focus-visible {
     outline: none;
     background-image: var(--focus-fill);
   }
+  .lrow:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+  .file-ico {
+    flex: none;
+    color: #8a949a;
+  }
+  .nm {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
   .dim {
-    color: var(--text-dim);
-    font-size: 11px;
+    flex: none;
+    color: #5a666e;
+    font: 9px var(--font-mono);
+  }
+  .empty {
+    color: #66727a;
+    font-size: 10px;
+    padding: 4px 8px;
   }
 </style>

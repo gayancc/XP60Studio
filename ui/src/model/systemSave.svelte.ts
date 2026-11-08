@@ -6,13 +6,13 @@
 
 import type { ArmedSystemSave, Backend, SystemSaveReport } from './backend';
 import type { SavePhase } from './save.svelte';
-import { reportError, reportSuccess, reportWarning } from './messages.svelte';
+import { errorText, humanizeErrorText, reportError, reportSuccess, reportWarning } from './messages.svelte';
 
 /** How long an arming stays valid (the backend enforces the same limit). */
 export const SYSTEM_ARMING_LIFETIME_MS = 60_000;
 
 function message(e: unknown): string {
-  return typeof e === 'string' ? e : e instanceof Error ? e.message : String(e);
+  return errorText(e);
 }
 
 export class SystemSaveFlow {
@@ -25,8 +25,9 @@ export class SystemSaveFlow {
   }
   /** Setting text here also shows it in the bottom-left corner with every other message. */
   set error(text: string) {
-    this.#error = text;
-    if (text) reportError(text);
+    const clean = text ? humanizeErrorText(text) : '';
+    this.#error = clean;
+    if (clean) reportError(clean);
   }
   /** Where the settings the last save replaced were backed up, while that save can still be undone. */
   lastBackupPath = $state<string | null>(null);

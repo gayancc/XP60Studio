@@ -4,7 +4,7 @@
 import { PatchDoc } from '../wasm/pkg/xppatch.js';
 import type { ArmedBank, Backend, BankSaveReport, Progress } from './backend';
 import { normaliseTag } from './folders';
-import { reportError, reportInfo, reportSuccess, reportWarning } from './messages.svelte';
+import { errorText, humanizeErrorText, reportError, reportInfo, reportSuccess, reportWarning } from './messages.svelte';
 
 export const SLOTS = 128;
 
@@ -20,7 +20,7 @@ export interface BankSlot {
 export type BankPhase = 'idle' | 'reading' | 'arming' | 'armed' | 'writing' | 'done' | 'failed';
 
 function message(e: unknown): string {
-  return typeof e === 'string' ? e : e instanceof Error ? e.message : String(e);
+  return errorText(e);
 }
 
 function sameBytes(a: Uint8Array | null, b: Uint8Array | null): boolean {
@@ -48,8 +48,9 @@ export class BankService {
   }
   /** Setting text here also shows it in the bottom-left corner with every other message. */
   set error(text: string) {
-    this.#error = text;
-    if (text) reportError(text);
+    const clean = text ? humanizeErrorText(text) : '';
+    this.#error = clean;
+    if (clean) reportError(clean);
   }
   selected = $state(0);
   /** Where the loaded bank came from, for the title. */
@@ -104,7 +105,8 @@ export class BankService {
     } catch {
       name = '(unreadable)';
     }
-    this.slots[slot] = { bytes: bytes.slice(), name, origin };
+    // Replace the array so every view sees the new pad name even when only one slot changed.
+    this.slots = this.slots.map((s, i) => (i === slot ? { bytes: bytes.slice(), name, origin } : s));
   }
 
   /** Put a patch (590 bytes of blocks) into a slot locally. Nothing reaches the synth until the bank is written. */

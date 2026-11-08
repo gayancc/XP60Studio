@@ -293,6 +293,26 @@ describe('the instrument', () => {
     store.markStale();
     expect(store.sync).toBe('stale');
   });
+
+  it('auditioning a bank slot does not claim the open patch was fully sent', () => {
+    const { store, transport } = make();
+    store.set('tone1', 'tone_level', 9);
+    vi.advanceTimersByTime(2000);
+    expect(store.sync).toBe('sent');
+    transport.frames.length = 0;
+    const other = make().store;
+    other.setName('Bank Pad');
+    other.set('tone2', 'resonance', 77);
+    store.auditionBlocks(other.snapshot());
+    vi.advanceTimersByTime(5000);
+    expect(store.sync).toBe('stale');
+    expect(transport.frames.length).toBeGreaterThan(1);
+    transport.frames.length = 0;
+    store.set('tone1', 'tone_level', 11);
+    vi.advanceTimersByTime(200);
+    // Must be a whole send of the open patch, not one parameter on top of the auditioned slot.
+    expect(transport.frames.length).toBeGreaterThan(1);
+  });
 });
 
 describe('honest sync state', () => {

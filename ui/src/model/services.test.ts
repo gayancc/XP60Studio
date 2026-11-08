@@ -116,10 +116,10 @@ describe('LibraryService', () => {
   });
 
   it('a failed import says why and leaves nothing busy', async () => {
-    const b = fakeBackend({ libraryImport: vi.fn(async () => Promise.reject('the file holds no patches')) });
+    const b = fakeBackend({ libraryImport: vi.fn(async () => Promise.reject('That file holds no patches.')) });
     const lib = new LibraryService(b);
     expect(await lib.importFile('x.syx', new Uint8Array())).toBeNull();
-    expect(lib.error).toBe('the file holds no patches');
+    expect(lib.error).toBe('That file holds no patches.');
     expect(lib.busy).toBe(false);
   });
 
@@ -246,7 +246,7 @@ describe('SaveFlow', () => {
     await f.arm(1, patch, 'New');
     expect(await f.commit()).toBe(false);
     expect(f.phase).toBe('failed');
-    expect(f.error).toContain('read-back differs');
+    expect(f.error.toLowerCase()).toContain('read-back differs');
     expect(f.canUndo).toBe(true);
     expect(await f.undo()).toBe(true);
   });

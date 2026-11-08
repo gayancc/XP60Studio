@@ -31,7 +31,10 @@ fn main() -> Res<()> {
             (2, n) => format!("EXP board {n} wave {num}"),
             _ => format!("unmapped type={ty} id={id} wave={num}"),
         };
-        println!("tone{}: type={ty} id={id} raw={raw} display={num:03} -> {label}", tone + 1);
+        println!(
+            "tone{}: type={ty} id={id} raw={raw} display={num:03} -> {label}",
+            tone + 1
+        );
     }
     println!(
         "H-058: live SysEx wave IDs classified (INT-A id=1, INT-B id=2, EXP type=2); LCD waveform text requires separate panel observation."

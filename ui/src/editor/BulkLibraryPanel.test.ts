@@ -32,8 +32,14 @@ function setup() {
   });
   const a = fake.addBulk('allright', [ids[0]!, ids[1]!, ids[2]!]);
   const b = fake.addBulk('other', [ids[3]!]);
+  const libraryImport = vi.fn(async (_bytes: Uint8Array, name: string) => {
+    const bulkName = name.replace(/\.(syx|mid|midi)$/i, '') || 'imported';
+    const bulkId = fake.addBulk(bulkName, [fake.addPatch('Imported A'), fake.addPatch('Imported B')]);
+    return { added: 2, duplicates: 0, bulk_id: bulkId, bulk_name: bulkName };
+  });
   const backend = {
     ...fake.api,
+    libraryImport,
     libraryList: vi.fn(async () => []),
     libraryCount: vi.fn(async () => 0),
     libraryTags: vi.fn(async () => []),
@@ -41,7 +47,7 @@ function setup() {
   const lib = new LibraryService(backend);
   const bank = new BankService(backend);
   const view = render(BulkPanelHarness, { props: { bank, lib } });
-  return { fake, ids, a, b, bank, lib, ...view };
+  return { fake, ids, a, b, bank, lib, libraryImport, ...view };
 }
 
 const text = (e: Element | null): string => e?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
@@ -65,7 +71,7 @@ describe('the library as bulks', () => {
     expect([...container.querySelectorAll('.head')].map((h) => text(h))).toEqual(['▸ allright 3', '▸ other 1']);
     await fireEvent.click(button(container, /Open allright/));
     await waitFor(() => expect(container.querySelectorAll('.slots .prow').length).toBe(3));
-    expect([...container.querySelectorAll('.slots .prow')].map((r) => text(r))).toEqual(['a11 · 001 Alpha', 'a12 · 002 Beta', 'a13 · 003 Gamma']);
+    expect([...container.querySelectorAll('.slots .prow')].map((r) => text(r))).toEqual(['Alpha a11 · 001', 'Beta a12 · 002', 'Gamma a13 · 003']);
   });
 
   it('tints the place a drop would land, with a sentence saying what it does, and clears it when the pointer leaves', async () => {
@@ -122,6 +128,40 @@ describe('the library as bulks', () => {
     await waitFor(() => expect(container.querySelector('.head.loaded')).toBeTruthy());
   });
 
+  it('after a bulk fills the bank, a click on a patch from another bulk still replaces the selected slot', async () => {
+    const onput = vi.fn();
+    const fake = fakeBulks();
+    const ids = ['Alpha', 'Beta', 'Gamma', 'Delta'].map((n, i) => {
+      const id = fake.addPatch(n);
+      fake.patches.get(id)!.bytes = blocks(n, i + 1);
+      return id;
+    });
+    const a = fake.addBulk('allright', [ids[0]!, ids[1]!, ids[2]!]);
+    fake.addBulk('other', [ids[3]!]);
+    const backend = {
+      ...fake.api,
+      libraryImport: vi.fn(),
+      libraryList: vi.fn(async () => []),
+      libraryCount: vi.fn(async () => 0),
+      libraryTags: vi.fn(async () => []),
+    } as unknown as Backend;
+    const lib = new LibraryService(backend);
+    const bank = new BankService(backend);
+    const { container } = render(BulkPanelHarness, { props: { bank, lib, onput } });
+    await waitFor(() => expect(container.querySelectorAll('.bulk').length).toBe(2));
+    await fireEvent.click(button(container, /Open allright/));
+    await waitFor(() => expect(container.querySelector('.tools')).toBeTruthy());
+    await fireEvent.click(button(container, /Load into bank/));
+    await fireEvent.click(button(container, /^Replace$/));
+    await waitFor(() => expect(bank.origin?.id).toBe(a));
+    expect(bank.slots[0]?.name.trim()).toBe('Alpha');
+    await fireEvent.click(button(container, /Open other/));
+    await waitFor(() => expect(row(container, 'Delta')).toBeTruthy());
+    await fireEvent.click(row(container, 'Delta'));
+    await waitFor(() => expect(bank.slots[0]?.name.trim()).toBe('Delta'));
+    expect(onput).toHaveBeenCalledWith(0);
+  });
+
   it('deleting asks first and keeps the bulk if you say keep', async () => {
     const { container, fake, b } = setup();
     await waitFor(() => expect(container.querySelectorAll('.bulk').length).toBe(2));
@@ -160,6 +200,45 @@ describe('the library as bulks', () => {
     const sent = JSON.parse(data[DRAG_TYPE]!) as DragPayload;
     expect(sent.type === 'patches' && sent.items.map((i) => i.kind === 'bulk-slot' && i.patchId)).toEqual([ids[0], ids[2]]);
     expect(a).toBeGreaterThan(0);
+  });
+});
+
+async function pickSyx(container: HTMLElement, name: string, bytes: Uint8Array): Promise<void> {
+  const input = container.querySelector<HTMLInputElement>('input[type=file][accept]')!;
+  const file = new File([bytes as BlobPart], name, { type: 'application/octet-stream' });
+  Object.defineProperty(input, 'files', { configurable: true, value: [file] });
+  await fireEvent.change(input);
+}
+
+describe('importing a bank file into the library', () => {
+  it('stages a picked .syx, then imports it as a bulk after confirm', async () => {
+    const BANK = new Uint8Array(readFileSync('../tests/golden/xp60-user-bank.syx'));
+    const { container, lib, libraryImport } = setup();
+    await waitFor(() => expect(container.querySelectorAll('.bulk').length).toBe(2));
+    expect(button(container, /^Import/).disabled).toBe(false);
+
+    await pickSyx(container, 'session-bank.syx', BANK);
+    await waitFor(() => expect(lib.staged?.names.length).toBe(128));
+    expect(text(container.querySelector('.staged'))).toContain('session-bank.syx');
+    expect(text(container.querySelector('.staged'))).toContain('128 patches');
+    expect(libraryImport).not.toHaveBeenCalled();
+
+    await fireEvent.click(button(container, /Import 128 as bulk/));
+    await waitFor(() => expect(libraryImport).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(lib.staged).toBeNull());
+    await waitFor(() => expect(container.querySelectorAll('.bulk').length).toBe(3));
+    expect(text(container.querySelector('.ok'))).toContain('Imported "session-bank"');
+    expect([...container.querySelectorAll('.head')].map((h) => text(h)).some((t) => t.includes('session-bank'))).toBe(true);
+  });
+
+  it('cancels a staged import without calling the backend', async () => {
+    const BANK = new Uint8Array(readFileSync('../tests/golden/xp60-user-bank.syx'));
+    const { container, lib, libraryImport } = setup();
+    await pickSyx(container, 'tmp.syx', BANK);
+    await waitFor(() => expect(lib.staged).not.toBeNull());
+    await fireEvent.click(container.querySelector('.staged button:not(.primary)')!);
+    expect(lib.staged).toBeNull();
+    expect(libraryImport).not.toHaveBeenCalled();
   });
 });
 

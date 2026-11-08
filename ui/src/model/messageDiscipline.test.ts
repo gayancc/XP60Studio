@@ -22,6 +22,8 @@ const ALLOWED: Record<string, number> = {
   'editor/SystemSaveCeremony.svelte': 1,
   // the connection readout on the Synth menu
   'editor/SynthBar.svelte': 1,
+  // staged-import error / success lines on the Bank Library panel
+  'editor/BulkLibraryPanel.svelte': 2,
 };
 
 function files(dir: string): string[] {

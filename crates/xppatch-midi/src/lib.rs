@@ -23,7 +23,9 @@ pub use passthrough::{
     expected_message_len, is_channel_voice, is_system_realtime, prepare_forward, remap_channel,
     should_forward, PassThroughConfig,
 };
-pub use transport::{MidiTransport, TransportError};
+pub use transport::{
+    explain_midi_os_error, explain_midi_send_error, MidiTransport, TransportError,
+};
 
 #[cfg(feature = "hardware")]
 pub mod hardware;

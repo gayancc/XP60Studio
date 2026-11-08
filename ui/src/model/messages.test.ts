@@ -153,9 +153,18 @@ describe('the message centre', () => {
   });
 
   it('turns a thrown value into text', () => {
-    expect(errorText('plain')).toBe('plain');
-    expect(errorText(new Error('boom'))).toBe('boom');
+    expect(errorText('plain')).toBe('Plain');
+    expect(errorText(new Error('boom'))).toBe('Boom');
     expect(errorText(42)).toBe('42');
+  });
+
+  it('rewrites Windows MIDI jargon into plain English', () => {
+    const text = errorText(
+      'MIDI port error: could not create Windows MM MIDI input stream (MMSYSERR_ALLOCATED)',
+    );
+    expect(text.toLowerCase()).not.toContain('mmsyserr');
+    expect(text).toContain('already open');
+    expect(errorText('failed (os error 5)').toLowerCase()).not.toContain('os error');
   });
 
   it('never goes below the minimum display time', () => {

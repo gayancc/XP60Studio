@@ -5,10 +5,10 @@
 
 import type { Backend, BulkHit, BulkRevision, BulkRow, BulkSlot } from './backend';
 import type { BankService } from './bank.svelte';
-import { reportError, reportInfo, reportWarning } from './messages.svelte';
+import { errorText, reportError, reportInfo, reportWarning } from './messages.svelte';
 
 function message(e: unknown): string {
-  return typeof e === 'string' ? e : e instanceof Error ? e.message : String(e);
+  return errorText(e);
 }
 
 /** A patch being dragged, wherever it comes from. */

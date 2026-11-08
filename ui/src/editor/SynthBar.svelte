@@ -30,8 +30,7 @@
     void synth.refreshPorts();
   });
 
-  const connect = (): Promise<void> =>
-    synth.connect(synth.input, synth.output, synth.device);
+  const connect = (): Promise<void> => synth.connect(synth.input, synth.output, synth.device);
 
   function onThruChannel(i: number): void {
     void synth.setThruChannel(i <= 0 ? null : i - 1);
@@ -42,13 +41,12 @@
     const rev = store.revision;
     const bytes = await synth.fetchTemp(store.kind);
     if (!bytes) return;
-    // Edits made while the read was in flight would be thrown away by opening the instrument's sound.
     if (rev !== store.revision) {
       store.error = 'The patch changed while reading the instrument; fetch again.';
       return;
     }
     store.openFromInstrument(bytes);
-    if (!store.error) synth.say(store.kind === 'system' ? 'Read the instrument\'s system settings.' : `Fetched "${store.name.trimEnd()}" from the instrument.`);
+    if (!store.error) synth.say(store.kind === 'system' ? "Read the instrument's system settings." : `Fetched "${store.name.trimEnd()}" from the instrument.`);
   }
 
   async function disconnect(): Promise<void> {
@@ -64,231 +62,288 @@
       store.error = 'The patch changed while verifying; verify again.';
       return;
     }
-    synth.say(store.verifyAgainst(bytes) ? 'Verified: the instrument\'s temporary copy matches this sound.' : 'Mismatch: the instrument\'s temporary copy differs from this sound.');
+    synth.say(store.verifyAgainst(bytes) ? "Verified: the instrument's temporary copy matches this sound." : "Mismatch: the instrument's temporary copy differs from this sound.");
   }
 </script>
 
+<!-- Layout mirrors FL Studio Settings → MIDI: compact group boxes, small buttons, dense labels (measured 2026-11-07). -->
 <div class="synth" class:linked={synth.connected}>
   {#if synth.connected}
-    <div class="link ok" role="status" aria-label="Connected to XP-60 ID {synth.info?.device_number}, {patchName}">
-      <span class="led" aria-hidden="true"></span>
-      <div class="who">
-        <span class="dev">XP-60 · ID {synth.info?.device_number}</span>
-        <span class="patch">“{patchName}”</span>
+    <div class="box ok" role="status" aria-label="Connected to XP-60 ID {synth.info?.device_number}, {patchName}">
+      <div class="box-head">
+        <span class="led" aria-hidden="true"></span>
+        <span class="box-title">XP-60 · ID {synth.info?.device_number}</span>
+        <span class="box-meta">“{patchName}”</span>
+      </div>
+      <div class="btnrow">
+        <button type="button" class="btn" disabled={synth.busy} onclick={fetchSound}>Fetch sound</button>
+        {#if store.kind !== 'system'}
+          <button type="button" class="btn" disabled={synth.busy} onclick={verify} title="Read the temporary copy back and compare it with this one">Verify</button>
+        {/if}
+        <button type="button" class="btn danger" onclick={disconnect}>Disconnect</button>
       </div>
     </div>
 
-    <div class="acts">
-      <button type="button" class="act" disabled={synth.busy} onclick={fetchSound}>Fetch sound</button>
-      {#if store.kind !== 'system'}
-        <button type="button" class="act" disabled={synth.busy} onclick={verify} title="Read the temporary copy back and compare it with this one">Verify</button>
-      {/if}
-      <button type="button" class="act danger" onclick={disconnect}>Disconnect</button>
-    </div>
-
-    <div class="pace" aria-label="Send pacing">
-      <Stepper
-        contrast
-        value={synth.pacing}
-        min={20}
-        max={250}
-        width={100}
-        label="Write gap"
-        name="Gap between writes in milliseconds"
-        context="Synth"
-        format={(v) => `${v} ms · ${Math.round(1000 / v)}/s`}
-        onchange={(v) => void synth.setPacing(v)}
-      />
-      <Stepper
-        contrast
-        value={sendOptions.chunk}
-        min={MIN_CHUNK}
-        max={MAX_CHUNK}
-        width={56}
-        label="Chunk"
-        name="Most data bytes in one message when a whole sound is sent"
-        context="Synth"
-        format={(v) => `${v} B`}
-        onchange={(v) => setChunk(v)}
-      />
-    </div>
-
-    <div class="thru" aria-label="Controller pass-through">
-      <span class="thru-label">Controller</span>
-      <Dropdown
-        options={thruChoices.length ? thruChoices.map((p) => controllerInputs.includes(p) ? p : `${p} (unavailable)`) : ['(no other MIDI inputs)']}
-        selected={Math.max(0, thruChoices.indexOf(synth.thruInput))}
-        name="Controller MIDI input"
-        width={150}
-        onchange={(i) => (synth.thruInput = thruChoices[i] ?? '')}
-      />
-      <Dropdown
-        options={channelLabels}
-        selected={channelIndex}
-        name="Pass-through channel"
-        width={72}
-        onchange={onThruChannel}
-      />
-      {#if synth.thru.active}
-        <ToggleLed
-          checked={synth.thru.enabled && !synth.thru.held}
-          label={synth.thru.held ? 'Thru (held)' : 'Thru'}
-          name="Forward controller notes to the XP-60"
+    <div class="box" aria-label="Send pacing">
+      <div class="box-head"><span class="box-title">Send</span></div>
+      <div class="btnrow wrap">
+        <Stepper
+          contrast
+          value={synth.pacing}
+          min={20}
+          max={250}
+          width={96}
+          label="Write gap"
+          name="Gap between writes in milliseconds"
           context="Synth"
-          onchange={(on) => void synth.setThruEnabled(on)}
+          format={(v) => `${v} ms`}
+          onchange={(v) => void synth.setPacing(v)}
         />
-        <button type="button" class="act" onclick={() => void synth.stopThru()} title="Close the controller input">Stop</button>
-      {:else}
-        <button
-          type="button"
-          class="act primary"
-          disabled={synth.busy || !synth.thruInput || !controllerInputs.includes(synth.thruInput)}
-          onclick={() => void synth.startThru()}
-          title="Route Note/CC/pitch-bend from this keyboard to the XP-60 output"
-        >Start thru</button>
-      {/if}
+        <Stepper
+          contrast
+          value={sendOptions.chunk}
+          min={MIN_CHUNK}
+          max={MAX_CHUNK}
+          width={48}
+          label="Chunk"
+          name="Most data bytes in one message when a whole sound is sent"
+          context="Synth"
+          format={(v) => `${v} B`}
+          onchange={(v) => setChunk(v)}
+        />
+      </div>
+    </div>
+
+    <div class="box" aria-label="Controller pass-through">
+      <div class="box-head"><span class="box-title">Controller</span><span class="box-meta">pass-through</span></div>
+      <div class="grid">
+        <span class="lab">Input</span>
+        <Dropdown
+          options={thruChoices.length ? thruChoices.map((p) => (controllerInputs.includes(p) ? p : `${p} (unavailable)`)) : ['(no other MIDI inputs)']}
+          selected={Math.max(0, thruChoices.indexOf(synth.thruInput))}
+          name="Controller MIDI input"
+          width={200}
+          onchange={(i) => (synth.thruInput = thruChoices[i] ?? '')}
+        />
+        <span class="lab">Channel</span>
+        <div class="inline">
+          <Dropdown options={channelLabels} selected={channelIndex} name="Pass-through channel" width={72} onchange={onThruChannel} />
+          {#if synth.thru.active}
+            <ToggleLed
+              checked={synth.thru.enabled && !synth.thru.held}
+              label={synth.thru.held ? 'Thru (held)' : 'Thru'}
+              name="Forward controller notes to the XP-60"
+              context="Synth"
+              onchange={(on) => void synth.setThruEnabled(on)}
+            />
+            <button type="button" class="btn" onclick={() => void synth.stopThru()} title="Close the controller input">Stop</button>
+          {:else}
+            <button
+              type="button"
+              class="btn accent"
+              disabled={synth.busy || !synth.thruInput || !controllerInputs.includes(synth.thruInput)}
+              onclick={() => void synth.startThru()}
+              title="Route Note/CC/pitch-bend from this keyboard to the XP-60 output"
+            >Start thru</button>
+          {/if}
+        </div>
+      </div>
     </div>
   {:else}
-    <div class="ports">
-      <Dropdown options={inputs.length ? inputs.map((p) => synth.ports.inputs.includes(p) ? p : `${p} (unavailable)`) : ['(no MIDI inputs)']} selected={inputs.indexOf(synth.input)} name="MIDI input" width={150} onchange={(i) => (synth.input = inputs[i] ?? '')} />
-      <Dropdown options={outputs.length ? outputs.map((p) => synth.ports.outputs.includes(p) ? p : `${p} (unavailable)`) : ['(no MIDI outputs)']} selected={outputs.indexOf(synth.output)} name="MIDI output" width={150} onchange={(i) => (synth.output = outputs[i] ?? '')} />
-      <Stepper contrast bind:value={synth.device} min={16} max={31} name="Device ID" context="Synth" format={(v) => String(v + 1)} />
+    <div class="box" aria-label="MIDI input">
+      <div class="box-head"><span class="box-title">Input</span><span class="box-meta">from XP-60</span></div>
+      <Dropdown
+        options={inputs.length ? inputs.map((p) => (synth.ports.inputs.includes(p) ? p : `${p} (unavailable)`)) : ['(no MIDI inputs)']}
+        selected={inputs.indexOf(synth.input)}
+        name="MIDI input"
+        width={260}
+        onchange={(i) => (synth.input = inputs[i] ?? '')}
+      />
     </div>
-    <div class="acts">
-      <button type="button" class="act primary" disabled={synth.busy || missing || !synth.input || !synth.output} onclick={connect}>{synth.busy ? 'Connecting…' : 'Connect'}</button>
-      <button type="button" class="act" onclick={() => synth.refreshPorts()} title="Look for MIDI ports again">Rescan</button>
+
+    <div class="box" aria-label="MIDI output">
+      <div class="box-head"><span class="box-title">Output</span><span class="box-meta">to XP-60</span></div>
+      <Dropdown
+        options={outputs.length ? outputs.map((p) => (synth.ports.outputs.includes(p) ? p : `${p} (unavailable)`)) : ['(no MIDI outputs)']}
+        selected={outputs.indexOf(synth.output)}
+        name="MIDI output"
+        width={260}
+        onchange={(i) => (synth.output = outputs[i] ?? '')}
+      />
+    </div>
+
+    <div class="box" aria-label="Device">
+      <div class="box-head"><span class="box-title">Device</span></div>
+      <div class="inline">
+        <span class="lab">ID</span>
+        <Stepper contrast bind:value={synth.device} min={16} max={31} name="Device ID" context="Synth" format={(v) => String(v + 1)} />
+        <span class="hint">Panel number 17–32</span>
+      </div>
+    </div>
+
+    {#if missing}
+      <p class="note warn">A chosen port is offline — refresh after reconnecting the interface.</p>
+    {/if}
+
+    <div class="btnrow footer">
+      <button type="button" class="btn" onclick={() => synth.refreshPorts()} title="Look for MIDI ports again" aria-label="Rescan">Refresh</button>
+      <button type="button" class="btn accent" disabled={synth.busy || missing || !synth.input || !synth.output} onclick={connect}>
+        {synth.busy ? 'Connecting…' : 'Connect'}
+      </button>
     </div>
   {/if}
 </div>
 
 <style>
   /*
-   * Instrument strip: locked graphite palette. Light ink on deep wells so contrast
-   * never depends on the surrounding theme (light panels used to wash out lime text).
+   * FL Studio Settings → MIDI pattern (live capture 2026-11-07):
+   * charcoal group boxes, 11–12px labels, ~22px chrome buttons, no oversized CTAs.
+   * Colours locked to FL graphite so light theme menus do not wash the strip out.
    */
   .synth {
-    --sb-ink: #eef3f6;
-    --sb-ink-dim: #a3b1b9;
-    --sb-bg0: #2a3339;
-    --sb-bg1: #1c2429;
-    --sb-face: #3d4a52;
-    --sb-face-hover: #4d5c66;
-    --sb-edge: #0b1013;
-    --sb-led: #b7ec4a;
-    --sb-accent-ink: #1c1208;
+    --fl-ink: #d5dce0;
+    --fl-dim: #8b969c;
+    --fl-panel: #353e44;
+    --fl-box: #3c454b;
+    --fl-edge: #252c30;
+    --fl-chrome: #4c545a;
+    --fl-btn: #5a6164;
+    --fl-btn-hi: #6f7679;
+    --fl-led: #97db3a;
+    --fl-accent-ink: #1c1208;
 
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 10px 12px;
-    padding: 7px 9px;
-    border: 1px solid var(--sb-edge);
-    border-radius: var(--radius-lg);
-    background: linear-gradient(180deg, var(--sb-bg0), var(--sb-bg1));
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
-    color: var(--sb-ink);
-  }
-
-  .link {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    min-width: 0;
-    max-width: 260px;
-    padding: 4px 10px 4px 8px;
-    border-radius: 999px;
-    background: #12181c;
-    border: 1px solid #303a40;
-  }
-  .led {
-    flex: none;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--sb-led);
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--sb-led) 28%, transparent), 0 0 6px color-mix(in srgb, var(--sb-led) 55%, transparent);
-  }
-  .who {
-    min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 1px;
-    line-height: 1.15;
+    gap: 6px;
+    width: 300px;
+    padding: 8px;
+    background: var(--fl-panel);
+    border: 1px solid var(--fl-edge);
+    color: var(--fl-ink);
+    font: 12px/1.25 var(--font);
   }
-  .dev {
+
+  .box {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 6px 7px 7px;
+    background: var(--fl-box);
+    border: 1px solid var(--fl-edge);
+  }
+  .box.ok {
+    border-color: color-mix(in srgb, var(--fl-led) 35%, var(--fl-edge));
+  }
+  .box-head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+  }
+  .box-title {
     font: 600 10px var(--font-caps);
-    letter-spacing: 0.07em;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
-    color: var(--sb-ink-dim);
+    color: var(--fl-ink);
   }
-  .patch {
+  .box-meta {
+    flex: 1;
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font: 600 12px var(--font);
-    color: var(--sb-ink);
+    font-size: 11px;
+    color: var(--fl-dim);
+  }
+  .led {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--fl-led);
+    box-shadow: 0 0 5px color-mix(in srgb, var(--fl-led) 55%, transparent);
   }
 
-  .acts,
-  .pace,
-  .ports,
-  .thru {
-    display: inline-flex;
-    align-items: flex-end;
-    flex-wrap: wrap;
-    gap: 6px;
-  }
-  .acts,
-  .thru {
+  .grid {
+    display: grid;
+    grid-template-columns: 48px minmax(0, 1fr);
+    gap: 4px 6px;
     align-items: center;
   }
-  .thru-label {
+  .lab {
     font: 600 10px var(--font-caps);
-    letter-spacing: 0.07em;
+    letter-spacing: 0.04em;
     text-transform: uppercase;
-    color: var(--sb-ink-dim);
+    color: var(--fl-dim);
+    text-align: right;
+  }
+  .hint {
+    font-size: 10px;
+    color: var(--fl-dim);
+  }
+  .note {
+    margin: 0;
+    font-size: 11px;
+    color: var(--fl-dim);
+  }
+  .note.warn {
+    color: #e0a060;
   }
 
-  .act {
+  .inline,
+  .btnrow {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex-wrap: nowrap;
+  }
+  .btnrow.wrap,
+  .inline {
+    flex-wrap: wrap;
+  }
+  .btnrow.footer {
+    justify-content: flex-end;
+    padding-top: 2px;
+  }
+
+  /* FL chrome button: ~22px tall, subtle face, never a banner CTA. */
+  .btn {
     appearance: none;
-    border: 1px solid var(--sb-edge);
-    border-radius: var(--radius);
-    padding: 5px 11px;
-    background: var(--sb-face);
-    color: var(--sb-ink);
-    font: 600 12px var(--font);
+    height: 22px;
+    padding: 0 9px;
+    border: 1px solid #2a3135;
+    border-radius: 2px;
+    background: linear-gradient(180deg, var(--fl-btn-hi), var(--fl-btn));
+    color: var(--fl-ink);
+    font: 600 11px var(--font);
     cursor: pointer;
+    white-space: nowrap;
   }
-  .act:hover:not(:disabled) {
-    background: var(--sb-face-hover);
+  .btn:hover:not(:disabled) {
+    background: linear-gradient(180deg, #7a8184, #636a6d);
   }
-  .act:focus-visible {
+  .btn:focus-visible {
     outline: none;
-    background-image: var(--focus-fill);
+    background-image: var(--focus-fill), linear-gradient(180deg, var(--fl-btn-hi), var(--fl-btn));
   }
-  .act:disabled {
+  .btn:disabled {
     opacity: 0.45;
     cursor: default;
   }
-  .act.primary {
-    background: var(--accent);
-    color: var(--sb-accent-ink);
-    border-color: color-mix(in srgb, var(--accent) 60%, #000);
+  .btn.accent {
+    background: linear-gradient(180deg, #ffb054, var(--accent));
+    color: var(--fl-accent-ink);
+    border-color: color-mix(in srgb, var(--accent) 50%, #000);
   }
-  .act.primary:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--accent) 88%, #fff);
+  .btn.accent:hover:not(:disabled) {
+    background: linear-gradient(180deg, #ffc078, #ff9a38);
   }
-  .act.danger {
-    color: #ffd4d0;
-    border-color: color-mix(in srgb, var(--bad) 45%, var(--sb-edge));
+  .btn.accent:focus-visible {
+    background-image: var(--focus-fill), linear-gradient(180deg, #ffb054, var(--accent));
   }
-  .act.danger:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--bad) 28%, var(--sb-face));
+  .btn.danger {
+    color: #ffc8c4;
   }
-
-  .pace {
-    margin-left: auto;
-    padding-left: 10px;
-    border-left: 1px solid #303a40;
+  .btn.danger:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--bad) 30%, var(--fl-btn));
   }
 </style>

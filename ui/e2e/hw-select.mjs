@@ -1,4 +1,4 @@
-// H-070 native Bank half: with "Select on the instrument" on, clicking User slots sends Bank Select + Program Change.
+// H-070 native Bank half: when connected, clicking User slots sends Bank Select + Program Change (channel 1).
 // Preset groups (PR-A/B/C/GM) are covered by the MIDI-tool select_probe; Bank UI is USER-only after the Bank redesign.
 // Restores temporary Nice Piano (PR-A 004) afterward via midi_select_sound. Owner LCD confirmation remains separate.
 import { startApp, wait } from './hw-lib.mjs';
@@ -28,15 +28,8 @@ try {
   await wait(800);
   assert(await app.js(`!!document.querySelector('.grid')`), 'Bank grid visible');
 
-  // Ensure follow is on (defaults true; assert and force if needed).
-  const followOn = await app.js(`(()=>{
-    const t=document.querySelector('[role=switch][aria-label="Select the patch on the instrument too"], [role=switch][name="Select the patch on the instrument too"]')
-      || [...document.querySelectorAll('[role=switch]')].find(s=>/Select on the instrument|Select the patch on the instrument/i.test(s.getAttribute('aria-label')||s.textContent||''));
-    if(!t) return 'missing';
-    if(t.getAttribute('aria-checked')==='false') t.click();
-    return t.getAttribute('aria-checked');
-  })()`);
-  assert(followOn === 'true' || followOn === true, `Select on the instrument on (got ${JSON.stringify(followOn)})`);
+  // Follow is always on while connected (no channel picker on the Bank page).
+  assert(await app.js(`!!document.querySelector('.follow-pill')`), 'LIVE follow pill visible while connected');
 
   await app.startMidiTrace();
 

@@ -18,31 +18,31 @@ pub const PATCH_BYTES: usize = xppatch_core::Patch::BLOCK_BYTES;
 
 #[derive(Debug, Error)]
 pub enum SynthError {
-    #[error("not connected to an instrument")]
+    #[error("Not connected to an instrument.")]
     NotConnected,
     #[error(transparent)]
     Client(#[from] ClientError),
-    #[error("unknown document kind '{0}'")]
+    #[error("Unknown document kind '{0}'.")]
     Kind(String),
-    #[error("invalid device ID: {0}")]
+    #[error("That device ID is not valid. Use 17 to 32 on the panel.")]
     Device(#[from] ParseError),
-    #[error("saving is not armed: choose a slot and arm the save first")]
+    #[error("Saving is not armed: choose a slot and arm the save first.")]
     NotArmed,
-    #[error("no earlier save to undo")]
+    #[error("There is nothing earlier to restore.")]
     NothingToRestore,
-    #[error("the arming expired; arm the save again")]
+    #[error("The arming expired; arm the save again.")]
     ArmingExpired,
-    #[error("the instrument is busy with a long operation; wait or cancel it")]
+    #[error("The instrument is busy. Wait for the current operation, or Cancel it.")]
     Busy,
-    #[error("the bank write does not match what was confirmed: {0}")]
+    #[error("The bank write does not match what was confirmed.")]
     NotConfirmed(String),
     #[error("User patch {slot} no longer holds what was saved; it was not put back. The earlier patch is in {backup}")]
     SlotChanged { slot: u16, backup: String },
-    #[error("the System settings no longer hold what was saved; they were not put back. The earlier settings are in {backup}")]
+    #[error("The System settings no longer hold what was saved; they were not put back. The earlier settings are in {backup}")]
     SystemChanged { backup: String },
-    #[error("could not write the backup file ({0}); nothing was changed on the instrument")]
+    #[error("Could not write the backup file; nothing was changed on the instrument.")]
     Backup(String),
-    #[error("invalid patch data: {0}")]
+    #[error("That patch data is not valid.")]
     BadPatch(String),
 }
 
@@ -518,9 +518,9 @@ impl<T: MidiTransport> Synth<T> {
         if bank.cancelled {
             return Err(ClientError::Cancelled.into());
         }
-        if let Some((slot, e)) = bank.failures.first() {
+        if let Some((slot, _)) = bank.failures.first() {
             return Err(ClientError::Refused(format!(
-                "User patch {} could not be read ({e}); the bank is incomplete",
+                "User patch {} could not be read; the bank is incomplete. Check the cable and try again.",
                 u16::from(*slot) + 1
             ))
             .into());
@@ -545,9 +545,9 @@ impl<T: MidiTransport> Synth<T> {
         if bank.cancelled {
             return Err(ClientError::Cancelled.into());
         }
-        if let Some((slot, e)) = bank.failures.first() {
+        if let Some((slot, _)) = bank.failures.first() {
             return Err(ClientError::Refused(format!(
-                "User patch {} could not be read ({e}); the backup would be incomplete",
+                "User patch {} could not be read; the backup would be incomplete. Check the cable and try again.",
                 u16::from(*slot) + 1
             ))
             .into());
@@ -558,15 +558,21 @@ impl<T: MidiTransport> Synth<T> {
         let rhythm_sets = self
             .client
             .fetch_user_documents(DocKind::Rhythm, cancel, progress)?;
-        let mut out = xppatch_core::user_patch_bank_bytes(&bank.patches, device, None)
-            .map_err(|e| ClientError::Refused(e.to_string()))?;
+        let mut out =
+            xppatch_core::user_patch_bank_bytes(&bank.patches, device, None).map_err(|_| {
+                ClientError::Refused("Could not build the User patch bank file.".into())
+            })?;
         out.extend(
             xppatch_core::user_document_bytes(DocKind::Performance, &performances, device, None)
-                .map_err(|e| ClientError::Refused(e.to_string()))?,
+                .map_err(|_| {
+                    ClientError::Refused("Could not build the User Performance backup.".into())
+                })?,
         );
         out.extend(
             xppatch_core::user_document_bytes(DocKind::Rhythm, &rhythm_sets, device, None)
-                .map_err(|e| ClientError::Refused(e.to_string()))?,
+                .map_err(|_| {
+                    ClientError::Refused("Could not build the User Rhythm Set backup.".into())
+                })?,
         );
         Ok(out)
     }

@@ -12,25 +12,25 @@ use xppatch_sysex::message::EncodeError;
 #[derive(Debug, Error, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum PatchError {
-    #[error(transparent)]
+    #[error("That MIDI address is not valid.")]
     Address(#[from] AddressError),
-    #[error(transparent)]
+    #[error("A patch value is out of range or not valid.")]
     Codec(#[from] CodecError),
-    #[error(transparent)]
+    #[error("That memory location is out of range.")]
     Memory(#[from] MemoryError),
-    #[error(transparent)]
+    #[error("Could not split that MIDI message.")]
     Chunk(#[from] ChunkError),
-    #[error(transparent)]
+    #[error("Could not build that MIDI message.")]
     Encode(#[from] EncodeError),
-    #[error("data at {address} does not fall inside one patch block")]
+    #[error("That data does not fall inside one patch block.")]
     OutsideBlock { address: Address },
-    #[error("block {block} is incomplete: {missing} byte(s) missing")]
+    #[error("A patch block is incomplete.")]
     Incomplete { block: String, missing: usize },
-    #[error("conflicting data was written twice at {address}")]
+    #[error("Conflicting data was written twice to the same place.")]
     Overlap { address: Address },
-    #[error("no such patch block")]
+    #[error("That patch block is unknown.")]
     UnknownBlock,
-    #[error("patch has {count} out-of-range or malformed value(s); refusing to produce messages")]
+    #[error("That patch has out-of-range values and cannot be sent.")]
     Invalid { count: usize },
 }
 
@@ -476,7 +476,10 @@ mod tests {
     fn xp60_default_is_the_captured_panel_initialize_patch() {
         let patch = Patch::xp60_default();
         assert_eq!(patch.name().trim_end(), "INIT PATCH");
-        assert_eq!(patch.to_blocks(), include_bytes!("../data/xp60-init-patch.blocks"));
+        assert_eq!(
+            patch.to_blocks(),
+            include_bytes!("../data/xp60-init-patch.blocks")
+        );
         assert!(patch.validate().is_empty());
     }
 }
