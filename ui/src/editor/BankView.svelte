@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
-  import { Meter, TabPanel } from '../kit';
+  import { Meter, Segmented, TabPanel } from '../kit';
   import { SLOTS } from '../model/bank.svelte';
   import { PATCH_COUNT, PER_BANK, panelLabel, patchNumber, posOf, slotOf, SUBGROUPS } from '../model/bankPanel';
   import { PatchStore } from '../model/store.svelte';
@@ -12,6 +12,7 @@
   import { playPreviewNote } from '../model/previewNote';
   import { saveFile } from '../model/saveFile';
   import { say } from '../model/ui.svelte';
+  import type { SlotLevelResult } from '../model/voiceLeveling';
   import type { SynthService } from '../model/synth.svelte';
   import { useStore } from './context';
   import { parsePayload, DRAG_TYPE } from '../model/bulks.svelte';
@@ -238,9 +239,33 @@
     const s = bank?.slots[i];
     return s?.bytes ? s.name.trimEnd() || '(unnamed)' : '—';
   };
-  const rightTabs = ['Slot', 'Library', 'Backups', 'Write'];
-  const rtab = $derived(tabIn(arrangement.bankTab, 4));
+  const rightTabs = ['Slot', 'Library', 'Backups', 'Write', 'Normalize'];
+  const rtab = $derived(tabIn(arrangement.bankTab, 5));
+  /** FL browser-style filter over the normalize preview rows. */
+  const normFilters = ['All', 'Changed', 'Cut', 'Boost', 'Out'] as const;
+  let normFilter = $state(0);
   let backups = $state<BackupFile[]>([]);
+
+  const normRows = $derived.by((): SlotLevelResult[] => {
+    const preview = bank?.levelPreview;
+    if (!preview) return [];
+    const rows = preview.slots.filter((s) => !s.skipped && s.result);
+    const kind = normFilters[normFilter] ?? 'All';
+    return rows.filter((s) => {
+      const r = s.result!;
+      const delta = r.after.patchEls - r.before.patchEls;
+      if (kind === 'Changed') return r.edits.length > 0;
+      if (kind === 'Cut') return delta < -1e-6;
+      if (kind === 'Boost') return delta > 1e-6;
+      if (kind === 'Out') return r.outlier;
+      return true;
+    });
+  });
+
+  function normDelta(s: SlotLevelResult): number {
+    const r = s.result!;
+    return r.before.patchEls > 1e-9 ? r.after.patchEls / r.before.patchEls : 1;
+  }
 
   async function loadBackups(): Promise<void> {
     try {
@@ -502,6 +527,89 @@
           <button type="button" onclick={() => { const next = Math.max(0, bank.selected - 1); bank.swap(bank.selected, next); choose(next); }} disabled={bank.locked || bank.selected === 0}>Move up</button>
           <button type="button" onclick={() => { const next = Math.min(SLOTS - 1, bank.selected + 1); bank.swap(bank.selected, next); choose(next); }} disabled={bank.locked || bank.selected === SLOTS - 1}>Move down</button>
         </div>
+        <p class="dim slot-norm-hint">
+          Loudness normalize lives on the <button type="button" class="linkish" onclick={() => (arrangement.bankTab = 4)}>Normalize</button> tab — full 128-row browser, not a clipped Slot list.
+        </p>
+      {:else if n === 4}
+        <div class="norm" role="group" aria-label="Normalize bank">
+          <div class="norm-bar">
+            <button
+              type="button"
+              onclick={() => bank.previewLevelBank(store.catalog)}
+              disabled={bank.locked || bank.filled.length === 0}
+              title="Score every filled User patch (parameter ELS only). Does not write the instrument."
+            >Preview</button>
+            <button
+              type="button"
+              onclick={() => bank.applyLevelBank()}
+              disabled={bank.locked || !bank.levelPreview}
+              title="Apply preview into bank memory. Write the bank to send to the XP-60."
+            >Apply</button>
+            <button
+              type="button"
+              onclick={() => bank.undoLevelBank()}
+              disabled={!bank.canUndoLevelBank}
+              title="Restore slot bytes from before the last Apply"
+            >Undo</button>
+            {#if bank.levelPreview}
+              <button type="button" onclick={() => bank.clearLevelPreview()} disabled={bank.locked} title="Dismiss the preview list">Clear</button>
+            {/if}
+            <span class="norm-meta" title="Parameter-only Estimated Loudness Score. Active tones only. Patch Level first, then proportional Tone Levels. Identity frozen.">
+              {#if bank.levelPreview}
+                med {bank.levelPreview.targetEls.toFixed(2)} · {bank.levelPreview.changed} chg · {bank.levelPreview.outliers} out
+              {:else}
+                {bank.filled.length}/128 loaded
+              {/if}
+            </span>
+          </div>
+          {#if bank.levelPreview}
+            <div class="norm-filter">
+              <Segmented options={normFilters} bind:selected={normFilter} name="Normalize filter" context="Bank" />
+              <span class="norm-count">{normRows.length}</span>
+            </div>
+            <div class="norm-head" aria-hidden="true">
+              <span class="c-num">#</span>
+              <span class="c-name">Name</span>
+              <span class="c-tones">T</span>
+              <span class="c-els">ELS</span>
+              <span class="c-delta">Δ</span>
+              <span class="c-flag"></span>
+            </div>
+            <ol class="norm-list" aria-label="Normalize bank preview">
+              {#each normRows as s (s.slot)}
+                {@const r = s.result!}
+                {@const ratio = normDelta(s)}
+                {@const cut = r.after.patchEls < r.before.patchEls - 1e-9}
+                {@const boost = r.after.patchEls > r.before.patchEls + 1e-9}
+                <li>
+                  <button
+                    type="button"
+                    class="norm-row"
+                    class:on={bank.selected === s.slot}
+                    class:cut
+                    class:boost
+                    class:outlier={r.outlier}
+                    title={r.outlier ? r.outlierReason || 'Outlier — identity kept' : `${r.edits.length} edit(s)`}
+                    onclick={() => choose(s.slot)}
+                  >
+                    <span class="c-num">{slotLabel(s.slot)}</span>
+                    <span class="c-name">{s.name || '(unnamed)'}</span>
+                    <span class="c-tones">{r.before.activeToneCount}</span>
+                    <span class="c-els">{r.before.patchEls.toFixed(2)}→{r.after.patchEls.toFixed(2)}</span>
+                    <span class="c-delta" class:cut class:boost>×{ratio.toFixed(2)}</span>
+                    <span class="c-flag">{r.outlier ? 'OUT' : cut ? '↓' : boost ? '↑' : '·'}</span>
+                  </button>
+                </li>
+              {:else}
+                <li class="norm-empty">No rows in this filter.</li>
+              {/each}
+            </ol>
+          {:else}
+            <p class="norm-empty">
+              Preview scores the loaded bank and lists every patch here — dense browser rows, full height, filters for cuts / boosts / outliers. Apply stays in memory until you Write.
+            </p>
+          {/if}
+        </div>
       {:else}
         <BulkLibraryPanel {bank} {lib} deviceId={store.deviceId} onput={(slot) => choose(slot)} />
       {/if}
@@ -514,16 +622,29 @@
 <style>
   .work {
     display: grid;
-    grid-template-columns: 1fr minmax(320px, 380px);
-    /* One row exactly as tall as the workspace: the library list in the right panel scrolls inside its tab instead of making the slot grid taller. */
+    grid-template-columns: 1fr minmax(340px, 420px);
+    /* One row exactly as tall as the workspace: right-pane lists scroll inside instead of stretching the window. */
     grid-template-rows: minmax(0, 1fr);
     gap: 10px;
     padding: 10px;
+    height: 100%;
+    min-height: 0;
+    box-sizing: border-box;
+  }
+  .work > :global(*) {
     min-height: 0;
   }
   .left > :global(.tp),
   .right > :global(.tp) {
     flex: 1;
+    min-height: 0;
+  }
+  /* Normalize: chrome stays put; only the row list scrolls (FL Browser). */
+  .right > :global(.tp .body:has(.norm)) {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 6px 8px;
   }
   .left,
   .right {
@@ -888,5 +1009,158 @@
     font-family: var(--font-mono);
     font-size: 14px;
     margin: 0 0 8px;
+  }
+  .slot-norm-hint {
+    margin: 10px 0 0;
+    font-size: 11px;
+    line-height: 1.35;
+  }
+  button.linkish {
+    height: auto;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--accent);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  button.linkish:focus-visible {
+    outline: none;
+    background-image: none;
+    color: var(--text);
+  }
+  /*
+   * Normalize tab — FL Browser density: graphite well, fixed column head,
+   * thin rows, filter strip. Pane fills the right column; only .norm-list scrolls.
+   */
+  .norm {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    height: 100%;
+    min-height: 0;
+    min-width: 0;
+    gap: 5px;
+  }
+  .norm-bar {
+    display: flex;
+    flex-wrap: wrap;
+    flex: none;
+    gap: 5px;
+    align-items: center;
+  }
+  .norm-bar button {
+    height: 24px;
+    padding: 0 9px;
+    font: 700 10px var(--font-caps);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .norm-meta {
+    margin-left: auto;
+    color: var(--text-faint);
+    font: 10.5px var(--font-mono);
+    white-space: nowrap;
+  }
+  .norm-filter {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 8px;
+  }
+  .norm-count {
+    color: var(--text-faint);
+    font: 10.5px var(--font-mono);
+  }
+  .norm-head,
+  .norm-row {
+    display: grid;
+    grid-template-columns: 28px minmax(0, 1.4fr) 18px minmax(72px, 1fr) 44px 28px;
+    gap: 4px;
+    align-items: center;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .norm-head {
+    flex: none;
+    padding: 2px 8px;
+    background: var(--panel-bar);
+    border: 1px solid var(--edge);
+    border-bottom: 0;
+    border-radius: var(--radius) var(--radius) 0 0;
+    color: var(--text-faint);
+    font: 700 9px var(--font-caps);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .norm-list {
+    flex: 1 1 auto;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    overflow-x: hidden;
+    overflow-y: auto;
+    background: var(--body-deep);
+    border: 1px solid var(--edge);
+    border-radius: 0 0 var(--radius) var(--radius);
+    scrollbar-width: thin;
+    scrollbar-color: var(--edge-light) transparent;
+  }
+  .norm-row {
+    height: 20px;
+    padding: 0 8px;
+    border: 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--edge) 55%, transparent);
+    background: transparent;
+    color: var(--text-dim);
+    cursor: pointer;
+    text-align: left;
+    font: 11px var(--font-mono);
+  }
+  .norm-row:hover {
+    background: var(--well-deep);
+    color: var(--text);
+  }
+  .norm-row.on {
+    background: #2f3037;
+    color: #b6b7b5;
+  }
+  .norm-row:focus-visible {
+    outline: none;
+    background-image: var(--focus-fill);
+  }
+  .norm-row .c-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: var(--font-ui, inherit);
+    font-size: 12px;
+  }
+  .norm-row .c-num,
+  .norm-row .c-tones {
+    color: var(--text-faint);
+  }
+  .norm-row .c-delta.cut,
+  .norm-row.cut .c-flag {
+    color: var(--info);
+  }
+  .norm-row .c-delta.boost,
+  .norm-row.boost .c-flag {
+    color: var(--ok);
+  }
+  .norm-row.outlier .c-flag {
+    color: var(--warn);
+    font-weight: 700;
+  }
+  .norm-empty {
+    margin: 0;
+    padding: 14px 10px;
+    color: var(--text-dim);
+    font-size: 11.5px;
+    line-height: 1.45;
   }
 </style>

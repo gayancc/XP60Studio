@@ -3,8 +3,14 @@
 
 import { PatchDoc } from '../wasm/pkg/xppatch.js';
 import type { ArmedBank, Backend, BankSaveReport, Progress } from './backend';
+import type { Catalog } from './catalog';
 import { normaliseTag } from './folders';
 import { errorText, humanizeErrorText, reportError, reportInfo, reportSuccess, reportWarning } from './messages.svelte';
+import {
+  applyBankLevelReport,
+  levelBank,
+  type BankLevelReport,
+} from './voiceLeveling';
 
 export const SLOTS = 128;
 
@@ -69,6 +75,10 @@ export class BankService {
   origin = $state<{ id: number; name: string } | null>(null);
   /** The patches the bank held when it was last loaded from or saved to the library, to tell what has changed since. */
   private libraryBaseline = $state<Array<Uint8Array | null>>(Array.from({ length: SLOTS }, () => null));
+  /** Last Level bank preview (in-memory only; nothing sent to the instrument). */
+  levelPreview = $state<BankLevelReport | null>(null);
+  /** One-shot undo for the last Level bank Apply (original slot bytes). */
+  private levelUndo: Array<{ slot: number; bytes: Uint8Array }> | null = null;
 
   constructor(private readonly backend: Backend) {}
 
@@ -451,6 +461,70 @@ export class BankService {
     this.phase = 'idle';
     this.error = '';
     this.report = null;
+  }
+
+  /**
+   * Preview Normalize bank (ELS median match) over every filled slot.
+   * Does not change slots or write the instrument.
+   */
+  previewLevelBank(catalog: Catalog): BankLevelReport | null {
+    if (this.locked) {
+      this.error = 'Finish or cancel the bank write before normalizing.';
+      return null;
+    }
+    if (this.filled.length === 0) {
+      this.error = 'Load or read patches into the bank first.';
+      return null;
+    }
+    try {
+      this.error = '';
+      this.levelPreview = levelBank(catalog, this.slots);
+      reportInfo(
+        `Normalize bank preview: ${this.levelPreview.changed} of ${this.levelPreview.filled} slots would change` +
+          (this.levelPreview.outliers ? ` · ${this.levelPreview.outliers} outlier(s) kept identity-safe` : ''),
+      );
+      return this.levelPreview;
+    } catch (e) {
+      this.error = message(e);
+      this.levelPreview = null;
+      return null;
+    }
+  }
+
+  /** Apply the current Normalize bank preview into memory only. */
+  applyLevelBank(): boolean {
+    if (this.locked || !this.levelPreview) return false;
+    const report = this.levelPreview;
+    this.levelUndo = applyBankLevelReport(
+      report,
+      (slot) => this.slots[slot]?.bytes ?? null,
+      (slot, bytes) => this.setSlot(slot, bytes, 'editor'),
+    );
+    this.levelPreview = null;
+    reportSuccess(
+      this.levelUndo.length
+        ? `Normalize bank applied to ${this.levelUndo.length} slot(s) in memory. Write the bank when you want them on the XP-60.`
+        : 'Normalize bank: no slot needed changes.',
+    );
+    return true;
+  }
+
+  /** Restore slot bytes from the last Normalize bank Apply. */
+  undoLevelBank(): boolean {
+    if (this.locked || !this.levelUndo?.length) return false;
+    for (const u of this.levelUndo) this.setSlot(u.slot, u.bytes, 'editor');
+    const n = this.levelUndo.length;
+    this.levelUndo = null;
+    reportInfo(`Undid Normalize bank on ${n} slot(s).`);
+    return true;
+  }
+
+  get canUndoLevelBank(): boolean {
+    return !this.locked && (this.levelUndo?.length ?? 0) > 0;
+  }
+
+  clearLevelPreview(): void {
+    this.levelPreview = null;
   }
 
   private fail(text: string): void {
