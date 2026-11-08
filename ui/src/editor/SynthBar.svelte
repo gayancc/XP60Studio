@@ -216,9 +216,10 @@
     flex-direction: column;
     gap: 6px;
     width: 300px;
+    margin: -10px;
     padding: 8px;
-    background: var(--fl-panel);
-    border: 1px solid var(--fl-edge);
+    background: transparent;
+    border: 0;
     color: var(--fl-ink);
     font: 12px/1.25 var(--font);
   }
@@ -305,45 +306,31 @@
     padding-top: 2px;
   }
 
-  /* FL chrome button: ~22px tall, subtle face, never a banner CTA. */
+  /* Same 31 px bevel as the FL toolbar. The lamp is only for a latched control, not a Connect banner. */
   .btn {
     appearance: none;
-    height: 22px;
-    padding: 0 9px;
-    border: 1px solid #2a3135;
+    height: var(--face-h);
+    padding: 0 12px;
+    border: 1px solid var(--face-rim);
     border-radius: 2px;
-    background: linear-gradient(180deg, var(--fl-btn-hi), var(--fl-btn));
-    color: var(--fl-ink);
+    background: var(--face-off);
+    color: var(--face-ink);
     font: 600 11px var(--font);
     cursor: pointer;
     white-space: nowrap;
   }
-  .btn:hover:not(:disabled) {
-    background: linear-gradient(180deg, #7a8184, #636a6d);
-  }
   .btn:focus-visible {
     outline: none;
-    background-image: var(--focus-fill), linear-gradient(180deg, var(--fl-btn-hi), var(--fl-btn));
+    background-image: var(--focus-fill), var(--face-off);
   }
   .btn:disabled {
     opacity: 0.45;
     cursor: default;
   }
   .btn.accent {
-    background: linear-gradient(180deg, #ffb054, var(--accent));
-    color: var(--fl-accent-ink);
-    border-color: color-mix(in srgb, var(--accent) 50%, #000);
-  }
-  .btn.accent:hover:not(:disabled) {
-    background: linear-gradient(180deg, #ffc078, #ff9a38);
-  }
-  .btn.accent:focus-visible {
-    background-image: var(--focus-fill), linear-gradient(180deg, #ffb054, var(--accent));
+    color: var(--face-ink);
   }
   .btn.danger {
     color: #ffc8c4;
-  }
-  .btn.danger:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--bad) 30%, var(--fl-btn));
   }
 </style>

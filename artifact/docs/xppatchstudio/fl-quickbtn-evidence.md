@@ -104,17 +104,15 @@ comes only from the live capture above.
 
 ## Recipe for our pads (SUB a/b, BANK, NUMBER)
 
-Keep whatever width/height the panel already uses (8-col bank grid, etc.).
-Only the face colours / lamp / snap latch come from FL:
+Face height is the measured 31 px. Width stays the panel's.
 
 ```css
-/* OFF — face only; size stays ours */
-background: linear-gradient(180deg, #596267 0%, #4a5259 55%, #3f484d 100%);
-border: 1px solid #2a3236;
-border-top-color: #6a757b;
+/* OFF — convex bevel */
+background: linear-gradient(180deg, #363f44 0%, #455055 22%, #545d62 50%, #455055 78%, #363f44 100%);
+border: 1px solid #2a3338;
 color: #d9e1e5;
 
-/* ON — radial lamp; size stays ours */
+/* ON — radial lamp */
 color: #b14000;
 border: 1px solid #be5507;
 background: radial-gradient(
@@ -135,3 +133,110 @@ transition: background 60ms linear, border-color 60ms linear, color 60ms linear;
 - Bounce, scale, or long (>~100 ms) theatrical latch fades
 - Claiming latch timing from still screenshots alone
 - Hover that previews the full ON lamp
+- A hover brighten or a dark pressed-inset on toolbar toggles (remeasured: hover is unchanged, mouse-down is the other face)
+
+## Opening size (measured 2026-11-08, FL Studio 2025, 96 DPI)
+
+The running window was not maximised (`showCmd` normal). Placement and the live
+rect were the same:
+
+| | |
+|---|---|
+| Window | **2555 × 1383** |
+| Monitor | 5120 × 1440, work area height 1392 |
+| Position | x 2565, y 9 (right half of that display) |
+
+That rect is FL's saved window on a 5120-wide display. It is too large for
+XPPatchStudio, which opens at 1280×800. Screen position is not copied.
+
+## OFF face, corrected from a live vertical sample
+
+The earlier top-to-bottom linear gradient was the host bar leaking into the
+sample. A quiet face pixel (icon pixels excluded) is a **convex bevel**:
+
+| y in the 31 px face | RGB |
+|---|---|
+| inner rim | 54, 63, 68 `#363f44` |
+| mid | 84, 93, 98 `#545d62` |
+
+Gutter between neighbours is `#2a3338`. Icon ink on OFF stays `#d9e1e5`.
+
+## Hover and mouse-down, remeasured the same day
+
+A toolbar toggle was compared pixel for pixel with the pointer moved onto it
+and with the button held down.
+
+- **Hover changes 0 face pixels.** No brighten, no lamp.
+- **Mouse-down on OFF paints the ON lamp immediately.** Releasing outside
+  restores OFF.
+- **Mouse-down on ON paints the OFF bevel immediately.**
+
+The earlier “5–10% hover lift” and “darker inset then snap” notes were not
+reproduced on these toolbar toggles. Do not put them back without a new capture.
+
+## Panel captions (same still, Browser bar)
+
+Quiet pixels on the Browser caption, not the toolbar host:
+
+| | |
+|---|---|
+| Fill | flat `(67, 76, 81)` `#434c51`, about y 90–111 (22 px) |
+| Line under the bar | `(31, 40, 45)` `#1f282d` |
+| Toolbar host just above | `(89, 98, 103)` `#596267` — that stays `--caption`, not the panel title |
+
+No orange underline on that caption. Title ink was antialiased and not one colour. Channel-rack caption away from icons was `(63, 72, 77)`, the same flat family.
+
+## Channel-rack name buttons (same still)
+
+One name button, icon pixels excluded, is a top-light linear face, not the toolbar bevel:
+
+| | |
+|---|---|
+| Top | about `(95, 104, 109)` `#5f686d` |
+| Bottom | about `(77, 86, 91)` `#4d565b` |
+| Height | about 28 px |
+
+The selected name-button skin was not isolated. Do not restyle the selected bank cell from this sample.
+
+## Plugin group frames (Fruity Limiter, evidence shot 04-fx-limiter.png)
+
+The LOUDNESS / ENVELOPE / NOISE GATE frames are not filled slanted tabs.
+
+| | |
+|---|---|
+| Rule | 1 px, `(142, 148, 150)` `#8e9496`, continuous above the title |
+| Title | small-caps, inside the frame under that rule, light ink (ClearType, about `#cdd9d8` on the stems) |
+| Dividers | same light rule between groups |
+
+No orange left edge and no caption-coloured fill on the title.
+
+## Picker category tabs (shot 05-effect-picker.png)
+
+The All / Coloration / Controller row is text on the parent ground `(35, 34, 41)`, not a raised tab face.
+
+| | |
+|---|---|
+| Selected ("All") | solid white `(255, 255, 255)`, heavier than the others |
+| Idle label core | about `(118, 116, 122)` `#76747a` |
+| Accent bar | none in that band |
+
+Hover was not captured. Do not add a hover face.
+
+## Main-window caption buttons (fl-main-rest.png)
+
+Three squares on the menu-bar host, left to right: minimize, maximize, close.
+
+| | |
+|---|---|
+| Size | 19 × 19, including the rim |
+| Gap | 1 px of the host `#596267` |
+| Face | the same convex bevel as a toolbar button, rim `#2a3338` |
+| Glyph | `#d9e1e5` |
+
+Hover was not captured. Do not turn Close red on hover.
+
+## Browser list rows
+
+Idle labels on the browser ground are `(137, 144, 147)` `#899093`. The row behind them stays the ground; there is no accent wash.
+
+A selected file row in shot 23 (the filter list) is a flat fill. A quiet pixel is `(47, 48, 55)` `#2f3037`, about 21 px tall. The label core on that fill is about `(182, 183, 181)` `#b6b7b5`.

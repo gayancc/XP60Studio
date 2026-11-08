@@ -33,33 +33,33 @@
   .group {
     margin: 0;
     padding: 0 8px 8px;
-    border: 1px solid var(--edge);
-    border-radius: var(--radius-lg);
+    /* Fruity Limiter groups, measured 2026-11-08: 1 px #8e9496 rule, title inside, no filled tab. */
+    border: 1px solid #8e9496;
+    border-radius: 0;
     background: var(--body);
     min-inline-size: 0;
     transition: border-color 0.7s ease, box-shadow 0.7s ease;
   }
   .group.lit {
-    border-color: color-mix(in srgb, var(--accent) 70%, var(--edge));
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
+    border-color: var(--tab);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--tab) 35%, transparent);
   }
   legend {
-    padding: 0;
-    margin-left: -1px;
+    display: block;
+    width: 100%;
+    margin: 0;
+    padding: 3px 0 0;
+    text-align: center;
   }
-  /* Slanted-edge tab: the right edge leans, as on the native FL group titles. */
   legend span {
     display: inline-block;
-    padding: 1px 16px 1px 8px;
-    background: var(--caption);
-    border: 1px solid var(--edge);
-    border-bottom: 0;
-    border-left-color: var(--tab);
-    border-left-width: 2px;
-    clip-path: polygon(0 0, 100% 0, calc(100% - 9px) 100%, 0 100%);
+    padding: 0;
+    background: transparent;
+    border: 0;
     font-family: var(--font-caps);
     font-size: 10.5px;
-    letter-spacing: 0.03em;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
     color: var(--text);
   }
   .body {

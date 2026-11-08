@@ -38,16 +38,16 @@
 
 {#if desktop}
   <div class="wc" role="group" aria-label="Window">
-    <button type="button" class="x" aria-label="Close" title="Close" onclick={run('close')}>
-      <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1.5 1.5l7 7M8.5 1.5l-7 7" /></svg>
+    <button type="button" aria-label="Minimize" title="Minimize" onclick={run('minimize')}>
+      <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 5.5h8" /></svg>
     </button>
     <button type="button" aria-label={maximized ? 'Restore' : 'Maximize'} title={maximized ? 'Restore' : 'Maximize'} onclick={run('toggleMaximize')}>
       <svg viewBox="0 0 10 10" aria-hidden="true">
         {#if maximized}<path d="M2.5 3.5h5v5h-5zM3.5 3.5v-2h5v5h-1" />{:else}<path d="M1.5 1.5h7v7h-7z" />{/if}
       </svg>
     </button>
-    <button type="button" aria-label="Minimize" title="Minimize" onclick={run('minimize')}>
-      <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 5.5h8" /></svg>
+    <button type="button" aria-label="Close" title="Close" onclick={run('close')}>
+      <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1.5 1.5l7 7M8.5 1.5l-7 7" /></svg>
     </button>
   </div>
 {/if}
@@ -55,33 +55,28 @@
 <style>
   .wc {
     flex: none;
-    align-self: stretch;
+    align-self: flex-start;
     display: flex;
-    flex-direction: column;
-    gap: 3px;
-    justify-content: center;
-    margin-right: -4px;
+    flex-direction: row;
+    gap: 1px;
+    margin-top: 2px;
   }
   button {
-    width: 30px;
-    height: 17px;
+    /* FL main-window caption buttons, measured 2026-11-08: 19 px convex bevel, min then max then close. */
+    width: 19px;
+    height: 19px;
     padding: 0;
     display: grid;
     place-items: center;
-    background: var(--well-deep);
-    border: 1px solid var(--edge);
-    border-radius: var(--radius);
-    color: var(--text-dim);
+    background: var(--face-off);
+    border: 1px solid var(--face-rim);
+    border-radius: 0;
+    color: var(--face-ink);
     cursor: pointer;
   }
   button:hover {
-    background: var(--well);
-    color: var(--text);
-  }
-  button.x:hover {
-    background: var(--bad);
-    border-color: var(--bad);
-    color: #fff;
+    background: var(--face-off);
+    color: var(--face-ink);
   }
   button:focus-visible {
     outline: none;

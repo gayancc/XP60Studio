@@ -3,6 +3,7 @@
   import { TONE_BLOCKS, type BlockName } from '../model/catalog';
   import { blockTitle } from '../model/labels';
   import { useStore } from './context';
+  import { focusToneEditor } from './focusTone';
   import ParamControl from './ParamControl.svelte';
   import { resetBlock } from './toolActions';
   import { resetChanges } from '../model/tools';
@@ -15,6 +16,20 @@
 
   let { colors, selected, onselect }: Props = $props();
   const store = useStore();
+  let root: HTMLDivElement | undefined = $state();
+
+  $effect(() => {
+    const i = selected;
+    const signal = { cancelled: false };
+    void focusToneEditor(root, i, signal);
+    return () => {
+      signal.cancelled = true;
+    };
+  });
+
+  const pick = (i: number): void => {
+    if (selected !== i) onselect(i);
+  };
 
   const GUTTER = 108;
   const colorOf = (i: number): string => colors[i] ?? 'var(--accent)';
@@ -58,7 +73,7 @@
   }
 </script>
 
-<div class="zones">
+<div class="zones" bind:this={root}>
   <section>
     <div class="cap">
       <span class="caps">Key range · which keys each tone plays</span>
@@ -70,14 +85,14 @@
       context="Zones"
       keyboardHeight={64}
       laneHeight={26}
-      onselect={onselect}
+      onselect={pick}
       onbegin={(i) => store.begin(`${blockTitle(TONE_BLOCKS[i] as BlockName)} · Key range`)}
       onend={() => store.end()}
       onrange={(i, r) => setRange(TONE_BLOCKS[i] as BlockName, 'keyboard_range', r)}
       onreset={resetKeys}
     >
       {#snippet gutter(l)}
-        <button type="button" class="tag" onclick={() => onselect(l.id)} aria-pressed={selected === l.id}><i></i>{l.name}</button>
+        <button type="button" class="tag" onclick={() => pick(l.id)} aria-pressed={selected === l.id}><i></i>{l.name}</button>
         <button type="button" class="rs" title="Reset {l.name} key range to the whole keyboard (double-click the lane does the same)" onclick={() => resetKeys(l.id)}>↺</button>
       {/snippet}
     </KeyMapH>
@@ -87,8 +102,16 @@
     <span class="caps">Velocity range and cross-fade · how hard each tone is played</span>
     {#each TONE_BLOCKS as block, i (block)}
       {@const color = colorOf(i)}
-      <div class="row" class:sel={selected === i} style:--tone={color} style:grid-template-columns="{GUTTER}px minmax(0, 1fr) auto">
-        <button type="button" class="tag" onclick={() => onselect(i)} aria-pressed={selected === i}><i></i>{blockTitle(block)}</button>
+      <!-- svelte-ignore a11y_no_static_element_interactions -->
+      <div
+        class="row"
+        class:sel={selected === i}
+        style:--tone={color}
+        style:grid-template-columns="{GUTTER}px minmax(0, 1fr) auto"
+        data-tone-focus={i}
+        onpointerdowncapture={() => pick(i)}
+      >
+        <button type="button" class="tag" onclick={() => pick(i)} aria-pressed={selected === i}><i></i>{blockTitle(block)}</button>
         <div class="bar" bind:clientWidth={velBox}>
           <KeyRangeBar
             kind="velocity"

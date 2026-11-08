@@ -138,11 +138,18 @@
     color: var(--pop-text);
     border: 2px solid var(--pop-border);
   }
+  /* Settings-style panels use FL's MIDI-settings surface: dark fill, 1 px rim
+     (40,49,55). The 10 px inset is the panel's own padding. The Synth card
+     cancels it, because that card already pads itself and must stay flush
+     with the rim. */
   .drop.panel {
     padding: 10px;
-    min-width: 280px;
+    min-width: 0;
+    background: #353e44;
+    color: var(--text);
+    border: 1px solid #283137;
   }
-  .drop button {
+  .drop:not(.panel) button {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -156,13 +163,13 @@
     cursor: default;
     color: var(--pop-text);
   }
-  .drop button:hover:not(:disabled),
-  .drop button:focus-visible {
+  .drop:not(.panel) button:hover:not(:disabled),
+  .drop:not(.panel) button:focus-visible {
     background: var(--pop-hover-bg);
     color: var(--pop-hover-text);
     outline: none;
   }
-  .drop button:disabled {
+  .drop:not(.panel) button:disabled {
     color: var(--pop-dim);
     cursor: default;
   }

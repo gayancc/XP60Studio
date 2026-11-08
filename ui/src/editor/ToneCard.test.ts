@@ -34,6 +34,21 @@ describe('the Tone card', () => {
     expect(getByRole('switch', { name: 'Tone 1 on' })).toBeTruthy();
   });
 
+  it('solos this Tone from the S button and restores the others on the second click', async () => {
+    const store = make();
+    store.set('tone2', 'tone_switch', 1);
+    const { getByRole } = render(ToneHarness, { props: { store } });
+    const solo = getByRole('button', { name: 'Solo Tone 1' });
+    expect(solo.getAttribute('aria-pressed')).toBe('false');
+    await fireEvent.click(solo);
+    expect(store.get('tone1', 'tone_switch')).toBe(1);
+    expect(store.get('tone2', 'tone_switch')).toBe(0);
+    expect(solo.getAttribute('aria-pressed')).toBe('true');
+    await fireEvent.click(solo);
+    expect(store.get('tone2', 'tone_switch')).toBe(1);
+    expect(solo.getAttribute('aria-pressed')).toBe('false');
+  });
+
   it('switches the Tone with the dot and greys the card when it is off', async () => {
     const store = make();
     const { getByRole, container } = render(ToneHarness, { props: { store } });

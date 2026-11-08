@@ -141,16 +141,14 @@
     flex-wrap: wrap;
   }
   button {
-    background: var(--well-deep);
-    border: 1px solid var(--edge);
-    border-radius: var(--radius);
-    padding: 3px 10px;
+    height: var(--work-h);
+    padding: 0 12px;
+    border-radius: 2px;
+    border: 1px solid var(--face-rim);
+    background: var(--face-off);
+    color: var(--face-ink);
     cursor: pointer;
-    color: inherit;
     font: inherit;
-  }
-  button:hover:not(:disabled) {
-    background: var(--well);
   }
   button:focus-visible {
     outline: none;
@@ -161,8 +159,9 @@
     cursor: default;
   }
   button.on {
-    background: var(--accent);
-    color: var(--accent-ink);
+    background: var(--face-on);
+    color: var(--face-ink-on);
+    border-color: var(--face-rim-on);
   }
   .dim {
     color: var(--text-dim);

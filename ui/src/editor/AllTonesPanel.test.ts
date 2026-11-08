@@ -65,6 +65,22 @@ describe('the four-Tone view of a sound section', () => {
     expect(picked).toBe(2);
   });
 
+  it('selects a Tone when a control in its column is pressed', async () => {
+    let picked = -1;
+    const { container } = render(AllTonesHarness, { props: { store: make(), onselect: (i: number) => (picked = i) } });
+    const col3 = container.querySelectorAll('.col')[2] as HTMLElement;
+    await fireEvent.pointerDown(col3.querySelector('.body') as HTMLElement);
+    expect(picked).toBe(2);
+  });
+
+  it('marks the selected Tone column and keeps the others secondary', () => {
+    const { container } = render(AllTonesHarness, { props: { store: make(), selected: 1 } });
+    const cols = container.querySelectorAll('.col');
+    expect(cols[1]?.classList.contains('sel')).toBe(true);
+    expect(cols[0]?.classList.contains('sel')).toBe(false);
+    expect(cols[1]?.getAttribute('data-tone-focus')).toBe('1');
+  });
+
   it('shows the merged sections: wave and pitch together, filter and amp together, LFOs with the controller routing', () => {
     const text = (part: 'wavepitch' | 'filteramp' | 'lfomod'): string => {
       const { container } = render(AllTonesHarness, { props: { store: make(), part } });

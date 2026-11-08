@@ -73,16 +73,14 @@
     white-space: nowrap;
   }
   button {
-    background: var(--well-deep);
-    border: 1px solid var(--edge);
-    border-radius: var(--radius);
-    padding: 2px 8px;
+    height: var(--work-h);
+    padding: 0 12px;
+    border-radius: 2px;
+    border: 1px solid var(--face-rim);
+    background: var(--face-off);
+    color: var(--face-ink);
     cursor: pointer;
-    color: inherit;
     font: inherit;
-  }
-  button:hover {
-    background: var(--well);
   }
   .clear {
     align-self: flex-start;

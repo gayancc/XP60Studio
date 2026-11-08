@@ -9,6 +9,7 @@ import { diff, initChanges, morph, type Change } from './tools';
 import { changedParams, sameBytes, splitFrames } from './frames';
 import { History, type HistoryEntry } from './history';
 import { LiveQueue, type QueueStats } from './liveQueue';
+import { resetToneSolo } from './toneSolo.svelte';
 import { cutFrames } from './sendOptions.svelte';
 import type { LiveTransport } from './transport';
 import type { SyncState } from '../kit/syncState';
@@ -518,6 +519,7 @@ export class PatchStore {
     this.group = null;
     this.history.clear();
     this.syncHistory();
+    resetToneSolo();
     this.origin = origin;
     this.reference = doc.toBlocks();
     this.ab = { a: null, b: null, active: 'a' };

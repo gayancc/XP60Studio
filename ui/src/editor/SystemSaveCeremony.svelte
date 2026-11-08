@@ -129,15 +129,13 @@
     position: relative;
   }
   button {
-    background: var(--well-deep);
-    border: 1px solid var(--edge);
-    border-radius: var(--radius);
-    padding: 3px 10px;
+    height: var(--face-h);
+    padding: 0 12px;
+    border-radius: 2px;
+    border: 1px solid var(--face-rim);
+    background: var(--face-off);
+    color: var(--face-ink);
     cursor: pointer;
-    color: inherit;
-  }
-  button:hover:not(:disabled) {
-    background: var(--well);
   }
   button:focus-visible {
     outline: none;

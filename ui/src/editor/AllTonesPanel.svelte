@@ -3,10 +3,12 @@
   import { waveLabel } from '../model/factory';
   import { blockTitle } from '../model/labels';
   import { useStore } from './context';
+  import { focusToneEditor } from './focusTone';
   import TonePanel, { type ToneGroup } from './TonePanel.svelte';
 
   // One sound section for all four Tones at once, so the same parameters can be compared and set across Tones without switching between them. A Tone that is off is
-  // dimmed but still editable. Clicking a Tone's heading selects it, as the Tone cards do.
+  // dimmed but still editable. Clicking a Tone's heading — or editing any control in its column — selects it, as the Tone cards do. A left-panel Tone click scrolls
+  // that column into view.
   interface Props {
     part: ToneGroup;
     colors: readonly string[];
@@ -15,6 +17,7 @@
   }
   let { part, colors, selected, onselect }: Props = $props();
   const store = useStore();
+  let root: HTMLDivElement | undefined = $state();
 
   const tones = $derived(
     TONE_BLOCKS.map((block, i) => ({
@@ -25,12 +28,34 @@
       wave: waveLabel(store.get(block, 'wave_group_type'), store.get(block, 'wave_group_id'), store.get(block, 'wave_number') + 1),
     })),
   );
+
+  $effect(() => {
+    const i = selected;
+    const signal = { cancelled: false };
+    void focusToneEditor(root, i, signal);
+    return () => {
+      signal.cancelled = true;
+    };
+  });
+
+  const pick = (i: number): void => {
+    if (selected !== i) onselect(i);
+  };
 </script>
 
-<div class="all">
+<div class="all" bind:this={root}>
   {#each tones as t (t.block)}
-    <section class="col" class:off={!t.on} class:sel={selected === t.i} style:--tone={t.color} aria-label={blockTitle(t.block)}>
-      <button type="button" class="head" onclick={() => onselect(t.i)} aria-pressed={selected === t.i}>
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <section
+      class="col"
+      class:off={!t.on}
+      class:sel={selected === t.i}
+      style:--tone={t.color}
+      data-tone-focus={t.i}
+      aria-label={blockTitle(t.block)}
+      onpointerdowncapture={() => pick(t.i)}
+    >
+      <button type="button" class="head" onclick={() => pick(t.i)} aria-pressed={selected === t.i}>
         <i></i><b>{blockTitle(t.block)}</b><span>{t.wave}</span>
       </button>
       <div class="body"><TonePanel block={t.block} color={t.color} {part} /></div>
@@ -59,7 +84,11 @@
     background: var(--body-deep);
   }
   .col.sel {
-    background: color-mix(in srgb, var(--tone) 10%, var(--body-deep));
+    background: color-mix(in srgb, var(--tone) 14%, var(--body-deep));
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 40%, transparent);
+  }
+  .col:not(.sel) {
+    opacity: 0.82;
   }
   .col.off {
     border-top-color: var(--edge-light);
@@ -67,6 +96,9 @@
   .col.off .body {
     opacity: 0.5;
     filter: grayscale(0.8);
+  }
+  .col.sel .head b {
+    font-weight: 700;
   }
   .head {
     display: flex;

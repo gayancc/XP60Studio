@@ -38,9 +38,9 @@
     text-align: left;
     background: transparent;
     border: 0;
-    border-radius: 2px;
+    border-radius: 0;
     cursor: pointer;
-    color: var(--text);
+    color: #899093;
   }
   button:hover {
     background: var(--caption);
@@ -50,8 +50,8 @@
     background-image: var(--focus-fill);
   }
   .current button {
-    background: var(--accent);
-    color: var(--accent-ink);
+    background: #2f3037;
+    color: #b6b7b5;
   }
   .undone button {
     color: var(--text-faint);
@@ -64,7 +64,7 @@
     font-size: 11px;
   }
   .current .n {
-    color: var(--accent-ink);
+    color: #b6b7b5;
   }
   .l {
     overflow: hidden;

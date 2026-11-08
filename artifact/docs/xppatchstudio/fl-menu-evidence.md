@@ -29,6 +29,8 @@ pixels (scripts: scratchpad `fl.ps1`, `measure.ps1`; screenshots `fl-view.png`, 
 | Groups | separated by a gap of about 9 px (between "Cell" and "(none)"), no heading bar |
 | Width | the list is as wide as the combo that opened it; it opens directly below it |
 
+Closed face of that same combo, remeasured 2026-11-08 on the toolbar: 23 px tall (y 56–78). Quiet fill runs from about `(78, 83, 87)` at the top to `(39, 44, 48)` at the bottom. Label core about `(187, 195, 189)`. No separate border. Hover was not captured.
+
 The app uses this look for plain lists and the light menu look above for grouped lists (headings), each where FL uses it.
 
 **Not yet measured:** the sub-menu cascade geometry, the disabled-entry colour, the

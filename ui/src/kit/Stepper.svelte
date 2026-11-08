@@ -5,8 +5,8 @@
   import { clamp } from './gesture';
   import { openMenu } from './menu.svelte';
 
-  // A value stepped with minus and plus, drawn the way the FL Studio family draws its small selectors: a recessed value readout between two flat tiles, no
-  // border. Click a tile to step by one, press and hold to keep stepping (faster the longer it is held), drag up or down on the value, turn the wheel over it,
+  // A value stepped with minus and plus: a recessed readout between two momentary bevel buttons.
+  // Click a tile to step by one, press and hold to keep stepping (faster the longer it is held), drag up or down on the value, turn the wheel over it,
   // press the arrow keys, double-click to put it back, right-click for the value menu.
   interface Props {
     value: number;
@@ -167,33 +167,33 @@
     text-transform: uppercase;
     color: var(--text-dim);
   }
-  /* No border: the three parts are told apart by their fill, with a hairline of the page showing between them. */
+  /* Minus and plus are momentary buttons: the same convex bevel as a toolbar button
+     that is not latched. Hover was measured as no face change on those buttons.
+     The value stays a recessed readout. The light pattern-name field is a different control. */
   .row {
     display: inline-flex;
     align-items: stretch;
     gap: 1px;
-    border-radius: var(--radius);
-    overflow: hidden;
-    background: var(--body-deep);
+    height: var(--work-h);
+    border-radius: 2px;
+    background: transparent;
   }
   .tile {
     width: 22px;
     padding: 0;
-    border: 0;
-    background: var(--caption);
-    color: var(--text-dim);
-    font: 600 15px/1 var(--font-caps);
+    border: 1px solid var(--face-rim);
+    border-radius: 2px;
+    background: var(--face-off);
+    color: var(--face-ink);
+    font: 600 14px/1 var(--font-caps);
     cursor: pointer;
     user-select: none;
     touch-action: none;
   }
-  .tile:hover:not(:disabled) {
-    color: var(--accent);
-    background: var(--well);
-  }
+  .tile:hover:not(:disabled),
   .tile:active:not(:disabled) {
-    color: var(--accent-ink);
-    background: var(--accent);
+    background: var(--face-off);
+    color: var(--face-ink);
   }
   .tile:disabled {
     opacity: 0.35;
@@ -204,8 +204,10 @@
   }
   .val {
     min-width: var(--w);
-    padding: 3px 6px;
-    text-align: center;
+    padding: 0 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     background: var(--track);
     color: var(--text);
     font-family: var(--font-mono);
@@ -226,21 +228,6 @@
   /* Locked light-on-dark so parent theme cannot wash out the readout. */
   .contrast .caps {
     color: #a8b6be;
-  }
-  .contrast .row {
-    background: #0c1114;
-  }
-  .contrast .tile {
-    background: #334047;
-    color: #d5dee4;
-  }
-  .contrast .tile:hover:not(:disabled) {
-    color: #ffe0b8;
-    background: #3f4d56;
-  }
-  .contrast .tile:active:not(:disabled) {
-    color: #1c1208;
-    background: var(--accent);
   }
   .contrast .val {
     background: #12181c;

@@ -24,11 +24,15 @@
     display: inline-block;
     border-radius: 50%;
     background: var(--track);
-    border: 1px solid var(--edge);
+    /* Mixer insert lamp, measured 2026-11-08: gray bezel, no coloured bloom. */
+    border: 1px solid #646a6c;
+    box-shadow: none;
     flex: none;
   }
   .led.on {
-    background: var(--c);
-    box-shadow: 0 0 5px var(--c);
+    /* Hot core #f7f8c7, lime body, darker green rim, then the same gray bezel. */
+    background: radial-gradient(circle at 50% 38%, #f7f8c7 0 18%, var(--c) 50%, color-mix(in srgb, var(--c) 42%, #061000) 100%);
+    border-color: #646a6c;
+    box-shadow: none;
   }
 </style>

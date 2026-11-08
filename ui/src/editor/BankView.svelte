@@ -549,17 +549,15 @@
     gap: 8px;
     align-items: center;
   }
-  button {
-    background: var(--well-deep);
-    border: 1px solid var(--edge);
-    border-radius: var(--radius);
-    padding: 3px 10px;
+  button:not(.slot):not(.pad) {
+    height: var(--work-h);
+    padding: 0 12px;
+    border-radius: 2px;
+    border: 1px solid var(--face-rim);
+    background: var(--face-off);
+    color: var(--face-ink);
     cursor: pointer;
-    color: inherit;
     font: inherit;
-  }
-  button:hover:not(:disabled) {
-    background: var(--well);
   }
   button:focus-visible {
     outline: none;
@@ -699,25 +697,20 @@
     gap: 3px;
   }
   /*
-   * FL QuickBtn face language only (fl-quickbtn-evidence.md) — not FL pixel sizes.
-   * OFF: charcoal gradient. ON: radial lamp + #be5507 rim + brown ink.
-   * Latch fade ~60 ms measured live in FL 2025 (~240 fps) — no bounce/outer glow.
-   * Width/height stay ours (SUB a/b share the Bank/Num 8-col grid).
+   * FL toolbar latch, measured 2026-11-08 at 96 DPI. Height matches the 31 px face.
+   * OFF: convex bevel. ON: radial lamp. Hover does not change the face.
+   * Mouse-down previews the other face. Width stays the panel's.
    */
   .pad {
     position: relative;
     min-width: 0;
-    height: 29px;
+    height: var(--work-h);
     padding: 0;
     border-radius: 2px;
-    border: 1px solid #2a3236;
-    border-top-color: #6a757b;
-    border-left-color: #556166;
-    border-right-color: #1e262a;
-    border-bottom-color: #141a1d;
-    background: linear-gradient(180deg, #596267 0%, #4a5259 55%, #3f484d 100%);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
-    color: #a8b2b8;
+    border: 1px solid var(--face-rim);
+    background: var(--face-off);
+    box-shadow: none;
+    color: var(--face-ink);
     font: 700 11px var(--font-caps);
     letter-spacing: 0.06em;
     text-transform: uppercase;
@@ -728,46 +721,29 @@
     font-size: 12px;
     letter-spacing: 0.04em;
   }
-  .pad:hover:not(:disabled):not(.on):not(.guide) {
-    color: #d9e1e5;
-    background: linear-gradient(180deg, #657077 0%, #545c63 55%, #485055 100%);
-  }
+  /* Mouse-down previews the other face. Hover does not. Measured on FL toolbar toggles. */
   .pad:active:not(:disabled):not(.on) {
-    background: linear-gradient(180deg, #3a4248 0%, #4a5259 100%);
-    border-top-color: #1e262a;
-    border-bottom-color: #5a656a;
-    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.45);
+    color: var(--face-ink-on);
+    border-color: var(--face-rim-on);
+    background: var(--face-on);
   }
-  /* ON = backlit lamp (radial), rim #be5507, ink #b14000 — not a linear orange wash. */
   .pad.on {
-    color: #b14000;
-    border-color: #be5507;
-    background: radial-gradient(
-      ellipse 92% 88% at 50% 48%,
-      #ffffb4 0%,
-      #ffda8d 38%,
-      #ffb76a 68%,
-      #fba65a 100%
-    );
+    color: var(--face-ink-on);
+    border-color: var(--face-rim-on);
+    background: var(--face-on);
     box-shadow: none;
   }
-  .pad.on:hover:not(:disabled) {
-    background: radial-gradient(
-      ellipse 92% 88% at 50% 48%,
-      #ffffc0 0%,
-      #ffe094 38%,
-      #ffc078 68%,
-      #ffb060 100%
-    );
+  .pad.on:active:not(:disabled) {
+    color: var(--face-ink);
+    border-color: var(--face-rim);
+    background: var(--face-off);
   }
   .pad:focus-visible {
     outline: none;
-    background-image: linear-gradient(var(--focus-tint), var(--focus-tint)),
-      linear-gradient(180deg, #596267 0%, #4a5259 55%, #3f484d 100%);
+    background-image: linear-gradient(var(--focus-tint), var(--focus-tint)), var(--face-off);
   }
   .pad.on:focus-visible {
-    background-image: linear-gradient(var(--focus-tint), var(--focus-tint)),
-      radial-gradient(ellipse 92% 88% at 50% 48%, #ffffb4 0%, #ffda8d 38%, #ffb76a 68%, #fba65a 100%);
+    background-image: linear-gradient(var(--focus-tint), var(--focus-tint)), var(--face-on);
   }
   .pad:disabled {
     opacity: 0.35;
@@ -808,7 +784,7 @@
     min-width: 0;
     text-align: left;
     border-radius: 2px;
-    background: linear-gradient(180deg, #3e484c, #333c40);
+    background: linear-gradient(180deg, #5f686d 0%, #4d565b 100%);
     border: 1px solid #1a2125;
     border-top-color: #556166;
     border-left-color: #455055;

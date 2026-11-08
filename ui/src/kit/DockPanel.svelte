@@ -59,20 +59,20 @@
     align-items: center;
     gap: 6px;
     width: 100%;
-    padding: 3px 8px;
-    background: var(--caption);
+    height: 22px;
+    padding: 0 8px;
+    background: var(--panel-bar);
     border: 0;
-    border-bottom: 1px solid var(--edge);
+    border-bottom: 1px solid var(--panel-bar-edge);
     font-family: var(--font-caps);
     font-size: 11px;
     letter-spacing: 0.03em;
-    color: var(--text-dim);
+    color: var(--text);
     cursor: pointer;
     text-align: left;
   }
   .focused .caption {
-    color: var(--accent);
-    box-shadow: inset 0 -2px 0 var(--accent);
+    color: var(--text);
   }
   .caption:focus-visible {
     outline: none;

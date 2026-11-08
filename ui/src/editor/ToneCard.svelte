@@ -3,6 +3,7 @@
   import { Meter } from '../kit';
   import type { BlockName } from '../model/catalog';
   import { blockTitle } from '../model/labels';
+  import { toneIsSolo, toneSoloPress } from '../model/toneSolo.svelte';
   import { useStore } from './context';
   import ParamControl from './ParamControl.svelte';
   import WavePicker from './WavePicker.svelte';
@@ -23,9 +24,23 @@
 
   const announce = (): void =>
     showHint({ context: blockTitle(block), name: 'Tone on', value: on ? 'On: this Tone sounds' : 'Off: this Tone is silent', shortcut: 'Click to switch the Tone on or off' });
+  const soloed = $derived(toneIsSolo(store, block));
+
   function toggle(): void {
     store.set(block, 'tone_switch', on ? 0 : 1);
     announce();
+  }
+
+  const soloHint = (): void =>
+    showHint({
+      context: blockTitle(block),
+      name: 'Solo',
+      value: soloed ? 'On: only this Tone sounds' : 'Off',
+      shortcut: soloed ? 'Click to restore the other Tones' : 'Click to hear only this Tone',
+    });
+  function solo(): void {
+    toneSoloPress(store, block);
+    soloHint();
   }
 </script>
 
@@ -37,6 +52,17 @@
       <i></i>
     </button>
     <div class="title"><WavePicker {block} {color} onopen={onselect} /></div>
+    <button
+      type="button"
+      class="solo"
+      class:on={soloed}
+      aria-pressed={soloed}
+      aria-label="Solo {blockTitle(block)}"
+      onclick={solo}
+      onpointerenter={soloHint}
+      onpointerleave={clearHint}
+      onfocus={soloHint}
+      onblur={clearHint}>S</button>
   </div>
   <button type="button" class="tag" onclick={onselect} aria-pressed={selected} aria-label="Edit {blockTitle(block)}">
     <b>{blockTitle(block)}</b><span>{code}</span>
@@ -102,26 +128,46 @@
     transform: scale(1.2);
   }
   .sw i {
-    width: 11px;
-    height: 11px;
+    width: 12px;
+    height: 12px;
     border-radius: 50%;
-    background: var(--tone);
-    box-shadow:
-      0 0 6px color-mix(in srgb, var(--tone) 65%, transparent),
-      inset 0 1px 1px rgba(255, 255, 255, 0.35);
-    transition: background 0.1s;
+    border: 1px solid #646a6c;
+    /* Same lamp as the measured mixer LED: hot core, colour body, dark rim, gray bezel, no bloom. */
+    background: radial-gradient(circle at 50% 38%, #f7f8c7 0 18%, var(--tone) 50%, color-mix(in srgb, var(--tone) 42%, #061000) 100%);
+    box-shadow: none;
   }
   .sw:hover i {
-    filter: brightness(1.15);
+    filter: none;
   }
   .card.off .sw i {
     background: transparent;
-    box-shadow: inset 0 0 0 2px var(--edge-light);
+    box-shadow: inset 0 0 0 1.5px #646a6c;
   }
   .title {
     flex: 1;
     min-width: 0;
     color: var(--text);
+  }
+  .solo {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    border: 1px solid var(--face-rim);
+    border-radius: 2px;
+    background: var(--face-off);
+    color: var(--face-ink);
+    font: 700 10px var(--font-caps);
+    cursor: pointer;
+  }
+  .solo.on {
+    border-color: var(--face-rim-on);
+    background: var(--face-on);
+    color: var(--face-ink-on);
+  }
+  .solo:focus-visible {
+    outline: none;
+    background-image: var(--focus-fill);
   }
   /* Which Tone this is, and where its wave lives; clicking it selects the Tone for the tabs on the right. */
   .tag {

@@ -198,25 +198,27 @@
     text-transform: uppercase;
     color: var(--text-dim);
   }
-  /* A flat recessed readout with a small arrow, no border: the way FL's list selectors read. */
+  /* Closed FL "Line" combo, measured 2026-11-08: 23 px, top-light dark face, light label, no separate border. Hover was not captured. */
   .trigger {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 6px;
     width: 100%;
-    padding: 3px 7px;
+    height: 23px;
+    padding: 0 7px;
     border: 0;
-    border-radius: var(--radius);
-    background: var(--track);
-    color: var(--text);
+    border-radius: 2px;
+    background: linear-gradient(180deg, #4e5357 0%, #2f3438 42%, #272c30 100%);
+    color: #bbc3bd;
     font: inherit;
     text-align: left;
     cursor: pointer;
   }
   .trigger:hover:not(:disabled),
   .trigger.open {
-    background: var(--well);
+    background: linear-gradient(180deg, #4e5357 0%, #2f3438 42%, #272c30 100%);
+    color: #bbc3bd;
   }
   .trigger:focus-visible {
     outline: none;
@@ -235,7 +237,7 @@
   }
   svg {
     flex: none;
-    fill: var(--text-dim);
+    fill: #697177;
   }
   /* The list is FL Studio's menu, from measured pixels of its VIEW menu (tokens --pop-*): flat light body, 2 px dark border, 16 px heading bars, 19 px entries. */
   .list {

@@ -355,16 +355,17 @@
     outline: none;
     border-color: var(--accent);
   }
-  button {
-    background: var(--well-deep);
-    border: 1px solid var(--edge);
-    border-radius: var(--radius);
-    padding: 3px 10px;
+  .bar > button,
+  .actions button,
+  .staged button {
+    height: var(--work-h);
+    padding: 0 12px;
+    border-radius: 2px;
+    border: 1px solid var(--face-rim);
+    background: var(--face-off);
+    color: var(--face-ink);
     cursor: pointer;
-    color: inherit;
-  }
-  button:hover:not(:disabled) {
-    background: var(--well);
+    font: inherit;
   }
   button:focus-visible {
     outline: none;
@@ -375,9 +376,7 @@
     cursor: default;
   }
   .primary {
-    background: var(--accent);
-    color: var(--accent-ink);
-    border-color: var(--accent-soft);
+    color: var(--face-ink);
   }
   .danger {
     background: var(--bad);
@@ -399,8 +398,9 @@
     gap: 4px;
   }
   .rows li.sel .name {
-    background: var(--accent);
-    color: var(--accent-ink);
+    /* Selected browser row, shot 23: fill about #2f3037, label about #b6b7b5. Not an accent wash. */
+    background: #2f3037;
+    color: #b6b7b5;
   }
   .rows .star {
     background: transparent;
@@ -417,7 +417,8 @@
     text-align: left;
     background: transparent;
     border: 0;
-    border-radius: 2px;
+    border-radius: 0;
+    color: #899093;
   }
   .n {
     min-width: 130px;
@@ -446,8 +447,8 @@
   }
   li.sel .src,
   li.sel .tags i {
-    color: var(--accent-ink);
-    border-color: var(--accent-ink);
+    color: #b6b7b5;
+    border-color: #b6b7b5;
   }
   .empty {
     padding: 10px;
@@ -502,22 +503,29 @@
     margin-bottom: 6px;
   }
   .crumbs button {
-    padding: 2px 8px;
-    background: var(--well-deep);
-    border: 1px solid var(--edge);
-    border-radius: 10px;
+    /* Same category text as the effect-picker tabs: idle #76747a, selected white, no raised face. */
+    padding: 4px 10px 5px;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
     cursor: pointer;
-    color: inherit;
+    color: #76747a;
     font: inherit;
     font-size: 11px;
+  }
+  .crumbs button:hover {
+    background: transparent;
+    color: #76747a;
   }
   .crumbs .sep {
     color: var(--text-faint);
     align-self: center;
   }
-  .crumbs button.on {
-    background: var(--accent);
-    color: var(--accent-ink);
+  .crumbs button.on,
+  .crumbs button.on:hover {
+    background: transparent;
+    color: #ffffff;
+    font-weight: 600;
   }
   .crumbs button:focus-visible {
     outline: none;

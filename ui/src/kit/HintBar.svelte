@@ -47,7 +47,7 @@
     <div class="ctx">{hint.context || ' '}</div>
     <div class="line">
       {#if hint.name}
-        <b>{hint.name}:</b> <span class="val">{hint.value}</span>
+        <span>{hint.name}:</span> <span class="val">{hint.value}</span>
         {#if hint.raw}<span class="raw">({hint.raw})</span>{/if}
         {#if current}
           <span class="parked" title={current.text}>· {LABEL[current.kind]} waiting{#if waiting > 0} (+{waiting}){/if}</span>
@@ -103,7 +103,8 @@
     align-items: center;
     gap: 16px;
     padding: 4px 10px;
-    background: var(--hint);
+    /* FL hint panel (shot 07): the ground is the caption host, and the value is the same light ink as the name. */
+    background: var(--caption);
     border-top: 1px solid var(--edge);
     min-height: 38px;
   }
@@ -123,7 +124,7 @@
     overflow: hidden;
   }
   .val {
-    color: var(--accent);
+    color: inherit;
   }
   .raw,
   .idle {

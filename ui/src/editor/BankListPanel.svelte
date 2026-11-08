@@ -106,7 +106,7 @@
     padding: 3px 8px;
     background: transparent;
     border: 0;
-    color: var(--text);
+    color: #899093;
     cursor: pointer;
     text-align: left;
     font: inherit;
@@ -116,12 +116,16 @@
     background: var(--well-deep);
   }
   li button.on {
-    background: color-mix(in srgb, var(--accent) 18%, var(--body-deep));
+    background: #2f3037;
+    color: #b6b7b5;
     font-weight: 600;
   }
   li button:focus-visible {
     outline: none;
     background-image: var(--focus-fill);
+  }
+  li button.on .n {
+    color: #b6b7b5;
   }
   .n {
     color: var(--text-faint);

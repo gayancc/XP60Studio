@@ -42,13 +42,13 @@
     min-width: 0;
   }
   button {
-    padding: 4px 7px 3px;
-    background: var(--well-deep);
-    border: 1px solid var(--edge);
-    border-bottom: 0;
-    border-top: 2px solid transparent;
-    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-    color: var(--text-dim);
+    /* Effect-picker categories, measured from shot 05: text on the parent ground.
+       Selected ink is white. Idle ink is about #76747a. No separate face and no accent bar. */
+    padding: 4px 10px 5px;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    color: #76747a;
     font-family: var(--font-caps);
     font-size: 11px;
     letter-spacing: 0.04em;
@@ -56,29 +56,46 @@
     white-space: nowrap;
   }
   button:hover {
-    color: var(--text);
-    background: var(--well);
+    color: #76747a;
+    background: transparent;
   }
   button.on {
-    background: var(--body);
-    color: var(--text);
-    border-top-color: var(--c);
+    background: transparent;
+    color: #ffffff;
+    font-weight: 600;
     position: relative;
-    top: 1px;
+    top: 0;
   }
   button:focus-visible {
     outline: none;
     background-image: var(--focus-fill);
   }
   .pill button {
-    border: 1px solid var(--edge);
-    border-radius: var(--radius);
-    padding: 3px 10px;
+    height: var(--face-h);
+    padding: 0 12px;
     top: 0;
+    border: 1px solid var(--face-rim);
+    border-radius: 2px;
+    background: var(--face-off);
+    color: var(--face-ink);
+  }
+  .pill button:hover {
+    background: var(--face-off);
+    color: var(--face-ink);
   }
   .pill button.on {
-    background: var(--accent);
-    color: var(--accent-ink);
-    border-top-color: var(--edge);
+    background: var(--face-on);
+    color: var(--face-ink-on);
+    border-color: var(--face-rim-on);
+  }
+  .pill button:active:not(.on) {
+    background: var(--face-on);
+    color: var(--face-ink-on);
+    border-color: var(--face-rim-on);
+  }
+  .pill button.on:active {
+    background: var(--face-off);
+    color: var(--face-ink);
+    border-color: var(--face-rim);
   }
 </style>

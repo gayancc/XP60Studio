@@ -105,16 +105,14 @@
     gap: 6px;
   }
   button {
-    background: var(--well-deep);
-    border: 1px solid var(--edge);
-    border-radius: var(--radius);
-    padding: 3px 10px;
+    height: var(--work-h);
+    padding: 0 12px;
+    border-radius: 2px;
+    border: 1px solid var(--face-rim);
+    background: var(--face-off);
+    color: var(--face-ink);
     cursor: pointer;
-    color: inherit;
     font: inherit;
-  }
-  button:hover:not(:disabled) {
-    background: var(--well);
   }
   button:disabled {
     opacity: 0.4;

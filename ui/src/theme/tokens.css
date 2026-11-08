@@ -5,6 +5,9 @@
   --body: #353e44;
   --body-deep: #313a3f;
   --caption: #596267;
+  /* Panel title bars, measured on FL Browser / Channel rack captions 2026-11-08: flat, 22 px, no accent underline. */
+  --panel-bar: #434c51;
+  --panel-bar-edge: #1f282d;
   --well: #4c545a;
   --well-deep: #3c454b;
   --hint: #3e464b;
@@ -51,6 +54,19 @@
   --chip-text: #e6ebee;
   --chip-edge: #3a4850;
 
+  /* Toolbar face measured on FL Studio 2025 at 96 DPI, 2026-11-08.
+     OFF is a convex bevel (dark rim, lighter middle). ON is the radial lamp.
+     Hover does not change the face. A latch previews the other face while the button is held.
+     Button box is 31 px tall (y 52–82). The window FL opened at was 2555×1383. */
+  --face-h: 31px;
+  /* Buttons in the editor body. Shorter than the toolbar face. */
+  --work-h: 22px;
+  --face-off: linear-gradient(180deg, #363f44 0%, #455055 22%, #545d62 50%, #455055 78%, #363f44 100%);
+  --face-on: radial-gradient(ellipse 92% 88% at 50% 48%, #ffffb4 0%, #ffda8d 38%, #ffb76a 68%, #fba65a 100%);
+  --face-ink: #d9e1e5;
+  --face-ink-on: #b14000;
+  --face-rim: #2a3338;
+  --face-rim-on: #be5507;
   --radius: 3px;
   --radius-lg: 4px;
   --gap: 6px;
@@ -144,6 +160,8 @@ textarea,
   --body: #e6e9ec;
   --body-deep: #d6dbdf;
   --caption: #cdd3d8;
+  --panel-bar: #cdd3d8;
+  --panel-bar-edge: #98a3aa;
   --well: #b9c3ca;
   --well-deep: #c7cfd5;
   --hint: #d9dee2;
