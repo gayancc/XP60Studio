@@ -2,11 +2,12 @@
   import { onDestroy, onMount } from 'svelte';
   import { Meter, TabPanel } from '../kit';
   import { SLOTS } from '../model/bank.svelte';
-  import { PATCH_COUNT, PER_BANK, panelLabel, patchNumber, posOf, slotOf, soundSelect, SUBGROUPS } from '../model/bankPanel';
+  import { PATCH_COUNT, PER_BANK, panelLabel, patchNumber, posOf, slotOf, SUBGROUPS } from '../model/bankPanel';
   import { PatchStore } from '../model/store.svelte';
   import { tauriBackend, type BackupFile } from '../model/backend';
   import { arrangement, tabIn } from '../model/layouts.svelte';
   import { asSyx, toMidiFile } from '../model/midiFile';
+  import { followBankPad } from '../model/bankFollow';
   import { errorText, reportError } from '../model/messages.svelte';
   import { playPreviewNote } from '../model/previewNote';
   import { saveFile } from '../model/saveFile';
@@ -140,9 +141,35 @@
 
   async function openSlot(slot: number): Promise<void> {
     const bytes = bank?.slots[slot]?.bytes;
-    if (!bytes) return;
+    if (!bytes || !bank) return;
+    bank.linkEditor(slot);
     store.openBlocks(bytes, `Bank slot ${slotLabel(slot)}`);
     onopened();
+  }
+
+  /** If the Patch editor was opened from a bank pad, put its current bytes back into that pad before arming. */
+  function pullLinkedEditor(): void {
+    if (!bank || bank.editorSlot === null) return;
+    bank.pullEditor(store.snapshot());
+  }
+
+  async function prepareChanged(): Promise<void> {
+    if (!bank) return;
+    pullLinkedEditor();
+    await bank.armChanged();
+  }
+
+  async function prepareSelected(): Promise<void> {
+    if (!bank) return;
+    if (bank.editorSlot === bank.selected) bank.pullEditor(store.snapshot());
+    else if (!bank.slots[bank.selected]?.bytes) bank.assign(bank.selected, store.snapshot(), 'editor');
+    await bank.armSelected(bank.selected);
+  }
+
+  async function prepareAll(): Promise<void> {
+    if (!bank) return;
+    pullLinkedEditor();
+    await bank.armAllFilled();
   }
   // The front panel's patch buttons: sub-group a or b, then BANK 1-8 and NUMBER 1-8 (Owner's Manual p.26). This screen is for arranging the User bank, so there is no
   // patch-group choice: the presets and expansion boards are fixed and are not rearranged here.
@@ -181,31 +208,19 @@
   function choose(slot: number): void {
     const next = Math.min(PATCH_COUNT - 1, Math.max(0, slot));
     if (bank) bank.selected = next;
-    if (!canFollow) return;
+    if (!canFollow || !synth) return;
     const ticket = ++selectionTicket;
-    const held = bank?.slots[next];
-    // A temporary send and a Program Change use different paths. Finish the earlier selection first,
-    // then skip any superseded choice so an old temporary patch cannot arrive after a newer User selection.
-    selectionTail = selectionTail.then(async () => {
-      if (ticket !== selectionTicket || !synth?.connected) return;
-      await store.whenQueueIdle();
-      if (ticket !== selectionTicket || !synth?.connected) return;
-      if (held?.bytes && held.origin !== 'synth') {
-        store.auditionBlocks(held.bytes);
-        await store.whenQueueIdle();
-        if (ticket === selectionTicket && synth.connected && store.queue.state === 'ok') {
-          await playPreviewNote(
-            (on) => synth.note(0, 60, on ? 100 : 0, on),
-            () => synth.allNotesOff(0),
-          );
-        }
-      } else {
-        const sel = soundSelect('USER', next);
-        if (sel) await synth.selectSound(0, sel.msb, sel.lsb, sel.program);
-      }
-    }).catch((e: unknown) => {
-      reportError(errorText(e));
-    });
+    // Serialize follows so a bulk audition cannot finish after a newer User Program Change.
+    // Program Change itself must not wait forever on the Patch live-edit queue (see bankFollow.ts).
+    const instrument = synth;
+    selectionTail = selectionTail
+      .then(async () => {
+        if (ticket !== selectionTicket || !instrument.connected) return;
+        await followBankPad(next, bank?.slots[next], { store, synth: instrument, playPreviewNote }, () => ticket === selectionTicket && instrument.connected);
+      })
+      .catch((e: unknown) => {
+        reportError(errorText(e));
+      });
   }
 
   const chooseBank = (b: number): void => choose(slotOf({ sub, bank: b, num: pos.num }));
@@ -294,7 +309,7 @@
               <span class="lcdkey">PATCH {patchNumber(current)}</span>
               <span class="lcdname">{cellName(current)}</span>
               {#if changed.has(current)}<span class="chg">CHANGED</span>{/if}
-              {#if canFollow}<span class="follow-pill" title="Connected: a synth-read pad selects its User patch. A loaded bulk pad goes to temporary memory and plays one short MIDI note; the XP-60's own keys may still play the panel-selected patch until you Write the bank.">LIVE</span>{/if}
+              {#if canFollow}<span class="follow-pill" title="Connected: after Read from synth, each pad selects that User patch and plays a short note so the switch matches the keyboard bank. Empty pads before a sync do nothing. Loaded bulks audition to temporary memory only.">LIVE</span>{/if}
             </div>
           </div>
 
@@ -345,14 +360,6 @@
                     onclick={() => chooseNumber(n)}
                     aria-pressed={pos.num === n}
                   >{n}</button>
-                {/each}
-              </div>
-            </div>
-            <div class="stems" aria-hidden="true">
-              <span class="rail-lab"></span>
-              <div class="oct">
-                {#each ONE_TO_EIGHT as n (n)}
-                  <span class="stem" class:lit={pos.num === n || dropPos?.num === n}></span>
                 {/each}
               </div>
             </div>
@@ -410,15 +417,53 @@
      <TabPanel tabs={rightTabs} selected={rtab} name="Bank tools" meta={bank.phase === 'armed' ? 'armed' : ''} onchange={(n) => (arrangement.bankTab = n)}>
       {#snippet children(n)}
       {#if n === 3}
-        <p class="warn">Writing replaces patches inside the XP-60 for good. All 128 current patches are saved to a backup file first, and each slot is read back after it is written.</p>
+        <p class="warn">Writing replaces User patches inside the XP-60 for good. Only the slots you prepare below are written, and each is read back after. A full User-bank backup file is optional — your choice below.</p>
         {#if bank.phase === 'idle' || bank.phase === 'failed' || bank.phase === 'done'}
-          <button type="button" onclick={() => bank.arm()} disabled={bank.changed.length === 0}>
-            1. Back up all 128 and prepare ({bank.changed.length} slot{bank.changed.length === 1 ? '' : 's'} to write)
-          </button>
+          <p class="dim write-hint">
+            {#if bank.changed.length === 0}
+              No slot differs from the last Read from synth yet. Open a pad in the editor, edit it, then use <b>This slot</b> (or put the editor patch into the pad first). Edits live in the editor until they are put into a bank slot.
+            {:else}
+              {bank.changed.length} slot{bank.changed.length === 1 ? '' : 's'} differ from the instrument and can be written alone.
+            {/if}
+          </p>
+          <label class="backup-choice" title="When on, all 128 current User patches are saved to a .syx before writing. When off, only the slots being written are read (no backup file).">
+            <input type="checkbox" bind:checked={bank.backupBeforeWrite} disabled={bank.locked} />
+            Back up existing User bank to a file first
+          </label>
+          <div class="write-scopes" role="group" aria-label="What to write">
+            <button
+              type="button"
+              onclick={() => void prepareChanged()}
+              disabled={bank.locked || (bank.changed.length === 0 && bank.editorSlot === null)}
+              title="Write only slots that differ from the last instrument read. If you opened a pad in the editor, its current patch is included."
+            >
+              1a. Changed only ({bank.changed.length})
+            </button>
+            <button
+              type="button"
+              onclick={() => void prepareSelected()}
+              disabled={bank.locked}
+              title="Write only the selected pad. If that pad is open in the editor, the editor patch is what gets written."
+            >
+              1b. This slot ({slotLabel(bank.selected)})
+            </button>
+            <button
+              type="button"
+              onclick={() => void prepareAll()}
+              disabled={bank.locked || bank.filled.length === 0}
+              title="Write every pad that holds a patch in the app"
+            >
+              1c. All filled ({bank.filled.length})
+            </button>
+          </div>
         {/if}
         {#if bank.phase === 'armed' && bank.armed}
           <div class="confirm" role="alert">
-            <p>Backup saved: <span class="dim">{bank.armed.backup_path}</span></p>
+            {#if bank.armed.backup_path}
+              <p>Backup saved: <span class="dim">{bank.armed.backup_path}</span></p>
+            {:else}
+              <p class="dim">No backup file (you chose to skip it).</p>
+            {/if}
             <p>Replace <b>{bank.confirmedSlots.length}</b> slot{bank.confirmedSlots.length === 1 ? '' : 's'}: {bank.confirmedSlots.slice(0, 12).map((i) => slotLabel(i)).join(', ')}{bank.confirmedSlots.length > 12 ? ', …' : ''}? The slots are locked until you write or cancel.</p>
             <div class="row">
               <button type="button" onclick={() => bank.cancelArming()}>Cancel</button>
@@ -427,7 +472,7 @@
           </div>
         {/if}
       {:else if n === 2}
-        <p class="dim">Every save into the instrument first writes what it replaces to a file here. Open one to look at it in the bank grid; sending it back goes through the normal write steps.</p>
+        <p class="dim">Backup files from writes that chose “Back up existing User bank”, plus full-memory backups. Open one to look at it in the bank grid; sending it back goes through the normal write steps.</p>
         <ul class="rows" aria-label="Backup files">
           {#each backups as f (f.name)}
             <li>
@@ -444,7 +489,14 @@
         <p class="big">{selectedSlot?.bytes ? selectedSlot.name.trimEnd() || '(unnamed)' : 'Nothing known about this slot yet.'}</p>
         <div class="row">
           <button type="button" onclick={() => openSlot(bank.selected)} disabled={!selectedSlot?.bytes}>Open in editor</button>
-          <button type="button" onclick={() => bank.assign(bank.selected, store.snapshot(), 'editor')} disabled={bank.locked}>Put the editor's patch here</button>
+          <button
+            type="button"
+            onclick={() => {
+              bank.linkEditor(bank.selected);
+              bank.assign(bank.selected, store.snapshot(), 'editor');
+            }}
+            disabled={bank.locked}
+          >Put the editor's patch here</button>
         </div>
         <div class="row">
           <button type="button" onclick={() => { const next = Math.max(0, bank.selected - 1); bank.swap(bank.selected, next); choose(next); }} disabled={bank.locked || bank.selected === 0}>Move up</button>
@@ -628,8 +680,7 @@
     flex-direction: column;
     gap: 5px;
   }
-  .rail,
-  .stems {
+  .rail {
     display: grid;
     grid-template-columns: 34px minmax(0, 1fr);
     align-items: center;
@@ -732,18 +783,6 @@
       color-mix(in srgb, var(--accent) 14%, #4a5259) 100%
     );
   }
-  .stem {
-    display: block;
-    height: 7px;
-    margin: 0 10%;
-    border-radius: 1px;
-    background: linear-gradient(180deg, #1a2023, #2a3337);
-    box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.5);
-  }
-  .stem.lit {
-    background: linear-gradient(180deg, #e09040, #a85818);
-    box-shadow: none;
-  }
   .grid {
     display: grid;
     grid-template-columns: repeat(8, minmax(0, 1fr));
@@ -830,6 +869,32 @@
   .dim {
     color: var(--text-dim);
     font-size: 11px;
+  }
+  .write-scopes {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .write-hint {
+    margin: 0 0 8px;
+    line-height: 1.35;
+  }
+  .write-hint b {
+    color: var(--text, #ddd);
+    font-weight: 600;
+  }
+  .backup-choice {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin: 0 0 10px;
+    font-size: 12px;
+    line-height: 1.35;
+    color: var(--text, #ddd);
+    cursor: pointer;
+  }
+  .backup-choice input {
+    margin-top: 2px;
   }
   .warn {
     color: var(--warn);

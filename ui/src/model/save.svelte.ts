@@ -44,6 +44,8 @@ export class SaveFlow {
   last = $state<LastSave | null>(null);
   /** The patch the user confirmed, frozen when the save was armed: later edits in the editor do not change it. */
   frozenName = $state('');
+  /** When true, arming also writes a `.syx` of the slot’s current occupant. The musician can turn this off. */
+  backupBeforeWrite = $state(true);
 
   private frozen: Uint8Array | null = null;
   private armedAt = 0;
@@ -64,7 +66,7 @@ export class SaveFlow {
     return this.phase === 'arming' || this.phase === 'writing';
   }
 
-  /** Step 1: read the chosen slot and back it up to a file. Nothing is written to the instrument. */
+  /** Step 1: read the chosen slot (and optionally back it up to a file). Nothing is written to the instrument yet. */
   async arm(slot: number, patch: Uint8Array, name: string): Promise<boolean> {
     if (this.phase === 'arming' || this.phase === 'armed' || this.phase === 'writing') return false;
     if (!Number.isInteger(slot) || slot < 0 || slot > 127) {
@@ -79,7 +81,7 @@ export class SaveFlow {
     this.report = null;
     this.cancelWhenArmed = false;
     try {
-      const armed = await this.backend.armSave(slot);
+      const armed = await this.backend.armSave(slot, this.backupBeforeWrite);
       this.armed = armed;
       this.armedAt = this.now();
       this.phase = 'armed';

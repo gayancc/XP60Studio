@@ -1,0 +1,27 @@
+---
+description: Require real desktop UI verification — tests green is not enough
+alwaysApply: true
+---
+
+# Live desktop verification (owner rule)
+
+Unit/integration tests going green is **necessary but not sufficient**. For any
+behavioural UI or MIDI/hardware-facing change, verify on the **real desktop app**
+by exercising the **same controls a person uses**.
+
+## Required
+
+1. Build or run the native app (`XPPatchStudio.bat` option 2, or equivalent release build) when the change ships in the exe.
+2. Drive the **actual window**: click pads, menus, tabs, knobs — not only invoke Tauri commands, call store methods, or poke WebView APIs as the sole proof.
+3. Confirm the user-visible result (sound, LCD/pad lighting, status text, list contents). For Bank/MIDI paths, hear or observe the instrument when one is connected.
+4. If the open app has no debugger port, restart with remote debugging only as an aid to click/observe — still click the real UI; do not treat IPC-only scripts as acceptance.
+
+## Not enough alone
+
+- Vitest / `cargo test` green
+- Calling `followBankPad`, `selectSound`, or `invoke(...)` from a harness without opening the window
+- “Should work” inferred from code review
+
+## When reporting done
+
+State what you clicked in the running app and what you observed. If live UI check was blocked (no rebuild, MIDI port held), say so explicitly — do not mark the behaviour verified.

@@ -153,9 +153,9 @@ pub struct ArmedSave {
 /// What arming a bank write found and kept.
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub struct ArmedBank {
-    /// Where all 128 current patches were saved before anything is written.
+    /// Where the User bank `.syx` was saved when the musician asked for a file backup; empty when they opted out.
     pub backup_path: String,
-    /// The names of the 128 patches that are in the instrument now.
+    /// Names of the patches that were planned for this arming (all 128 when a file backup was taken, otherwise only the slots about to be written).
     pub names: Vec<String>,
 }
 
@@ -247,53 +247,66 @@ impl<T: MidiTransport> Synth<T> {
     }
 
     /// Step one of saving into a User slot: read what is there, write it to `backup_dir` as a `.syx` file (the slot is
-    /// untouched until that file exists), and arm exactly one save. `stamp` names the file (seconds since the epoch).
+    /// untouched until that file exists when `write_backup_file` is true), and arm exactly one save.
+    /// `stamp` names the backup file (seconds since the epoch). When `write_backup_file` is false the slot is still
+    /// read for the stale-slot guard, but no `.syx` is written — the musician chose to skip the file backup.
     pub fn arm_user_save(
         &mut self,
         slot: u8,
         backup_dir: &Path,
         stamp: u64,
+        write_backup_file: bool,
     ) -> Result<ArmedSave, SynthError> {
         self.save = None;
         self.bank = None;
         self.system = None;
         let plan = self.client.plan_user_write(slot, &CancelToken::new())?;
-        let device = self.client.config().device;
-        let bytes = xppatch_core::user_patch_bank_bytes(
-            &[(slot, plan.backup().clone())],
-            device,
-            Some(128),
-        )
-        .map_err(|e| SynthError::Backup(e.to_string()))?;
-        std::fs::create_dir_all(backup_dir).map_err(|e| SynthError::Backup(e.to_string()))?;
-        let (path, mut file) = create_backup_file(
-            backup_dir,
-            &format!("{stamp}-user-{:03}", u16::from(slot) + 1),
-        )?;
-        let written = std::io::Write::write_all(&mut file, &bytes).and_then(|()| file.sync_all());
-        drop(file);
-        // The backup must read back as exactly the patch it replaces, or the save does not go ahead.
-        let verified = written
-            .map_err(|e| e.to_string())
-            .and_then(|()| std::fs::read(&path).map_err(|e| e.to_string()))
-            .and_then(|raw| {
-                let image = xppatch_core::SyxImage::parse(&raw).map_err(|e| e.to_string())?;
-                let slots = image.user_patches().map_err(|e| e.to_string())?;
-                match slots.as_slice() {
-                    [(s, p)] if *s == slot && p == plan.backup() => Ok(()),
-                    _ => Err("the backup file does not match what it should hold".to_owned()),
-                }
-            });
-        if let Err(e) = verified {
-            let _ = std::fs::remove_file(&path);
-            return Err(SynthError::Backup(e));
-        }
+        let backup_path = if write_backup_file {
+            let device = self.client.config().device;
+            let bytes = xppatch_core::user_patch_bank_bytes(
+                &[(slot, plan.backup().clone())],
+                device,
+                Some(128),
+            )
+            .map_err(|e| SynthError::Backup(e.to_string()))?;
+            std::fs::create_dir_all(backup_dir).map_err(|e| SynthError::Backup(e.to_string()))?;
+            let (path, mut file) = create_backup_file(
+                backup_dir,
+                &format!("{stamp}-user-{:03}", u16::from(slot) + 1),
+            )?;
+            let written =
+                std::io::Write::write_all(&mut file, &bytes).and_then(|()| file.sync_all());
+            drop(file);
+            // The backup must read back as exactly the patch it replaces, or the save does not go ahead.
+            let verified = written
+                .map_err(|e| e.to_string())
+                .and_then(|()| std::fs::read(&path).map_err(|e| e.to_string()))
+                .and_then(|raw| {
+                    let image = xppatch_core::SyxImage::parse(&raw).map_err(|e| e.to_string())?;
+                    let slots = image.user_patches().map_err(|e| e.to_string())?;
+                    match slots.as_slice() {
+                        [(s, p)] if *s == slot && p == plan.backup() => Ok(()),
+                        _ => Err("the backup file does not match what it should hold".to_owned()),
+                    }
+                });
+            if let Err(e) = verified {
+                let _ = std::fs::remove_file(&path);
+                return Err(SynthError::Backup(e));
+            }
+            path.display().to_string()
+        } else {
+            String::new()
+        };
         let info = ArmedSave {
             slot,
             occupant_name: plan.occupant_name(),
-            backup_path: path.display().to_string(),
+            backup_path,
         };
-        self.last_backup_path = Some(info.backup_path.clone());
+        self.last_backup_path = if info.backup_path.is_empty() {
+            None
+        } else {
+            Some(info.backup_path.clone())
+        };
         self.save = Some((plan, true, Instant::now()));
         Ok(info)
     }
@@ -577,13 +590,16 @@ impl<T: MidiTransport> Synth<T> {
         Ok(out)
     }
 
-    /// Step one of writing a bank: read all 128 slots, save them to a backup `.syx` file (checked by reading it back),
-    /// and arm one bank write. Any slot that cannot be read stops this: a bank is never overwritten without a full backup.
+    /// Step one of writing a bank: arm one write of `slots_to_write`. When `write_backup_file` is true, read all 128
+    /// User patches and save them to a `.syx` first (any unread slot stops the arming). When false, only the slots
+    /// about to be written are read (for the stale-slot guard) and no backup file is created — the musician chose to
+    /// skip it.
     pub fn arm_bank_write(
         &mut self,
         backup_dir: &Path,
         stamp: u64,
         slots_to_write: &[u8],
+        write_backup_file: bool,
         cancel: &CancelToken,
         progress: &mut dyn FnMut(Progress),
     ) -> Result<ArmedBank, SynthError> {
@@ -599,39 +615,71 @@ impl<T: MidiTransport> Synth<T> {
                 "choose at least one slot, from 1 to 128".to_owned(),
             ));
         }
-        let plans = self.client.plan_user_bank(cancel, progress)?;
-        let slots: Vec<(u8, Patch)> = plans
-            .iter()
-            .map(|p| (p.slot(), p.backup().clone()))
-            .collect();
-        let device = self.client.config().device;
-        let bytes = xppatch_core::user_patch_bank_bytes(&slots, device, Some(128))
-            .map_err(|e| SynthError::Backup(e.to_string()))?;
-        std::fs::create_dir_all(backup_dir).map_err(|e| SynthError::Backup(e.to_string()))?;
-        let (path, mut file) = create_backup_file(backup_dir, &format!("{stamp}-user-bank"))?;
-        let written = std::io::Write::write_all(&mut file, &bytes).and_then(|()| file.sync_all());
-        drop(file);
-        let verified = written
-            .map_err(|e| e.to_string())
-            .and_then(|()| std::fs::read(&path).map_err(|e| e.to_string()))
-            .and_then(|raw| {
-                let back = xppatch_core::SyxImage::parse(&raw)
-                    .and_then(|i| i.user_patches())
-                    .map_err(|e| e.to_string())?;
-                if back == slots {
-                    Ok(())
-                } else {
-                    Err("the backup file does not match the bank".to_owned())
-                }
+
+        if write_backup_file {
+            let plans = self.client.plan_user_bank(cancel, progress)?;
+            let slots: Vec<(u8, Patch)> = plans
+                .iter()
+                .map(|p| (p.slot(), p.backup().clone()))
+                .collect();
+            let device = self.client.config().device;
+            let bytes = xppatch_core::user_patch_bank_bytes(&slots, device, Some(128))
+                .map_err(|e| SynthError::Backup(e.to_string()))?;
+            std::fs::create_dir_all(backup_dir).map_err(|e| SynthError::Backup(e.to_string()))?;
+            let (path, mut file) = create_backup_file(backup_dir, &format!("{stamp}-user-bank"))?;
+            let written =
+                std::io::Write::write_all(&mut file, &bytes).and_then(|()| file.sync_all());
+            drop(file);
+            let verified = written
+                .map_err(|e| e.to_string())
+                .and_then(|()| std::fs::read(&path).map_err(|e| e.to_string()))
+                .and_then(|raw| {
+                    let back = xppatch_core::SyxImage::parse(&raw)
+                        .and_then(|i| i.user_patches())
+                        .map_err(|e| e.to_string())?;
+                    if back == slots {
+                        Ok(())
+                    } else {
+                        Err("the backup file does not match the bank".to_owned())
+                    }
+                });
+            if let Err(e) = verified {
+                let _ = std::fs::remove_file(&path);
+                return Err(SynthError::Backup(e));
+            }
+            let names = slots.iter().map(|(_, p)| p.name()).collect();
+            self.bank = Some((plans, true, Instant::now(), confirmed));
+            return Ok(ArmedBank {
+                backup_path: path.display().to_string(),
+                names,
             });
-        if let Err(e) = verified {
-            let _ = std::fs::remove_file(&path);
-            return Err(SynthError::Backup(e));
         }
-        let names = slots.iter().map(|(_, p)| p.name()).collect();
+
+        // No file backup: still read each target slot so commit can refuse a panel change since arming.
+        let total = confirmed.len();
+        let mut plans = Vec::with_capacity(total);
+        let mut names = Vec::with_capacity(total);
+        for (i, slot) in confirmed.iter().enumerate() {
+            if cancel.is_cancelled() {
+                return Err(SynthError::Client(ClientError::Cancelled));
+            }
+            progress(Progress {
+                what: "reading slots to write",
+                done: i,
+                total,
+            });
+            let plan = self.client.plan_user_write(*slot, cancel)?;
+            names.push(plan.backup().name());
+            plans.push(plan);
+        }
+        progress(Progress {
+            what: "reading slots to write",
+            done: total,
+            total,
+        });
         self.bank = Some((plans, true, Instant::now(), confirmed));
         Ok(ArmedBank {
-            backup_path: path.display().to_string(),
+            backup_path: String::new(),
             names,
         })
     }
@@ -1005,7 +1053,7 @@ mod tests {
     fn arming_saves_the_old_patch_to_disk_before_anything_can_be_written() {
         let dir = temp_dir("arm");
         let mut s = synth_with_bank();
-        let armed = s.arm_user_save(5, &dir, 1000).unwrap();
+        let armed = s.arm_user_save(5, &dir, 1000, true).unwrap();
         assert_eq!(armed.slot, 5);
         assert_eq!(armed.occupant_name, bank_patch(5).name());
         let file = std::fs::read(&armed.backup_path).unwrap();
@@ -1015,7 +1063,7 @@ mod tests {
         assert_eq!(slots[0].1, bank_patch(5));
         assert!(armed.backup_path.ends_with("1000-user-006.syx"));
         // Arming again with the same stamp gets a new file name; the earlier backup is never overwritten.
-        let again = s.arm_user_save(5, &dir, 1000).unwrap();
+        let again = s.arm_user_save(5, &dir, 1000, true).unwrap();
         assert!(
             again.backup_path.ends_with("1000-user-006-2.syx"),
             "{}",
@@ -1038,7 +1086,7 @@ mod tests {
             s.commit_user_save(&new.to_blocks()),
             Err(SynthError::NotArmed)
         ));
-        s.arm_user_save(9, &dir, 1).unwrap();
+        s.arm_user_save(9, &dir, 1, true).unwrap();
         let report = s.commit_user_save(&new.to_blocks()).unwrap();
         assert!(report.verified);
         assert_eq!(report.slot, 9);
@@ -1054,13 +1102,13 @@ mod tests {
     fn disarming_cancels_and_bad_data_is_refused_without_writing() {
         let dir = temp_dir("disarm");
         let mut s = synth_with_bank();
-        s.arm_user_save(1, &dir, 2).unwrap();
+        s.arm_user_save(1, &dir, 2, true).unwrap();
         s.disarm_user_save();
         assert!(matches!(
             s.commit_user_save(&bank_patch(0).to_blocks()),
             Err(SynthError::NotArmed)
         ));
-        s.arm_user_save(1, &dir, 3).unwrap();
+        s.arm_user_save(1, &dir, 3, true).unwrap();
         assert!(matches!(
             s.commit_user_save(&[1, 2, 3]),
             Err(SynthError::BadPatch(_))
@@ -1081,7 +1129,7 @@ mod tests {
         std::fs::write(&file_in_the_way, b"x").unwrap();
         let mut s = synth_with_bank();
         assert!(matches!(
-            s.arm_user_save(0, &file_in_the_way, 4),
+            s.arm_user_save(0, &file_in_the_way, 4, true),
             Err(SynthError::Backup(_))
         ));
         assert!(matches!(
@@ -1099,14 +1147,14 @@ mod tests {
             s.restore_user_backup(),
             Err(SynthError::NothingToRestore)
         ));
-        s.arm_user_save(3, &dir, 5).unwrap();
+        s.arm_user_save(3, &dir, 5, true).unwrap();
         let mut p = bank_patch(3);
         p.set_name("Oops").unwrap();
         s.commit_user_save(&p.to_blocks()).unwrap();
         let restored = s.restore_user_backup().unwrap();
         assert!(restored.verified);
         // Reading the slot again through a fresh plan shows the original.
-        let again = s.arm_user_save(3, &dir, 6).unwrap();
+        let again = s.arm_user_save(3, &dir, 6, true).unwrap();
         assert_eq!(again.occupant_name, bank_patch(3).name());
         let _ = std::fs::remove_dir_all(&dir);
     }
@@ -1115,7 +1163,7 @@ mod tests {
     fn undo_is_refused_when_the_slot_changed_after_the_save() {
         let dir = temp_dir("stale-undo");
         let mut s = synth_with_bank();
-        s.arm_user_save(4, &dir, 10).unwrap();
+        s.arm_user_save(4, &dir, 10, true).unwrap();
         let mut p = bank_patch(4);
         p.set_name("Saved").unwrap();
         s.commit_user_save(&p.to_blocks()).unwrap();
@@ -1140,12 +1188,12 @@ mod tests {
     fn undo_works_once_and_arming_another_slot_does_not_lose_it() {
         let dir = temp_dir("undo-once");
         let mut s = synth_with_bank();
-        s.arm_user_save(7, &dir, 20).unwrap();
+        s.arm_user_save(7, &dir, 20, true).unwrap();
         let mut p = bank_patch(7);
         p.set_name("First").unwrap();
         s.commit_user_save(&p.to_blocks()).unwrap();
         // Arm a different slot and walk away: the undo of slot 8 must still be about slot 8.
-        s.arm_user_save(9, &dir, 21).unwrap();
+        s.arm_user_save(9, &dir, 21, true).unwrap();
         s.disarm_user_save();
         let restored = s.restore_user_backup().unwrap();
         assert_eq!(restored.slot, 7);
@@ -1164,7 +1212,7 @@ mod tests {
     fn a_save_that_found_the_slot_changed_writes_nothing_and_cannot_be_undone() {
         let dir = temp_dir("stale-arm");
         let mut s = synth_with_bank();
-        s.arm_user_save(2, &dir, 30).unwrap();
+        s.arm_user_save(2, &dir, 30, true).unwrap();
         let mut other = bank_patch(2);
         other.set_name("Changed").unwrap();
         s.client.port_mut().set_user_patch(2, &other).unwrap();
@@ -1190,7 +1238,7 @@ mod tests {
         let mut s = synth_with_bank();
         let cancel = CancelToken::new();
         let armed = s
-            .arm_bank_write(&dir, 77, &[11], &cancel, &mut |_| {})
+            .arm_bank_write(&dir, 77, &[11], true, &cancel, &mut |_| {})
             .unwrap();
         assert!(armed.backup_path.ends_with("77-user-bank.syx"));
         assert_eq!(armed.names.len(), 128);
@@ -1224,11 +1272,40 @@ mod tests {
     }
 
     #[test]
+    fn a_bank_write_can_skip_the_backup_file_when_the_musician_opts_out() {
+        let dir = temp_dir("bank-nobackup");
+        let mut s = synth_with_bank();
+        let cancel = CancelToken::new();
+        let armed = s
+            .arm_bank_write(&dir, 88, &[11, 12], false, &cancel, &mut |_| {})
+            .unwrap();
+        assert!(armed.backup_path.is_empty());
+        assert_eq!(armed.names.len(), 2);
+        assert!(!dir.exists() || std::fs::read_dir(&dir).unwrap().next().is_none());
+
+        let mut p = bank_patch(0);
+        p.set_name("No Backup").unwrap();
+        let report = s
+            .commit_bank_write(
+                &[(11, p.to_blocks()), (12, p.to_blocks())],
+                &cancel,
+                &mut |_| {},
+            )
+            .unwrap();
+        assert_eq!(report.written, vec![11, 12]);
+        assert_eq!(
+            s.client.read_user_slot(11, &cancel).unwrap().name(),
+            "No Backup"
+        );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
     fn a_bank_write_checks_every_patch_before_writing_anything() {
         let dir = temp_dir("bank-bad");
         let mut s = synth_with_bank();
         let cancel = CancelToken::new();
-        s.arm_bank_write(&dir, 78, &[20, 21], &cancel, &mut |_| {})
+        s.arm_bank_write(&dir, 78, &[20, 21], true, &cancel, &mut |_| {})
             .unwrap();
         let good = bank_patch(1).to_blocks();
         let err = s
@@ -1252,7 +1329,7 @@ mod tests {
         let dir = temp_dir("bank-stop");
         let mut s = synth_with_bank();
         let cancel = CancelToken::new();
-        s.arm_bank_write(&dir, 79, &[0], &cancel, &mut |_| {})
+        s.arm_bank_write(&dir, 79, &[0], true, &cancel, &mut |_| {})
             .unwrap();
         s.disarm_bank_write();
         assert!(matches!(
@@ -1267,7 +1344,7 @@ mod tests {
         }
         let (mut partial, _) = Synth::connect(d, 0x10).unwrap();
         assert!(partial
-            .arm_bank_write(&dir, 80, &[0], &cancel, &mut |_| {})
+            .arm_bank_write(&dir, 80, &[0], true, &cancel, &mut |_| {})
             .is_err());
         assert!(matches!(
             partial.commit_bank_write(&[(0, bank_patch(0).to_blocks())], &cancel, &mut |_| {}),
@@ -1289,7 +1366,7 @@ mod tests {
         let dir = temp_dir("bank-confirmed");
         let mut s = synth_with_bank();
         let cancel = CancelToken::new();
-        s.arm_bank_write(&dir, 90, &[5, 6], &cancel, &mut |_| {})
+        s.arm_bank_write(&dir, 90, &[5, 6], true, &cancel, &mut |_| {})
             .unwrap();
         let p = bank_patch(0).to_blocks();
         // An extra slot, a missing one, or a different one: refused, and the arming is used up.
@@ -1305,7 +1382,7 @@ mod tests {
             s.commit_bank_write(&[(5, p.clone()), (6, p.clone())], &cancel, &mut |_| {}),
             Err(SynthError::NotArmed)
         ));
-        s.arm_bank_write(&dir, 91, &[5, 6], &cancel, &mut |_| {})
+        s.arm_bank_write(&dir, 91, &[5, 6], true, &cancel, &mut |_| {})
             .unwrap();
         let err = s
             .commit_bank_write(&[(5, p.clone())], &cancel, &mut |_| {})
@@ -1315,10 +1392,10 @@ mod tests {
         assert_eq!(s.client.read_user_slot(5, &cancel).unwrap(), bank_patch(5));
         // An empty or out-of-range confirmed set cannot be armed at all.
         assert!(s
-            .arm_bank_write(&dir, 92, &[], &cancel, &mut |_| {})
+            .arm_bank_write(&dir, 92, &[], true, &cancel, &mut |_| {})
             .is_err());
         assert!(s
-            .arm_bank_write(&dir, 93, &[200], &cancel, &mut |_| {})
+            .arm_bank_write(&dir, 93, &[200], true, &cancel, &mut |_| {})
             .is_err());
         let _ = std::fs::remove_dir_all(&dir);
     }
@@ -1328,14 +1405,14 @@ mod tests {
         let dir = temp_dir("both");
         let mut s = synth_with_bank();
         let cancel = CancelToken::new();
-        s.arm_user_save(1, &dir, 100).unwrap();
-        s.arm_bank_write(&dir, 101, &[1], &cancel, &mut |_| {})
+        s.arm_user_save(1, &dir, 100, true).unwrap();
+        s.arm_bank_write(&dir, 101, &[1], true, &cancel, &mut |_| {})
             .unwrap();
         assert!(matches!(
             s.commit_user_save(&bank_patch(0).to_blocks()),
             Err(SynthError::NotArmed)
         ));
-        s.arm_user_save(2, &dir, 102).unwrap();
+        s.arm_user_save(2, &dir, 102, true).unwrap();
         assert!(matches!(
             s.commit_bank_write(&[(1, bank_patch(0).to_blocks())], &cancel, &mut |_| {}),
             Err(SynthError::NotArmed)
@@ -1453,7 +1530,7 @@ mod tests {
         let dir = temp_dir("sysdrop");
         let mut s = synth_with_system(10);
         s.arm_system_save(&dir, 1).unwrap();
-        s.arm_user_save(1, &dir, 2).unwrap();
+        s.arm_user_save(1, &dir, 2, true).unwrap();
         assert!(matches!(
             s.commit_system_save(&system_doc(20).to_block_bytes()),
             Err(SynthError::NotArmed)

@@ -22,6 +22,12 @@ A brand-new, standalone Roland XP-60 patch editor/librarian. Functional parity w
 5. **FL Studio is a design-language reference only.** No Image-Line assets, logos, names, icons or skins. Recreate
    the look and feel with original vector-drawn controls.
 6. **Do not follow Patch Base's layout, navigation or visual structure anywhere.**
+7. **Live desktop verification — tests green is not enough.** For any behavioural UI or MIDI/hardware-facing change,
+   verify on the **real running desktop app** by clicking the **same controls a person uses** (pads, menus, tabs,
+   knobs). Unit/integration tests must still pass, but they alone do not prove the fix. Do **not** treat underground
+   API calls (`invoke`, store methods, IPC-only scripts) as acceptance. Report what you clicked and observed; if the
+   live window could not be exercised, say so explicitly and do not claim the behaviour verified. (Also:
+   `.cursor/rules/live-ui-verification.mdc`.)
 
 ## Hardware truth
 

@@ -516,16 +516,19 @@ fn storage_set(
 
 // ---- saving into the instrument's User memory (the guarded write) ----
 
-/// Step one: read the slot, write its current contents to a backup file, and arm one save.
+/// Step one: read the slot, optionally write its contents to a backup `.syx`, and arm one save.
+/// `backup`: when `Some(true)` or omitted, write the file; `Some(false)` skips it.
 #[tauri::command(async)]
 fn midi_arm_save(
     app: tauri::AppHandle,
     state: tauri::State<'_, AppState>,
     slot: u8,
+    backup: Option<bool>,
 ) -> Result<ArmedSave, String> {
     let dir = data_dir(&app)?.join("backups");
     let stamp = u64::try_from(now_secs()).unwrap_or(0);
-    with_synth(&state, |s| s.arm_user_save(slot, &dir, stamp)).map_err(|e| e.to_string())
+    let write_backup = backup.unwrap_or(true);
+    with_synth(&state, |s| s.arm_user_save(slot, &dir, stamp, write_backup)).map_err(|e| e.to_string())
 }
 
 #[tauri::command(async)]
@@ -651,18 +654,21 @@ fn midi_backup_all(
     .map_err(|e| e.to_string())
 }
 
-/// Step one of writing a bank: read all 128 slots and keep them in a backup file, then arm one bank write.
+/// Step one of writing a bank: optionally save all 128 User patches to a backup `.syx`, then arm one write of `slots`.
+/// `backup`: when `Some(true)` or omitted, write a full User-bank `.syx` first; `Some(false)` skips the file backup.
 #[tauri::command(async)]
 fn midi_arm_bank(
     app: tauri::AppHandle,
     state: tauri::State<'_, AppState>,
     slots: Vec<u8>,
+    backup: Option<bool>,
 ) -> Result<ArmedBank, String> {
     let dir = data_dir(&app)?.join("backups");
     let stamp = u64::try_from(now_secs()).unwrap_or(0);
+    let write_backup = backup.unwrap_or(true);
     let op = begin_long(&state)?;
     lock_synth(&state, |s| {
-        s.arm_bank_write(&dir, stamp, &slots, &op.cancel, &mut |p| {
+        s.arm_bank_write(&dir, stamp, &slots, write_backup, &op.cancel, &mut |p| {
             let _ = app.emit(
                 "bank-progress",
                 ProgressOut {

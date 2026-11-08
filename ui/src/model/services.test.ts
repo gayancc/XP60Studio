@@ -179,6 +179,7 @@ describe('SaveFlow', () => {
     expect(f.phase).toBe('armed');
     expect(f.slot).toBe(5);
     expect(f.armed?.occupant_name).toBe('Old Sound');
+    expect(b.armSave).toHaveBeenCalledWith(5, true);
     expect(await f.commit()).toBe(true);
     expect(f.phase).toBe('done');
     expect(f.armed).toBeNull();
@@ -221,6 +222,16 @@ describe('SaveFlow', () => {
     expect(f.error).toContain('backup');
     expect(f.armed).toBeNull();
     expect(await f.commit()).toBe(false);
+  });
+
+  it('passes the musician’s backup choice to armSave', async () => {
+    const b = fakeBackend({
+      armSave: vi.fn(async (slot: number) => ({ slot, occupant_name: 'Old', backup_path: '' })),
+    });
+    const f = new SaveFlow(b);
+    f.backupBeforeWrite = false;
+    expect(await f.arm(4, patch, 'New')).toBe(true);
+    expect(b.armSave).toHaveBeenCalledWith(4, false);
   });
 
   it('cancelling an armed save disarms it', async () => {

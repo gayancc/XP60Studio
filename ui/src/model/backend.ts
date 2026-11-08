@@ -96,6 +96,7 @@ export interface SystemSaveReport {
 }
 
 export interface ArmedBank {
+  /** Path of the User-bank `.syx` when a file backup was taken; empty when the musician skipped it. */
   backup_path: string;
   names: string[];
 }
@@ -168,7 +169,8 @@ export interface Backend {
   storageInfo(): Promise<StorageInfo>;
   /** Choose the folder (null for the default). Copies the library and backups; takes effect at the next start. */
   storageSet(dir: string | null): Promise<StorageInfo>;
-  armSave(slot: number): Promise<ArmedSave>;
+  /** Arm a single-slot User write. When `backup` is false, skip the `.syx` file (slot is still read). */
+  armSave(slot: number, backup?: boolean): Promise<ArmedSave>;
   disarmSave(): Promise<void>;
   commitSave(patch: Uint8Array): Promise<SaveReport>;
   restoreSave(): Promise<SaveReport>;
@@ -182,8 +184,11 @@ export interface Backend {
   readBank(): Promise<Array<[number, Uint8Array]>>;
   /** All of User memory the editor has a map for (patches, performances, rhythm sets) as one `.syx`; nothing is written. */
   backupAll(): Promise<Uint8Array>;
-  /** Back up the bank and arm one write of exactly these slots. */
-  armBank(slots: number[]): Promise<ArmedBank>;
+  /**
+   * Arm one write of exactly these slots. When `backup` is true (default), save the whole User bank
+   * to a `.syx` first; when false, skip the file backup (slots are still read for the write guard).
+   */
+  armBank(slots: number[], backup?: boolean): Promise<ArmedBank>;
   disarmBank(): Promise<void>;
   commitBank(patches: Array<[number, Uint8Array]>): Promise<BankSaveReport>;
   bankToSyx(patches: Array<[number, Uint8Array]>, device: number): Promise<Uint8Array>;
@@ -235,7 +240,7 @@ export const tauriBackend: Backend = {
   backupRead: async (name) => new Uint8Array(await invoke<number[]>('backup_read', { name })),
   storageInfo: () => invoke('storage_info'),
   storageSet: (dir) => invoke('storage_set', { dir }),
-  armSave: (slot) => invoke('midi_arm_save', { slot }),
+  armSave: (slot, backup = true) => invoke('midi_arm_save', { slot, backup }),
   disarmSave: () => invoke('midi_disarm_save'),
   commitSave: (patch) => invoke('midi_commit_save', { patch: Array.from(patch) }),
   restoreSave: () => invoke('midi_restore_save'),
@@ -249,7 +254,7 @@ export const tauriBackend: Backend = {
     const rows = await invoke<Array<[number, number[]]>>('midi_read_bank');
     return rows.map(([slot, bytes]) => [slot, new Uint8Array(bytes)]);
   },
-  armBank: (slots) => invoke('midi_arm_bank', { slots }),
+  armBank: (slots, backup = true) => invoke('midi_arm_bank', { slots, backup }),
   disarmBank: () => invoke('midi_disarm_bank'),
   commitBank: (patches) =>
     invoke('midi_commit_bank', { patches: patches.map(([slot, bytes]) => [slot, Array.from(bytes)]) }),

@@ -28,6 +28,7 @@ function setup() {
 }
 
 const slotButton = (c: HTMLElement, n: number): HTMLElement => c.querySelector<HTMLElement>(`.slot:nth-child(${n})`)!;
+const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const lit = (c: HTMLElement): string[] => [...c.querySelectorAll('.pad.guide')].map((b) => b.textContent!.trim());
 const libraryDrag = { dataTransfer: { types: ['text/xp-library'], getData: () => '' } };
 
@@ -112,18 +113,22 @@ describe('dragging a patch over the slot grid', () => {
     expect(slotButton(container, 28).classList.contains('sel')).toBe(true);
   });
 
-  it('sends Bank Select and Program Change on drop when the landing slot has no app copy yet', async () => {
+  it('does not Program-Change or preview an empty pad before the keyboard bank is synced', async () => {
     const selectSound = vi.fn(async () => true);
-    const synth = { connected: true, selectSound } as unknown as import('../model/synth.svelte').SynthService;
+    const note = vi.fn(async () => {});
+    const allNotesOff = vi.fn(async () => {});
+    const synth = { connected: true, selectSound, note, allNotesOff } as unknown as import('../model/synth.svelte').SynthService;
     const fake = fakeBulks();
     const backend = new Proxy(fake.api, { get: (t, k) => (k in t ? t[k as keyof typeof t] : vi.fn(async () => [])) }) as unknown as Backend;
     const store = new PatchStore(parseCatalog(catalogJson()), new MemoryTransport());
     const bank = new BankService(backend);
     const services = { bank, library: new LibraryService(backend), save: {}, systemSave: {} } as unknown as Services;
     const { container } = render(BankViewHarness, { props: { store, services, synth } });
-    await fireEvent.drop(slotButton(container, 28), libraryDrag);
+    await fireEvent.click(slotButton(container, 28));
     expect(bank.selected).toBe(27);
-    expect(selectSound).toHaveBeenCalledWith(0, 80, 0, 27);
+    await wait(80);
+    expect(selectSound).not.toHaveBeenCalled();
+    expect(note).not.toHaveBeenCalled();
   });
 
   it('sends a loaded bulk pad to temporary memory instead of selecting the old User slot', async () => {
@@ -152,16 +157,50 @@ describe('dragging a patch over the slot grid', () => {
     expect(allNotesOff).toHaveBeenCalledWith(0);
   });
 
-  it('waits for an in-flight temporary send before selecting a newer synth User pad', async () => {
-    let releaseFirst: () => void = () => {};
+  it('Program-Changes a synth-read pad and auditions its bytes so each pad can sound different', async () => {
+    const selectSound = vi.fn(async () => true);
+    const note = vi.fn(async () => {});
+    const allNotesOff = vi.fn(async () => {});
+    const synth = { connected: true, selectSound, note, allNotesOff } as unknown as import('../model/synth.svelte').SynthService;
+    const transport = new MemoryTransport();
+    const store = new PatchStore(parseCatalog(catalogJson()), transport);
+    const fake = fakeBulks();
+    const backend = new Proxy(fake.api, { get: (t, k) => (k in t ? t[k as keyof typeof t] : vi.fn(async () => [])) }) as unknown as Backend;
+    const bank = new BankService(backend);
+    const a = new PatchDoc();
+    a.setName('User A');
+    const b = new PatchDoc();
+    b.setName('User B');
+    bank.assign(0, a.toBlocks(), 'synth');
+    bank.assign(1, b.toBlocks(), 'synth');
+    a.free();
+    b.free();
+    const services = { bank, library: new LibraryService(backend), save: {}, systemSave: {} } as unknown as Services;
+    const { container } = render(BankViewHarness, { props: { store, services, synth } });
+    await fireEvent.click(slotButton(container, 1));
+    await waitFor(() => expect(selectSound).toHaveBeenCalledWith(0, 80, 0, 0));
+    await waitFor(() => expect(transport.frames.length).toBeGreaterThan(0));
+    const afterFirst = transport.frames.length;
+    await fireEvent.click(slotButton(container, 2));
+    await waitFor(() => expect(selectSound).toHaveBeenCalledWith(0, 80, 0, 1));
+    await waitFor(() => expect(transport.frames.length).toBeGreaterThan(afterFirst));
+    await waitFor(() => expect(note).toHaveBeenCalledWith(0, 60, 100, true), { timeout: 2000 });
+  });
+
+  it('cancels a pending bulk audition then Program-Changes and auditions a newer synth User pad', async () => {
     let started = false;
+    let inFlight: Promise<void> | null = null;
+    let releaseFirst: () => void = () => {};
     const transport: LiveTransport = {
       label: 'delayed MIDI',
       connected: true,
       send: () => {
-        if (started) return;
+        if (started) return inFlight ?? undefined;
         started = true;
-        return new Promise<void>((resolve) => { releaseFirst = resolve; });
+        inFlight = new Promise<void>((resolve) => {
+          releaseFirst = resolve;
+        });
+        return inFlight;
       },
     };
     const store = new PatchStore(parseCatalog(catalogJson()), transport);
@@ -175,13 +214,16 @@ describe('dragging a patch over the slot grid', () => {
     bank.assign(0, bytes, 'library');
     bank.assign(1, bytes, 'synth');
     const selectSound = vi.fn(async () => true);
-    const synth = { connected: true, selectSound } as unknown as import('../model/synth.svelte').SynthService;
+    const note = vi.fn(async () => {});
+    const allNotesOff = vi.fn(async () => {});
+    const synth = { connected: true, selectSound, note, allNotesOff } as unknown as import('../model/synth.svelte').SynthService;
     const services = { bank, library: new LibraryService(backend), save: {}, systemSave: {} } as unknown as Services;
     const { container } = render(BankViewHarness, { props: { store, services, synth } });
 
     await fireEvent.click(slotButton(container, 1));
     await waitFor(() => expect(started).toBe(true));
     await fireEvent.click(slotButton(container, 2));
+    // Pending audition frames are cancelled; in-flight SysEx must finish (or time out) before PC + re-audition.
     expect(selectSound).not.toHaveBeenCalled();
     releaseFirst();
     await waitFor(() => expect(selectSound).toHaveBeenCalledWith(0, 80, 0, 1), { timeout: 2000 });

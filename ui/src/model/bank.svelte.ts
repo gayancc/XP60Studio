@@ -53,6 +53,16 @@ export class BankService {
     if (clean) reportError(clean);
   }
   selected = $state(0);
+  /**
+   * Slot last opened into the Patch editor from this bank. Used so a write can pull the editor's
+   * current patch back into that slot (edits do not land in the bank until then).
+   */
+  editorSlot = $state<number | null>(null);
+  /**
+   * When preparing a write, also save the instrument’s current User bank to a backup `.syx`.
+   * Off by the musician’s choice — writes still read the target slots for the stale-slot guard.
+   */
+  backupBeforeWrite = $state(true);
   /** Where the loaded bank came from, for the title. */
   source = $state('Empty');
   /** The library bulk this bank was loaded from or last saved as; null when the bank is not in the library. */
@@ -81,8 +91,44 @@ export class BankService {
     return this.slots.flatMap((s, i) => (s.bytes !== null && !sameBytes(s.bytes, this.original[i] ?? null) ? [i] : []));
   }
 
+  /** Every slot that currently holds a patch in the app (candidates for "write all"). */
+  get filled(): number[] {
+    return this.slots.flatMap((s, i) => (s.bytes !== null ? [i] : []));
+  }
+
   get hasOriginal(): boolean {
     return this.original.some((b) => b !== null);
+  }
+
+  /** Remember that the Patch editor was opened from this bank slot. */
+  linkEditor(slot: number): void {
+    if (!Number.isInteger(slot) || slot < 0 || slot >= SLOTS) {
+      this.editorSlot = null;
+      return;
+    }
+    this.editorSlot = slot;
+  }
+
+  /**
+   * If the editor was opened from a bank slot and `bytes` differ from what that slot holds, put them
+   * into the slot (origin editor). Returns whether the slot was updated.
+   */
+  pullEditor(bytes: Uint8Array): boolean {
+    const slot = this.editorSlot;
+    if (slot === null || this.locked) return false;
+    const held = this.slots[slot]?.bytes ?? null;
+    if (held !== null && sameBytes(held, bytes)) return false;
+    return this.assign(slot, bytes, 'editor');
+  }
+
+  /**
+   * After a successful single-slot save to the instrument: the pad now matches User memory, so it
+   * is no longer “changed” relative to the last instrument read.
+   */
+  markWritten(slot: number, bytes: Uint8Array): void {
+    if (!Number.isInteger(slot) || slot < 0 || slot >= SLOTS || this.locked) return;
+    this.setSlot(slot, bytes, 'synth');
+    this.original[slot] = bytes.slice();
   }
 
   private async withProgress<T>(action: () => Promise<T>): Promise<T> {
@@ -161,6 +207,7 @@ export class BankService {
       n += 1;
     }
     this.markSaved(id, name);
+    this.editorSlot = null;
     return n;
   }
 
@@ -180,6 +227,7 @@ export class BankService {
     }
     this.source = fileName;
     this.origin = null; // a file is not a library bulk
+    this.editorSlot = null;
     return n;
   }
 
@@ -197,6 +245,7 @@ export class BankService {
         this.original[slot] = bytes.slice();
       }
       this.source = 'Instrument';
+      this.editorSlot = null;
       this.phase = 'idle';
       return true;
     } catch (e) {
@@ -269,24 +318,33 @@ export class BankService {
     }
   }
 
-  /** Step 1 of writing: read and back up the whole bank. Nothing is written. */
-  async arm(): Promise<boolean> {
+  /**
+   * Step 1 of writing: freeze the chosen slots for commit. When `backupBeforeWrite` is on, the
+   * whole User bank is also saved to a `.syx` first. `slots` is which app slots to write
+   * (changed-only, one slot, or all filled). Nothing is written to User memory yet.
+   */
+  async arm(slots?: readonly number[]): Promise<boolean> {
     if (this.working || this.phase === 'armed') return false;
-    if (this.changed.length === 0) {
-      this.fail('Nothing to write: no slot differs from the instrument.');
-      return false;
-    }
-    // What is confirmed is fixed now: these slots, with these patches.
-    this.frozen = this.changed.flatMap((i) => {
+    const targets = slots !== undefined ? [...slots] : this.changed;
+    const unique = [...new Set(targets)].filter((i) => Number.isInteger(i) && i >= 0 && i < SLOTS).sort((a, b) => a - b);
+    this.frozen = unique.flatMap((i) => {
       const b = this.slots[i]?.bytes;
       return b ? [[i, b.slice()] as [number, Uint8Array]] : [];
     });
+    if (this.frozen.length === 0) {
+      this.fail(
+        slots !== undefined
+          ? 'Nothing to write: those slots have no patch in the app yet.'
+          : 'Nothing to write: no slot differs from the instrument. Put the editor patch into a slot, or choose This slot / All filled.',
+      );
+      return false;
+    }
     this.phase = 'arming';
     this.error = '';
     this.report = null;
     this.cancelWhenArmed = false;
     try {
-      this.armed = await this.withProgress(() => this.backend.armBank(this.confirmedSlots));
+      this.armed = await this.withProgress(() => this.backend.armBank(this.confirmedSlots, this.backupBeforeWrite));
       this.phase = 'armed';
       if (this.cancelWhenArmed) {
         await this.cancelArming();
@@ -299,6 +357,21 @@ export class BankService {
       this.fail(message(e));
       return false;
     }
+  }
+
+  /** Prepare a write of only the slots that differ from the last instrument read. */
+  async armChanged(): Promise<boolean> {
+    return this.arm(this.changed);
+  }
+
+  /** Prepare a write of one slot (the selected pad, or `slot` when given). */
+  async armSelected(slot: number = this.selected): Promise<boolean> {
+    return this.arm([slot]);
+  }
+
+  /** Prepare a write of every slot that currently holds a patch in the app. */
+  async armAllFilled(): Promise<boolean> {
+    return this.arm(this.filled);
   }
 
   async cancelArming(): Promise<void> {

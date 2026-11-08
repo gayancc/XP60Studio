@@ -67,10 +67,21 @@ export class LiveQueue {
     };
   }
 
-  /** Resolves when nothing is waiting and nothing is in flight. */
-  whenIdle(): Promise<void> {
-    if (this.pendingFrames.size === 0 && this.inFlight === 0) return Promise.resolve();
-    return new Promise((resolve) => this.idleWaiters.push(resolve));
+  /** Resolves when nothing is waiting and nothing is in flight. Optional `timeoutMs` resolves anyway so callers cannot hang forever on a stuck MIDI send. */
+  whenIdle(timeoutMs?: number): Promise<'idle' | 'timeout'> {
+    if (this.pendingFrames.size === 0 && this.inFlight === 0) return Promise.resolve('idle');
+    return new Promise((resolve) => {
+      let settled = false;
+      const finish = (result: 'idle' | 'timeout'): void => {
+        if (settled) return;
+        settled = true;
+        resolve(result);
+      };
+      this.idleWaiters.push(() => finish('idle'));
+      if (timeoutMs !== undefined && timeoutMs >= 0) {
+        this.o.setTimer(() => finish('timeout'), timeoutMs);
+      }
+    });
   }
 
   /** Queue `frame` for `key` (its location in the instrument). A frame already waiting for that key is replaced. */
@@ -92,12 +103,23 @@ export class LiveQueue {
     this.schedule();
   }
 
-  /** Drop everything waiting and forget past failures. */
+  /** Drop everything waiting and forget past failures. In-flight sends still finish. */
   clear(): void {
     this.pendingFrames.clear();
     this.attempts.clear();
     this.lostCount = 0;
     this.lastFailed = false;
+    if (this.timer !== null) {
+      this.o.clearTimer(this.timer);
+      this.timer = null;
+    }
+    this.emit();
+  }
+
+  /** Drop frames not yet started (e.g. cancel a bank audition before Program Change). */
+  cancelPending(): void {
+    this.pendingFrames.clear();
+    this.attempts.clear();
     if (this.timer !== null) {
       this.o.clearTimer(this.timer);
       this.timer = null;

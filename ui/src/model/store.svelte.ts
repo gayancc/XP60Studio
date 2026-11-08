@@ -448,9 +448,18 @@ export class PatchStore {
     if (!connected && this.sync !== 'local') this.sync = 'edited';
   }
 
-  /** Resolves when no live edit is waiting or in flight (call before reading the instrument back). */
-  whenQueueIdle(): Promise<void> {
-    return this.liveQueue.whenIdle();
+  /**
+   * Resolves when no live edit is waiting or in flight (call before reading the instrument back).
+   * Pass `timeoutMs` so a hung MIDI send cannot block Bank Program Change forever.
+   */
+  whenQueueIdle(timeoutMs?: number): Promise<'idle' | 'timeout'> {
+    return this.liveQueue.whenIdle(timeoutMs);
+  }
+
+  /** Drop live frames not yet on the wire (cancel a bank audition before User Program Change). */
+  cancelPendingLive(): void {
+    this.liveQueue.cancelPending();
+    this.fullPending = false;
   }
 
   /** Counts every change to the open patch; a read that started earlier is out of date if this moved. */

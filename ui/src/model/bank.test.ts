@@ -231,6 +231,48 @@ describe('BankService', () => {
     expect(await b.commit()).toBe(false); // the arming is used up
   });
 
+  it('can arm one selected slot or every filled slot even when nothing is marked changed', async () => {
+    const backend = fake();
+    const b = new BankService(backend);
+    await b.readFromSynth();
+    expect(b.changed).toEqual([]);
+    expect(b.filled).toHaveLength(128);
+    b.selected = 3;
+    expect(await b.armSelected()).toBe(true);
+    expect(b.confirmedSlots).toEqual([3]);
+    await b.cancelArming();
+    expect(await b.armAllFilled()).toBe(true);
+    expect(b.confirmedSlots).toHaveLength(128);
+    await b.cancelArming();
+    expect(await b.armChanged()).toBe(false);
+    expect(b.error).toContain('Nothing to write');
+  });
+
+  it('pulls the editor patch into the linked slot so a single edited pad becomes writable', async () => {
+    const backend = fake();
+    const b = new BankService(backend);
+    await b.readFromSynth();
+    b.linkEditor(5);
+    expect(b.editorSlot).toBe(5);
+    expect(b.changed).toEqual([]);
+    expect(b.pullEditor(blocks('Edited Five', 55))).toBe(true);
+    expect(b.slots[5]?.name.trim()).toBe('Edited Five');
+    expect(b.changed).toEqual([5]);
+    expect(await b.armChanged()).toBe(true);
+    expect(b.confirmedSlots).toEqual([5]);
+    expect(b.pullEditor(blocks('Edited Five', 55))).toBe(false); // locked while armed
+  });
+
+  it('passes the musician’s backup choice through to armBank', async () => {
+    const backend = fake();
+    const b = new BankService(backend);
+    await b.readFromSynth();
+    b.assign(1, blocks('X', 1), 'editor');
+    b.backupBeforeWrite = false;
+    expect(await b.armSelected(1)).toBe(true);
+    expect(backend.armBank).toHaveBeenCalledWith([1], false);
+  });
+
   it('a write that stops reports the slot and keeps the unwritten changes', async () => {
     const backend = fake({
       commitBank: vi.fn(
@@ -319,7 +361,7 @@ describe('BankService', () => {
     b.assign(7, blocks('Seven', 70), 'file');
     b.assign(9, blocks('Nine', 90), 'file');
     await b.arm();
-    expect(backend.armBank).toHaveBeenCalledWith([7, 9]);
+    expect(backend.armBank).toHaveBeenCalledWith([7, 9], true);
     expect(b.confirmedSlots).toEqual([7, 9]);
     // Everything is locked while armed.
     expect(b.locked).toBe(true);
