@@ -68,7 +68,7 @@
           maxlength="60"
           autofocus
           onkeydown={(e) => {
-            if (e.key === 'Enter' && name.trim() !== '') void saveNew();
+            if (e.key === 'Enter' && name.trim() !== '' && !bulks.busy) void saveNew();
             else if (e.key === 'Escape') mode = 'idle';
           }}
         />

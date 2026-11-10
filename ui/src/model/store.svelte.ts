@@ -100,7 +100,8 @@ export class PatchStore {
         this.queue = s;
         if (s.state === 'failed') {
           this.baseSent = false;
-          this.error = 'Some edits could not be sent to the instrument.';
+          // A first failure is retried; say so only once a frame has actually been given up on.
+          if (s.lost > 0) this.error = 'Some edits could not be sent to the instrument.';
         }
         if (this.liveDirty && s.pending === 0 && s.inFlight === 0 && s.state === 'ok') {
           this.liveDirty = false;
@@ -461,6 +462,8 @@ export class PatchStore {
   cancelPendingLive(): void {
     this.liveQueue.cancelPending();
     this.fullPending = false;
+    // Dropped single-parameter edits never reached the instrument, so it no longer matches the open patch.
+    this.baseSent = false;
   }
 
   /** Counts every change to the open patch; a read that started earlier is out of date if this moved. */

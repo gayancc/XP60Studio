@@ -127,6 +127,8 @@ export interface StorageInfo {
   configured: string;
   default: string;
   custom: boolean;
+  /** Set when the chosen folder is not available now and the default library is shown instead. */
+  problem?: string;
 }
 
 export interface Backend {

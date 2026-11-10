@@ -220,6 +220,30 @@ fn deleting_a_bulk_deletes_only_patches_nothing_else_holds() {
 }
 
 #[test]
+fn deleting_a_bulk_keeps_patches_another_bulks_saved_version_still_needs() {
+    let (mut lib, a) = imported();
+    let all: Vec<(u8, Vec<u8>)> = (0..128u8).map(|i| (i, blocks_of(usize::from(i)))).collect();
+    // Overwriting A keeps its 128 patches only as a saved version; no bulk holds them now.
+    let small = vec![(0u8, blocks_of(5))];
+    lib.save_bulk(SaveTarget::Overwrite(a), "bank", &small, 400)
+        .unwrap();
+    let b = match lib.save_bulk(SaveTarget::New, "again", &all, 500) {
+        Ok(r) => r.bulk_id,
+        Err(e) => panic!("{e}"),
+    };
+    let total = lib.count(&Filter::default()).unwrap();
+    assert_eq!(
+        lib.delete_bulk(b).unwrap(),
+        0,
+        "A's version still needs them"
+    );
+    assert_eq!(lib.count(&Filter::default()).unwrap(), total);
+    let version = lib.bulk_revisions(a).unwrap()[0].id;
+    lib.restore_revision(a, version, 600).unwrap();
+    assert_eq!(lib.bulk_contents(a).unwrap().len(), 128);
+}
+
+#[test]
 fn deleting_a_patch_empties_its_positions_everywhere() {
     let (mut lib, id) = imported();
     let victim = lib.bulk_contents(id).unwrap()[3].patch_id;
@@ -332,4 +356,48 @@ fn a_library_made_before_bulks_is_grouped_by_source_once_and_backed_up() {
     );
     drop(lib);
     let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn overwriting_with_two_patches_for_one_position_is_refused_and_changes_nothing() {
+    let (mut lib, id) = imported();
+    let dup: Vec<(u8, Vec<u8>)> = vec![(0, blocks_of(5)), (0, blocks_of(6))];
+    let before = lib.count(&Filter::default()).unwrap();
+    assert!(matches!(
+        lib.save_bulk(SaveTarget::Overwrite(id), "bank", &dup, 400),
+        Err(LibraryError::BadPosition(_))
+    ));
+    assert_eq!(lib.bulk_contents(id).unwrap().len(), 128);
+    assert_eq!(lib.count(&Filter::default()).unwrap(), before);
+    assert!(lib.bulk_revisions(id).unwrap().is_empty());
+}
+
+#[test]
+fn an_old_library_is_rebuilt_once_so_deleted_ids_are_never_reused() {
+    let conn = rusqlite::Connection::open_in_memory().unwrap();
+    conn.execute_batch(
+        "CREATE TABLE patch (id INTEGER PRIMARY KEY, hash TEXT NOT NULL, name TEXT NOT NULL,
+           bytes BLOB NOT NULL, source TEXT NOT NULL, favourite INTEGER NOT NULL DEFAULT 0,
+           added_at INTEGER NOT NULL);
+         INSERT INTO patch VALUES (1,'a','one',x'01','s',0,1),(2,'b','two',x'02','s',1,2);",
+    )
+    .unwrap();
+    crate::upgrade_patch_ids(&conn);
+    conn.execute("DELETE FROM patch WHERE id = 2", []).unwrap();
+    conn.execute(
+        "INSERT INTO patch (hash, name, bytes, source, added_at) VALUES ('c','three',x'03','s',3)",
+        [],
+    )
+    .unwrap();
+    let mut stmt = conn.prepare("SELECT id FROM patch ORDER BY id").unwrap();
+    let ids: Vec<i64> = stmt
+        .query_map([], |r| r.get::<_, i64>(0))
+        .unwrap()
+        .map(|r| r.unwrap())
+        .collect();
+    assert_eq!(ids, vec![1, 3], "id 2 must not come back");
+    let favourite: i64 = conn
+        .query_row("SELECT favourite FROM patch WHERE id = 1", [], |r| r.get(0))
+        .unwrap();
+    assert_eq!(favourite, 0);
 }

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { errorText, reportError, reportSuccess } from '../model/messages.svelte';
+  import { errorText, reportError, reportSuccess, reportWarning } from '../model/messages.svelte';
   import type { Backend, StorageInfo } from '../model/backend';
 
   interface Props {
@@ -20,6 +20,7 @@
     try {
       info = await backend.storageInfo();
       path = info.custom ? info.configured : '';
+      if (info.problem) reportWarning(info.problem);
     } catch (e) {
       failed = true;
       reportError(errorText(e));

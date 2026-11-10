@@ -104,11 +104,6 @@
         </div>
       </div>
     {/if}
-    {#if lib.error}
-      <p class="err" role="alert">{lib.error}</p>
-    {:else if lib.notice}
-      <p class="ok" role="status">{lib.notice}</p>
-    {/if}
     <input type="search" placeholder={view === 0 ? 'Search patches in all bulks' : 'Search names'} aria-label="Search the library" bind:value={query} />
     {#if view === 0}
       <BulkTree {bank} {lib} {deviceId} {onput} />
@@ -272,18 +267,6 @@
   .actions {
     display: flex;
     gap: 4px;
-  }
-  .err {
-    margin: 0;
-    padding: 4px 8px;
-    color: var(--bad);
-    font-size: 13px;
-  }
-  .ok {
-    margin: 0;
-    padding: 4px 8px;
-    color: var(--ok);
-    font-size: 13px;
   }
   input[type='search'] {
     width: 100%;

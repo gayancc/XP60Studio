@@ -124,6 +124,10 @@ fn decode_slots(text: &str) -> Vec<(u8, i64)> {
 impl Library {
     /// Run `f` as one transaction: all of it or none of it.
     pub(crate) fn in_tx<R>(&mut self, f: impl FnOnce(&mut Library) -> Result<R>) -> Result<R> {
+        // A panic inside an earlier closure can leave a transaction open; clear it before starting a new one.
+        if !self.conn.is_autocommit() {
+            let _ = self.conn.execute_batch("ROLLBACK");
+        }
         self.conn.execute_batch("BEGIN")?;
         match f(self) {
             Ok(v) => match self.conn.execute_batch("COMMIT") {
@@ -139,6 +143,19 @@ impl Library {
                 Err(e)
             }
         }
+    }
+
+    /// Every patch id that some bulk's saved versions point to.
+    fn revision_patch_ids(&self) -> Result<std::collections::HashSet<i64>> {
+        let mut stmt = self.conn.prepare("SELECT slots FROM bulk_revision")?;
+        let texts: Vec<String> = stmt
+            .query_map([], |r| r.get(0))?
+            .collect::<std::result::Result<_, _>>()?;
+        Ok(texts
+            .iter()
+            .flat_map(|t| decode_slots(t))
+            .map(|(_, id)| id)
+            .collect())
     }
 
     fn ensure_bulk(&self, id: i64) -> Result<()> {
@@ -445,7 +462,10 @@ impl Library {
                     }
                     let kept_version = lib.keep_version(bulk_id, now, true)?;
                     slots.sort_unstable();
-                    slots.dedup_by_key(|(p, _)| *p);
+                    // Same rule as a new bulk: two patches for one position is a mistake, not something to pick from.
+                    if let Some(w) = slots.windows(2).find(|w| w[0].0 == w[1].0) {
+                        return Err(LibraryError::BadPosition(usize::from(w[0].0)));
+                    }
                     lib.write_slot_map(bulk_id, &slots)?;
                     lib.conn.execute(
                         "UPDATE bulk SET name = ?2, updated_at = ?3 WHERE id = ?1",
@@ -484,7 +504,8 @@ impl Library {
         self.in_tx(|lib| lib.create_bulk_inner(&name, "copy", &slots, now))
     }
 
-    /// Delete a bulk. A patch that was only in this bulk (not favourited, not tagged) is deleted with it; the rest stay. Returns
+    /// Delete a bulk. A patch that was only in this bulk (not favourited, not tagged, not in any bulk's saved version) is
+    /// deleted with it; the rest stay. Returns
     /// how many patches were deleted.
     pub fn delete_bulk(&mut self, bulk: i64) -> Result<usize> {
         self.ensure_bulk(bulk)?;
@@ -492,8 +513,10 @@ impl Library {
         self.in_tx(|lib| {
             lib.conn
                 .execute("DELETE FROM bulk WHERE id = ?1", params![bulk])?;
+            // A patch another bulk's saved version still points to is kept, or restoring that version would lose it.
+            let held = lib.revision_patch_ids()?;
             let mut removed = 0;
-            for id in ids {
+            for id in ids.into_iter().filter(|id| !held.contains(id)) {
                 removed += lib.conn.execute(
                     "DELETE FROM patch WHERE id = ?1 AND favourite = 0
                      AND NOT EXISTS (SELECT 1 FROM bulk_patch WHERE patch_id = ?1)
@@ -649,7 +672,9 @@ impl Library {
     pub(crate) fn migrate_to_bulks(&mut self) -> Result<()> {
         let mut stmt = self
             .conn
-            .prepare("SELECT id, source, added_at FROM patch ORDER BY id")?;
+            .prepare(
+                "SELECT id, source, added_at FROM patch \n                 WHERE id NOT IN (SELECT patch_id FROM bulk_patch) ORDER BY id",
+            )?;
         let rows: Vec<(i64, String, i64)> = stmt
             .query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))?
             .collect::<std::result::Result<_, _>>()?;
@@ -680,6 +705,8 @@ impl Library {
                     lib.create_bulk_inner(&name, &source, &slots, at)?;
                 }
             }
+            // Inside the transaction: the grouping and the "done" flag stand or fall together.
+            lib.conn.execute_batch("PRAGMA user_version = 1")?;
             Ok(())
         })
     }

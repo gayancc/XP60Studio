@@ -131,6 +131,47 @@ describe('editing', () => {
   });
 });
 
+describe('send failures', () => {
+  function flaky(failures: number): { store: PatchStore; sent: Uint8Array[] } {
+    const sent: Uint8Array[] = [];
+    let left = 0;
+    const transport = {
+      label: 'flaky',
+      connected: true,
+      send(frame: Uint8Array): void {
+        if (left > 0) {
+          left -= 1;
+          throw new Error('boom');
+        }
+        sent.push(frame);
+      },
+    };
+    const store = new PatchStore(catalog, transport, 0x10, { now: () => Date.now() });
+    store.sendPatch();
+    vi.advanceTimersByTime(1000);
+    left = failures;
+    return { store, sent };
+  }
+
+  it('a send that fails once and succeeds on retry shows no error', () => {
+    const { store, sent } = flaky(1);
+    sent.length = 0;
+    store.set('tone4', 'tone_level', 40);
+    vi.advanceTimersByTime(1000);
+    expect(sent).toHaveLength(1);
+    expect(store.error).toBe('');
+  });
+
+  it('a frame given up on is reported', () => {
+    const { store, sent } = flaky(100);
+    sent.length = 0;
+    store.set('tone4', 'tone_level', 40);
+    vi.advanceTimersByTime(2000);
+    expect(sent).toHaveLength(0);
+    expect(store.error).toMatch(/could not be sent/);
+  });
+});
+
 describe('live edit pipeline', () => {
   it('a drag sends only the newest value, as one DT1 to the temporary patch', () => {
     const { store, transport } = make();

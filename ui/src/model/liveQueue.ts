@@ -41,6 +41,7 @@ export class LiveQueue {
   private failedCount = 0;
   private lostCount = 0;
   private inFlight = 0;
+  private epoch = 0;
   private lastFailed = false;
   private idleWaiters: Array<() => void> = [];
   private readonly minGap: number;
@@ -94,6 +95,7 @@ export class LiveQueue {
 
   /** Replace everything waiting with an ordered list of frames (a whole-patch send supersedes single edits). */
   replaceAll(frames: readonly Uint8Array[]): void {
+    this.epoch += 1;
     this.pendingFrames.clear();
     this.attempts.clear();
     this.lostCount = 0;
@@ -105,6 +107,7 @@ export class LiveQueue {
 
   /** Drop everything waiting and forget past failures. In-flight sends still finish. */
   clear(): void {
+    this.epoch += 1;
     this.pendingFrames.clear();
     this.attempts.clear();
     this.lostCount = 0;
@@ -118,6 +121,7 @@ export class LiveQueue {
 
   /** Drop frames not yet started (e.g. cancel a bank audition before Program Change). */
   cancelPending(): void {
+    this.epoch += 1;
     this.pendingFrames.clear();
     this.attempts.clear();
     if (this.timer !== null) {
@@ -150,24 +154,31 @@ export class LiveQueue {
     this.pendingFrames.delete(key);
     this.lastSent = this.o.now();
     this.inFlight += 1;
+    const epoch = this.epoch;
     try {
       const result = this.o.send(frame);
       if (result instanceof Promise) {
         result.then(
-          () => this.settle(true, key, frame),
-          () => this.settle(false, key, frame),
+          () => this.settle(true, key, frame, epoch),
+          () => this.settle(false, key, frame, epoch),
         );
       } else {
-        this.settle(true, key, frame);
+        this.settle(true, key, frame, epoch);
       }
     } catch {
-      this.settle(false, key, frame);
+      this.settle(false, key, frame, epoch);
     }
     this.schedule();
   }
 
-  private settle(ok: boolean, key: number, frame: Uint8Array): void {
+  private settle(ok: boolean, key: number, frame: Uint8Array, epoch: number): void {
     this.inFlight -= 1;
+    if (!ok && epoch !== this.epoch) {
+      // The queue was cleared or replaced while this frame was in flight: do not resend stale data.
+      this.failedCount += 1;
+      this.emit();
+      return;
+    }
     if (ok) {
       this.sentCount += 1;
       this.lastFailed = false;

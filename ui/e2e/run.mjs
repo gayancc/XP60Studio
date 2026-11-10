@@ -296,7 +296,11 @@ try {
     await tab(t, '.center ');
     await wait(250);
     const over = await js(`(()=>{const p=document.querySelector('.center [role=tabpanel]'); return p.scrollHeight-p.clientHeight})()`);
-    if (over > 1) scrolling.push(`${t} (+${over}px)`);
+    if (over > 1) {
+      // Name the lowest elements so a failure says what to shrink.
+      const who = await js(`(()=>{const p=document.querySelector('.center [role=tabpanel]'); const pb=p.getBoundingClientRect().bottom; return [...p.querySelectorAll('*')].map(e=>({e,b:e.getBoundingClientRect().bottom+(parseFloat(getComputedStyle(e).marginBottom)||0)})).filter(x=>x.b>pb-0.5).sort((a,b)=>b.b-a.b).slice(0,3).map(x=>x.e.tagName.toLowerCase()+'.'+String(x.e.className?.baseVal ?? x.e.className).split(' ')[0]+' +'+Math.round(x.b-pb)).join(' | ')})()`);
+      scrolling.push(`${t} (+${over}px: ${who})`);
+    }
   }
   check(centreTabs.length >= 6 && centreTabs.length <= 8 && scrolling.length === 0, `Patch: ${centreTabs.length} tabs (${centreTabs.join(', ')}), none scrolls at 1100x700`, scrolling.join(', '));
   await resizeWindow(1280, 800);
@@ -372,7 +376,8 @@ try {
   const importBulk = await js(`(()=>{const b=[...document.querySelectorAll('.right button')].find(b=>/^Import 128 as bulk$/.test(b.textContent.trim())); b?.click(); return !!b})()`);
   check(importBulk, 'the Bank library imports the 128-patch bulk');
   await wait(700);
-  const openedBulk = await js(`(()=>{const b=document.querySelector('.right li.bulk .head button.name'); b?.click(); return !!b})()`);
+  // Importing already opens the new bulk; only click its name when it is still closed (a click on an open bulk closes it).
+  const openedBulk = await js(`(()=>{const b=document.querySelector('.right li.bulk .head button.name'); if (b && !document.querySelector('.right li.bulk .tools')) b.click(); return !!b})()`);
   check(openedBulk, 'the imported bulk opens in the Bank library');
   await wait(250);
   const loadBulk = await js(`(()=>{const b=[...document.querySelectorAll('.right li.bulk .tools button')].find(b=>b.textContent.trim()==='Load into bank'); b?.click(); return !!b})()`);

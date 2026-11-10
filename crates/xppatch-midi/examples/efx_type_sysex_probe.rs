@@ -19,8 +19,8 @@ fn efx_params(patch: &Patch) -> Res<(i32, [i32; 12])> {
     let c = patch.block(PatchBlock::Common).ok_or("missing Common")?;
     let ty = c.get("efx_type")?;
     let mut p = [0i32; 12];
-    for i in 0..12 {
-        p[i] = c.get(&format!("efx_parameter_{}", i + 1))?;
+    for (i, slot) in p.iter_mut().enumerate() {
+        *slot = c.get(&format!("efx_parameter_{}", i + 1))?;
     }
     Ok((ty, p))
 }

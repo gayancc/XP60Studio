@@ -15,6 +15,7 @@
 
 import type { BankSlot } from './bank.svelte';
 import { soundSelect } from './bankPanel';
+import { reportWarning } from './messages.svelte';
 import type { PatchStore } from './store.svelte';
 
 export interface BankFollowSynth {
@@ -25,7 +26,7 @@ export interface BankFollowSynth {
 }
 
 export interface BankFollowDeps {
-  store: Pick<PatchStore, 'auditionBlocks' | 'whenQueueIdle' | 'cancelPendingLive' | 'queue'>;
+  store: Pick<PatchStore, 'auditionBlocks' | 'whenQueueIdle' | 'cancelPendingLive'>;
   synth: BankFollowSynth;
   playPreviewNote: (
     note: (on: boolean) => Promise<void>,
@@ -68,7 +69,11 @@ export async function followBankPad(
   if (held.origin === 'synth') {
     const sel = soundSelect('USER', slot);
     if (!sel) return;
-    await deps.synth.selectSound(0, sel.msb, sel.lsb, sel.program);
+    if (!(await deps.synth.selectSound(0, sel.msb, sel.lsb, sel.program))) {
+      // The instrument did not take the sound change: auditioning now would play over the wrong User slot.
+      if (stillCurrent()) reportWarning('The XP-60 did not switch to that User patch, so it was not previewed.');
+      return;
+    }
     if (!stillCurrent() || !deps.synth.connected) return;
   }
 

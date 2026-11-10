@@ -32,7 +32,7 @@ fn main() -> Res<()> {
         let mut doc = client.read_system(&cancel)?;
         let cur = doc.block(0).ok_or("missing System Common")?.get(id)?;
         let value = if cur == value {
-            if value + 1 <= 32 {
+            if value < 32 {
                 value + 1
             } else {
                 value.saturating_sub(1)

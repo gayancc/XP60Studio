@@ -336,13 +336,12 @@ impl<T: MidiTransport> Synth<T> {
         let result = self
             .client
             .commit_user_write(&plan, &patch, &CancelToken::new());
-        // Remember the attempt unless nothing could have been written (a refusal or a read failure before any write).
+        // Remember the attempt unless nothing could have been written (a refusal or a cancel before any write). A
+        // timeout or patch error can come from the read-back after the slot was already overwritten, so those are kept
+        // as failed attempts: restoring then writes the backup, which is harmless if the slot was never touched.
         let wrote_something = !matches!(
             result,
-            Err(ClientError::Refused(_)
-                | ClientError::Timeout { .. }
-                | ClientError::Cancelled
-                | ClientError::Patch(_))
+            Err(ClientError::Refused(_) | ClientError::Cancelled)
         );
         if wrote_something {
             self.last = Some(Attempt {

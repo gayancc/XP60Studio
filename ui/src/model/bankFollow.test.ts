@@ -16,7 +16,7 @@ describe('followBankPad', () => {
       7,
       slot(null, null),
       {
-        store: { auditionBlocks, whenQueueIdle: vi.fn(async () => 'idle' as const), cancelPendingLive, queue: { state: 'ok' } },
+        store: { auditionBlocks, whenQueueIdle: vi.fn(async () => 'idle' as const), cancelPendingLive },
         synth: { connected: true, selectSound, note: vi.fn(), allNotesOff: vi.fn() },
         playPreviewNote,
       },
@@ -39,7 +39,7 @@ describe('followBankPad', () => {
       4,
       slot('synth', bytes),
       {
-        store: { auditionBlocks, whenQueueIdle, cancelPendingLive, queue: { state: 'behind' } },
+        store: { auditionBlocks, whenQueueIdle, cancelPendingLive },
         synth: { connected: true, selectSound, note: vi.fn(), allNotesOff: vi.fn() },
         playPreviewNote,
         settleMs: 50,
@@ -63,7 +63,7 @@ describe('followBankPad', () => {
       3,
       slot('synth', bytes),
       {
-        store: { auditionBlocks, whenQueueIdle, cancelPendingLive: vi.fn(), queue: { state: 'ok' } },
+        store: { auditionBlocks, whenQueueIdle, cancelPendingLive: vi.fn() },
         synth: { connected: true, selectSound, note: vi.fn(), allNotesOff: vi.fn() },
         playPreviewNote,
         settleMs: 50,
@@ -85,7 +85,7 @@ describe('followBankPad', () => {
       2,
       slot('library', bytes),
       {
-        store: { auditionBlocks, whenQueueIdle, cancelPendingLive: vi.fn(), queue: { state: 'ok' } },
+        store: { auditionBlocks, whenQueueIdle, cancelPendingLive: vi.fn() },
         synth: { connected: true, selectSound, note: vi.fn(), allNotesOff: vi.fn() },
         playPreviewNote,
         settleMs: 100,
@@ -104,7 +104,7 @@ describe('followBankPad', () => {
       1,
       slot('synth', new Uint8Array([1])),
       {
-        store: { auditionBlocks, whenQueueIdle: vi.fn(async () => 'idle' as const), cancelPendingLive: vi.fn(), queue: { state: 'ok' } },
+        store: { auditionBlocks, whenQueueIdle: vi.fn(async () => 'idle' as const), cancelPendingLive: vi.fn() },
         synth: { connected: true, selectSound, note: vi.fn(), allNotesOff: vi.fn() },
         playPreviewNote: vi.fn(),
       },

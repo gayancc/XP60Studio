@@ -155,9 +155,8 @@ fn midi_connect(
     output: String,
     device: u8,
 ) -> Result<Connected, String> {
-    if state.busy.load(Ordering::SeqCst) {
-        return Err(SynthError::Busy.to_string());
-    }
+    // Take the single-flight mark (not just look at it) so a long operation cannot start while the ports are torn down.
+    let _op = begin_long(&state)?;
     // Windows MIDI ports are exclusive: let go of any previous connection before opening the ports again.
     clear_thru(&state);
     if let Some(out) = state
@@ -200,9 +199,8 @@ fn midi_connect(
 
 #[tauri::command(async)]
 fn midi_disconnect(state: tauri::State<'_, AppState>) -> Result<(), String> {
-    if state.busy.load(Ordering::SeqCst) {
-        return Err(SynthError::Busy.to_string());
-    }
+    // Take the single-flight mark (not just look at it) so a long operation cannot start while the ports are torn down.
+    let _op = begin_long(&state)?;
     clear_thru(&state);
     if let Some(out) = state
         .midi_out
@@ -528,7 +526,8 @@ fn midi_arm_save(
     let dir = data_dir(&app)?.join("backups");
     let stamp = u64::try_from(now_secs()).unwrap_or(0);
     let write_backup = backup.unwrap_or(true);
-    with_synth(&state, |s| s.arm_user_save(slot, &dir, stamp, write_backup)).map_err(|e| e.to_string())
+    with_synth(&state, |s| s.arm_user_save(slot, &dir, stamp, write_backup))
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command(async)]
@@ -1133,8 +1132,16 @@ fn save_file(
         };
         chosen.into_path().map_err(|e| e.to_string())?
     };
-    std::fs::write(&path, &bytes)
-        .map_err(|e| format!("could not write {}: {e}", path.display()))?;
+    // Write beside the target and rename over it, so a full disk or a crash cannot truncate a file the user chose to
+    // overwrite.
+    let mut tmp_name = path.as_os_str().to_owned();
+    tmp_name.push(".tmp");
+    let tmp = std::path::PathBuf::from(tmp_name);
+    let written = std::fs::write(&tmp, &bytes).and_then(|()| std::fs::rename(&tmp, &path));
+    if let Err(e) = written {
+        let _ = std::fs::remove_file(&tmp);
+        return Err(format!("could not write {}: {e}", path.display()));
+    }
     Ok(Some(path.display().to_string()))
 }
 

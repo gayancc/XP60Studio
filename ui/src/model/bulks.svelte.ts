@@ -64,6 +64,7 @@ export class BulkService {
   pendingLoad = $state<number | null>(null);
   private inFlight = $state(0);
   private ticket = 0;
+  private searchTicket = 0;
 
   constructor(
     private readonly backend: Backend,
@@ -91,7 +92,9 @@ export class BulkService {
       const loaded = await Promise.all(openIds.map(async (id) => [id, await this.backend.bulkContents(id)] as const));
       if (mine !== this.ticket) return;
       this.bulks = bulks;
-      this.contents = Object.fromEntries(loaded);
+      // Merge rather than replace: a bulk expanded while this refresh was in flight keeps what it just loaded.
+      const kept = Object.fromEntries(Object.entries(this.contents).filter(([id]) => bulks.some((b) => b.id === Number(id))));
+      this.contents = { ...kept, ...Object.fromEntries(loaded) };
       this.open = Object.fromEntries(Object.entries(this.open).filter(([id]) => bulks.some((b) => b.id === Number(id))));
       this.selection = this.selection.filter((s) => this.contents[s.bulk]?.some((c) => c.position === s.position && c.patch_id === s.patchId));
       if (this.query.trim() !== '') await this.search(this.query);
@@ -136,10 +139,10 @@ export class BulkService {
       this.hits = [];
       return;
     }
-    const mine = ++this.ticket;
+    const mine = ++this.searchTicket;
     try {
       const hits = await this.backend.bulkSearch(q, 500);
-      if (mine === this.ticket) this.hits = hits;
+      if (mine === this.searchTicket) this.hits = hits;
     } catch (e) {
       this.fail(e);
     }
@@ -218,7 +221,7 @@ export class BulkService {
     }
     const r = await this.run(() => this.backend.bulkSave(overwrite, name, patches));
     if (!r) return false;
-    bank.markSaved(r.bulk_id, r.name);
+    bank.markSaved(r.bulk_id, r.name, patches);
     this.open = { ...this.open, [r.bulk_id]: true };
     await this.refresh();
     reportInfo(
@@ -233,7 +236,15 @@ export class BulkService {
   async loadIntoBank(bank: BankService, id: number): Promise<boolean> {
     const name = this.bulk(id)?.name ?? 'bulk';
     try {
+      if (bank.locked) {
+        reportWarning('The bank is busy with the instrument. Try again when it has finished.');
+        return false;
+      }
       const blocks = await this.backend.bulkBlocks(id);
+      if (bank.locked) {
+        reportWarning('The bank is busy with the instrument. Try again when it has finished.');
+        return false;
+      }
       bank.loadFromBulk(id, name, blocks);
       return true;
     } catch (e) {

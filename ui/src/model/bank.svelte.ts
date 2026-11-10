@@ -79,6 +79,8 @@ export class BankService {
   levelPreview = $state<BankLevelReport | null>(null);
   /** One-shot undo for the last Level bank Apply (original slot bytes). */
   private levelUndo: Array<{ slot: number; bytes: Uint8Array }> | null = null;
+  /** True while Apply/Undo themselves write slots, so those writes do not discard the preview/undo state. */
+  private levelWriting = false;
 
   constructor(private readonly backend: Backend) {}
 
@@ -153,6 +155,7 @@ export class BankService {
   }
 
   private setSlot(slot: number, bytes: Uint8Array, origin: SlotOrigin): void {
+    this.dropLevelState();
     let name = '';
     try {
       const doc = PatchDoc.fromBlocks(bytes);
@@ -189,8 +192,16 @@ export class BankService {
     const sa = this.slots[a];
     const sb = this.slots[b];
     if (!sa || !sb) return;
+    this.dropLevelState();
     this.slots[a] = sb;
     this.slots[b] = sa;
+  }
+
+  /** A Normalize preview or undo list describes the slots as they were; once they change it must not be applied. */
+  private dropLevelState(): void {
+    if (this.levelWriting) return;
+    this.levelPreview = null;
+    this.levelUndo = null;
   }
 
   /** The slots that differ from what the library bulk held when the bank was loaded from or saved to it. */
@@ -199,15 +210,19 @@ export class BankService {
   }
 
   /** The bank now matches the library bulk `id`: remember it as the one to save over, and what it held. */
-  markSaved(id: number, name: string): void {
+  markSaved(id: number, name: string, saved?: ReadonlyArray<[number, Uint8Array]>): void {
     this.origin = { id, name };
-    this.libraryBaseline = this.slots.map((s) => s.bytes?.slice() ?? null);
+    // `saved` is what was actually sent to the library; slots edited while that was in flight stay unsaved.
+    this.libraryBaseline = saved
+      ? Array.from({ length: SLOTS }, (_, i) => saved.find(([slot]) => slot === i)?.[1].slice() ?? null)
+      : this.slots.map((s) => s.bytes?.slice() ?? null);
     this.source = `Bulk: ${name}`;
   }
 
   /** Replace every slot with the patches of a library bulk (`[position, 590 bytes]`); positions it does not hold become empty. */
   loadFromBulk(id: number, name: string, blocks: Array<[number, Uint8Array]>): number {
     if (this.locked) return 0;
+    this.dropLevelState();
     const next: BankSlot[] = Array.from({ length: SLOTS }, emptySlot);
     this.slots = next;
     let n = 0;
@@ -495,11 +510,16 @@ export class BankService {
   applyLevelBank(): boolean {
     if (this.locked || !this.levelPreview) return false;
     const report = this.levelPreview;
-    this.levelUndo = applyBankLevelReport(
-      report,
-      (slot) => this.slots[slot]?.bytes ?? null,
-      (slot, bytes) => this.setSlot(slot, bytes, 'editor'),
-    );
+    this.levelWriting = true;
+    try {
+      this.levelUndo = applyBankLevelReport(
+        report,
+        (slot) => this.slots[slot]?.bytes ?? null,
+        (slot, bytes) => this.setSlot(slot, bytes, 'editor'),
+      );
+    } finally {
+      this.levelWriting = false;
+    }
     this.levelPreview = null;
     reportSuccess(
       this.levelUndo.length
@@ -512,8 +532,14 @@ export class BankService {
   /** Restore slot bytes from the last Normalize bank Apply. */
   undoLevelBank(): boolean {
     if (this.locked || !this.levelUndo?.length) return false;
-    for (const u of this.levelUndo) this.setSlot(u.slot, u.bytes, 'editor');
-    const n = this.levelUndo.length;
+    const undo = this.levelUndo;
+    this.levelWriting = true;
+    try {
+      for (const u of undo) this.setSlot(u.slot, u.bytes, 'editor');
+    } finally {
+      this.levelWriting = false;
+    }
+    const n = undo.length;
     this.levelUndo = null;
     reportInfo(`Undid Normalize bank on ${n} slot(s).`);
     return true;

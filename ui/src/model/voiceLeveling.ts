@@ -153,7 +153,10 @@ export function proportionalToneScaleOk(
     }
     const a = get(original, catalog, block, 'tone_level');
     const b = get(candidate, catalog, block, 'tone_level');
-    if (a <= 0) return b <= 0;
+    if (a <= 0) {
+      if (b > 0) return false;
+      continue;
+    }
     factors.push(b / a);
   }
   if (factors.length === 0) return true;
@@ -377,7 +380,7 @@ export function matchPatchToTarget(
   let idealPatch = toneSum > EPS ? Math.round((targetEls / toneSum) * 127) : curPatch;
   idealPatch = clamp(idealPatch, 1, 127);
 
-  let working = bytes.slice();
+  let working: Uint8Array = bytes.slice();
   if (idealPatch !== curPatch) {
     changes.push({ block: 'common', id: 'patch_level', value: idealPatch });
     working = applyChanges(catalog, working, [{ block: 'common', id: 'patch_level', value: idealPatch }]);

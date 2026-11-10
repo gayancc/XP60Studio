@@ -189,6 +189,37 @@ describe('LiveQueue', () => {
     h.queue.clear();
     expect(h.queue.stats.state).toBe('ok');
   });
+  it('a send that fails after the queue was cleared is not resent', async () => {
+    let reject: (e: Error) => void = () => {};
+    const sent: number[] = [];
+    let timer: (() => void) | null = null;
+    const queue = new LiveQueue({
+      send: (f) => {
+        sent.push(f[0]!);
+        return new Promise<void>((_, rej) => {
+          reject = rej;
+        });
+      },
+      now: () => 0,
+      setTimer: (fn) => {
+        timer = fn;
+        return 1;
+      },
+      clearTimer: () => {
+        timer = null;
+      },
+    });
+    queue.push(1, new Uint8Array([1]));
+    (timer as (() => void) | null)?.();
+    expect(sent).toEqual([1]);
+    queue.clear(); // e.g. another patch was opened while frame 1 was in flight
+    reject(new Error('boom'));
+    await Promise.resolve();
+    await Promise.resolve();
+    (timer as (() => void) | null)?.();
+    expect(sent).toEqual([1]);
+    expect(queue.stats.pending).toBe(0);
+  });
   it('a whole-patch send replaces waiting single edits and keeps its own order', () => {
     const h = new Harness();
     h.queue.push(5, new Uint8Array([5]));

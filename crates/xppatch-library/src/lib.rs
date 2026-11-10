@@ -55,6 +55,8 @@ pub enum LibraryError {
     BadPosition(usize),
     #[error("That bulk already holds 128 patches.")]
     BulkFull,
+    #[error("The library copy could not be finished: {0}")]
+    Io(#[from] std::io::Error),
 }
 
 pub type Result<T> = std::result::Result<T, LibraryError>;
@@ -148,6 +150,65 @@ fn like_pattern(text: &str) -> String {
     out
 }
 
+/// Copy the database to `dest` through a temporary file and a rename, so an interrupted copy never leaves a partial
+/// file at `dest` that a later run would trust.
+fn vacuum_into_atomic(conn: &Connection, dest: &std::path::Path) -> Result<()> {
+    let mut tmp_name = dest.as_os_str().to_owned();
+    tmp_name.push(".tmp");
+    let tmp = std::path::PathBuf::from(tmp_name);
+    let _ = std::fs::remove_file(&tmp); // a leftover from an earlier interrupted copy
+    if let Err(e) = conn.execute("VACUUM INTO ?1", params![tmp.to_string_lossy()]) {
+        let _ = std::fs::remove_file(&tmp);
+        return Err(e.into());
+    }
+    if let Err(e) = std::fs::rename(&tmp, dest) {
+        let _ = std::fs::remove_file(&tmp);
+        return Err(e.into());
+    }
+    Ok(())
+}
+
+/// A library made before patch ids were never-reused (`AUTOINCREMENT`) is rebuilt once, keeping every id, so a deleted
+/// patch's id cannot come back as a different patch that an old saved version still points to. All or nothing: if the
+/// rebuild fails for any reason it is rolled back and the library opens as it was.
+pub(crate) fn upgrade_patch_ids(conn: &Connection) {
+    let sql: Option<String> = conn
+        .query_row(
+            "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'patch'",
+            [],
+            |r| r.get(0),
+        )
+        .optional()
+        .unwrap_or(None);
+    let Some(sql) = sql else { return };
+    if sql.to_uppercase().contains("AUTOINCREMENT") {
+        return;
+    }
+    let result = conn.execute_batch(
+        "PRAGMA foreign_keys = OFF;
+         BEGIN;
+         CREATE TABLE patch_new (
+           id INTEGER PRIMARY KEY AUTOINCREMENT,
+           hash TEXT NOT NULL,
+           name TEXT NOT NULL,
+           bytes BLOB NOT NULL,
+           source TEXT NOT NULL,
+           favourite INTEGER NOT NULL DEFAULT 0,
+           added_at INTEGER NOT NULL
+         );
+         INSERT INTO patch_new (id, hash, name, bytes, source, favourite, added_at)
+           SELECT id, hash, name, bytes, source, favourite, added_at FROM patch;
+         DROP TABLE patch;
+         ALTER TABLE patch_new RENAME TO patch;
+         CREATE INDEX IF NOT EXISTS patch_hash ON patch(hash);
+         COMMIT;",
+    );
+    if result.is_err() {
+        let _ = conn.execute_batch("ROLLBACK");
+    }
+    let _ = conn.execute_batch("PRAGMA foreign_keys = ON");
+}
+
 impl Library {
     pub fn open(path: &std::path::Path) -> Result<Library> {
         let conn = Connection::open(path)?;
@@ -163,7 +224,7 @@ impl Library {
         if version < 1 && has_patches {
             let backup = path.with_extension("before-bulks.bak");
             if !backup.exists() {
-                conn.execute("VACUUM INTO ?1", params![backup.to_string_lossy()])?;
+                vacuum_into_atomic(&conn, &backup)?;
             }
         }
         Library::init(conn)
@@ -171,8 +232,7 @@ impl Library {
 
     /// Write a consistent copy of the whole library to `dest` (which must not exist yet). The open library is untouched.
     pub fn snapshot_to(&self, dest: &std::path::Path) -> Result<()> {
-        self.conn
-            .execute("VACUUM INTO ?1", params![dest.to_string_lossy()])?;
+        vacuum_into_atomic(&self.conn, dest)?;
         Ok(())
     }
 
@@ -184,7 +244,7 @@ impl Library {
         conn.execute_batch(
             "PRAGMA foreign_keys = ON;
              CREATE TABLE IF NOT EXISTS patch (
-               id INTEGER PRIMARY KEY,
+               id INTEGER PRIMARY KEY AUTOINCREMENT,
                hash TEXT NOT NULL,
                name TEXT NOT NULL,
                bytes BLOB NOT NULL,
@@ -219,6 +279,7 @@ impl Library {
                slots TEXT NOT NULL
              );",
         )?;
+        upgrade_patch_ids(&conn);
         let mut lib = Library { conn };
         let version: i64 = lib
             .conn

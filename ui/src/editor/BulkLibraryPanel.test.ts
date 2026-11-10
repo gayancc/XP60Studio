@@ -6,6 +6,7 @@ import type { Backend } from '../model/backend';
 import { BankService } from '../model/bank.svelte';
 import { DRAG_TYPE, type DragPayload } from '../model/bulks.svelte';
 import { LibraryService } from '../model/library.svelte';
+import { messages } from '../model/messages.svelte';
 import { fakeBulks } from '../test/bulkBackend';
 import BulkPanelHarness from './BulkPanelHarness.svelte';
 
@@ -227,7 +228,8 @@ describe('importing a bank file into the library', () => {
     await waitFor(() => expect(libraryImport).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(lib.staged).toBeNull());
     await waitFor(() => expect(container.querySelectorAll('.bulk').length).toBe(3));
-    expect(text(container.querySelector('.ok'))).toContain('Imported "session-bank"');
+    expect(container.querySelector('.ok')).toBeNull();
+    expect(messages.list.map((m) => m.text).join(' | ')).toContain('Imported "session-bank"');
     expect([...container.querySelectorAll('.head')].map((h) => text(h)).some((t) => t.includes('session-bank'))).toBe(true);
   });
 

@@ -24,6 +24,10 @@ pub struct StorageInfo {
     pub configured: String,
     pub default: String,
     pub custom: bool,
+    /// Set when a folder was chosen but cannot be used now (a drive that is unplugged, a share that is offline), so the
+    /// app is showing the default library instead. Not an empty value: it is a sentence for the user.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub problem: Option<String>,
 }
 
 /// A folder is usable when it is absolute, can be created and a file can be written in it.
@@ -51,9 +55,25 @@ pub fn resolve(default: &Path) -> PathBuf {
     }
 }
 
+/// The chosen folder when a pointer names one that is not available right now.
+fn unavailable_folder(default: &Path) -> Option<String> {
+    let text = std::fs::read_to_string(default.join(POINTER_FILE)).ok()?;
+    let p = serde_json::from_str::<Pointer>(&text).ok()?;
+    let dir = Path::new(&p.dir);
+    if dir.is_absolute() && dir.is_dir() {
+        None
+    } else {
+        Some(p.dir)
+    }
+}
+
 pub fn info(default: &Path, in_use: &Path) -> StorageInfo {
     let configured = resolve(default);
+    let problem = unavailable_folder(default).map(|dir| {
+        format!("The library folder {dir} is not available, so the default library is shown. Reconnect the folder and restart before importing or saving anything.")
+    });
     StorageInfo {
+        problem,
         in_use: in_use.display().to_string(),
         custom: configured != default,
         configured: configured.display().to_string(),
