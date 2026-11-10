@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Dropdown, MenuBar, Tabs, ToggleLed, XpReadout, type Menu } from '../kit';
+  import { MenuBar, StepSelect, Tabs, ToggleLed, XpReadout, type Menu } from '../kit';
   import { hint } from '../kit/hint.svelte';
   import { SYNC_STATES } from '../kit/syncState';
   import type { Mode } from '../model/catalog';
@@ -173,16 +173,20 @@
     {#if bank && mode === store.kind}
       <div class="slot">
         <span class="caps">Bank</span>
-        <button type="button" class="step" disabled={!canStepBank(store.kind, -1)} onclick={() => stepBankSlot(store, -1)} aria-label="Previous patch" title="Previous patch">‹</button>
-        <Dropdown
-          options={bank.names.map(([s, n]) => `${String(s + 1).padStart(3, '0')}  ${n.trimEnd()}`)}
+        <StepSelect
+          names={bank.names.map(([, n]) => n.trimEnd() || '(unnamed)')}
+          numbers={bank.names.map(([s]) => s + 1)}
           selected={Math.max(0, ui.bankSlot)}
+          canPrev={canStepBank(store.kind, -1)}
+          canNext={canStepBank(store.kind, 1)}
+          onstep={(d) => stepBankSlot(store, d)}
+          onselect={(i) => choose(i)}
           name="{store.kind === 'patch' ? 'Patch' : KIND_TITLES[store.kind]} in {bank.file}"
+          prevLabel="Previous patch"
+          nextLabel="Next patch"
           context="Bank"
-          width={140}
-          onchange={(i) => choose(i)}
+          width={210}
         />
-        <button type="button" class="step" disabled={!canStepBank(store.kind, 1)} onclick={() => stepBankSlot(store, 1)} aria-label="Next patch" title="Next patch">›</button>
       </div>
     {/if}
     <span class="origin" title="Where the open sound came from">{store.origin}</span>
@@ -292,11 +296,11 @@
     display: flex;
     align-items: center;
     gap: 5px;
-    flex: 0 1 190px;
-    min-width: 70px;
+    flex: 0 1 250px;
+    min-width: 90px;
   }
-  .slot :global(.dd) {
-    flex: 1;
+  .slot :global(.ss) {
+    flex: 1 1 auto;
     min-width: 0;
   }
   .slot .caps {
@@ -338,9 +342,5 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-  .step {
-    width: var(--face-h);
-    padding: 0;
   }
 </style>

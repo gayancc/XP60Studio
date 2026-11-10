@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Dropdown, Knob, Segmented } from '../kit';
+  import { Dropdown, Knob, Segmented, StepSelect } from '../kit';
   import { EFX_TYPES, efxChoices, efxDefault, efxDefaults, efxShortName, efxTypeLabel, efxUnitNote, efxValueText, type EfxParam } from '../model/efx';
   import { efxBlurb, EFX_FAMILIES, familyOf, masterOf, sectionsOf } from '../model/efxFamilies';
   import { useStore } from './context';
@@ -70,17 +70,17 @@
 
 <div class="plugin" style:--fx={family.color}>
   <header>
-    <button type="button" class="step" aria-label="Previous EFX type" disabled={stored <= 0} onclick={() => pick(stored - 1)}>−</button>
-    <Dropdown
-      options={TYPE_NAMES}
+    <StepSelect
+      names={TYPE_NAMES}
       groups={TYPE_GROUPS}
       selected={stored}
       name="EFX type"
+      prevLabel="Previous EFX type"
+      nextLabel="Next EFX type"
       context="Effects"
-      width={250}
-      onchange={(i) => pick(i)}
+      width={280}
+      onselect={(i) => pick(i)}
     />
-    <button type="button" class="step" aria-label="Next EFX type" disabled={stored >= EFX_TYPES.length - 1} onclick={() => pick(stored + 1)}>+</button>
     <p class="blurb"><b>{family.label}</b> · {efxBlurb(type)}</p>
   </header>
 
@@ -197,6 +197,7 @@
     gap: 4px;
   }
   header {
+    --step-accent: var(--fx);
     display: flex;
     align-items: center;
     gap: 6px;
@@ -219,24 +220,6 @@
     font: 600 11px var(--font-caps);
     letter-spacing: 0.08em;
     text-transform: uppercase;
-  }
-  .step {
-    width: 22px;
-    align-self: stretch;
-    border: 0;
-    border-radius: var(--radius);
-    background: var(--caption);
-    color: var(--text-dim);
-    font: 600 15px/1 var(--font-caps);
-    cursor: pointer;
-  }
-  .step:hover:not(:disabled) {
-    color: var(--fx);
-    background: var(--well);
-  }
-  .step:disabled {
-    opacity: 0.35;
-    cursor: default;
   }
   .body {
     display: flex;

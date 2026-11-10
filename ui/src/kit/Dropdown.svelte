@@ -23,9 +23,13 @@
     /** Optional small drawing shown before an entry's text, in the list and on the readout (receives the index into `options`). */
     glyph?: Snippet<[number]>;
     onchange?: (index: number) => void;
+    /** The readout has no face of its own (a host such as PatchSelector draws it) and fills its parent. */
+    bare?: boolean;
+    /** Open the list under this element (its full width) instead of under the readout. */
+    anchor?: HTMLElement;
   }
 
-  let { options, selected = $bindable(), groups, label = '', name = label, context = '', disabled = false, width = 130, glyph, onchange }: Props = $props();
+  let { options, selected = $bindable(), groups, label = '', name = label, context = '', disabled = false, width = 130, glyph, onchange, bare = false, anchor }: Props = $props();
 
   const uid = $props.id();
   let trigger: HTMLButtonElement | undefined = $state();
@@ -59,7 +63,7 @@
 
   function place(): void {
     if (!trigger) return;
-    const r = trigger.getBoundingClientRect();
+    const r = (anchor ?? trigger).getBoundingClientRect();
     minWidth = r.width;
     const below = window.innerHeight - r.bottom - 8;
     const above = r.top - 8;
@@ -84,7 +88,7 @@
     if (menu) {
       const r = menu.getBoundingClientRect();
       left = Math.max(4, Math.min(left, window.innerWidth - r.width - 4));
-      if (up && trigger) top = Math.max(4, trigger.getBoundingClientRect().top - 2 - r.height);
+      if (up && trigger) top = Math.max(4, (anchor ?? trigger).getBoundingClientRect().top - 2 - r.height);
       menu.focus();
       menu.querySelector<HTMLElement>('.row.cur')?.scrollIntoView?.({ block: 'center' });
     }
@@ -137,7 +141,7 @@
 
 <svelte:window onpointerdown={outside} onresize={() => close(false)} />
 
-<div class="dd" style:width="{width}px">
+<div class="dd" class:bare style:width={bare ? undefined : `${width}px`}>
   {#if label}<span class="caps">{label}</span>{/if}
   <button
     bind:this={trigger}
@@ -191,6 +195,21 @@
     display: inline-flex;
     flex-direction: column;
     gap: 2px;
+  }
+  .dd.bare {
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    height: 100%;
+  }
+  .bare .trigger {
+    height: 100%;
+    border-radius: 0;
+    background: transparent;
+  }
+  .bare .trigger:hover:not(:disabled),
+  .bare .trigger.open {
+    background: transparent;
   }
   .caps {
     font: 600 10px var(--font-caps);

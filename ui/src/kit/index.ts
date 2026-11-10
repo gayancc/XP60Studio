@@ -20,6 +20,8 @@ export { default as PianoKeys } from './PianoKeys.svelte';
 export { default as Segmented } from './Segmented.svelte';
 export { default as Slider } from './Slider.svelte';
 export { default as StateChip } from './StateChip.svelte';
+export { default as StepFace } from './StepFace.svelte';
+export { default as StepSelect } from './StepSelect.svelte';
 export { default as Stepper } from './Stepper.svelte';
 export { default as Tabs } from './Tabs.svelte';
 export { default as TabPanel } from './TabPanel.svelte';

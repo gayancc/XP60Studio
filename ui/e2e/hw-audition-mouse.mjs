@@ -110,12 +110,12 @@ try {
   assert(soft.args.velocity < ons[0].args.velocity, `upper quieter than lower (${soft.args.velocity} < ${ons[0].args.velocity})`);
 
   assert(await app.js(`!!document.querySelector('[aria-label="Audition channel"]')`), 'Audition channel control present');
-  assert(await app.js(`!!document.querySelector('[aria-label="Octave up"]')`), 'Octave up present');
-  assert(await app.js(`!!document.querySelector('[aria-label="Octave down"]')`), 'Octave down present');
-  const beforeOct = await app.js(`document.querySelector('.aud .row > .caps')?.textContent?.trim()`);
-  assert(await app.click('Oct +', '.aud'), 'Octave up clicked');
+  assert(await app.js(`!!document.querySelector('[aria-label^="Increase Octave"]')`), 'Octave up present');
+  assert(await app.js(`!!document.querySelector('[aria-label^="Decrease Octave"]')`), 'Octave down present');
+  const beforeOct = await app.js(`document.querySelector('[aria-label="Octave"]')?.textContent?.trim()`);
+  assert(await app.js(`(()=>{const b=document.querySelector('.aud button[aria-label^="Increase Octave"]'); if(!b) return false; b.click(); return true})()`), 'Octave up clicked');
   await wait(200);
-  const afterOct = await app.js(`document.querySelector('.aud .row > .caps')?.textContent?.trim()`);
+  const afterOct = await app.js(`document.querySelector('[aria-label="Octave"]')?.textContent?.trim()`);
   assert(beforeOct && afterOct && beforeOct !== afterOct, `octave label changed (${beforeOct} -> ${afterOct})`);
 
   // Hold a note, step channel: AuditionPanel releases held notes on channel change (no stuck notes).

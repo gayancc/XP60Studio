@@ -88,10 +88,11 @@ describe('the stepper', () => {
     expect(calls.change.at(-1)).toBe(3);
   });
 
-  it('draws no border: the readout and tiles are told apart by fill', () => {
+  it('draws no border: the segments are told apart from the readout by a groove, not an outline', () => {
     const { container } = setup(3);
     const css = [...document.querySelectorAll('style')].map((s) => s.textContent).join('\n');
-    expect(css).not.toMatch(/\.row\s*\{[^}]*border:\s*1px/);
-    expect(container.querySelector('.row')).not.toBeNull();
+    expect(css).not.toMatch(/\.(face|seg)\s*\{[^}]*\bborder:\s*[1-9]/);
+    expect(container.querySelector('.face')).not.toBeNull();
+    expect(container.querySelectorAll('.face .seg')).toHaveLength(2);
   });
 });

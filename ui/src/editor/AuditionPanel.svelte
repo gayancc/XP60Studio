@@ -93,9 +93,7 @@
   {/if}
   <div class="row">
     <Stepper bind:value={channel} min={0} max={15} label="Channel" name="Audition channel" context="Audition" format={(v) => String(v + 1)} onchange={releaseAll} />
-    <button type="button" onclick={() => (octave = Math.max(MIN_OCTAVE, octave - 1))} aria-label="Octave down">Oct −</button>
-    <span class="caps">{midiNoteName(first)}</span>
-    <button type="button" onclick={() => (octave = Math.min(MAX_OCTAVE, octave + 1))} aria-label="Octave up">Oct +</button>
+    <Stepper bind:value={octave} min={MIN_OCTAVE} max={MAX_OCTAVE} defaultValue={3} label="Octave" name="Octave" context="Audition" width={34} format={(v) => midiNoteName((v + 1) * 12)} />
     <button type="button" onclick={panic} title="Silence everything on this channel">Panic</button>
   </div>
   <div

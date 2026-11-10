@@ -1,4 +1,5 @@
 <script lang="ts">
+  import StepFace from '../kit/StepFace.svelte';
   import { bankOf, canStepBank, openBankSlot, stepBankSlot } from '../model/bankNav';
   import { ui } from '../model/ui.svelte';
   import { useStore } from './context';
@@ -18,10 +19,17 @@
 {#if bank}
   <div class="bl">
     <div class="bar">
-      <button type="button" disabled={!canStepBank(store.kind, -1)} onclick={() => stepBankSlot(store, -1)} aria-label="Previous patch" title="Previous patch">‹</button>
-      <span class="file" title={bank.file}>{bank.file}</span>
-      <span class="count">{ui.bankSlot + 1} / {bank.names.length}</span>
-      <button type="button" disabled={!canStepBank(store.kind, 1)} onclick={() => stepBankSlot(store, 1)} aria-label="Next patch" title="Next patch">›</button>
+      <StepFace
+        canPrev={canStepBank(store.kind, -1)}
+        canNext={canStepBank(store.kind, 1)}
+        onstep={(d) => stepBankSlot(store, d)}
+        prevLabel="Previous patch"
+        nextLabel="Next patch"
+        wheel
+        strip={bank.names.length > 1 ? ui.bankSlot / (bank.names.length - 1) : 0}
+      >
+        <div class="title"><span class="file" title={bank.file}>{bank.file}</span><span class="count">{ui.bankSlot + 1} / {bank.names.length}</span></div>
+      </StepFace>
     </div>
     <ol bind:this={list} aria-label="Patches in {bank.file}">
       {#each bank.names as [slot, name], i (slot)}
@@ -51,27 +59,15 @@
     gap: 6px;
     flex: none;
   }
-  .bar button {
-    width: 26px;
-    padding: 2px 0;
-    background: var(--well-deep);
-    border: 1px solid var(--edge);
-    border-radius: var(--radius);
-    color: inherit;
-    cursor: pointer;
-    font-size: 14px;
-    line-height: 1;
+  .bar > :global(.face) {
+    flex: 1;
   }
-  .bar button:hover:not(:disabled) {
-    background: var(--well);
-  }
-  .bar button:disabled {
-    opacity: 0.4;
-    cursor: default;
-  }
-  .bar button:focus-visible {
-    outline: none;
-    background-image: var(--focus-fill);
+  .title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 8px;
+    min-width: 0;
   }
   .file {
     flex: 1;
